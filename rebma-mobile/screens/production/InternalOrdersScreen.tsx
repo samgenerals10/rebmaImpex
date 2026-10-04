@@ -446,7 +446,7 @@ export default function InternalOrdersScreen() {
           <SearchablePicker value={newForm.priority} onChange={(v) => setNewForm((f) => ({ ...f, priority: v }))} options={[{ value: 'Low', label: 'Low' }, { value: 'Medium', label: 'Medium' }, { value: 'High', label: 'High' }]} />
         </Field>
         <Field label="Purpose"><Input value={newForm.purpose} onChangeText={(v) => setNewForm((f) => ({ ...f, purpose: v }))} placeholder="e.g. Order Fulfillment" /></Field>
-        <Field label="Notes"><Input value={newForm.notes} onChangeText={(v) => setNewForm((f) => ({ ...f, notes: v }))} multiline numberOfLines={3} style={{ minHeight: 72, textAlignVertical: 'top' }} /></Field>
+        <Field label="Notes"><Input value={newForm.notes} onChangeText={(v) => setNewForm((f) => ({ ...f, notes: v }))} multiline numberOfLines={3} style={{ minHeight: 72, textAlignVertical: 'top' }} placeholder="Any additional context..." /></Field>
       </Sheet>
 
       <Sheet
@@ -459,10 +459,10 @@ export default function InternalOrdersScreen() {
       >
         {editForm && (
           <>
-            <Field label="Product Name"><Input value={editForm.product_name} onChangeText={(v) => setEditForm({ ...editForm, product_name: v })} /></Field>
+            <Field label="Product Name"><Input value={editForm.product_name} onChangeText={(v) => setEditForm({ ...editForm, product_name: v })} placeholder="e.g. Shea Butter Cream 200ml" /></Field>
             <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
-              <View style={{ flex: 1 }}><Field label="Quantity"><Input value={String(editForm.quantity ?? '')} onChangeText={(v) => setEditForm({ ...editForm, quantity: v })} keyboardType="numeric" /></Field></View>
-              <View style={{ flex: 1 }}><Field label="Unit"><Input value={editForm.unit} onChangeText={(v) => setEditForm({ ...editForm, unit: v })} /></Field></View>
+              <View style={{ flex: 1 }}><Field label="Quantity"><Input value={String(editForm.quantity ?? '')} onChangeText={(v) => setEditForm({ ...editForm, quantity: v })} keyboardType="numeric" placeholder="0" /></Field></View>
+              <View style={{ flex: 1 }}><Field label="Unit"><Input value={editForm.unit} onChangeText={(v) => setEditForm({ ...editForm, unit: v })} placeholder="e.g. kg" /></Field></View>
             </View>
             <Field label="Required By Date"><Input value={editForm.required_by_date || ''} onChangeText={(v) => setEditForm({ ...editForm, required_by_date: v })} placeholder="YYYY-MM-DD" /></Field>
             <Field label="Priority">
@@ -472,7 +472,7 @@ export default function InternalOrdersScreen() {
                 options={[{ value: 'Low', label: 'Low' }, { value: 'Medium', label: 'Medium' }, { value: 'High', label: 'High' }]}
               />
             </Field>
-            <Field label="Purpose"><Input value={editForm.purpose || ''} onChangeText={(v) => setEditForm({ ...editForm, purpose: v })} /></Field>
+            <Field label="Purpose"><Input value={editForm.purpose || ''} onChangeText={(v) => setEditForm({ ...editForm, purpose: v })} placeholder="e.g. Order Fulfillment" /></Field>
             <Field label="Status">
               <SearchablePicker
                 value={editForm.status}
@@ -488,10 +488,10 @@ export default function InternalOrdersScreen() {
             </Field>
             {editForm.status === 'REJECTED' && (
               <Field label="Rejection Reason">
-                <Input value={editForm.rejection_reason || ''} onChangeText={(v) => setEditForm({ ...editForm, rejection_reason: v })} multiline numberOfLines={2} style={{ minHeight: 56, textAlignVertical: 'top' }} />
+                <Input value={editForm.rejection_reason || ''} onChangeText={(v) => setEditForm({ ...editForm, rejection_reason: v })} multiline numberOfLines={2} style={{ minHeight: 56, textAlignVertical: 'top' }} placeholder="Why was this rejected?" />
               </Field>
             )}
-            <Field label="Notes"><Input value={editForm.notes || ''} onChangeText={(v) => setEditForm({ ...editForm, notes: v })} multiline numberOfLines={3} style={{ minHeight: 72, textAlignVertical: 'top' }} /></Field>
+            <Field label="Notes"><Input value={editForm.notes || ''} onChangeText={(v) => setEditForm({ ...editForm, notes: v })} multiline numberOfLines={3} style={{ minHeight: 72, textAlignVertical: 'top' }} placeholder="Any additional context..." /></Field>
           </>
         )}
       </Sheet>
@@ -507,7 +507,7 @@ export default function InternalOrdersScreen() {
       >
         <Field label="Raw Material"><Input value={materialForm.materialName} onChangeText={(v) => setMaterialForm((f) => ({ ...f, materialName: v }))} placeholder="e.g. Raw Cocoa Beans" /></Field>
         <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
-          <View style={{ flex: 1 }}><Field label="Quantity"><Input value={materialForm.quantity} onChangeText={(v) => setMaterialForm((f) => ({ ...f, quantity: v }))} keyboardType="numeric" /></Field></View>
+          <View style={{ flex: 1 }}><Field label="Quantity"><Input value={materialForm.quantity} onChangeText={(v) => setMaterialForm((f) => ({ ...f, quantity: v }))} keyboardType="numeric" placeholder="0" /></Field></View>
           <View style={{ flex: 1 }}><Field label="Unit"><Input value={materialForm.unit} onChangeText={(v) => setMaterialForm((f) => ({ ...f, unit: v }))} placeholder="e.g. kg" /></Field></View>
         </View>
         <Field label="Notes"><Input value={materialForm.notes} onChangeText={(v) => setMaterialForm((f) => ({ ...f, notes: v }))} multiline numberOfLines={3} placeholder="What's this needed for..." style={{ minHeight: 72, textAlignVertical: 'top' }} /></Field>

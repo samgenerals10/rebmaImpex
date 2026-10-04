@@ -90,7 +90,7 @@ export default function RiskApprovalsScreen() {
         supabase.from('cargo_intake').select('*').eq('status', 'PENDING_RISK_APPROVAL').order('created_at', { ascending: false }).limit(50),
         supabase.from('orders').select('*').eq('status', 'PENDING_RISK').order('created_at', { ascending: false }).limit(50),
         supabase.from('orders').select('*').eq('status', 'PENDING_RISK_RELEASE').order('created_at', { ascending: false }).limit(50),
-        supabase.from('delivery_logs').select('*, orders:order_id(client_name, destination, total_amount), drivers:driver_id(user_id, name)').eq('status', 'PENDING_RISK_REVIEW').order('created_at', { ascending: false }).limit(50).then((r) => r, () => ({ data: [] })),
+        supabase.from('delivery_logs').select('*, orders:order_id(client_name, destination, total_amount), drivers:driver_id(user_id, full_name)').eq('status', 'PENDING_RISK_REVIEW').order('created_at', { ascending: false }).limit(50).then((r) => r, () => ({ data: [] })),
         supabase.from('customers').select('id, name, credit_limit, credit_status').then((r) => r, () => ({ data: [] })),
         supabase.from('orders').select('id, customer_id, client_name, total_amount, amount_paid, payment_mode, status')
           .eq('payment_mode', 'CREDIT').not('status', 'in', '(REJECTED,CANCELLED,RETURNED_FOR_CORRECTION)')
@@ -178,39 +178,24 @@ export default function RiskApprovalsScreen() {
         // per unit, no selling price. Those are Management's job.
         // Approving adds the cargo exactly as submitted; nothing about the
         // record itself changes except its status. Confirmed 2026-09-16.
-        const newDbStatus = action === 'approve' ? 'APPROVED' : action === 'return' ? 'RETURNED_FOR_CORRECTION' : 'REJECTED';
         const rawId = String(selected.raw.id);
         const cargoRow = selected.raw;
-        const incomingQty = Number(cargoRow.quantity || cargoRow.qty_received || 0);
 
-        await supabase.from('cargo_intake').update({
-          status: newDbStatus,
-          rejection_reason: action === 'approve' ? null : modalNote,
-        }).eq('id', rawId);
-
-        if (action === 'approve') {
-          const productName = String(cargoRow.product_name || 'Unknown Product');
-          const productCode = String(cargoRow.goods_code || rawId.slice(0, 8).toUpperCase());
-          const unit = String(cargoRow.goods_type || cargoRow.unit || 'units');
-          const now = new Date().toISOString();
-          const { data: existingStock } = await supabase.from('stock').select('id, quantity').eq('product_name', productName).maybeSingle().then((r) => r, () => ({ data: null }));
-          if (existingStock) {
-            await supabase.from('stock').update({ quantity: (Number(existingStock.quantity) || 0) + incomingQty, last_updated: now }).eq('id', existingStock.id);
-          } else {
-            await supabase.from('stock').upsert([{ product_name: productName, product_code: productCode, category: 'INCOMING_GOODS', quantity: incomingQty, maximum_level: incomingQty * 2 || 1000, minimum_level: Math.round(incomingQty * 0.1) || 50, unit, last_updated: now }], { onConflict: 'product_name' });
-          }
-          await supabase.from('stock_ledger').insert({
-            product_name: productName, movement_type: 'ADD', quantity: incomingQty, reference: `Cargo approved: ${selected.requestId}`,
-            notes: selected.description, created_at: now,
-          });
-        }
+        // One database step (review_cargo_intake): checks the cargo is
+        // still waiting, records the decision and adds the stock at once.
+        // Two people approving together can no longer add it twice.
+        const { error: cargoErr } = await supabase.rpc('review_cargo_intake', {
+          p_cargo_id: rawId, p_stage: 'risk', p_action: action, p_note: modalNote,
+          p_reference: selected.requestId, p_description: selected.description,
+        });
+        if (cargoErr) throw cargoErr;
 
         const verbLabel = action === 'approve' ? 'APPROVED' : action === 'return' ? 'RETURNED FOR CORRECTION' : 'REJECTED';
         await notifyDecision({
           title: `Cargo Intake ${verbLabel}`,
           message: `Cargo intake ${verbLabel} by Risk: ${selected.description} — ${modalNote}`,
           department: 'ADMIN_WAREHOUSE',
-          personId: cargoRow.logged_by_id || null,
+          personId: cargoRow.handled_by_id || cargoRow.logged_by_id || null,
         });
       }
 
@@ -233,7 +218,7 @@ export default function RiskApprovalsScreen() {
           title: `Sales Order ${verbLabel}`,
           message: `Order ${verbLabel} by Risk: ${selected.description} — ${modalNote}`,
           department: 'MARKETING',
-          personId: orderRow.created_by || null,
+          personId: orderRow.handled_by_id || orderRow.created_by || null,
         });
       }
 
@@ -258,7 +243,7 @@ export default function RiskApprovalsScreen() {
           title: `Order Final Release ${verbLabel}`,
           message: `Order ${verbLabel} by Risk at final release: ${selected.description} — ${modalNote}`,
           department: 'MARKETING',
-          personId: selected.raw.created_by || null,
+          personId: selected.raw.handled_by_id || selected.raw.created_by || null,
         });
       }
 
@@ -270,7 +255,7 @@ export default function RiskApprovalsScreen() {
           title: `Customer Verification ${verbLabel}`,
           message: `Customer ${verbLabel} by Risk: ${selected.description} — ${modalNote}`,
           department: 'MARKETING',
-          personId: selected.raw.registered_by_id || null,
+          personId: selected.raw.handled_by_id || selected.raw.registered_by_id || null,
         });
       }
 
@@ -519,7 +504,7 @@ export default function RiskApprovalsScreen() {
             </Text>
           )}
           <Field label={showModal === 'approve' ? 'Note for this approval *' : showModal === 'return' ? 'Reason for return *' : 'Reason for rejection *'}>
-            <Input value={modalNote} onChangeText={setModalNote} multiline numberOfLines={3} style={{ minHeight: 72, textAlignVertical: 'top' }} />
+            <Input value={modalNote} onChangeText={setModalNote} multiline numberOfLines={3} style={{ minHeight: 72, textAlignVertical: 'top' }} placeholder={showModal === 'approve' ? 'Why is this being approved?' : showModal === 'return' ? 'What needs to be corrected?' : 'Why is this being rejected?'} />
           </Field>
           {!modalNote.trim() && (
             <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.status.danger.text }}>A note is required to submit this decision.</Text>

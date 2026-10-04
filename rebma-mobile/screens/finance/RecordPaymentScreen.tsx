@@ -9,7 +9,8 @@
 // always showed all 4 regardless of the CEO's toggles, which is a real
 // functional gap (a disabled mode should be unselectable), not a
 // harmless superset.
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { newRequestKey } from '../../lib/requestKey';
 import { View, Text } from 'react-native';
 import { Alert } from '../../lib/appAlert';
 import { supabase } from '../../lib/supabaseClient';
@@ -49,6 +50,8 @@ export default function RecordPaymentScreen() {
   const [creditOrders, setCreditOrders] = useState<CreditOrder[]>([]);
   const [selectedOrderId, setSelectedOrderId] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  // One key per payment being entered; replaced after it saves.
+  const paymentKeyRef = useRef(newRequestKey());
   const [enabledSettings, setEnabledSettings] = useState<Record<string, boolean>>({ cash_payments_enabled: true, cheque_payments_enabled: true, momo_payments_enabled: true });
 
   const load = useCallback(async () => {
@@ -89,12 +92,14 @@ export default function RecordPaymentScreen() {
       setSubmitting(true);
       const { error } = await supabase.from('finance_payments').insert({
         client_name: clientName.trim(), amount: amt, payment_mode: payMode, payment_type: 'DIRECT', created_at: now,
+        client_request_id: paymentKeyRef.current,
       });
       setSubmitting(false);
       if (error) {
         Alert.alert('Payment Save Failed', error.message);
         return;
       }
+      paymentKeyRef.current = newRequestKey();
       Alert.alert('Payment Recorded', `Recorded direct payment of GHS ${amt.toLocaleString()} from ${clientName.trim()}.`);
       reset();
     } else {
@@ -106,20 +111,13 @@ export default function RecordPaymentScreen() {
       if (!order) return;
       const paidAmount = amount && parseFloat(amount) > 0 ? parseFloat(amount) : order.total_amount;
       setSubmitting(true);
-      const { error } = await supabase.from('finance_payments').insert({
+      // The payment, the approval and the stock deduction happen in one
+      // database step (accounts_approve_order), so the payment can never be
+      // left behind by a failed or duplicate approval. Same as web.
+      const performedBy = profile?.fullName || 'Account Department';
+      const approved = await approveAccountsReview(order, performedBy, {
         client_name: order.client_name, amount: paidAmount, payment_mode: payMode, payment_type: 'CREDIT_SETTLEMENT', order_id: selectedOrderId, created_at: now,
       });
-      if (error) {
-        setSubmitting(false);
-        Alert.alert('Payment Save Failed', error.message);
-        return;
-      }
-      // Routed through the same guarded path Orders Queue uses (stock
-      // check, accounts_review_order RPC, stock deduction, Risk/Marketing
-      // notifications, audit log) instead of a bare status write, so
-      // settling a credit order from here can't silently skip any of that.
-      const performedBy = profile?.fullName || 'Accounts Department';
-      const approved = await approveAccountsReview(order, performedBy);
       setSubmitting(false);
       if (!approved) return;
       Alert.alert('Settlement Recorded', `Credit settlement recorded for ${order.client_name}.`);

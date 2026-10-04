@@ -144,7 +144,7 @@ export default function HrQueriesScreen() {
 
       <Sheet open={showNew} onClose={() => setShowNew(false)} title="Ask HR" side="bottom" maxHeight={480}
         footer={<Button label={saving ? 'Submitting…' : 'Submit'} onPress={submit} loading={saving} disabled={saving || !subject.trim() || !body.trim()} fullWidth />}>
-        <Field label="Subject"><Input value={subject} onChangeText={setSubject} /></Field>
+        <Field label="Subject"><Input value={subject} onChangeText={setSubject} placeholder="e.g. Payslip question" /></Field>
         <Field label="Details"><Input value={body} onChangeText={setBody} multiline numberOfLines={5} style={{ minHeight: 120, textAlignVertical: 'top' }} placeholder="Describe your question…" /></Field>
       </Sheet>
     </Screen>

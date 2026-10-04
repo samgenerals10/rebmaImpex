@@ -14,6 +14,8 @@ import MetricCard from '../../components/ui/MetricCard';
 import Button from '../../components/ui/Button';
 import ApprovalHistoryPanel from '../../components/shared/ApprovalHistoryPanel';
 import ModuleLauncher from '../../components/chrome/ModuleLauncher';
+import PendingApprovalsAlertCard from '../../components/shared/PendingApprovalsAlertCard';
+import TodaysBirthdaysCard from '../../components/shared/TodaysBirthdaysCard';
 import SectionHeader from '../../components/ui/SectionHeader';
 import TrackedSection from '../../components/ui/TrackedSection';
 
@@ -34,7 +36,7 @@ export default function OverviewScreen() {
   const load = useCallback(async () => {
     const today = new Date().toISOString().split('T')[0];
     const [total, active, pending, leave, depts] = await Promise.all([
-      supabase.from('profiles').select('id', { count: 'exact', head: true }),
+      supabase.from('profiles').select('id', { count: 'exact', head: true }).neq('status', 'TERMINATED'),
       supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('status', 'ACTIVE'),
       supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_APPROVAL'),
       supabase.from('leave_requests').select('id', { count: 'exact', head: true }).eq('status', 'Approved').lte('start_date', today).gte('end_date', today).then((r) => r, () => ({ count: 0 })),
@@ -54,6 +56,8 @@ export default function OverviewScreen() {
   return (
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} onScroll={scrollHandler} scrollEventThrottle={16}>
       <View style={{ gap: t.spacing.xl }}>
+        <PendingApprovalsAlertCard department="HR" onNavigate={(tab) => navigation.navigate(tab)} />
+        <TodaysBirthdaysCard onOpen={() => navigation.navigate('Birthdays')} />
         {/* Workforce Snapshot — two clickable tiles, not one oversized
             banner (per direct correction: a full-bleed color block that
             does nothing on tap doesn't belong in a mobile app). */}

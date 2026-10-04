@@ -13,14 +13,9 @@ interface AnalyticsDashboardProps {
   addNotification: (msg: string) => void;
 }
 
-type Period = '7d' | '30d' | '90d' | '12m';
-
-const PERIODS: { value: Period; label: string }[] = [
-  { value: '7d',  label: '7 Days'    },
-  { value: '30d', label: '30 Days'   },
-  { value: '90d', label: '90 Days'   },
-  { value: '12m', label: '12 Months' },
-];
+import DateRangeField from '../components/ui/DateRangeField';
+import type { CalendarValue } from '../components/ui/CalendarPicker';
+import { lastNDays, rangeBounds, inRange, previousRange, trendBuckets, bucketKeyFor } from '../utils/dateRange';
 
 const CHART_COLORS = ['var(--accent)', '#6366f1', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6'];
 
@@ -59,38 +54,17 @@ function ChartCard({ title, children }: { title: string; children: React.ReactNo
 }
 
 // ── real time-series bucketing ──────────────────────────────────────────────
-function periodConfig(period: Period) {
-  const n = period === '7d' ? 7 : period === '30d' ? 30 : period === '90d' ? 12 : 12;
-  const isMonth = period === '12m';
-  const days = period === '7d' ? 7 : period === '30d' ? 30 : period === '90d' ? 90 : 365;
-  return { n, isMonth, days };
-}
-
-function bucketKey(d: Date, isMonth: boolean) {
-  return isMonth ? `${d.getFullYear()}-${d.getMonth()}` : d.toDateString();
-}
-
-// Buckets real {created_at, value} rows into `n` periods ending today, summing value per bucket.
-function bucketRows(rows: { created_at: string; value: number }[], period: Period, label: string) {
-  const { n, isMonth } = periodConfig(period);
-  const buckets = Array.from({ length: n }, (_, i) => {
-    const d = new Date();
-    if (isMonth) d.setMonth(d.getMonth() - (n - 1 - i));
-    else d.setDate(d.getDate() - (n - 1 - i));
-    return {
-      name: isMonth ? d.toLocaleDateString('en-GB', { month: 'short' }) : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
-      [label]: 0,
-      _key: bucketKey(d, isMonth),
-    };
-  });
+// Buckets real {created_at, value} rows over the chosen calendar range (one
+// per day for short ranges, per month for long ones), summing value.
+function bucketRows(rows: { created_at: string; value: number }[], range: CalendarValue, label: string) {
+  const { granularity, buckets } = trendBuckets(range);
+  const totals: Record<string, number> = {};
   for (const r of rows) {
-    if (!r.created_at) continue;
-    const d = new Date(r.created_at);
-    const key = bucketKey(d, isMonth);
-    const bucket = buckets.find(b => b._key === key);
-    if (bucket) (bucket as any)[label] += r.value;
+    if (!r.created_at || !inRange(r.created_at, range)) continue;
+    const k = bucketKeyFor(new Date(r.created_at), granularity);
+    totals[k] = (totals[k] || 0) + r.value;
   }
-  return buckets.map(({ _key, ...rest }) => rest);
+  return buckets.map(b => ({ name: b.label, [label]: totals[b.key] || 0 }));
 }
 
 // Per-department: which real table/column drives the primary trend + a secondary activity count
@@ -146,7 +120,9 @@ async function fetchSeries(cfg: DeptSeriesConfig, sinceIso: string): Promise<{ c
 }
 
 export default function AnalyticsDashboard({ department, currentUser, addNotification }: AnalyticsDashboardProps) {
-  const [period, setPeriod] = useState<Period>('30d');
+  // Calendar range instead of 7 / 30 / 90 Days and 12 Months (Part C);
+  // starts on the last 30 days, the old default.
+  const [range, setRange] = useState<CalendarValue>(() => lastNDays(30));
   const [loading, setLoading] = useState(false);
   const [revenueData, setRevenueData] = useState<any[]>([]);
   const [activityData, setActivityData] = useState<any[]>([]);
@@ -158,25 +134,24 @@ export default function AnalyticsDashboard({ department, currentUser, addNotific
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { days } = periodConfig(period);
-    const now = new Date();
-    const sinceCurrent = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
-    const sincePrevious = new Date(now.getTime() - days * 2 * 24 * 60 * 60 * 1000);
+    const prevRange = previousRange(range);
+    const sinceCurrent = rangeBounds(range).from || new Date(0);
+    const sincePrevious = rangeBounds(prevRange).from || sinceCurrent;
 
     const trendCfg = TREND_CONFIG[department] || TREND_CONFIG.CEO;
     const activityCfg = ACTIVITY_CONFIG[department] || ACTIVITY_CONFIG.CEO;
 
     const [currentTrendRows, previousTrendRows, activityRows] = await Promise.all([
       fetchSeries(trendCfg, sinceCurrent.toISOString()),
-      fetchSeries(trendCfg, sincePrevious.toISOString()).then(rows => rows.filter(r => new Date(r.created_at) < sinceCurrent)),
+      fetchSeries(trendCfg, sincePrevious.toISOString()).then(rows => rows.filter(r => inRange(r.created_at, prevRange))),
       fetchSeries(activityCfg, sinceCurrent.toISOString()),
     ]);
 
-    setRevenueData(bucketRows(currentTrendRows, period, 'Value'));
-    setActivityData(bucketRows(activityRows, period, 'Activity'));
+    setRevenueData(bucketRows(currentTrendRows, range, 'Value'));
+    setActivityData(bucketRows(activityRows, range, 'Activity'));
 
-    const currentBuckets = bucketRows(currentTrendRows, period, 'Value');
-    const previousBuckets = bucketRows(previousTrendRows, period, 'Value');
+    const currentBuckets = bucketRows(currentTrendRows, range, 'Value');
+    const previousBuckets = bucketRows(previousTrendRows, prevRange, 'Value');
     setCompareData(currentBuckets.map((c, i) => ({
       name: `P${i + 1}`,
       Current: (c as any).Value,
@@ -184,7 +159,7 @@ export default function AnalyticsDashboard({ department, currentUser, addNotific
     })));
 
     setLoading(false);
-  }, [period, department]);
+  }, [range, department]);
 
   const loadLiveStats = useCallback(async () => {
     try {
@@ -251,7 +226,7 @@ export default function AnalyticsDashboard({ department, currentUser, addNotific
           { label: 'Leave Requests', value: pending ?? 0, sub: 'Pending review', trend: 0, icon: Users },
           { label: 'Active', value: Math.max(0, (total ?? 0) - (onLeave ?? 0)), sub: 'Working today', trend: 0, icon: Users },
         ]);
-        const { data: profiles } = await supabase.from('profiles').select('role');
+        const { data: profiles } = await supabase.from('profiles').select('role').neq('status', 'TERMINATED');
         const byRole: Record<string, number> = {};
         for (const p of profiles || []) { const r = (p as any).role || 'Staff'; byRole[r] = (byRole[r] || 0) + 1; }
         setPieData(Object.entries(byRole).map(([name, value]) => ({ name, value })));
@@ -354,7 +329,7 @@ export default function AnalyticsDashboard({ department, currentUser, addNotific
   };
 
   const handleExport = () => {
-    exportToCSV(revenueData, Object.keys(revenueData[0] || { name: '', Value: '' }), `analytics_${department.toLowerCase()}_${period}`);
+    exportToCSV(revenueData, Object.keys(revenueData[0] || { name: '', Value: '' }), `analytics_${department.toLowerCase()}_${range.start}_to_${range.end}`);
     addNotification('Analytics exported to CSV.');
   };
 
@@ -367,15 +342,7 @@ export default function AnalyticsDashboard({ department, currentUser, addNotific
           <p className="text-xs text-[var(--text-muted)] mt-0.5">Real-time performance insights for {currentUser?.department}</p>
         </div>
         <div className="flex items-center gap-2">
-          {/* Period selector */}
-          <div className="flex bg-[var(--bg-input)] border border-[var(--border)] rounded-xl overflow-hidden text-[10px] font-semibold">
-            {PERIODS.map(p => (
-              <button key={p.value} onClick={() => setPeriod(p.value)}
-                className={`px-3 py-1.5 cursor-pointer transition-colors ${period === p.value ? 'bg-[var(--accent)] text-white' : 'text-[var(--text-secondary)] hover:bg-[var(--accent-light)]'}`}>
-                {p.label}
-              </button>
-            ))}
-          </div>
+          <DateRangeField value={range} onChange={setRange} align="right" />
           <button onClick={load} className="p-2 border border-[var(--border)] rounded-xl hover:bg-[var(--accent-light)] text-[var(--text-secondary)] cursor-pointer" title="Refresh">
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>

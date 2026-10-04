@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { View, Text } from 'react-native';
 import { CheckCircle, XCircle, History, ArrowRight, Tag } from 'lucide-react-native';
+import { Alert } from '../../lib/appAlert';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -79,7 +80,7 @@ export default function PriceApprovalsScreen() {
     const performedBy = profile?.fullName || 'CEO';
     try {
       if (approve) {
-        await supabase.from('goods_prices').upsert(
+        const { error: upsertErr } = await supabase.from('goods_prices').upsert(
           {
             product_name: req.product_name,
             unit_price: req.unit_price,
@@ -93,31 +94,44 @@ export default function PriceApprovalsScreen() {
           },
           { onConflict: 'product_name' }
         );
+        if (upsertErr) throw upsertErr;
       }
-      await supabase.from('goods_price_change_requests').update({
+      // FIX: decided_by is a `uuid references profiles(id)` column, but
+      // this was passing the CEO's full NAME — Postgres rejects that
+      // outright, and since none of these calls checked `error` below,
+      // the update silently failed on every decision while the code
+      // carried on as if it had succeeded. Pass the real profile id.
+      const { error: decideErr } = await supabase.from('goods_price_change_requests').update({
         status: approve ? 'APPROVED' : 'REJECTED',
         decided_at: new Date().toISOString(),
-        decided_by: performedBy,
+        decided_by: profile?.id || null,
         rejection_reason: approve ? null : (note || null),
       }).eq('id', req.id);
+      if (decideErr) throw decideErr;
 
       const details = `${req.product_name} → ${req.currency} ${Number(req.unit_price).toLocaleString()}${note ? `. Note: ${note}` : ''}`;
-      await supabase.from('global_audit_history').insert({
+      const { error: auditErr } = await supabase.from('global_audit_history').insert({
         action: `${approve ? 'Approved' : 'Rejected'} price request`,
         department: 'MANAGEMENT',
         performed_by: performedBy,
         reference_id: req.id,
         details,
       });
+      if (auditErr) throw auditErr;
 
-      await supabase.from('supplier_order_notifications').insert({
+      const { error: notifErr } = await supabase.from('supplier_order_notifications').insert({
         message: `Price change ${approve ? 'APPROVED' : 'REJECTED'} by CEO: ${req.product_name} → ${req.currency} ${Number(req.unit_price).toLocaleString()}${note ? `. Note: ${note}` : ''}`,
         notified_department: 'MANAGEMENT',
         read: false,
       });
+      if (notifErr) throw notifErr;
 
       setPending((prev) => prev.filter((r) => r.id !== req.id));
       await load();
+    } catch (e: any) {
+      // Surface the failure instead of silently reverting on the next
+      // refresh — this exact silence is what hid the decided_by bug.
+      Alert.alert('Decision Failed', e?.message || 'Could not save this decision. Please try again.');
     } finally {
       setDecidingId(null);
     }

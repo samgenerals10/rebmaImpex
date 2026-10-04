@@ -6,6 +6,7 @@
 // fields needed to prefill the registration form, never the whole table.
 import { createClient } from '@supabase/supabase-js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { isRateLimited } from './_shared/rateLimit';
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -18,6 +19,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+
+  // No login exists at this point (that's the whole point of this
+  // endpoint), so this is IP-keyed, not user-keyed. 30/min is generous
+  // for a real visitor reloading a registration page a few times, and
+  // categorically stops both a flood and a token-guessing sweep.
+  if (await isRateLimited(supabaseAdmin, req, res, 'lookup-invite', 30, 60)) return;
 
   const token = String(req.query.token || '');
   if (!token) return res.status(400).json({ error: 'token is required.' });

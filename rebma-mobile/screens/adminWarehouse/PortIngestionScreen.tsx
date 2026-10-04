@@ -20,7 +20,7 @@ import { Alert } from '../../lib/appAlert';
 import { Ship, Package, Camera as CameraIcon } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { pickOrCaptureImage } from '../../lib/media';
-import { enqueue, QUEUE_KEYS } from '../../lib/offlineQueue';
+import { enqueue, isOfflineError, QUEUE_KEYS } from '../../lib/offlineQueue';
 import { getCeoSetting } from '../../lib/ceoSetting';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -90,7 +90,7 @@ export default function PortIngestionScreen() {
     };
     try {
       const { error } = await supabase.from('global_audit_history').insert(payload);
-      if (error) await enqueue(QUEUE_KEYS.portIngestion, 'global_audit_history', payload);
+      if (error && isOfflineError(error)) await enqueue(QUEUE_KEYS.portIngestion, 'global_audit_history', payload);
     } catch {
       // D124: previously a bare swallow — a genuine thrown error (not just
       // a Postgrest error object) is now queued too, not silently lost.
@@ -131,6 +131,8 @@ export default function PortIngestionScreen() {
     };
     const { data: inserted, error } = await supabase.from('cargo_intake').insert(payload).select('id').single();
     setSubmitting(false);
+    // A refusal from the database is shown, not queued as offline.
+    if (error && !isOfflineError(error)) { Alert.alert('Not saved', error.message); return; }
     if (error) {
       await enqueue(QUEUE_KEYS.portIngestion, 'cargo_intake', payload);
       // No new row id exists yet in the offline-queued case (the insert
@@ -184,6 +186,8 @@ export default function PortIngestionScreen() {
       };
       const { data: inserted, error } = await supabase.from('cargo_intake').insert(payload).select('id').single();
       setSubmitting(false);
+      // A refusal from the database is shown, not queued as offline.
+      if (error && !isOfflineError(error)) { Alert.alert('Not saved', error.message); return; }
       if (error) {
         await enqueue(QUEUE_KEYS.portIngestion, 'cargo_intake', payload);
         await logAudit('LOG_CARGO_INTAKE', `Company product stock intake logged (offline, will sync): ${ihProductName.trim()} (${code})`);
@@ -213,6 +217,8 @@ export default function PortIngestionScreen() {
       };
       const { data: inserted, error } = await supabase.from('general_purchases').insert(payload).select('id').single();
       setSubmitting(false);
+      // A refusal from the database is shown, not queued as offline.
+      if (error && !isOfflineError(error)) { Alert.alert('Not saved', error.message); return; }
       if (error) {
         await enqueue(QUEUE_KEYS.portIngestion, 'general_purchases', payload);
         await logAudit('LOG_GENERAL_PURCHASE', `General purchase logged (offline, will sync): ${gpItemName.trim()} (${gpQuantity} units, GHS ${gpCost}). Code: ${code}`);

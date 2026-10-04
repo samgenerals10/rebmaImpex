@@ -107,27 +107,18 @@ export default function StockScreen() {
     }
     setSubmitting(true);
     const delta = adjustType === 'Add' ? parseInt(adjustQty, 10) : -parseInt(adjustQty, 10);
-    const newQty = Math.max(0, Number(adjustTarget.quantity) + delta);
-    // performed_by is the live session's own user id, matching every other
-    // stock-ledger writer in the app — previously blank here, making a
-    // manual correction unattributable.
-    const { data: sessionData } = await supabase.auth.getSession();
-    const performerId = sessionData.session?.user?.id || null;
-    const { error } = await supabase.from('general_purchases').update({ quantity: newQty }).eq('id', adjustTarget.id);
+    // One database step (adjust_general_purchase): adds or removes from the
+    // quantity on record at that moment, so two people adjusting at once
+    // can't overwrite each other. Same as web.
+    const { error } = await supabase.rpc('adjust_general_purchase', {
+      p_purchase_id: String(adjustTarget.id), p_delta: delta,
+      p_reason: adjustReason.trim() || 'Manual Adjustment', p_notes: adjustNotes.trim() || '',
+    });
     if (error) {
       setSubmitting(false);
       Alert.alert('Adjustment Failed', error.message);
       return;
     }
-    await supabase.from('stock_ledger').insert({
-      product_name: adjustTarget.item_name,
-      movement_type: adjustType === 'Add' ? 'ADD' : 'REMOVE',
-      quantity: Math.abs(delta),
-      reference: adjustReason.trim() || 'Manual Adjustment',
-      notes: adjustNotes.trim() || '',
-      performed_by: performerId,
-      created_at: new Date().toISOString(),
-    });
     setSubmitting(false);
     setAdjustTarget(null);
     setAdjustQty('');

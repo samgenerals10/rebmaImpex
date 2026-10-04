@@ -3,6 +3,9 @@ import { useState } from 'react';
 import { ArrowLeft, Download, Filter } from 'lucide-react';
 import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { exportToCSV, exportToPDF } from '../utils/export';
+import DateRangeField from './ui/DateRangeField';
+import type { CalendarValue } from './ui/CalendarPicker';
+import { inRange } from '../utils/dateRange';
 
 interface Column {
   key: string;
@@ -19,18 +22,22 @@ interface KpiDetailViewProps {
   columns: Column[];
   onBack: () => void;
   color?: string;
+  /** Column holding each row's date, for the calendar filter. Found automatically when not given. */
+  dateKey?: string;
 }
 
-type Period = 'Today' | 'Week' | 'Month' | 'Quarter' | 'Year';
-const PERIODS: Period[] = ['Today', 'Week', 'Month', 'Quarter', 'Year'];
 const CHART_COLORS = ['var(--accent)', '#6366f1', '#f59e0b', '#10b981', '#ef4444'];
 
 const PAGE_SIZE = 10;
 
 export default function KpiDetailView({
-  title, metric, trendData, breakdownData, tableData, columns, onBack, color = 'var(--accent)'
+  title, metric, trendData, breakdownData, tableData, columns, onBack, color = 'var(--accent)', dateKey
 }: KpiDetailViewProps) {
-  const [period, setPeriod]     = useState<Period>('Month');
+  // Calendar instead of Today / Week / Month / Quarter / Year (Part C). The
+  // old buttons changed nothing; this filters the table by its date column.
+  const [range, setRange]       = useState<CalendarValue>({ start: null, end: null });
+  const dateColumn = dateKey
+    ?? columns.find(c => /date|time|created|when|day/i.test(c.key) && tableData.some(r => r[c.key] && !Number.isNaN(new Date(String(r[c.key])).getTime())))?.key;
   const [sortKey, setSortKey]   = useState('');
   const [sortAsc, setSortAsc]   = useState(true);
   const [page, setPage]         = useState(0);
@@ -42,7 +49,8 @@ export default function KpiDetailView({
   };
 
   const filtered = tableData.filter(row =>
-    !search || Object.values(row).some(v => String(v).toLowerCase().includes(search.toLowerCase()))
+    (!search || Object.values(row).some(v => String(v).toLowerCase().includes(search.toLowerCase())))
+    && (!dateColumn || inRange(row[dateColumn] ? String(row[dateColumn]) : null, range))
   );
 
   const sorted = [...filtered].sort((a, b) => {
@@ -77,14 +85,9 @@ export default function KpiDetailView({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex bg-[var(--bg-input)] border border-[var(--border)] rounded-xl overflow-hidden text-[10px] font-semibold">
-            {PERIODS.map(p => (
-              <button key={p} onClick={() => setPeriod(p)}
-                className={`px-2.5 py-1.5 cursor-pointer transition-colors ${period === p ? 'bg-[var(--accent)] text-white' : 'text-[var(--text-secondary)] hover:bg-[var(--accent-light)]'}`}>
-                {p}
-              </button>
-            ))}
-          </div>
+          {dateColumn && (
+            <DateRangeField value={range} onChange={v => { setRange(v); setPage(0); }} allowClear align="right" />
+          )}
           <button onClick={handleExportCSV} className="flex items-center gap-1 px-2.5 py-1.5 bg-[var(--accent-light)] text-[var(--accent)] text-xs font-semibold rounded-xl cursor-pointer hover:opacity-90">
             <Download className="w-3.5 h-3.5" /> CSV
           </button>
@@ -97,7 +100,7 @@ export default function KpiDetailView({
       {/* Charts row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 shadow-[var(--box-shadow)]">
-          <h3 className="text-xs font-bold text-[var(--text-secondary)] mb-3">Trend — {period}</h3>
+          <h3 className="text-xs font-bold text-[var(--text-secondary)] mb-3">Trend</h3>
           <ResponsiveContainer width="100%" height={180}>
             <AreaChart data={trendData}>
               <defs>

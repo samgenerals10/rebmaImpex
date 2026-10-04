@@ -1,29 +1,25 @@
 // api/send-push.ts
-// Vercel Serverless Function — Phase 7.12 (mobile), D129: the server-side
-// half of push notifications. Triggered by a Supabase Database Webhook on
-// every INSERT into `notifications`, not by editing the 4 existing write
-// call sites (utils/sendNotification.ts, apiClient.ts's notifyUsers with
-// 2 callers, and mobile's own MeetingsScreen.tsx insert) — a webhook
-// fires regardless of which of those (or any future) call site wrote the
-// row, so this covers all of them without touching any of that code.
+// Vercel Serverless Function: sends a phone push for every new row in
+// `notifications`. Called by a Supabase Database Webhook on INSERT, so it
+// covers every writer (web, mobile, server functions) without touching
+// any of them.
 //
-// Manual setup required once Supabase access is restored (a
-// dashboard-configured resource, not something SQL alone can create):
-//   1. Run supabase_push_tokens.sql.
-//   2. Database > Webhooks > Create a new webhook:
-//        Table: public.notifications
-//        Events: Insert
-//        Type: HTTP Request, POST
-//        URL: https://<deployed-rebma-web-domain>/api/send-push
-//        HTTP Headers: x-webhook-secret: <the same value as
-//          SUPABASE_WEBHOOK_SECRET below, set in the Vercel project's
-//          environment variables>
-//   3. Set SUPABASE_WEBHOOK_SECRET in Vercel to a fresh random value —
-//      this authenticates the webhook call itself, since Supabase (not
-//      an end user) is the caller here, not a user Bearer token like
-//      every other function in this api/ directory uses.
+// Department alerts are split into personal rows by the database
+// (supabase_notification_delivery.sql), so nearly every row arriving
+// here has a recipient_id. The department branch below is kept as a
+// fallback and matches staff the same way the database does.
+//
+// One-time setup:
+//   1. Run supabase_push_tokens.sql and supabase_notification_delivery.sql.
+//   2. In Vercel, set SUPABASE_WEBHOOK_SECRET to a long random value.
+//   3. Supabase > Database > Webhooks > Create:
+//        Table: public.notifications, Events: Insert,
+//        Type: HTTP Request, Method: POST,
+//        URL: https://<your-web-domain>/api/send-push
+//        Header: x-webhook-secret = the same value as step 2.
 import { createClient } from '@supabase/supabase-js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { timingSafeEqual } from 'crypto';
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -37,6 +33,8 @@ interface NotificationRow {
   recipient_department: string | null;
   title: string;
   message: string;
+  type?: string | null;
+  action_url?: string | null;
 }
 
 interface WebhookPayload {
@@ -45,37 +43,43 @@ interface WebhookPayload {
   record: NotificationRow;
 }
 
-async function resolveTokens(row: NotificationRow): Promise<string[]> {
-  if (row.recipient_id) {
-    const { data } = await supabaseAdmin.from('push_tokens').select('token').eq('user_id', row.recipient_id);
-    return (data || []).map((r) => r.token);
-  }
-  if (row.recipient_department) {
-    // Matches against profiles.role, not a separate `department` column —
-    // this codebase overloads role==department throughout (confirmed
-    // repeatedly across the mobile rollout: mapProfileToFrontend() reads
-    // `db.role || db.department`). Case-insensitive since
-    // recipient_department values are uppercase codes (e.g. 'RISK') while
-    // role is stored lowercase ('risk').
-    const { data: profiles } = await supabaseAdmin
-      .from('profiles')
-      .select('id')
-      .ilike('role', row.recipient_department);
-    const userIds = (profiles || []).map((p) => p.id);
-    if (userIds.length === 0) return [];
-    const { data } = await supabaseAdmin.from('push_tokens').select('token').in('user_id', userIds);
-    return (data || []).map((r) => r.token);
-  }
-  return [];
+// Same mapping as public.normalize_dept() in the database.
+function normalizeDept(raw: string | null | undefined): string {
+  const up = (raw || '').trim().toUpperCase();
+  if (up === 'OPERATIONS' || up === 'DISPATCH' || up === 'LOGISTICS') return 'ADMIN_WAREHOUSE';
+  if (up === 'HUMAN RESOURCES') return 'HR';
+  return up;
+}
+
+function secretMatches(header: string | string[] | undefined): boolean {
+  if (!webhookSecret || typeof header !== 'string') return false;
+  const a = Buffer.from(header);
+  const b = Buffer.from(webhookSecret);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
+async function resolveUserIds(row: NotificationRow): Promise<string[]> {
+  if (row.recipient_id) return [row.recipient_id];
+  if (!row.recipient_department) return [];
+
+  const dept = normalizeDept(row.recipient_department);
+  const { data: profiles } = await supabaseAdmin.from('profiles').select('id, role, status');
+  const { data: drivers } = await supabaseAdmin.from('drivers').select('user_id').not('user_id', 'is', null);
+  const driverIds = new Set((drivers || []).map((d: any) => String(d.user_id)));
+
+  return (profiles || [])
+    .filter((p: any) => String(p.status || '').toUpperCase() === 'ACTIVE')
+    .filter((p: any) => dept === 'ALL' || normalizeDept(p.role) === dept)
+    .filter((p: any) => !driverIds.has(String(p.id)))
+    .map((p: any) => String(p.id));
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  // Authenticated via a shared-secret header, not a user Bearer token —
-  // Supabase itself is the caller here, not an end user with a session.
-  const secretHeader = req.headers['x-webhook-secret'];
-  if (!webhookSecret || secretHeader !== webhookSecret) {
+  // Only Supabase knows this secret. Checked before any database work, so
+  // a stranger hitting this URL costs nothing.
+  if (!secretMatches(req.headers['x-webhook-secret'])) {
     return res.status(401).json({ error: 'Invalid webhook secret.' });
   }
 
@@ -85,7 +89,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const row = payload.record;
-  const tokens = await resolveTokens(row);
+
+  // Company-wide broadcasts show in the bell but don't buzz every phone.
+  if (row.type === 'broadcast') return res.status(200).json({ skipped: 'broadcast' });
+
+  const candidateIds = await resolveUserIds(row);
+  if (candidateIds.length === 0) return res.status(200).json({ sent: 0 });
+
+  // Suspended or removed accounts never get pushes, even for a personal alert.
+  const { data: activeRows } = await supabaseAdmin.from('profiles').select('id, status').in('id', candidateIds);
+  const userIds = (activeRows || [])
+    .filter((p: any) => String(p.status || '').toUpperCase() === 'ACTIVE')
+    .map((p: any) => String(p.id));
+  if (userIds.length === 0) return res.status(200).json({ sent: 0 });
+
+  const { data: tokenRows } = await supabaseAdmin.from('push_tokens').select('token').in('user_id', userIds);
+  const tokens = Array.from(new Set((tokenRows || []).map((r: any) => r.token as string)));
   if (tokens.length === 0) return res.status(200).json({ sent: 0 });
 
   const messages = tokens.map((to) => ({
@@ -93,18 +112,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     sound: 'default',
     title: row.title,
     body: row.message,
-    data: { notificationId: row.id },
+    channelId: 'default',
+    // Used by the phone app to open the right screen when tapped.
+    data: { notificationId: row.id, type: row.type || null, actionUrl: row.action_url || null, title: row.title || null },
   }));
 
+  const deadTokens: string[] = [];
   try {
-    const expoRes = await fetch('https://exp.host/--/api/v2/push/send', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify(messages),
-    });
-    const result = await expoRes.json();
-    return res.status(200).json({ sent: tokens.length, result });
+    // Expo accepts at most 100 messages per request.
+    for (let i = 0; i < messages.length; i += 100) {
+      const batch = messages.slice(i, i + 100);
+      const expoRes = await fetch('https://exp.host/--/api/v2/push/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify(batch),
+      });
+      const result: any = await expoRes.json().catch(() => null);
+      const tickets: any[] = Array.isArray(result?.data) ? result.data : [];
+      tickets.forEach((t, idx) => {
+        if (t?.status === 'error' && t?.details?.error === 'DeviceNotRegistered') deadTokens.push(batch[idx].to);
+      });
+    }
   } catch (e: any) {
-    return res.status(500).json({ error: `Expo push send failed: ${e?.message || 'unknown error'}` });
+    return res.status(500).json({ error: `Push send failed: ${e?.message || 'unknown error'}` });
   }
+
+  // Phones that uninstalled the app: stop sending to them.
+  if (deadTokens.length > 0) {
+    await supabaseAdmin.from('push_tokens').delete().in('token', deadTokens);
+  }
+
+  return res.status(200).json({ sent: tokens.length, removed: deadTokens.length });
 }

@@ -8,8 +8,10 @@ import { supabase, type DriverRow } from '../../lib/supabaseClient';
 import { useAuthStore } from '../../store/authStore';
 import { useDeliveryStore } from '../../store/deliveryStore';
 import { useTheme } from '../../theme/ThemeProvider';
+import { getFleetSpeedLimitKmh, DEFAULT_FLEET_SPEED_LIMIT_KMH } from '../../lib/fleetSpeedLimit';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
+import SpeedGauge from '../../components/shared/SpeedGauge';
 
 function mapsLink(address: string): string {
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`;
@@ -35,6 +37,15 @@ export default function DispatchHomeScreen() {
   const [activeDeliveryStatus, setActiveDeliveryStatus] = useState<string | null>(null);
   const [lastLat, setLastLat] = useState<number | null>(null);
   const [lastLng, setLastLng] = useState<number | null>(null);
+  // Real physical control: Risk must scan and clear the waybill before a
+  // driver can start a trip. null = no waybill on file yet (shouldn't
+  // normally happen once dispatched); a set timestamp = actually cleared.
+  const [waybillScannedAt, setWaybillScannedAt] = useState<string | null>(null);
+  // Risk's own company speed limit, live and separate from any road's own
+  // legal limit — mirrors the same source FleetMap.tsx reads and displays
+  // to Risk/dispatch, so the driver sees the exact same number.
+  const [fleetSpeedLimit, setFleetSpeedLimit] = useState(DEFAULT_FLEET_SPEED_LIMIT_KMH);
+  const [currentSpeedKmh, setCurrentSpeedKmh] = useState<number | null>(null);
 
   const {
     activeOrderId,
@@ -55,11 +66,22 @@ export default function DispatchHomeScreen() {
     loadPersistedData();
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    const poll = async () => {
+      const limit = await getFleetSpeedLimitKmh();
+      if (!cancelled) setFleetSpeedLimit(limit);
+    };
+    poll();
+    const interval = setInterval(poll, 15000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, []);
+
   const loadActiveDelivery = async (d: DriverRow) => {
     const { data } = await supabase
       .from('delivery_logs')
       .select('id, order_id, customer_name, delivery_address, status')
-      .eq('driver_id', d.driver_id)
+      .eq('driver_id', d.id)
       .in('status', ['ASSIGNED', 'IN_TRANSIT'])
       .order('created_at', { ascending: false })
       .limit(1);
@@ -70,13 +92,31 @@ export default function DispatchHomeScreen() {
       setActiveDeliveryDestination(delivery.delivery_address || '');
       setActiveDeliveryOrderId(delivery.order_id);
       setActiveDeliveryStatus(delivery.status);
+      const { data: wb } = await supabase.from('waybills').select('scanned_at').eq('delivery_log_id', delivery.id).maybeSingle();
+      setWaybillScannedAt(wb?.scanned_at || null);
     } else {
       setActiveOrder(null);
       setActiveDeliveryClient('');
       setActiveDeliveryDestination('');
       setActiveDeliveryOrderId(null);
       setActiveDeliveryStatus(null);
+      setWaybillScannedAt(null);
     }
+  };
+
+  // Turning location sharing ON is what actually launches the trip (see
+  // the effect below), so this is the one real gate: Risk must have
+  // scanned and cleared the waybill first. Turning it off is always
+  // allowed — no reason to trap a driver mid-trip.
+  const handleToggleGps = (value: boolean) => {
+    if (value && !waybillScannedAt) {
+      Alert.alert(
+        'Not Cleared for Dispatch',
+        "This delivery's waybill hasn't been scanned yet. Ask Risk to scan and clear it before you start your trip."
+      );
+      return;
+    }
+    setGpsActive(value);
   };
 
   useEffect(() => {
@@ -129,6 +169,8 @@ export default function DispatchHomeScreen() {
           // (e.g. stationary, low accuracy fix), never fabricated here.
           const realSpeed = speed != null && speed >= 0 ? speed : null;
           const realHeading = heading != null && heading >= 0 ? heading : null;
+          // m/s -> km/h, the same unit the Fleet Speed Limit is set in.
+          setCurrentSpeedKmh(realSpeed != null ? realSpeed * 3.6 : null);
 
           if (networkOnline) {
             const { error } = await supabase.from('driver_locations').insert({
@@ -153,6 +195,7 @@ export default function DispatchHomeScreen() {
     return () => {
       cancelled = true;
       subscription?.remove();
+      setCurrentSpeedKmh(null);
     };
   }, [gpsActive, activeOrderId, networkOnline, driver]);
 
@@ -199,6 +242,13 @@ export default function DispatchHomeScreen() {
 
   const handleNavigate = () => {
     if (!activeDeliveryDestination) return;
+    if (!waybillScannedAt) {
+      Alert.alert(
+        'Not Cleared for Dispatch',
+        "This delivery's waybill hasn't been scanned yet. Ask Risk to scan and clear it before you start your trip."
+      );
+      return;
+    }
     setGpsActive(true);
     Linking.openURL(mapsLink(activeDeliveryDestination));
   };
@@ -264,6 +314,29 @@ export default function DispatchHomeScreen() {
         </View>
       </View>
 
+      {/* A real, live, round speedometer — the same shared gauge Risk
+          sees on the map for this exact driver, so both sides read the
+          identical number the same way. Big and glanceable on purpose:
+          this is what a driver checks while actually driving. */}
+      <View
+        style={{
+          alignItems: 'center', paddingVertical: t.spacing.md,
+          backgroundColor: t.colors.bgCard, borderBottomWidth: 1, borderBottomColor: t.colors.border,
+        }}
+      >
+        <SpeedGauge speedKmh={currentSpeedKmh} limitKmh={fleetSpeedLimit} size={128} />
+        <Text
+          style={{
+            marginTop: t.spacing.xs, fontFamily: t.font.bold, fontSize: t.type.meta11.size,
+            color: currentSpeedKmh != null && currentSpeedKmh > fleetSpeedLimit ? t.colors.status.danger.text : t.colors.textMuted,
+          }}
+        >
+          {currentSpeedKmh != null && currentSpeedKmh > fleetSpeedLimit
+            ? 'SLOW DOWN · Over the fleet limit'
+            : `Fleet limit ${fleetSpeedLimit} km/h`}
+        </Text>
+      </View>
+
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: t.spacing.lg, gap: t.spacing.xl }}>
         <Card>
           <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginBottom: t.spacing.md }}>Active Route Assignments</Text>
@@ -281,6 +354,9 @@ export default function DispatchHomeScreen() {
                 <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>Order Ref: {activeOrderId}</Text>
                 <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted, marginTop: 2 }}>Client: {activeDeliveryClient || 'N/A'}</Text>
                 {!!activeDeliveryDestination && <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted, marginTop: 2 }}>To: {activeDeliveryDestination}</Text>}
+                <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta11.size, color: waybillScannedAt ? t.colors.status.success.text : t.colors.status.warning.text, marginTop: t.spacing.sm }}>
+                  {waybillScannedAt ? 'Cleared for dispatch by Risk' : 'Waiting on Risk to scan and clear the waybill'}
+                </Text>
               </View>
 
               <View style={{ flexDirection: 'row', gap: t.spacing.md }}>
@@ -300,7 +376,7 @@ export default function DispatchHomeScreen() {
 
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Text style={{ flex: 1, fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary, marginRight: t.spacing.sm }}>Share Live Location with Dispatch</Text>
-                <Switch value={gpsActive} onValueChange={setGpsActive} trackColor={{ false: t.colors.border, true: t.colors.accentSoft }} thumbColor={gpsActive ? t.colors.accent : undefined} />
+                <Switch value={gpsActive} onValueChange={handleToggleGps} trackColor={{ false: t.colors.border, true: t.colors.accentSoft }} thumbColor={gpsActive ? t.colors.accent : undefined} />
               </View>
               <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textMuted }}>
                 Keep this app open while tracking is on, since location only updates while the app is in the foreground.

@@ -14,6 +14,7 @@ import MetricCard from '../../components/ui/MetricCard';
 import Button from '../../components/ui/Button';
 import ModuleLauncher from '../../components/chrome/ModuleLauncher';
 import SectionHeader from '../../components/ui/SectionHeader';
+import PendingApprovalsAlertCard from '../../components/shared/PendingApprovalsAlertCard';
 
 export default function RiskOverviewScreen() {
   const t = useTheme();
@@ -80,6 +81,7 @@ export default function RiskOverviewScreen() {
   return (
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} onScroll={scrollHandler} scrollEventThrottle={16}>
       <View style={{ gap: t.spacing.xl }}>
+        <PendingApprovalsAlertCard department="RISK" onNavigate={(tab) => navigation.navigate(tab)} />
 
         {/* Risk & Compliance snapshot — two clickable tiles, not one
             oversized banner (per direct correction: a full-bleed color

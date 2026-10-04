@@ -33,6 +33,7 @@ import Button from '../../components/ui/Button';
 import SectionHeader from '../../components/ui/SectionHeader';
 import ModuleLauncher from '../../components/chrome/ModuleLauncher';
 import TrackedSection from '../../components/ui/TrackedSection';
+import PendingApprovalsAlertCard from '../../components/shared/PendingApprovalsAlertCard';
 
 // Direct instruction: the wide "spans" slot in the KPI bento layout below
 // isn't fixed to one KPI — it's whichever one changed since the user's
@@ -145,6 +146,7 @@ export default function OverviewScreen() {
   return (
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} onScroll={scrollHandler} scrollEventThrottle={16}>
       <View style={{ gap: t.spacing.xl }}>
+        <PendingApprovalsAlertCard department="ADMIN_WAREHOUSE" onNavigate={(tab) => navigation.navigate(tab)} />
 
         {/* Direct instruction: a bento layout, not 5 equal cards — one
             KPI (whichever changed since the last visit, see spanKey

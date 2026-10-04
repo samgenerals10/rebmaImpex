@@ -20,7 +20,7 @@ import { messenger, type ChatMessage, type Channel } from '../lib/messenger';
 import { pickOrCaptureImageAsset, pickOrCaptureMedia, pickDocument, pickMultipleImageAssets, validateAttachment } from '../lib/media';
 import { subscribeToLiveUsers, type PresencePayload } from '../lib/presence';
 import { getCeoSetting } from '../lib/ceoSetting';
-import { isBlockedEitherWay, blockUser, unblockUser, suspensionAllowed, isSuspendedByMe, suspendChannel, unsuspendChannel } from '../lib/chatAccess';
+import { blockState, blockUser, unblockUser, suspensionAllowed, isSuspendedByMe, isChannelSuspended, suspendChannel, unsuspendChannel } from '../lib/chatAccess';
 import { useAuthStore } from '../store/authStore';
 import { useTheme } from '../theme/ThemeProvider';
 import { usePresets } from '../theme/presets';
@@ -30,6 +30,7 @@ import Avatar from '../components/ui/Avatar';
 import Button from '../components/ui/Button';
 import StickyActionBar from '../components/ui/StickyActionBar';
 import NativeCallSheet from '../components/shared/NativeCallSheet';
+import GroupCallSheet from '../components/shared/GroupCallSheet';
 
 const REACTION_EMOJIS = ['👍', '❤️', '😂', '🎉', '😮', '👏'];
 
@@ -61,8 +62,14 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
   const [contactDept, setContactDept] = useState('');
   const [contactInfoOpen, setContactInfoOpen] = useState(false);
   const [otherUserId, setOtherUserId] = useState('');
+  // isBlocked / isSuspended are what *I* did (they drive the Unblock /
+  // Resume buttons). The other person can also block me or suspend the
+  // chat; the database refuses messages in either case, so the composer
+  // is locked for those too.
   const [isBlocked, setIsBlocked] = useState(false);
+  const [blockedByThem, setBlockedByThem] = useState(false);
   const [isSuspended, setIsSuspended] = useState(false);
+  const [suspendedByOther, setSuspendedByOther] = useState(false);
   const [suspensionEnabled, setSuspensionEnabled] = useState(true);
   const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null);
   const [editText, setEditText] = useState('');
@@ -95,7 +102,10 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
   const [addingGroupMembers, setAddingGroupMembers] = useState(false);
   const [newGroupMemberIds, setNewGroupMemberIds] = useState<string[]>([]);
   // Phase 11.5 — ad-hoc calls (previously Meetings-only on mobile).
-  const [activeCall, setActiveCall] = useState<{ room: string; title: string; kind: 'voice' | 'video'; callMessageId?: string; memberIds: string[]; otherUserId: string } | null>(null);
+  // A direct chat's call is 1:1 (NativeCallSheet); any other chat's call
+  // is a group call (GroupCallSheet). Before, group chats used the 1:1
+  // sheet too and only ever connected to one person. Same split as web.
+  const [activeCall, setActiveCall] = useState<{ room: string; title: string; kind: 'voice' | 'video'; callMessageId?: string; memberIds: string[]; otherUserId: string; meetingId?: string; isHost?: boolean } | null>(null);
   const [showCallHistory, setShowCallHistory] = useState(false);
 
   // Security/gap audit fix — these five CEO Communication Controls toggles
@@ -196,8 +206,11 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
   // app-wide chat_suspension_allowed toggle (default on).
   useEffect(() => {
     if (channelType !== 'dm' || !otherUserId || !myId) return;
-    isBlockedEitherWay(myId, otherUserId).then(setIsBlocked);
-    isSuspendedByMe(channelId, myId).then(setIsSuspended);
+    blockState(myId, otherUserId).then((b) => { setIsBlocked(b.byMe); setBlockedByThem(b.byThem); });
+    Promise.all([isSuspendedByMe(channelId, myId), isChannelSuspended(channelId)]).then(([mine, any]) => {
+      setIsSuspended(mine);
+      setSuspendedByOther(any && !mine);
+    });
     suspensionAllowed().then(setSuspensionEnabled);
   }, [channelType, otherUserId, myId, channelId]);
 
@@ -322,7 +335,7 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
     try {
       const meeting = await messenger.startCall(channelId, members, myId, myName, kind);
       const otherUserId = members.find((id) => id !== myId) || members[0];
-      setActiveCall({ room: meeting.jitsi_room, title: meeting.title, kind, callMessageId: meeting.callMessageId, memberIds: members, otherUserId });
+      setActiveCall({ room: meeting.jitsi_room, title: meeting.title, kind, callMessageId: meeting.callMessageId, memberIds: members, otherUserId, meetingId: meeting.id, isHost: true });
     } catch (e: any) {
       Alert.alert('Failed to start call', e.message);
     }
@@ -342,7 +355,7 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
   const rejoinCall = async (msg: ChatMessage) => {
     const { data } = await supabase.from('meetings').select('*').eq('id', msg.attachment_url).maybeSingle();
     const otherUserId = memberIds.current.find((id) => id !== myId) || '';
-    if (data) setActiveCall({ room: data.jitsi_room, title: data.title, kind: data.title.toLowerCase().includes('video') ? 'video' : 'voice', memberIds: [], otherUserId });
+    if (data) setActiveCall({ room: data.jitsi_room, title: data.title, kind: data.title.toLowerCase().includes('video') ? 'video' : 'voice', memberIds: [], otherUserId, meetingId: data.id, isHost: data.organizer_id === myId });
   };
 
   // Realtime — scoped to this one screen instance, which mounts/unmounts
@@ -448,6 +461,12 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
     ? profiles.filter((pr) => memberIds.current.includes(pr.id) && pr.fullName.toLowerCase().includes(mentionQuery.toLowerCase())).slice(0, 5)
     : [];
 
+  const chatSuspended = suspensionEnabled && (isSuspended || suspendedByOther);
+  const dmLocked = channelType === 'dm' && (isBlocked || blockedByThem || chatSuspended);
+  const lockedPlaceholder = isBlocked ? "You've blocked this chat"
+    : blockedByThem ? "You can't message this person"
+    : 'This chat is suspended';
+
   const handleSend = async () => {
     if (!composer.trim() || sending) return;
     // These three channel-type toggles were never checked on mobile at
@@ -456,7 +475,7 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
     if (channelType === 'everyone' && !globalChatEnabled) return;
     if (channelType === 'group' && !departmentChatEnabled) return;
     if (channelType === 'dm' && !directMessagesEnabled) return;
-    if (channelType === 'dm' && (isBlocked || isSuspended)) return;
+    if (dmLocked) return;
     const text = composer;
     setComposer('');
     setMentionQuery(null);
@@ -468,7 +487,8 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
       notifyOthersOfMessage(text);
       notifyMentions(text);
     } catch (e: any) {
-      Alert.alert('Failed to send', e.message);
+      setComposer(text); // keep what they typed
+      Alert.alert('Not sent', e.message);
     } finally {
       setSending(false);
     }
@@ -704,7 +724,21 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
           </Text>
         </View>
       )}
-      {channelType === 'dm' && !isBlocked && isSuspended && (
+      {channelType === 'dm' && !isBlocked && blockedByThem && (
+        <View style={{ marginHorizontal: t.spacing.lg, marginTop: t.spacing.sm, padding: t.spacing.sm, borderRadius: t.radius.md, backgroundColor: t.colors.status.danger.bg }}>
+          <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta11.size, color: t.colors.status.danger.text, textAlign: 'center' }}>
+            {title} isn't accepting messages from you.
+          </Text>
+        </View>
+      )}
+      {channelType === 'dm' && !isBlocked && !blockedByThem && chatSuspended && !isSuspended && (
+        <View style={{ marginHorizontal: t.spacing.lg, marginTop: t.spacing.sm, padding: t.spacing.sm, borderRadius: t.radius.md, backgroundColor: t.colors.status.warning.bg }}>
+          <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta11.size, color: t.colors.status.warning.text, textAlign: 'center' }}>
+            {title} suspended this chat. Only they can resume it.
+          </Text>
+        </View>
+      )}
+      {channelType === 'dm' && !isBlocked && !blockedByThem && isSuspended && suspensionEnabled && (
         <View style={{ marginHorizontal: t.spacing.lg, marginTop: t.spacing.sm, padding: t.spacing.sm, borderRadius: t.radius.md, backgroundColor: t.colors.status.warning.bg }}>
           <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta11.size, color: t.colors.status.warning.text, textAlign: 'center' }}>
             This chat is suspended. Resume it from the menu to keep messaging.
@@ -923,17 +957,17 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
                 <TextInput
                   value={composer}
                   onChangeText={handleComposerChange}
-                  placeholder={channelType === 'dm' && (isBlocked || isSuspended) ? (isBlocked ? "You've blocked this chat" : 'This chat is suspended') : 'Type a message…'}
+                  placeholder={dmLocked ? lockedPlaceholder : 'Type a message…'}
                   placeholderTextColor={t.colors.textMuted}
-                  editable={!(channelType === 'dm' && (isBlocked || isSuspended))}
+                  editable={!dmLocked}
                   style={{ backgroundColor: t.colors.bgInput, borderWidth: 1, borderColor: t.colors.border, borderRadius: t.radius.pill, paddingHorizontal: t.spacing.lg, paddingVertical: t.spacing.smd, fontFamily: t.font.regular, fontSize: t.type.body14.size, color: t.colors.textPrimary }}
                   onSubmitEditing={handleSend}
                 />
               </View>
               <Pressable
                 onPress={handleSend}
-                disabled={sending || !composer.trim() || (channelType === 'dm' && (isBlocked || isSuspended))}
-                style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: t.colors.accent, alignItems: 'center', justifyContent: 'center', opacity: sending || !composer.trim() || (channelType === 'dm' && (isBlocked || isSuspended)) ? 0.5 : 1 }}
+                disabled={sending || !composer.trim() || dmLocked}
+                style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: t.colors.accent, alignItems: 'center', justifyContent: 'center', opacity: sending || !composer.trim() || dmLocked ? 0.5 : 1 }}
               >
                 <Send size={15} color={t.colors.onAccent} />
               </Pressable>
@@ -1212,7 +1246,11 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
       </Modal>
 
       {activeCall && (
-        <NativeCallSheet room={activeCall.room} title={activeCall.title} kind={activeCall.kind} otherUserId={activeCall.otherUserId} onClose={endActiveCall} />
+        channelType === 'dm' && activeCall.otherUserId ? (
+          <NativeCallSheet room={activeCall.room} title={activeCall.title} kind={activeCall.kind} otherUserId={activeCall.otherUserId} onClose={endActiveCall} />
+        ) : (
+          <GroupCallSheet room={activeCall.room} title={activeCall.title} meetingId={activeCall.meetingId} isHost={activeCall.isHost} onClose={endActiveCall} />
+        )
       )}
     </Screen>
   );

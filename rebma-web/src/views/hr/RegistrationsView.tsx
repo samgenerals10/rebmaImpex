@@ -2,8 +2,11 @@ import React, { useState, useEffect } from 'react';
 import {
   UserPlus, CheckCircle, XCircle, Search, Filter, Clock,
   Copy, Eye, EyeOff, Mail, Phone, CreditCard, Building2, Calendar,
-  Edit, Trash2
+  Edit, Trash2, Send
 } from 'lucide-react';
+import { hr } from '../../services/apiClient';
+import { useCeoSettings } from '../../contexts/CeoSettingsContext';
+import { approvalTimeLeft } from '../../utils/registration';
 import type { PendingRegistration } from '../../types/erp';
 import { supabase } from '../../lib/supabaseClient';
 import CountUp from '../../components/CountUp';
@@ -36,8 +39,9 @@ function generatePassword(): string {
 interface Props {
   pendingRegistrations: PendingRegistration[];
   addNotification: (msg: string) => void;
-  onApprove: (reg: PendingRegistration, pw: string, token: string) => void;
+  onApprove: (reg: PendingRegistration, pw: string, token: string) => unknown;
   onDeny: (reg: PendingRegistration) => void;
+  isAdmin?: boolean;
 }
 
 interface CredPopup {
@@ -48,7 +52,32 @@ interface CredPopup {
   magicLink: string;
 }
 
-export default function RegistrationsView({ pendingRegistrations, addNotification, onApprove, onDeny }: Props) {
+export default function RegistrationsView({ pendingRegistrations, addNotification, onApprove, onDeny, isAdmin }: Props) {
+  // New staff are approved by the CEO only by default (api/approve-user.ts
+  // enforces the same). HR still sees who's waiting; the buttons would just
+  // be refused, so they're hidden and a note is shown instead.
+  const { getSetting } = useCeoSettings();
+  const canDecide = !!isAdmin || getSetting('ceo_must_approve_registrations', true) === false;
+  const [resending, setResending] = useState<string | null>(null);
+  const [resent, setResent] = useState<{ name: string; message: string; link: string; phone: string } | null>(null);
+
+  // Expired registration (not approved within 12 hours): clears the
+  // expired sign-up and emails a fresh link. The link is shown too, for
+  // when email isn't set up.
+  const handleResend = async (reg: PendingRegistration) => {
+    if (resending) return;
+    setResending(reg.id);
+    try {
+      const res = await hr.resendInvite({ userId: reg.id });
+      setRegistrations(prev => prev.filter(r => r.id !== reg.id));
+      setDetailReg(null);
+      setResent({ name: reg.fullName, message: res.message, link: res.link, phone: (res as any).phone || reg.phone || '' });
+    } catch (e: any) {
+      alert(e.message || 'Could not resend the link.');
+    } finally {
+      setResending(null);
+    }
+  };
   const [registrations, setRegistrations] = useState<PendingRegistration[]>([]);
   const [search, setSearch] = useState('');
   const [deptFilter, setDeptFilter] = useState('All');
@@ -92,9 +121,13 @@ export default function RegistrationsView({ pendingRegistrations, addNotificatio
     try {
       const pw = generatePassword();
       const token = `https://rebma.app/magic?token=${Math.random().toString(36).slice(2)}`;
-      await onApprove(reg, pw, token);
-      setCredPopup({ show: true, fullName: reg.fullName, email: reg.email, password: pw, magicLink: token });
-      addNotification(`${reg.fullName} approved and credentials generated`);
+      const res: any = await onApprove(reg, pw, token);
+      // null means it failed (already alerted). Someone who chose their own
+      // password gets no temporary one, so there's nothing to show.
+      if (res && !reg.registeredAt && !res.choseOwnPassword) {
+        setCredPopup({ show: true, fullName: reg.fullName, email: reg.email, password: pw, magicLink: token });
+        addNotification(`${reg.fullName} approved and credentials generated`);
+      }
     } catch (e: any) {
       alert(e.message || 'Failed to approve registration');
     } finally {
@@ -251,6 +284,9 @@ export default function RegistrationsView({ pendingRegistrations, addNotificatio
               { key: 'submittedAt', label: 'Submitted', render: reg => reg.submittedAt?.slice(0, 10) || '—' },
               {
                 key: 'status', label: 'Status', status: true, render: reg => {
+                  if (reg.expired) return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700">Expired</span>;
+                  const left = reg.status === 'PENDING' ? approvalTimeLeft(reg.registeredAt) : null;
+                  if (left) return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold" style={{ background: 'rgba(245,158,11,0.12)', color: '#f59e0b' }}>{left}</span>;
                   const sb = statusBadge(reg.status);
                   return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold" style={{ background: sb.bg, color: sb.color }}>{sb.label}</span>;
                 }
@@ -265,7 +301,13 @@ export default function RegistrationsView({ pendingRegistrations, addNotificatio
                   className="w-7 h-7 rounded-lg bg-[var(--bg)] border border-[var(--border)] flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--accent-light)] cursor-pointer transition-colors" title="View Details">
                   <Eye className="w-3.5 h-3.5" />
                 </button>
-                {reg.status === 'PENDING' && (
+                {reg.expired && (
+                  <button onClick={() => handleResend(reg)} disabled={resending === reg.id}
+                    className="h-7 px-2 rounded-lg bg-[var(--accent)] text-white flex items-center gap-1 text-[10px] font-bold hover:opacity-90 cursor-pointer disabled:opacity-50" title="Resend link">
+                    <Send className="w-3.5 h-3.5" /> {resending === reg.id ? 'Sending…' : 'Resend link'}
+                  </button>
+                )}
+                {reg.status === 'PENDING' && !reg.expired && canDecide && (
                   <>
                     <button onClick={() => handleApprove(reg)}
                       className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center hover:bg-emerald-500/20 cursor-pointer transition-colors" title="Approve">
@@ -344,7 +386,19 @@ export default function RegistrationsView({ pendingRegistrations, addNotificatio
                 </div>
               ))}
             </div>
-            {detailReg.status === 'PENDING' && (
+            {detailReg.expired && (
+              <div className="mt-4 space-y-2">
+                <p className="text-xs text-rose-600">This registration expired because it was not approved within 12 hours. Resend the link so they can register again.</p>
+                <button onClick={() => handleResend(detailReg)} disabled={!!resending}
+                  className="w-full flex items-center justify-center gap-2 py-2 bg-[var(--accent)] text-white rounded-xl text-sm font-semibold cursor-pointer hover:opacity-90 disabled:opacity-50">
+                  <Send className="w-4 h-4" /> {resending ? 'Sending…' : 'Resend link'}
+                </button>
+              </div>
+            )}
+            {detailReg.status === 'PENDING' && !detailReg.expired && !canDecide && (
+              <p className="mt-4 text-xs font-semibold text-amber-600">Waiting for CEO approval.</p>
+            )}
+            {detailReg.status === 'PENDING' && !detailReg.expired && canDecide && (
               <div className="flex gap-2 mt-4">
                 <button onClick={() => { handleApprove(detailReg); setDetailReg(null); }} disabled={submitting}
                   className="flex-1 flex items-center justify-center gap-2 py-2 bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 rounded-xl text-sm font-semibold cursor-pointer hover:bg-emerald-500/20 disabled:opacity-50">
@@ -357,6 +411,32 @@ export default function RegistrationsView({ pendingRegistrations, addNotificatio
               </div>
             )}
           </>
+        )}
+      </SidePanel>
+
+      <SidePanel open={!!resent} onClose={() => setResent(null)} title="Link Resent" subtitle={resent?.name}
+        footer={<button onClick={() => setResent(null)} className="erp-btn erp-btn-ghost w-full">Done</button>}>
+        {resent && (
+          <div className="space-y-3">
+            <p className="text-sm text-[var(--text-secondary)]">{resent.message}</p>
+            {resent.link && (
+              <div className="bg-[var(--bg)] rounded-xl p-3 border border-[var(--border)] flex items-center justify-between gap-2">
+                <p className="text-xs text-[var(--text-primary)] break-all select-all">{resent.link}</p>
+                <button onClick={() => {
+                  const digits = resent.phone.replace(/[^\d+]/g, '').replace(/^\+/, '').replace(/^0/, '233');
+                  const text = `Hi ${resent.name}, here is your new Rebma Impex registration link. Open the Rebma app, tap Register and paste it: ${resent.link}`;
+                  window.open(`https://wa.me/${digits}?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
+                }}
+                  className="shrink-0 px-2.5 py-1.5 text-[10px] font-semibold bg-emerald-500 text-white rounded-lg cursor-pointer hover:bg-emerald-600">
+                  WhatsApp
+                </button>
+                <button onClick={() => { navigator.clipboard.writeText(resent.link); addNotification('Link copied'); }}
+                  className="shrink-0 px-2.5 py-1.5 text-[10px] font-semibold bg-[var(--accent-light)] text-[var(--accent)] rounded-lg cursor-pointer hover:opacity-90">
+                  <Copy className="w-3 h-3 inline mr-1" />Copy
+                </button>
+              </div>
+            )}
+          </div>
         )}
       </SidePanel>
 

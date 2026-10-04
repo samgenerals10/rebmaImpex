@@ -34,7 +34,7 @@ import { Alert } from '../../lib/appAlert';
 import * as Location from 'expo-location';
 import { MapPin, Search, Check, X as XIcon } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
-import { enqueue, QUEUE_KEYS } from '../../lib/offlineQueue';
+import { enqueue, isOfflineError, QUEUE_KEYS } from '../../lib/offlineQueue';
 import { getAttendanceRules, isPastTime, DEFAULT_ATTENDANCE_RULES, type AttendanceRules } from '../../lib/attendanceRules';
 import { useTheme } from '../../theme/ThemeProvider';
 import Screen from '../../components/ui/Screen';
@@ -146,9 +146,12 @@ export default function AttendanceScreen() {
     };
     const { error } = await supabase.from('attendance').insert(payload);
     setSubmitting(false);
-    if (error) {
+    if (error && isOfflineError(error)) {
       await enqueue(QUEUE_KEYS.receptionAttendance, 'attendance', payload);
       Alert.alert('Saved Offline', 'No connection right now, so this check-in will sync automatically once you\'re back online.');
+    } else if (error) {
+      Alert.alert('Not checked in', error.message);
+      return;
     }
     resetCheckInForm();
     load();

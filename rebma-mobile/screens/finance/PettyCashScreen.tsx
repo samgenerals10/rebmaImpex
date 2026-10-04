@@ -226,11 +226,11 @@ export default function PettyCashScreen() {
       <Sheet open={showDisburse} onClose={() => setShowDisburse(false)} title="Disburse Petty Cash" side="bottom" maxHeight={640}
         footer={<Button label={submitting ? 'Disbursing…' : 'Disburse'} onPress={disburse} loading={submitting} disabled={submitting} fullWidth />}
       >
-        <Field label="Amount (GHS) *"><Input value={amount} onChangeText={setAmount} keyboardType="decimal-pad" /></Field>
+        <Field label="Amount (GHS) *"><Input value={amount} onChangeText={setAmount} keyboardType="decimal-pad" placeholder="0.00" /></Field>
         <Field label="Description *"><Input value={description} onChangeText={setDescription} placeholder="What is this for?" /></Field>
         <Field label="Disbursed To *"><Input value={disbursedTo} onChangeText={setDisbursedTo} placeholder="Recipient name" /></Field>
         <Field label="Category"><Input value={category} onChangeText={setCategory} placeholder="E.g., Admin" /></Field>
-        <Field label="Notes" hint="Optional"><Input value={notes} onChangeText={setNotes} /></Field>
+        <Field label="Notes" hint="Optional"><Input value={notes} onChangeText={setNotes} placeholder="Any additional context..." /></Field>
       </Sheet>
 
       <Sheet
@@ -240,16 +240,16 @@ export default function PettyCashScreen() {
         side="bottom"
         footer={<Button label={savingEdit ? 'Saving…' : 'Save Changes'} onPress={saveEdit} loading={savingEdit} disabled={savingEdit} fullWidth />}
       >
-        <Field label="Amount (GHS) *"><Input value={editForm.amount} onChangeText={(v) => setEditForm((f) => ({ ...f, amount: v }))} keyboardType="decimal-pad" /></Field>
-        <Field label="Description *"><Input value={editForm.description} onChangeText={(v) => setEditForm((f) => ({ ...f, description: v }))} /></Field>
-        <Field label="Disbursed To *"><Input value={editForm.disbursedTo} onChangeText={(v) => setEditForm((f) => ({ ...f, disbursedTo: v }))} /></Field>
-        <Field label="Category"><Input value={editForm.category} onChangeText={(v) => setEditForm((f) => ({ ...f, category: v }))} /></Field>
+        <Field label="Amount (GHS) *"><Input value={editForm.amount} onChangeText={(v) => setEditForm((f) => ({ ...f, amount: v }))} keyboardType="decimal-pad" placeholder="0.00" /></Field>
+        <Field label="Description *"><Input value={editForm.description} onChangeText={(v) => setEditForm((f) => ({ ...f, description: v }))} placeholder="What is this for?" /></Field>
+        <Field label="Disbursed To *"><Input value={editForm.disbursedTo} onChangeText={(v) => setEditForm((f) => ({ ...f, disbursedTo: v }))} placeholder="Recipient name" /></Field>
+        <Field label="Category"><Input value={editForm.category} onChangeText={(v) => setEditForm((f) => ({ ...f, category: v }))} placeholder="E.g., Admin" /></Field>
       </Sheet>
 
       <Sheet open={showReplenish} onClose={() => setShowReplenish(false)} title="Request Replenishment" side="bottom"
         footer={<Button label={submitting ? 'Requesting…' : 'Send Request'} onPress={requestReplenishment} loading={submitting} disabled={submitting} fullWidth />}
       >
-        <Field label="Amount (GHS) *"><Input value={replenAmount} onChangeText={setReplenAmount} keyboardType="decimal-pad" /></Field>
+        <Field label="Amount (GHS) *"><Input value={replenAmount} onChangeText={setReplenAmount} keyboardType="decimal-pad" placeholder="0.00" /></Field>
         <Field label="Reason *"><Input value={replenReason} onChangeText={setReplenReason} placeholder="Why is replenishment needed?" /></Field>
       </Sheet>
 

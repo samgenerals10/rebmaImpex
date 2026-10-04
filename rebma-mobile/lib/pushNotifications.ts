@@ -37,7 +37,92 @@
 import * as Device from 'expo-device';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabaseClient';
+
+// Per-device on/off switch (Settings > Appearance > Alerts on this
+// device). Off means this phone's address is removed from push_tokens,
+// so the server stops sending here. The bell still keeps every alert.
+const ALERTS_KEY = 'rebma-device-alerts';
+// The last address this phone registered, so it can be removed again at
+// sign-out or when alerts are switched off.
+const TOKEN_KEY = 'rebma-push-token';
+
+export async function getDeviceAlertsEnabled(): Promise<boolean> {
+  try {
+    return (await AsyncStorage.getItem(ALERTS_KEY)) !== 'off';
+  } catch {
+    return true;
+  }
+}
+
+export async function setDeviceAlertsEnabled(on: boolean): Promise<void> {
+  try {
+    await AsyncStorage.setItem(ALERTS_KEY, on ? 'on' : 'off');
+  } catch {
+    // Storage failure just means the choice isn't remembered.
+  }
+}
+
+/**
+ * Removes this phone's push address for the given user, so a phone that
+ * is signed out (or has alerts switched off) stops receiving that
+ * person's alerts. Must run while still signed in, since the table only
+ * lets people delete their own rows.
+ */
+export async function unregisterPushNotifications(userId: string): Promise<void> {
+  try {
+    const token = await AsyncStorage.getItem(TOKEN_KEY);
+    if (!token) return;
+    await supabase.from('push_tokens').delete().eq('user_id', userId).eq('token', token);
+    await AsyncStorage.removeItem(TOKEN_KEY);
+  } catch {
+    // Never block sign-out on this.
+  }
+}
+
+export interface PushTapData {
+  type: string | null;
+  actionUrl: string | null;
+  title: string | null;
+}
+
+/**
+ * Calls onTap when the person taps one of this app's alerts, including
+ * the tap that launched the app from closed. Returns a cleanup function.
+ */
+export function attachNotificationTapHandler(onTap: (data: PushTapData) => void): () => void {
+  let sub: { remove: () => void } | null = null;
+  let cancelled = false;
+
+  const read = (resp: any): PushTapData => {
+    const data = resp?.notification?.request?.content?.data || {};
+    return {
+      type: typeof data.type === 'string' ? data.type : null,
+      actionUrl: typeof data.actionUrl === 'string' ? data.actionUrl : null,
+      title: typeof data.title === 'string' ? data.title : null,
+    };
+  };
+
+  loadNotifications().then(async (Notifications) => {
+    if (!Notifications || cancelled) return;
+    sub = Notifications.addNotificationResponseReceivedListener((resp) => onTap(read(resp)));
+    try {
+      const last = await Notifications.getLastNotificationResponseAsync();
+      if (last && !cancelled) {
+        await Notifications.clearLastNotificationResponseAsync();
+        onTap(read(last));
+      }
+    } catch {
+      // Nothing to replay.
+    }
+  });
+
+  return () => {
+    cancelled = true;
+    sub?.remove();
+  };
+}
 
 function isExpoGo(): boolean {
   return Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
@@ -81,6 +166,10 @@ export interface PushRegistrationResult {
  * ordinary state until the user clears them, not an error condition.
  */
 export async function registerForPushNotifications(userId: string): Promise<PushRegistrationResult> {
+  if (!(await getDeviceAlertsEnabled())) {
+    return { token: null, reason: 'Alerts are switched off on this device.' };
+  }
+
   if (isExpoGo()) {
     return { token: null, reason: 'Push notifications are not available in Expo Go on SDK 53+ — this needs a real installed build (eas build), not the Expo Go app.' };
   }
@@ -131,8 +220,9 @@ export async function registerForPushNotifications(userId: string): Promise<Push
       { onConflict: 'user_id,token' }
     );
     if (error) {
-      return { token: expoPushToken, reason: `Token fetched but the push_tokens upsert failed (likely D130 blocker #2 — Supabase access): ${error.message}` };
+      return { token: expoPushToken, reason: `Token fetched but the push_tokens upsert failed: ${error.message}` };
     }
+    await AsyncStorage.setItem(TOKEN_KEY, expoPushToken).catch(() => {});
   } catch (e: any) {
     return { token: expoPushToken, reason: `Token fetched but the push_tokens upsert threw: ${e?.message || 'unknown error'}` };
   }

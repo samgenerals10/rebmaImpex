@@ -8,7 +8,9 @@ import { ThemeProvider, useTheme } from './theme/ThemeProvider';
 import { useAppFonts } from './theme/fonts';
 import { useDeliveryStore } from './store/deliveryStore';
 import { useAuthStore } from './store/authStore';
-import { registerForPushNotifications } from './lib/pushNotifications';
+import { registerForPushNotifications, attachNotificationTapHandler, type PushTapData } from './lib/pushNotifications';
+import { navigationRef } from './navigation/navigationRef';
+import { supabase } from './lib/supabaseClient';
 import RootNavigator from './navigation/RootNavigator';
 import AnimatedSplashScreen from './components/splash/AnimatedSplashScreen';
 import AppAlertHost from './components/ui/AppAlertHost';
@@ -88,6 +90,35 @@ export default function App() {
       appState.current = next;
     });
     return () => sub.remove();
+  }, [profileId]);
+
+  // Tapping a phone alert opens the right screen: a chat alert opens that
+  // conversation, anything else opens Notifications. Waits briefly for
+  // the app to finish starting when the tap is what launched it.
+  useEffect(() => {
+    if (!profileId) return;
+    let cancelled = false;
+    const openFromTap = async (tap: PushTapData) => {
+      for (let i = 0; i < 50 && !navigationRef.isReady(); i++) {
+        await new Promise((r) => setTimeout(r, 100));
+      }
+      if (cancelled || !navigationRef.isReady()) return;
+      // Drivers have their own single screen; opening the app is enough.
+      if (useAuthStore.getState().driver) return;
+      const nav = navigationRef.navigate as (name: string, params?: object) => void;
+      const isChat = tap.type === 'chat_message' || tap.type === 'chat_mention' || tap.type === 'missed_call';
+      if (isChat && tap.actionUrl) {
+        const { data: ch } = await supabase.from('channels').select('id, type, name').eq('id', tap.actionUrl).maybeSingle();
+        if (ch && !cancelled) {
+          const title = ch.type === 'everyone' ? 'Everyone' : ch.type === 'group' ? ch.name || 'Group' : tap.title || 'Direct Message';
+          nav('Messenger', { screen: 'MessengerThread', params: { channelId: ch.id, channelType: ch.type, title, subtitle: ch.type === 'everyone' ? 'Company-wide broadcast' : undefined } });
+          return;
+        }
+      }
+      nav('App', { screen: 'AlertsTab' });
+    };
+    const detach = attachNotificationTapHandler((tap) => { openFromTap(tap); });
+    return () => { cancelled = true; detach(); };
   }, [profileId]);
 
   const onLayout = useCallback(() => {}, []);

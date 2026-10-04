@@ -145,8 +145,10 @@ export default function TrackingView({ addNotification: _addNotification }: Prop
   return (
     <div style={{ padding: '24px 16px', maxWidth: 1300, margin: '0 auto' }}>
       <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Live GPS Tracking</h1>
-        <p style={{ color: 'var(--text-muted)', margin: '4px 0 0', fontSize: 14 }}>Real-time vehicle and driver location monitoring</p>
+        <h1 style={{ fontSize: 32, fontWeight: 900, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.02em', lineHeight: 1.15 }}>
+          Track Fleet Live. <span style={{ color: 'var(--accent)' }}>Deliver With Confidence.</span>
+        </h1>
+        <p style={{ color: 'var(--text-muted)', margin: '6px 0 0', fontSize: 14 }}>Real-time vehicle and driver location monitoring with live waypoint intelligence</p>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>

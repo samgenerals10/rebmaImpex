@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabaseClient';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
 import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 import { exportToCSV, exportToPDF } from '../../utils/export';
+import DateRangeField from '../../components/ui/DateRangeField';
 
 interface Transaction {
   id: string;
@@ -225,10 +226,12 @@ export default function TransactionsView({ addNotification }: Props) {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-3">
-        <input type="date" value={fromDate} onChange={e => { setFromDate(e.target.value); setPage(0); }}
-          className="px-3 py-1.5 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]" />
-        <input type="date" value={toDate} onChange={e => { setToDate(e.target.value); setPage(0); }}
-          className="px-3 py-1.5 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]" />
+        {/* Calendar instead of two typed date boxes (Part C). */}
+        <DateRangeField
+          value={{ start: fromDate || null, end: toDate || fromDate || null }}
+          onChange={v => { setFromDate(v.start || ''); setToDate(v.end || ''); setPage(0); }}
+          allowClear
+        />
         <SearchableDropdown
           value={typeFilter}
           onChange={v => { setTypeFilter(v as any); setPage(0); }}

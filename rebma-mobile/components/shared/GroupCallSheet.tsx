@@ -137,6 +137,9 @@ interface Props {
   title: string;
   meetingId?: string;
   isHost?: boolean;
+  /** Set only on a breakout room's own sheet: ends every breakout and
+   *  brings everyone back (sent on the main room's channel). */
+  onEndBreakouts?: () => void;
   onClose: () => void;
 }
 
@@ -155,7 +158,7 @@ interface ReactionBubble { id: string; emoji: string; from: string }
 
 const REACTION_SET = ['👍', '❤️', '😂', '👏', '🎉', '😮'];
 
-export default function GroupCallSheet({ room, title, meetingId, isHost = false, onClose }: Props) {
+export default function GroupCallSheet({ room, title, meetingId, isHost = false, onEndBreakouts, onClose }: Props) {
   const t = useTheme();
   const me = useAuthStore((s) => s.profile);
   const myId = me?.id || '';
@@ -289,9 +292,14 @@ export default function GroupCallSheet({ room, title, meetingId, isHost = false,
     // channel open only so 'breakout-end' can reach it — it must not
     // reconnect to main-room peers until it's back.
     if (inBreakoutRef.current) return;
+    // Only a brand-new connection gets an offer. This runs on every
+    // presence update (a raised hand, say), and re-offering each time
+    // restarted calls that were already working.
+    const isNew = !peersRef.current.has(participant.userId);
     const peer = ensurePeer(participant.userId, participant.fullName);
+    peer.fullName = participant.fullName || peer.fullName;
     peer.handRaised = !!participant.handRaised;
-    if (shouldOfferTo(myId, participant.userId)) {
+    if (isNew && shouldOfferTo(myId, participant.userId)) {
       const offer = await peer.pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
       await peer.pc.setLocalDescription(offer);
       roomRef.current?.send({ type: 'offer', sdp: offer.sdp!, from: myId, to: participant.userId });
@@ -427,8 +435,10 @@ export default function GroupCallSheet({ room, title, meetingId, isHost = false,
           return;
         }
 
-        // Media negotiation (offer/answer/ice-candidate) — per-pair.
-        const peer = ensurePeer(msg.from, msg.from);
+        // Media negotiation (offer/answer/ice-candidate) — per-pair. The
+        // name comes from presence when we already know the person.
+        const knownName = knownParticipantsRef.current.find((p) => p.userId === msg.from)?.fullName;
+        const peer = ensurePeer(msg.from, knownName || 'Participant');
         if (msg.type === 'offer') {
           await peer.pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: msg.sdp }));
           for (const c of pendingCandidates.get(msg.from) || []) await peer.pc.addIceCandidate(new RTCIceCandidate(c));
@@ -462,6 +472,16 @@ export default function GroupCallSheet({ room, title, meetingId, isHost = false,
         const liveIds = new Set(participants.map((p) => p.userId));
         for (const existingId of Array.from(peersRef.current.keys())) {
           if (!liveIds.has(existingId)) closePeer(existingId);
+        }
+
+        // Nobody who could admit me is in the room: let myself in. Without
+        // this a room with no host (the Boardroom, a breakout room, a
+        // group chat call the caller has left) never connected anyone,
+        // because nobody was ever admitted. Same rule as web.
+        if (!admittedRef.current && !participants.some((p) => p.admitted !== false)) {
+          admittedRef.current = true;
+          setIAmWaiting(false);
+          roomChannel.updatePresence({ admitted: true });
         }
 
         // Inform any genuinely-new joiner of the current lock state, the
@@ -739,8 +759,9 @@ export default function GroupCallSheet({ room, title, meetingId, isHost = false,
     return (
       <GroupCallSheet
         room={`${room}-bo-${myBreakoutIndex}`}
-        title={`${title} — Breakout ${myBreakoutIndex + 1}`}
+        title={`${title}, Breakout ${myBreakoutIndex + 1}`}
         isHost={isHost}
+        onEndBreakouts={isHost ? endBreakoutForEveryone : undefined}
         onClose={returnToMainRoom}
       />
     );
@@ -1056,7 +1077,16 @@ export default function GroupCallSheet({ room, title, meetingId, isHost = false,
                 <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: '#fff' }}>Breakout Rooms</Text>
                 <Pressable onPress={() => setBreakoutPanelOpen(false)}><X size={18} color="#fff" /></Pressable>
               </View>
-              {myBreakoutIndex == null ? (
+              {onEndBreakouts ? (
+                <>
+                  <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: 'rgba(255,255,255,0.6)', marginBottom: t.spacing.lg }}>
+                    You're in a breakout room. Ending breakouts brings everyone back to the main meeting.
+                  </Text>
+                  <Pressable onPress={onEndBreakouts} style={{ paddingVertical: t.spacing.md, borderRadius: t.radius.pill, backgroundColor: '#ef4444', alignItems: 'center' }}>
+                    <Text style={{ fontFamily: t.font.bold, color: '#fff' }}>End Breakout Rooms for Everyone</Text>
+                  </Pressable>
+                </>
+              ) : myBreakoutIndex == null ? (
                 <>
                   <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: 'rgba(255,255,255,0.6)', marginBottom: t.spacing.lg }}>
                     Splits everyone currently in the call evenly across the rooms below. Each breakout is a real, separate call — you can float between them.
@@ -1073,6 +1103,11 @@ export default function GroupCallSheet({ room, title, meetingId, isHost = false,
                   </View>
                   <Pressable onPress={startAutoBreakout} style={{ paddingVertical: t.spacing.md, borderRadius: t.radius.pill, backgroundColor: t.colors.accent, alignItems: 'center' }}>
                     <Text style={{ fontFamily: t.font.bold, color: '#fff' }}>Auto-Assign & Start</Text>
+                  </Pressable>
+                  {/* People can still be in breakouts after the host comes
+                      back, so ending them is offered here too (as on web). */}
+                  <Pressable onPress={endBreakoutForEveryone} style={{ marginTop: t.spacing.md, paddingVertical: t.spacing.md, borderRadius: t.radius.pill, backgroundColor: '#ef4444', alignItems: 'center' }}>
+                    <Text style={{ fontFamily: t.font.bold, color: '#fff' }}>End Breakout Rooms for Everyone</Text>
                   </Pressable>
                 </>
               ) : (

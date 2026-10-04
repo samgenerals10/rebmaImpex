@@ -231,7 +231,7 @@ export default function CreditMgmtScreen() {
         footer={<Button label={submitting ? 'Recording…' : 'Record Payment'} onPress={recordPayment} loading={submitting} disabled={submitting} fullWidth />}
       >
         <SheetSection label="Payment">
-          <Field label="Amount (GHS) *"><Input value={payAmount} onChangeText={setPayAmount} keyboardType="decimal-pad" /></Field>
+          <Field label="Amount (GHS) *"><Input value={payAmount} onChangeText={setPayAmount} keyboardType="decimal-pad" placeholder="0.00" /></Field>
           <Field label="Payment Date"><Input value={payDate} onChangeText={setPayDate} placeholder="YYYY-MM-DD" /></Field>
         </SheetSection>
       </Sheet>
@@ -243,11 +243,11 @@ export default function CreditMgmtScreen() {
         side="bottom"
         footer={<Button label={savingEdit ? 'Saving…' : 'Save Changes'} onPress={saveEdit} loading={savingEdit} disabled={savingEdit} fullWidth />}
       >
-        <Field label="Client Name *"><Input value={editForm.clientName} onChangeText={(v) => setEditForm((f) => ({ ...f, clientName: v }))} /></Field>
-        <Field label="Total Amount (GHS) *"><Input value={editForm.totalAmount} onChangeText={(v) => setEditForm((f) => ({ ...f, totalAmount: v }))} keyboardType="decimal-pad" /></Field>
-        <Field label="Amount Paid (GHS)"><Input value={editForm.amountPaid} onChangeText={(v) => setEditForm((f) => ({ ...f, amountPaid: v }))} keyboardType="decimal-pad" /></Field>
+        <Field label="Client Name *"><Input value={editForm.clientName} onChangeText={(v) => setEditForm((f) => ({ ...f, clientName: v }))} placeholder="e.g. Kofi Mensah" /></Field>
+        <Field label="Total Amount (GHS) *"><Input value={editForm.totalAmount} onChangeText={(v) => setEditForm((f) => ({ ...f, totalAmount: v }))} keyboardType="decimal-pad" placeholder="0.00" /></Field>
+        <Field label="Amount Paid (GHS)"><Input value={editForm.amountPaid} onChangeText={(v) => setEditForm((f) => ({ ...f, amountPaid: v }))} keyboardType="decimal-pad" placeholder="0.00" /></Field>
         <Field label="Due Date"><Input value={editForm.dueDate} onChangeText={(v) => setEditForm((f) => ({ ...f, dueDate: v }))} placeholder="YYYY-MM-DD" /></Field>
-        <Field label="Phone" hint="Optional"><Input value={editForm.phone} onChangeText={(v) => setEditForm((f) => ({ ...f, phone: v }))} /></Field>
+        <Field label="Phone" hint="Optional"><Input value={editForm.phone} onChangeText={(v) => setEditForm((f) => ({ ...f, phone: v }))} placeholder="0244000000" /></Field>
       </Sheet>
 
       <ExportSheet

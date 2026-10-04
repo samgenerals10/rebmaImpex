@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { supabase, type DriverRow } from '../lib/supabaseClient';
 import { normalizeDeptCode } from '../utils/departments';
 import { getKeepLoggedIn, setKeepLoggedIn } from '../lib/rememberMe';
+import { isRegistrationExpired } from '../lib/registration';
+import { unregisterPushNotifications } from '../lib/pushNotifications';
 
 // CurrentUser's fields (rebma-web/src/types/erp.ts) are non-negotiable — every
 // screen this app will eventually port consumes them, including isAdmin/
@@ -51,9 +53,11 @@ interface AuthState {
 
 // rebma-web/src/services/apiClient.ts's login()/me() four distinct
 // rejection messages (lines ~324-330), reproduced verbatim.
-function statusErrorMessage(status: string): string {
+// Someone still being registered is never told who approves them.
+function statusErrorMessage(status: string, registeredAt?: string | null): string {
   const s = (status || '').toUpperCase();
-  if (s === 'PENDING' || s === 'PENDING_APPROVAL') return 'Your account is pending HR approval.';
+  if (isRegistrationExpired(s, registeredAt)) return 'Your registration has expired because it was not approved in time. Ask HR to send you a new link.';
+  if (s === 'PENDING' || s === 'PENDING_APPROVAL') return 'Your account is waiting for approval. We will email you as soon as you can sign in.';
   if (s === 'REJECTED') return 'Your account access has been denied.';
   if (s === 'BLOCKED') return 'Your account has been blocked by the CEO. Contact HR if you believe this is a mistake.';
   if (s === 'SUSPENDED') return 'Your account has been suspended.';
@@ -94,7 +98,7 @@ async function loadProfileAndDriver(userId: string): Promise<{ profile: MobileUs
   if (profileErr || !profileRow) {
     return { profile: null, driver: null, error: 'No profile found for this account.' };
   }
-  const statusMsg = statusErrorMessage(profileRow.status);
+  const statusMsg = statusErrorMessage(profileRow.status, profileRow.registered_at);
   if (statusMsg) {
     return { profile: null, driver: null, error: statusMsg };
   }
@@ -146,7 +150,7 @@ async function loadProfileAndDriver(userId: string): Promise<{ profile: MobileUs
   return { profile, driver };
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   initializing: true,
   loading: false,
   error: '',
@@ -159,6 +163,9 @@ export const useAuthStore = create<AuthState>((set) => ({
     // session, not just hiding a preference nobody reads.
     const keepLoggedIn = await getKeepLoggedIn();
     if (!keepLoggedIn) {
+      // Stop this phone getting the previous person's alerts.
+      const prior = (await supabase.auth.getSession()).data.session?.user?.id;
+      if (prior) await unregisterPushNotifications(prior);
       await supabase.auth.signOut();
       set({ initializing: false, profile: null, driver: null });
       return;
@@ -171,6 +178,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
     const { profile, driver, error } = await loadProfileAndDriver(userId);
     if (error || !profile) {
+      await unregisterPushNotifications(userId);
       await supabase.auth.signOut();
       // Surface the reason rather than dropping it — a restored session
       // belonging to a just-suspended account should say why it bounced,
@@ -206,6 +214,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   signOut: async () => {
+    const userId = get().profile?.id;
+    if (userId) await unregisterPushNotifications(userId);
     await supabase.auth.signOut();
     set({ profile: null, driver: null, error: '' });
   },

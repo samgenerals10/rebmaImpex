@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Plus, Search, ArrowLeft, Pencil, Trash2, Download, Star, Camera, Upload, FileText, RefreshCw, AlertTriangle, ExternalLink, History } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
+import { findCustomerDuplicate } from '../../utils/customerDuplicates';
 import type { Customer, Order } from '../../types/erp';
 import CustomerAvatar from '../../components/CustomerAvatar';
 import RatingBadge from '../../components/RatingBadge';
@@ -164,8 +165,24 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
     setBusinessCertUrl(null);
   };
 
+  // Blocks a second customer with the same phone or Ghana Card and offers
+  // to open the one already on file. Returns true when it's safe to save.
+  const passesDuplicateCheck = async (excludeId?: string) => {
+    const match = await findCustomerDuplicate(form.phone, form.ghanaCard, excludeId);
+    if (!match) return true;
+    const what = match.matchedOn === 'card' ? 'Ghana Card number' : 'phone number';
+    const open = await window.confirm(`This ${what} already belongs to ${match.name}. It can't be registered twice.\n\nOpen ${match.name}'s record?`);
+    if (open) {
+      const existing = customers.find(c => c.id === match.id);
+      if (existing) { setShowModal(false); setSelectedCustomer(existing); }
+      else addNotification(`Search for ${match.name} to open their record.`);
+    }
+    return false;
+  };
+
   const handleSave = async () => {
     if (!form.name || !form.phone) { addNotification('Name and phone are required.'); return; }
+    if (!(await passesDuplicateCheck())) return;
     const now = new Date().toISOString();
     const newCust: Customer = {
       id: `cust-${Date.now()}`,
@@ -211,6 +228,7 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
   const handleEditSave = async () => {
     if (!editTarget) return;
     if (!form.name || !form.phone) { addNotification('Name and phone are required.'); return; }
+    if (!(await passesDuplicateCheck(editTarget.id))) return;
     const basePayload: Record<string, any> = {
       name: form.name, company_name: form.companyName, phone: form.phone,
       email: form.email || null, location: form.location || null,

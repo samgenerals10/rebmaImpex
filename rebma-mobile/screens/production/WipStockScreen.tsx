@@ -269,14 +269,14 @@ export default function WipStockScreen() {
         maxHeight={680}
         footer={<Button label={submitting ? 'Saving…' : 'Save Changes'} onPress={saveEdit} loading={submitting} disabled={submitting} fullWidth />}
       >
-        <Field label="Product Name *"><Input value={editForm.productName} onChangeText={(v) => setEditForm((f) => ({ ...f, productName: v }))} /></Field>
+        <Field label="Product Name *"><Input value={editForm.productName} onChangeText={(v) => setEditForm((f) => ({ ...f, productName: v }))} placeholder="e.g. Shea Butter Cream 200ml" /></Field>
         <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
-          <View style={{ flex: 1 }}><Field label="Quantity *"><Input value={editForm.qty} onChangeText={(v) => setEditForm((f) => ({ ...f, qty: v }))} keyboardType="numeric" /></Field></View>
+          <View style={{ flex: 1 }}><Field label="Quantity *"><Input value={editForm.qty} onChangeText={(v) => setEditForm((f) => ({ ...f, qty: v }))} keyboardType="numeric" placeholder="0" /></Field></View>
           <View style={{ flex: 1 }}><Field label="Unit"><SearchablePicker value={editForm.unit} onChange={(v) => setEditForm((f) => ({ ...f, unit: v }))} options={UNITS.map((u) => ({ value: u, label: u }))} /></Field></View>
         </View>
-        <Field label="Batch Reference"><Input value={editForm.batchRef} onChangeText={(v) => setEditForm((f) => ({ ...f, batchRef: v }))} /></Field>
+        <Field label="Batch Reference"><Input value={editForm.batchRef} onChangeText={(v) => setEditForm((f) => ({ ...f, batchRef: v }))} placeholder="e.g. B-2026-0507" /></Field>
         <Field label="Stage"><SearchablePicker value={editForm.stage} onChange={(v) => setEditForm((f) => ({ ...f, stage: v }))} options={STAGES.map((s) => ({ value: s, label: s }))} /></Field>
-        <Field label="Notes"><Input value={editForm.notes} onChangeText={(v) => setEditForm((f) => ({ ...f, notes: v }))} multiline numberOfLines={2} style={{ minHeight: 56, textAlignVertical: 'top' }} /></Field>
+        <Field label="Notes"><Input value={editForm.notes} onChangeText={(v) => setEditForm((f) => ({ ...f, notes: v }))} multiline numberOfLines={2} style={{ minHeight: 56, textAlignVertical: 'top' }} placeholder="Any additional notes..." /></Field>
       </Sheet>
 
       <Sheet
@@ -289,12 +289,12 @@ export default function WipStockScreen() {
       >
         <Field label="Product Name *"><Input value={addForm.productName} onChangeText={(v) => setAddForm((f) => ({ ...f, productName: v }))} placeholder="e.g. Shea Butter Cream 200ml" /></Field>
         <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
-          <View style={{ flex: 1 }}><Field label="Quantity *"><Input value={addForm.qty} onChangeText={(v) => setAddForm((f) => ({ ...f, qty: v }))} keyboardType="numeric" /></Field></View>
+          <View style={{ flex: 1 }}><Field label="Quantity *"><Input value={addForm.qty} onChangeText={(v) => setAddForm((f) => ({ ...f, qty: v }))} keyboardType="numeric" placeholder="0" /></Field></View>
           <View style={{ flex: 1 }}><Field label="Unit"><SearchablePicker value={addForm.unit} onChange={(v) => setAddForm((f) => ({ ...f, unit: v }))} options={UNITS.map((u) => ({ value: u, label: u }))} /></Field></View>
         </View>
         <Field label="Batch Reference"><Input value={addForm.batchRef} onChangeText={(v) => setAddForm((f) => ({ ...f, batchRef: v }))} placeholder="e.g. B-2026-0507" /></Field>
         <Field label="Stage"><SearchablePicker value={addForm.stage} onChange={(v) => setAddForm((f) => ({ ...f, stage: v }))} options={STAGES.map((s) => ({ value: s, label: s }))} /></Field>
-        <Field label="Notes"><Input value={addForm.notes} onChangeText={(v) => setAddForm((f) => ({ ...f, notes: v }))} multiline numberOfLines={2} style={{ minHeight: 56, textAlignVertical: 'top' }} /></Field>
+        <Field label="Notes"><Input value={addForm.notes} onChangeText={(v) => setAddForm((f) => ({ ...f, notes: v }))} multiline numberOfLines={2} style={{ minHeight: 56, textAlignVertical: 'top' }} placeholder="Any additional notes..." /></Field>
       </Sheet>
     </Screen>
   );

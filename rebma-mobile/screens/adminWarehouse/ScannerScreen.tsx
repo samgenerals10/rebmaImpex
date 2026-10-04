@@ -7,12 +7,14 @@
 // `{ waybillNumber, orderId, containerNumber }` JSON (Phase 4,
 // ApprovedGoodsView.tsx's printWaybill()) — parsed here the same way.
 import { useCallback, useRef, useState } from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, Image } from 'react-native';
 import { Alert } from '../../lib/appAlert';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { QrCode, CircleCheckBig, CircleX } from 'lucide-react-native';
+import { QrCode, CircleCheckBig, CircleX, ShieldCheck, PackageSearch } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
+import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '../../theme/ThemeProvider';
+import { lookupProductBarcode, type ProductLookupResult } from '../../lib/barcodeLookup';
 import Screen from '../../components/ui/Screen';
 import Card from '../../components/ui/Card';
 import Input from '../../components/ui/Input';
@@ -27,23 +29,33 @@ interface WaybillResult {
   vehicleId: string | null;
   driverName: string | null;
   status: string | null;
+  scannedAt: string | null;
+  scannedBy: string | null;
 }
 
 export default function ScannerScreen() {
   const t = useTheme();
+  const { profile } = useAuthStore();
   const [permission, requestPermission] = useCameraPermissions();
   const [manualNumber, setManualNumber] = useState('');
   const [scanning, setScanning] = useState(true);
   const [result, setResult] = useState<WaybillResult | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [looking, setLooking] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  // A code that isn't a REBMA waybill falls back to an external product
+  // lookup, but only when Control Center's api_key_scanner_lookup is
+  // actually set (lookupProductBarcode itself returns null with no
+  // network call when it's empty) — see lib/barcodeLookup.ts.
+  const [productResult, setProductResult] = useState<ProductLookupResult | null>(null);
+  const [lookingProduct, setLookingProduct] = useState(false);
   const lastScanned = useRef<string | null>(null);
 
   const lookupWaybill = useCallback(async (waybillNumber: string) => {
     setLooking(true);
     setNotFound(false);
     setResult(null);
-    const { data: wb } = await supabase.from('waybills').select('waybill_number, container_number, order_id, delivery_log_id').eq('waybill_number', waybillNumber).maybeSingle();
+    const { data: wb } = await supabase.from('waybills').select('waybill_number, container_number, order_id, delivery_log_id, scanned_at, scanned_by').eq('waybill_number', waybillNumber).maybeSingle();
     if (!wb) {
       setLooking(false);
       setNotFound(true);
@@ -62,7 +74,48 @@ export default function ScannerScreen() {
       vehicleId: deliveryRes.data?.vehicle_id || null,
       driverName: deliveryRes.data?.driver_name || null,
       status: deliveryRes.data?.status || null,
+      scannedAt: wb.scanned_at || null,
+      scannedBy: wb.scanned_by || null,
     });
+  }, []);
+
+  // The physical control the user asked for: goods can't leave until Risk
+  // has scanned the waybill and explicitly cleared it. This is the write
+  // that turns a lookup into a real gate — DispatchHomeScreen checks
+  // exactly this column before letting a driver start sharing location.
+  const confirmClearance = useCallback(async () => {
+    if (!result) return;
+    setConfirming(true);
+    const now = new Date().toISOString();
+    const { error } = await supabase
+      .from('waybills')
+      .update({ scanned_at: now, scanned_by: profile?.fullName || 'Risk' })
+      .eq('waybill_number', result.waybillNumber);
+    setConfirming(false);
+    if (error) {
+      Alert.alert('Could Not Clear Waybill', error.message);
+      return;
+    }
+    setResult({ ...result, scannedAt: now, scannedBy: profile?.fullName || 'Risk' });
+    Alert.alert('Cleared for Dispatch', `${result.waybillNumber} is now cleared. The driver can start their trip.`);
+  }, [result, profile?.fullName]);
+
+  const tryProductLookup = useCallback(async (code: string) => {
+    setLookingProduct(true);
+    setProductResult(null);
+    const product = await lookupProductBarcode(code);
+    setLookingProduct(false);
+    if (product) {
+      setProductResult(product);
+    } else {
+      // Either no key is configured (lookupProductBarcode returns null
+      // instantly, no request made) or the external database genuinely
+      // has nothing for this code — same "not a REBMA waybill" message
+      // either way, since the person scanning doesn't need to know which.
+      Alert.alert('Unrecognized Code', 'This is not a REBMA waybill, and no product match was found.');
+      setScanning(true);
+      lastScanned.current = null;
+    }
   }, []);
 
   const onBarcodeScanned = useCallback((event: { data: string }) => {
@@ -74,11 +127,9 @@ export default function ScannerScreen() {
       if (!parsed.waybillNumber) throw new Error('No waybill number in code.');
       lookupWaybill(parsed.waybillNumber);
     } catch {
-      Alert.alert('Unrecognized Code', 'This QR code is not a REBMA waybill.');
-      setScanning(true);
-      lastScanned.current = null;
+      tryProductLookup(event.data);
     }
-  }, [lookupWaybill]);
+  }, [lookupWaybill, tryProductLookup]);
 
   const requestCamera = async () => {
     const res = await requestPermission();
@@ -90,6 +141,7 @@ export default function ScannerScreen() {
   const resetScan = () => {
     setResult(null);
     setNotFound(false);
+    setProductResult(null);
     lastScanned.current = null;
     setScanning(true);
   };
@@ -103,7 +155,14 @@ export default function ScannerScreen() {
               <CameraView
                 style={{ flex: 1 }}
                 facing="back"
-                barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
+                // REBMA waybills are always 'qr'. The rest are real 1D
+                // product-barcode formats — widened so a scanned product
+                // package can actually reach tryProductLookup() below;
+                // with 'qr' only (the old setting), the camera would
+                // never even recognize a UPC/EAN code as a barcode at
+                // all, so the lookup key could never be exercised no
+                // matter how it was wired.
+                barcodeScannerSettings={{ barcodeTypes: ['qr', 'ean13', 'ean8', 'upc_a', 'upc_e', 'code128', 'code39'] }}
                 onBarcodeScanned={onBarcodeScanned}
               />
             ) : (
@@ -163,6 +222,61 @@ export default function ScannerScreen() {
             <DetailRow label="Vehicle" value={result.vehicleId || '—'} />
             <DetailRow label="Driver" value={result.driverName || '—'} />
             {result.status && <View style={{ marginTop: t.spacing.sm }}><Badge tone="info" label={result.status.replace(/_/g, ' ')} /></View>}
+
+            <View style={{ marginTop: t.spacing.md, paddingTop: t.spacing.md, borderTopWidth: 1, borderTopColor: t.colors.border }}>
+              {result.scannedAt ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm }}>
+                  <ShieldCheck size={18} color={t.colors.status.success.text} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.status.success.text }}>Cleared for Dispatch</Text>
+                    <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted, marginTop: 2 }}>
+                      By {result.scannedBy || 'Risk'} · {new Date(result.scannedAt).toLocaleString()}
+                    </Text>
+                  </View>
+                </View>
+              ) : (
+                <View>
+                  <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted, marginBottom: t.spacing.sm }}>
+                    Not yet cleared. The driver can't start this trip until you confirm it here.
+                  </Text>
+                  <Button
+                    label={confirming ? 'Clearing…' : 'Confirm & Clear for Dispatch'}
+                    onPress={confirmClearance}
+                    loading={confirming}
+                    disabled={confirming}
+                    fullWidth
+                    icon={<ShieldCheck size={14} color="#fff" />}
+                  />
+                </View>
+              )}
+            </View>
+          </Card>
+        )}
+
+        {lookingProduct && (
+          <Card>
+            <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textMuted, textAlign: 'center' }}>Looking up product…</Text>
+          </Card>
+        )}
+
+        {productResult && (
+          <Card>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, marginBottom: t.spacing.md }}>
+              <PackageSearch size={20} color={t.colors.accent} />
+              <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary }}>Product Match</Text>
+            </View>
+            {productResult.imageUrl && (
+              <Image source={{ uri: productResult.imageUrl }} style={{ width: '100%', height: 140, borderRadius: t.radius.md, marginBottom: t.spacing.sm }} resizeMode="contain" />
+            )}
+            <DetailRow label="Barcode" value={productResult.barcode} />
+            <DetailRow label="Name" value={productResult.title} />
+            <DetailRow label="Brand" value={productResult.brand || '—'} />
+            <DetailRow label="Category" value={productResult.category || '—'} />
+            {productResult.description && (
+              <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted, marginTop: t.spacing.sm }}>
+                {productResult.description}
+              </Text>
+            )}
           </Card>
         )}
       </View>

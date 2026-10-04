@@ -1,11 +1,20 @@
 // api/terminate-user.ts
-// Vercel Serverless Function — properly terminates a staff account.
-// The previous frontend-only implementation called supabase.auth.admin
-// from a browser client built with the anon key, which silently no-ops
-// (admin.* requires the service_role key) — the app deleted the profiles
-// row and reported success while the person's actual login stayed live.
+// Vercel Serverless Function — the CEO terminates someone (approved rule).
+//
+// Takes effect at once and deletes NOTHING (api/_shared/termination.ts):
+// sign-in locked for good, sessions ended, status TERMINATED. All their
+// work stays in the system for the department; a new hire gets their own
+// new profile and sees it. This used to delete the sign-in account, which
+// could take the profile and its attendance with it.
+//
+// CEO only, with his password. Works for app users ({ userId }) and for
+// staff without the app ({ nonAppStaffId }). A CEO is never terminated
+// here (removing a CEO needs both CEOs).
 import { createClient } from '@supabase/supabase-js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { isRateLimited } from './_shared/rateLimit';
+import { verifyPassword } from './_shared/reauth';
+import { loadPerson, terminatePerson, countOpenDeliveries, notify, audit } from './_shared/termination';
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -19,6 +28,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
+  if (await isRateLimited(supabaseAdmin, req, res, 'terminate-user', 30, 60)) return;
+
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Authentication required.' });
@@ -31,7 +42,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const { data: callerProfiles } = await supabaseAdmin
     .from('profiles')
-    .select('full_name, role, is_admin')
+    .select('full_name, role, is_admin, status')
     .eq('id', callerData.user.id)
     .limit(1);
 
@@ -39,85 +50,42 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!callerProfile) {
     return res.status(403).json({ error: 'Caller profile not found.' });
   }
-
-  const callerRole = (callerProfile.role || '').toUpperCase();
-  if (callerRole !== 'HR' && !callerProfile.is_admin) {
-    return res.status(403).json({ error: 'Only HR or CEO can terminate accounts.' });
+  if (String(callerProfile.status || '').toUpperCase() !== 'ACTIVE') {
+    return res.status(403).json({ error: 'Your account is not active.' });
   }
 
-  // account_deletion_authority (Control Center, System Controls): when set
-  // to 'ceo_only' (or 'specific_user' — that option has no configured user
-  // to fall back on, so it's treated the same as ceo_only), this narrows
-  // the HR-or-CEO rule above to CEO-only. Left unset, today's default
-  // (HR or CEO) stands.
-  const { data: authoritySetting } = await supabaseAdmin
-    .from('ceo_settings')
-    .select('setting_value')
-    .eq('setting_key', 'account_deletion_authority')
-    .maybeSingle();
-  const authorityValue = authoritySetting?.setting_value;
-  if ((authorityValue === 'ceo_only' || authorityValue === 'specific_user') && !callerProfile.is_admin) {
-    return res.status(403).json({ error: 'Only the CEO can terminate accounts.' });
+  if (!callerProfile.is_admin) {
+    return res.status(403).json({ error: 'Only the CEO can terminate an account.' });
   }
 
-  const { userId } = req.body || {};
-  if (!userId) {
-    return res.status(400).json({ error: 'userId is required.' });
-  }
+  const { userId, nonAppStaffId } = req.body || {};
+  const kind = nonAppStaffId ? 'no_app' : 'app';
+  const targetId = String(nonAppStaffId || userId || '');
+  if (!targetId) return res.status(400).json({ error: 'Pick who to terminate.' });
+  if (targetId === callerData.user.id) return res.status(400).json({ error: 'You cannot terminate your own account.' });
 
-  const { data: targetProfiles } = await supabaseAdmin
-    .from('profiles')
-    .select('id, full_name, role')
-    .eq('id', userId)
-    .limit(1);
+  const person = await loadPerson(supabaseAdmin, kind, targetId);
+  if (!person) return res.status(404).json({ error: 'That person was not found.' });
+  // No CEO account can be terminated here, by anyone. Removing a CEO needs
+  // both CEOs (Step 2).
+  if (person.isCeo) return res.status(403).json({ error: 'A CEO account cannot be terminated here.' });
+  if (person.status === 'TERMINATED') return res.status(409).json({ error: `${person.fullName} is already terminated.` });
 
-  const targetProfile = targetProfiles?.[0];
-  if (!targetProfile) {
-    return res.status(404).json({ error: 'User profile not found.' });
-  }
+  // High-risk action: the CEO types his password again.
+  if (!(await verifyPassword(supabaseAdmin, res, callerData.user, req.body?.password))) return;
 
-  // Same escalation rule as approve-user.ts — HR can't terminate its own
-  // department or Management, only the CEO can.
-  const targetRole = (targetProfile.role || '').toUpperCase();
-  const isPrivilegedTarget = targetRole === 'MANAGEMENT' || targetRole === 'HR';
-  if (isPrivilegedTarget && !callerProfile.is_admin) {
-    return res.status(403).json({ error: 'Only the CEO can terminate Management or HR accounts.' });
-  }
+  const done = await terminatePerson(supabaseAdmin, person);
+  if (!done.ok) return res.status(500).json({ error: done.error });
 
-  if (userId === callerData.user.id) {
-    return res.status(400).json({ error: 'You cannot terminate your own account.' });
-  }
+  const openDeliveries = person.kind === 'app' ? await countOpenDeliveries(supabaseAdmin, person.id) : 0;
+  const deliveriesNote = openDeliveries ? ` ${openDeliveries} open deliveries were assigned to them; Risk should pick another driver in Dispatch.` : '';
+  const replaceNote = person.department === 'hr'
+    ? ' The CEO invites their replacement into HR by email.'
+    : ' You can now add a new person for this position in Staff, Add Staff, and choose whether they continue this work or start new.';
+  await notify(supabaseAdmin, { department: 'HR' }, `${person.fullName} was terminated`, `The CEO terminated ${person.fullName}. All their work stays in the system.${replaceNote}${deliveriesNote}`);
+  if (openDeliveries) await notify(supabaseAdmin, { department: 'RISK' }, 'Deliveries need a new driver', `${person.fullName} was terminated with ${openDeliveries} open deliveries. Pick another driver in Dispatch.`);
+  await audit(supabaseAdmin, 'TERMINATE_USER', 'CEO', callerProfile.full_name || 'CEO', callerData.user.id, person.id,
+    `${person.fullName} terminated. Sign-in locked; nothing deleted.${deliveriesNote}`);
 
-  // The real fix: this runs with the service-role key, so admin.deleteUser
-  // actually works instead of silently no-opping.
-  const { error: authDeleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
-  if (authDeleteError) {
-    return res.status(500).json({ error: `Failed to delete login credentials: ${authDeleteError.message}` });
-  }
-
-  // Update, not delete, so the person stays visible/auditable in User
-  // Management instead of vanishing from every screen that joins profiles.
-  const { error: updateError } = await supabaseAdmin
-    .from('profiles')
-    .update({ status: 'TERMINATED', updated_at: new Date().toISOString() })
-    .eq('id', userId);
-
-  if (updateError) {
-    return res.status(500).json({ error: `Login deleted, but failed to update profile status: ${updateError.message}` });
-  }
-
-  try {
-    await supabaseAdmin.from('global_audit_history').insert({
-      action: 'TERMINATE_USER',
-      department: 'HR',
-      performed_by: callerProfile.full_name || 'HR Staff',
-      user_id: callerData.user.id,
-      details: `User ${targetProfile.full_name || userId} terminated — login credentials revoked.`,
-      timestamp: new Date().toISOString(),
-    });
-  } catch (e) {
-    console.error('Audit trail logging failed:', e);
-  }
-
-  return res.status(200).json({ message: `${targetProfile.full_name || 'User'} terminated.` });
+  return res.status(200).json({ message: `${person.fullName} has been terminated. All their work stays in the system.${deliveriesNote}` });
 }

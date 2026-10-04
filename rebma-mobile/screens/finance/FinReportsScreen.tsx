@@ -21,7 +21,6 @@
 import { useCallback, useState } from 'react';
 import { View, Text, Pressable, Platform } from 'react-native';
 import { Alert } from '../../lib/appAlert';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import {
   DollarSign, TrendingUp, CreditCard, ShoppingCart, ChartPie, Calendar,
   Receipt, Users, TriangleAlert, Wallet, FileMinus, Landmark, Download,
@@ -39,8 +38,10 @@ import SearchablePicker from '../../components/ui/SearchablePicker';
 import Tabs from '../../components/ui/Tabs';
 import ExportSheet from '../../components/shared/ExportSheet';
 import type { ExportColumn } from '../../lib/exportEngine';
+import DateRangeField from '../../components/ui/DateRangeField';
+import type { CalendarValue } from '../../components/ui/CalendarPicker';
+import { thisMonth, rangeBounds, rangeLabel } from '../../lib/dateRange';
 
-const PERIODS = ['Today', 'This Week', 'This Month', 'Last Month', 'This Quarter', 'This Year'];
 
 const REPORTS = [
   { id: 'daily_cash', name: 'Daily Cash Report', description: 'Cash payments received', icon: DollarSign, color: '#10b981' },
@@ -57,16 +58,6 @@ const REPORTS = [
   { id: 'bank_recon', name: 'Bank Reconciliation', description: 'No real data on web either, just a placeholder', icon: Landmark, color: '#64748b' },
 ];
 
-function periodStartDate(period: string): string | null {
-  const now = new Date();
-  if (period === 'Today') { const d = new Date(now); d.setHours(0, 0, 0, 0); return d.toISOString(); }
-  if (period === 'This Week') { const d = new Date(now); d.setDate(now.getDate() - now.getDay()); d.setHours(0, 0, 0, 0); return d.toISOString(); }
-  if (period === 'This Month') return new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-  if (period === 'Last Month') return new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
-  if (period === 'This Quarter') return new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1).toISOString();
-  if (period === 'This Year') return new Date(now.getFullYear(), 0, 1).toISOString();
-  return null;
-}
 
 function fmtDate(d: Date): string {
   return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
@@ -83,11 +74,9 @@ function endOfDay(d: Date): Date {
 export default function FinReportsScreen() {
   const t = useTheme();
   const { profile } = useAuthStore();
-  const [period, setPeriod] = useState('This Month');
-  const [rangeMode, setRangeMode] = useState<'preset' | 'custom'>('preset');
-  const [customFrom, setCustomFrom] = useState<Date>(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
-  const [customTo, setCustomTo] = useState<Date>(() => new Date());
-  const [pickerFor, setPickerFor] = useState<'from' | 'to' | null>(null);
+  // One calendar range instead of named periods (Part C). Starts on this
+  // month so far, the old default.
+  const [range, setRange] = useState<CalendarValue>(() => thisMonth());
   const [running, setRunning] = useState<string | null>(null);
   const [resultReport, setResultReport] = useState<string | null>(null);
 
@@ -99,13 +88,11 @@ export default function FinReportsScreen() {
   // because they all implicitly meant "since X, until now." A real
   // range needs both ends.
   const activeDateFilter = useCallback((): { gte: string | null; lte: string | null } => {
-    if (rangeMode === 'custom') {
-      return { gte: customFrom.toISOString(), lte: endOfDay(customTo).toISOString() };
-    }
-    return { gte: periodStartDate(period), lte: null };
-  }, [rangeMode, customFrom, customTo, period]);
+    const { from, to } = rangeBounds(range);
+    return { gte: from ? from.toISOString() : null, lte: to ? to.toISOString() : null };
+  }, [range]);
 
-  const periodLabel = rangeMode === 'custom' ? `${fmtDate(customFrom)} – ${fmtDate(customTo)}` : period;
+  const periodLabel = rangeLabel(range, 'All dates');
   const [resultRows, setResultRows] = useState<any[]>([]);
   const [resultColumns, setResultColumns] = useState<DataColumn<any>[]>([]);
   const [exportColumns, setExportColumns] = useState<ExportColumn[]>([]);
@@ -356,63 +343,9 @@ export default function FinReportsScreen() {
   return (
     <Screen>
       <View style={{ gap: t.spacing.xl }}>
-        <View style={{ gap: t.spacing.sm }}>
-          <Tabs
-            variant="segmented"
-            value={rangeMode}
-            onChange={(v) => setRangeMode(v as 'preset' | 'custom')}
-            options={[{ value: 'preset', label: 'Quick Period' }, { value: 'custom', label: 'Custom Range' }]}
-          />
-          {rangeMode === 'preset' ? (
-            <SearchablePicker label="Period" value={period} onChange={setPeriod} options={PERIODS.map((p) => ({ value: p, label: p }))} />
-          ) : (
-            <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
-              <Pressable
-                onPress={() => setPickerFor('from')}
-                style={{ flex: 1, padding: t.spacing.md, borderRadius: t.radius.md, borderWidth: 1, borderColor: t.colors.border, backgroundColor: t.colors.bgInput, flexDirection: 'row', alignItems: 'center', gap: t.spacing.xs }}
-              >
-                <Calendar size={14} color={t.colors.textMuted} />
-                <View>
-                  <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta10.size, color: t.colors.textMuted }}>From</Text>
-                  <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>{fmtDate(customFrom)}</Text>
-                </View>
-              </Pressable>
-              <Pressable
-                onPress={() => setPickerFor('to')}
-                style={{ flex: 1, padding: t.spacing.md, borderRadius: t.radius.md, borderWidth: 1, borderColor: t.colors.border, backgroundColor: t.colors.bgInput, flexDirection: 'row', alignItems: 'center', gap: t.spacing.xs }}
-              >
-                <Calendar size={14} color={t.colors.textMuted} />
-                <View>
-                  <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta10.size, color: t.colors.textMuted }}>To</Text>
-                  <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>{fmtDate(customTo)}</Text>
-                </View>
-              </Pressable>
-            </View>
-          )}
-          {pickerFor && (
-            <View>
-              <DateTimePicker
-                value={pickerFor === 'from' ? customFrom : customTo}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'inline' : 'default'}
-                maximumDate={new Date()}
-                onChange={(event, selected) => {
-                  // Android's picker is a one-shot native dialog — it fires
-                  // 'set'/'dismissed' once, so close it here regardless of
-                  // outcome. iOS's inline calendar stays open and fires on
-                  // every date tap, so a separate "Done" button below
-                  // closes it instead.
-                  if (Platform.OS === 'android') setPickerFor(null);
-                  if (event.type === 'dismissed' || !selected) return;
-                  if (pickerFor === 'from') setCustomFrom(selected);
-                  else setCustomTo(selected);
-                }}
-              />
-              {Platform.OS === 'ios' && (
-                <Button label="Done" size="sm" variant="ghost" onPress={() => setPickerFor(null)} />
-              )}
-            </View>
-          )}
+        <View style={{ gap: t.spacing.xs }}>
+          <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta11.size, color: t.colors.textMuted }}>Reports cover</Text>
+          <DateRangeField value={range} onChange={setRange} title="Report dates" />
         </View>
 
         <View style={{ gap: t.spacing.md }}>

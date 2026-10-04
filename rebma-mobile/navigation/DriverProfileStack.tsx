@@ -19,6 +19,10 @@ import ProfileScreen from '../screens/ProfileScreen';
 import DesignSystemScreen from '../screens/DesignSystemScreen';
 import FeedbackScreen from '../screens/FeedbackScreen';
 import PayslipsScreen from '../screens/PayslipsScreen';
+import NotesScreen from '../screens/NotesScreen';
+import TasksScreen from '../screens/TasksScreen';
+import EmailsScreen from '../screens/EmailsScreen';
+import HelpDeskScreen from '../screens/HelpDeskScreen';
 import SubScreenHeader from '../components/chrome/SubScreenHeader';
 
 const Stack = createNativeStackNavigator();
@@ -33,6 +37,10 @@ export default function DriverProfileStack() {
             onOpenSettings={() => Alert.alert('Settings', 'Account settings for drivers are not built yet.')}
             onOpenFeedback={() => navigation.navigate('Feedback')}
             onOpenPayslips={() => navigation.navigate('Payslips')}
+            onOpenNotes={() => navigation.navigate('Notes')}
+            onOpenTasks={() => navigation.navigate('Tasks')}
+            onOpenEmails={() => navigation.navigate('Emails')}
+            onOpenHelp={() => navigation.navigate('HelpDesk')}
           />
         )}
       </Stack.Screen>
@@ -51,6 +59,10 @@ export default function DriverProfileStack() {
         component={PayslipsScreen}
         options={{ headerShown: true, headerTitle: 'My Payslips', header: (props) => <SubScreenHeader {...props} /> }}
       />
+      <Stack.Screen name="Notes" component={NotesScreen} options={{ headerShown: true, headerTitle: 'My Notes', header: (props) => <SubScreenHeader {...props} /> }} />
+      <Stack.Screen name="Tasks" component={TasksScreen} options={{ headerShown: true, headerTitle: 'Tasks', header: (props) => <SubScreenHeader {...props} /> }} />
+      <Stack.Screen name="Emails" component={EmailsScreen} options={{ headerShown: true, headerTitle: 'Emails', header: (props) => <SubScreenHeader {...props} /> }} />
+      <Stack.Screen name="HelpDesk" component={HelpDeskScreen} options={{ headerShown: true, headerTitle: 'Help & News', header: (props) => <SubScreenHeader {...props} /> }} />
     </Stack.Navigator>
   );
 }

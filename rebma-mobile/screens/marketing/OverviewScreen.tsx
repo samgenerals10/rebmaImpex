@@ -16,6 +16,7 @@ import { getDepartmentEntry } from '../../navigation/departmentRegistry';
 import Screen from '../../components/ui/Screen';
 import MetricCard from '../../components/ui/MetricCard';
 import ModuleLauncher from '../../components/chrome/ModuleLauncher';
+import PendingApprovalsAlertCard from '../../components/shared/PendingApprovalsAlertCard';
 import SectionHeader from '../../components/ui/SectionHeader';
 import Tabs from '../../components/ui/Tabs';
 import Badge, { statusTone } from '../../components/ui/Badge';
@@ -123,6 +124,7 @@ export default function OverviewScreen() {
       </View>
 
       <View style={{ gap: t.spacing.xl, padding: t.spacing.lg }}>
+        <PendingApprovalsAlertCard department="MARKETING" onNavigate={(tab) => navigation.navigate(tab)} />
         {activeTab === 'overview' && (
           <>
             {/* Marketing & Sales snapshot — two clickable tiles, not one

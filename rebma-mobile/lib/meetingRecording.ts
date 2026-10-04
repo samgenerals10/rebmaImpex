@@ -11,7 +11,7 @@
 // the host's phone with no record it ever happened.
 import RecordScreen, { RecordingResult } from 'react-native-record-screen';
 import { supabase } from './supabaseClient';
-import { uploadToBucket } from './storage';
+import { uploadToPrivateBucket } from './storage';
 
 export async function startLocalRecording(): Promise<{ ok: boolean; reason?: string }> {
   try {
@@ -59,15 +59,18 @@ export async function uploadRecording(params: {
   endedAt: string;
 }): Promise<{ ok: boolean; error?: string }> {
   try {
-    const publicUrl = await uploadToBucket(params.localUri, 'meeting-recordings', params.meetingId || params.room, 'video/mp4');
-    if (!publicUrl) throw new Error('Upload failed.');
+    // The folder is private (supabase_private_data_security.sql): only the
+    // CEO, the host and the meeting's own people can open a recording, so
+    // this stores the file's place in the folder, not a public link.
+    const filePath = await uploadToPrivateBucket(params.localUri, 'meeting-recordings', params.meetingId || params.room, 'video/mp4');
+    if (!filePath) throw new Error('Upload failed.');
 
     const { error } = await supabase.from('meeting_recordings').insert({
       meeting_id: params.meetingId || null,
       room: params.room,
       host_id: params.hostId,
       host_name: params.hostName,
-      file_url: publicUrl,
+      file_url: filePath,
       consented_user_ids: params.consentedUserIds,
       declined_user_ids: params.declinedUserIds,
       started_at: params.startedAt,

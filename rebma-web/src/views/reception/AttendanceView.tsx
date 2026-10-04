@@ -10,6 +10,7 @@ import type { Attendance } from '../../types/erp';
 import SidePanel from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
 import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
+import DateRangeField from '../../components/ui/DateRangeField';
 
 const DEPTS = ['CEO','MANAGEMENT','HR','MARKETING','OPERATIONS','FINANCE','PRODUCTION','RECEPTION','DISPATCH','LOGISTICS'];
 
@@ -136,8 +137,9 @@ export default function AttendanceView({ addNotification }: Props) {
       setGpsStatus('idle');
       setGpsDistance(null);
       setModal(false);
-    } catch {
-      addNotification('Failed to record check-in. Please try again.');
+    } catch (e: any) {
+      // Shows the real reason, for example "Already checked in today".
+      addNotification(`Check-in not recorded: ${e?.message || 'please try again.'}`);
     } finally {
       setSubmitting(false);
     }
@@ -213,8 +215,10 @@ export default function AttendanceView({ addNotification }: Props) {
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
-        <input type="date" value={filterDate} onChange={e => setFilterDate(e.target.value)}
-          className="px-3 py-1.5 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] outline-none" />
+        {/* Calendar instead of a typed date (Part C). */}
+        <DateRangeField mode="single"
+          value={{ start: filterDate, end: filterDate }}
+          onChange={v => { if (v.start) setFilterDate(v.start); }} />
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name…"
           className="px-3 py-1.5 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] outline-none w-44 focus:ring-1 focus:ring-[var(--accent)]" />
         <SearchableDropdown

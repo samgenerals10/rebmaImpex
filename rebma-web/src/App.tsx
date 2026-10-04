@@ -15,7 +15,6 @@ import Messenger from './components/collaborative/Messenger';
 
 import CeoDashboard from './views/CeoDashboard';
 import ManagementDashboard from './views/ManagementDashboard';
-import HrDashboard from './views/HrDashboard';
 import MarketingDashboard from './views/MarketingDashboard';
 import OperationsDashboard from './views/OperationsDashboard';
 import FinanceDashboard from './views/FinanceDashboard';
@@ -61,6 +60,7 @@ import { CeoSettingsProvider, useCeoSettings } from './contexts/CeoSettingsConte
 import { useIdleTimeout } from './hooks/useIdleTimeout';
 import TwoFactorSetup from './components/TwoFactorSetup';
 import { playNotificationSound, getSavedSound, getSavedVolume, stopAlertSound, setAlertNotifId } from './utils/notificationSound';
+import { showDeviceAlert } from './utils/deviceAlerts';
 import { uploadFile } from './utils/uploadFile';
 import { usePendingBadges } from './hooks/usePendingBadges';
 
@@ -113,9 +113,12 @@ import HrStaffView from './views/hr/StaffView';
 import HrLeaveManagementView from './views/hr/LeaveManagementView';
 import HrRegistrationsView from './views/hr/RegistrationsView';
 import HrAttendanceView from './views/hr/AttendanceView';
+import HrBirthdaysView from './views/hr/BirthdaysView';
+import HrBirthdayTemplatesView from './views/hr/BirthdayTemplatesView';
 import HrPayrollView from './views/hr/PayrollView';
 import HrDeptManagerView from './views/hr/DeptManagerView';
 import HrPerformanceAlertsView from './views/hr/PerformanceAlertsView';
+import { getRegistrationDevice, getRegistrationLocation, isRegistrationExpired } from './utils/registration';
 
 // Reception dedicated pages
 import ReceptionOverviewView from './views/reception/OverviewView';
@@ -153,12 +156,14 @@ import LogisticsMaintenanceView from './views/logistics/MaintenanceView';
 import LogisticsFleetAnalyticsView from './views/logistics/FleetAnalyticsView';
 import DriverTrackingView from './views/dispatch/DriverTrackingView';
 import TripView from './views/dispatch/TripView';
+import ConfirmEmailChangeView from './views/ConfirmEmailChangeView';
 import NotFoundView from './views/NotFoundView';
 
 const currentPath = window.location.pathname;
 const tripToken = currentPath.startsWith('/trip/') ? currentPath.split('/')[2] : null;
 const inviteToken = currentPath === '/register' ? new URLSearchParams(window.location.search).get('token') : null;
-const isUnknownRoute = currentPath !== '/' && !tripToken && currentPath !== '/register';
+const isConfirmEmailChange = currentPath === '/confirm-email-change';
+const isUnknownRoute = currentPath !== '/' && !tripToken && currentPath !== '/register' && !isConfirmEmailChange;
 
 const DEPT_CODE_TO_LABEL: Record<string, string> = {
   CEO: 'CEO Office (OTP verification)', HR: 'Human Resources', MANAGEMENT: 'Management Office',
@@ -170,6 +175,9 @@ const DEPT_CODE_TO_LABEL: Record<string, string> = {
 export default function App() {
   if (tripToken) {
     return <TripView token={tripToken} />;
+  }
+  if (isConfirmEmailChange) {
+    return <ConfirmEmailChangeView token={new URLSearchParams(window.location.search).get('token')} />;
   }
   if (isUnknownRoute) {
     return <NotFoundView />;
@@ -484,6 +492,13 @@ export default function App() {
   const [registerName, setRegisterName] = useState<string>('');
   const [registerCard, setRegisterCard] = useState<string>('');
   const [registrationMessage, setRegistrationMessage] = useState<string>('');
+  // The person chooses their own password when registering (no temporary
+  // password is created or sent any more).
+  const [regPassword, setRegPassword] = useState<string>('');
+  const [regPasswordConfirm, setRegPasswordConfirm] = useState<string>('');
+  const [showRegPassword, setShowRegPassword] = useState<boolean>(false);
+  const [regError, setRegError] = useState<string>('');
+  const [regStep, setRegStep] = useState<string>('');
   // Registration is invite-only now (Phase 8) — this tracks whether the
   // token in the URL actually resolved, so renderRegisterForm can show the
   // locked confirmation screen, the "no invite" message, or an error,
@@ -1028,8 +1043,10 @@ export default function App() {
         email: p.email,
         department: p.department,
         ghanaCard: p.ghanaCardId || 'N/A',
-        submittedAt: new Date(p.createdAt).toLocaleString(),
-        status: 'PENDING'
+        submittedAt: new Date(p.registeredAt || p.createdAt).toLocaleString(),
+        status: 'PENDING',
+        registeredAt: p.registeredAt || null,
+        expired: isRegistrationExpired(p.rawStatus, p.registeredAt),
       })));
     } catch (e) {
       console.log('Skipping pending users fetch (unauthorized/error)');
@@ -1038,7 +1055,8 @@ export default function App() {
     // Fetch active users (staff list in HR)
     try {
       const activeUsers = await hr.getAllUsers();
-      setStaffList(activeUsers.map((u: any) => ({
+      // Terminated people disappear from staff lists (their work stays).
+      setStaffList(activeUsers.filter((u: any) => String(u.status || '').toUpperCase() !== 'TERMINATED').map((u: any) => ({
         id: u.id,
         fullName: u.fullName,
         email: u.email,
@@ -1160,16 +1178,19 @@ export default function App() {
             const rawRole = user.user_metadata?.role || user.user_metadata?.department || 'Staff';
             const userRole = getNormalizedRole(rawRole);
             const fullName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Employee';
-            const isAdmin = user.user_metadata?.is_admin || userRole === 'CEO';
 
-            // Insert new profile row
+            // A missing profile is recreated as waiting for approval, never
+            // as an active account and never with CEO powers. The sign-up
+            // details are typed by the person themselves, so they can't be
+            // trusted to grant access. The database enforces the same rule
+            // (supabase_ceo_controls.sql's guard_profiles).
             const { error: insertError } = await supabase.from('profiles').insert({
               id: user.id,
               email: user.email,
               full_name: fullName,
-              role: userRole,
-              status: 'ACTIVE',
-              is_admin: isAdmin,
+              role: userRole === 'CEO' ? 'Staff' : userRole,
+              status: 'PENDING_APPROVAL',
+              is_admin: false,
               requires_password_reset: true,
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
@@ -1655,6 +1676,48 @@ export default function App() {
     }, 5000);
   };
 
+  // Live alerts addressed to this person (department alerts arrive as
+  // personal copies, see supabase_notification_delivery.sql). Each one
+  // goes into the bell, and pops up on the laptop when the app isn't the
+  // tab in front. One subscription for the whole app session.
+  const activeSubTabRef = useRef(activeSubTab);
+  activeSubTabRef.current = activeSubTab;
+  const addNotificationRef = useRef(addNotification);
+  addNotificationRef.current = addNotification;
+  const currentUserId = currentUser?.id ?? null;
+  useEffect(() => {
+    if (!currentUserId) return;
+    const channel = supabase
+      .channel(`device-alerts-${currentUserId}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'notifications',
+        filter: `recipient_id=eq.${currentUserId}`,
+      }, (payload) => {
+        const n = payload.new as { title?: string; message?: string; type?: string; action_url?: string | null };
+        const title = n.title || 'New alert';
+        const body = n.message || '';
+        const isChat = n.type === 'chat_message' || n.type === 'chat_mention' || n.type === 'missed_call';
+        // Chat has its own unread badges, and the Notifications page plays
+        // its own sound, so neither needs a second in-app toast.
+        if (!isChat && activeSubTabRef.current !== 'Notifications') {
+          addNotificationRef.current(body ? `${title}: ${body}` : title, { tab: 'Notifications' });
+        }
+        showDeviceAlert(title, body, () => {
+          if (isChat && n.action_url) {
+            setMessengerTargetChannelId(n.action_url);
+            setIsChatOpen(true);
+          } else {
+            setActiveSubTab('Notifications');
+          }
+        });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUserId]);
+
   const goToNotificationLink = (linkDept?: string, linkTab?: string) => {
     if (!linkTab) return;
     if (linkDept && linkDept !== activeDepartment) setActiveDepartment(linkDept);
@@ -1719,18 +1782,33 @@ export default function App() {
       alert('A valid invite link is required to register.');
       return;
     }
+    if (regPassword.length < 8) { setRegError('Choose a password of at least 8 characters.'); return; }
+    if (!/[A-Za-z]/.test(regPassword) || !/\d/.test(regPassword)) { setRegError('Your password needs at least one letter and one number.'); return; }
+    if (regPassword !== regPasswordConfirm) { setRegError("The two passwords don't match."); return; }
+    setRegError('');
     const emailLower = registerEmail.trim().toLowerCase();
     try {
+      // Recorded for the approver's review: the browser used and, if
+      // they allow it, a GPS location. The server adds the network side.
+      setRegStep('Checking your location…');
+      const location = await getRegistrationLocation();
+      setRegStep('Registering…');
       const res = await auth.register({
         email: emailLower,
         fullName: registerName,
         inviteToken,
+        password: regPassword,
+        device: getRegistrationDevice(),
+        location,
       });
       setRegistrationMessage(res.message);
+      setRegPassword('');
+      setRegPasswordConfirm('');
       setAuthScreen('login');
-      addNotification(`New registration request from ${registerName} submitted.`);
     } catch (err: any) {
-      alert(err.message || 'Registration failed.');
+      setRegError(err.message || 'Registration failed.');
+    } finally {
+      setRegStep('');
     }
   };
 
@@ -2047,13 +2125,18 @@ export default function App() {
   };
 
   // HR approvals
+  // Returns the server's response, or null when it failed (already
+  // alerted), so callers only show a temporary password that was actually
+  // set. People who chose their own password get none at all.
   const handleApproveUser = async (reg: PendingRegistration, pw: string) => {
     try {
-      await hr.approveUser(reg.id, true, pw);
-      addNotification(`User ${reg.fullName} approved successfully.`);
+      const res = await hr.approveUser(reg.id, true, reg.registeredAt ? undefined : pw);
+      addNotification(res?.message || `User ${reg.fullName} approved successfully.`);
       refreshAllData();
+      return res;
     } catch (err: any) {
       alert(err.message || 'Failed to approve user.');
+      return null;
     }
   };
 
@@ -2208,8 +2291,8 @@ export default function App() {
                 onChange={(e) => setPrivRole(e.target.value)}
                 className="w-full bg-transparent border-b border-[var(--border)] pb-1.5 text-sm text-text-primary focus:outline-none focus:border-emerald-600 cursor-pointer"
               >
+                {/* HR is no longer set up here: the CEO brings HR in by invite. */}
                 <option value="CEO">CEO</option>
-                <option value="Human Resources">Human Resources</option>
               </select>
             </div>
 
@@ -2474,7 +2557,7 @@ export default function App() {
           <div className="text-center pb-0.5">
             <h3 className="text-2xl font-black text-slate-900 tracking-tight">Confirm Your Details</h3>
             <div className="w-8 h-1 bg-emerald-500 mx-auto rounded-full mt-1.5" />
-            <p className="text-xs text-slate-500 mt-2">HR already entered your record. Confirm it's you to complete registration.</p>
+            <p className="text-xs text-slate-500 mt-2">HR already entered your record. Confirm it's you and choose a password.</p>
           </div>
 
           {[
@@ -2493,11 +2576,44 @@ export default function App() {
             </div>
           ))}
 
+          {[
+            { label: 'Choose a Password', value: regPassword, set: setRegPassword, placeholder: 'At least 8 characters, with a letter and a number' },
+            { label: 'Confirm Password', value: regPasswordConfirm, set: setRegPasswordConfirm, placeholder: 'Type the same password again' },
+          ].map((f, i) => (
+            <div key={f.label} className="space-y-1">
+              <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider ml-1">{f.label}</label>
+              <div className="flex items-center gap-3 px-3.5 py-2.5 bg-white border border-slate-200 rounded-2xl focus-within:border-emerald-500">
+                <Lock className="w-4 h-4 text-slate-400 shrink-0" />
+                <input
+                  type={showRegPassword ? 'text' : 'password'}
+                  value={f.value}
+                  onChange={(e) => { f.set(e.target.value); setRegError(''); }}
+                  placeholder={f.placeholder}
+                  autoComplete="new-password"
+                  className="flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400"
+                />
+                {i === 0 && (
+                  <button type="button" onClick={() => setShowRegPassword(v => !v)} aria-label={showRegPassword ? 'Hide password' : 'Show password'} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+                    {showRegPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+
+          <p className="flex items-start gap-1.5 text-[11px] text-slate-500">
+            <MapPin className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+            When you register, we record the browser you're using and ask for your location. You can say no to the location request.
+          </p>
+
+          {regError && <p className="text-xs text-rose-600 text-center">{regError}</p>}
+
           <button
             type="submit"
-            className="w-full py-3 bg-gradient-to-r from-amber-500 via-rose-500 to-amber-600 hover:from-amber-600 hover:to-rose-600 rounded-full text-xs font-bold text-white shadow-lg shadow-rose-500/20 hover:shadow-xl transition-all cursor-pointer text-center"
+            disabled={!!regStep}
+            className="w-full py-3 bg-gradient-to-r from-amber-500 via-rose-500 to-amber-600 hover:from-amber-600 hover:to-rose-600 rounded-full text-xs font-bold text-white shadow-lg shadow-rose-500/20 hover:shadow-xl transition-all cursor-pointer text-center disabled:opacity-60"
           >
-            Confirm & Register
+            {regStep || 'Confirm & Register'}
           </button>
         </motion.form>
       );
@@ -3131,6 +3247,7 @@ export default function App() {
       if (activeSubTab === 'Receipts')        return <FinanceReceiptsView addNotification={addNotification} />;
       if (activeSubTab === 'Wallets')         return <CeoWalletsView setActiveSubTab={setActiveSubTab} />;
       if (activeSubTab === 'Accounts')        return <CeoAccountsView setActiveSubTab={setActiveSubTab} />;
+      if (activeSubTab === 'Staff')           return <HrStaffView staffList={staffList} addNotification={addNotification} currentUser={currentUser} />;
       if (activeSubTab === 'Approvals')       return <CeoApprovalsView currentUser={currentUser} addNotification={addNotification} />;
       if (activeSubTab === 'PriceApprovals')  return <CeoPriceApprovalsView currentUser={currentUser} addNotification={addNotification} />;
       if (activeSubTab === 'PriceCatalog')    return <GoodsPriceCatalogView addNotification={addNotification} currentUser={currentUser} department={activeDepartment} />;
@@ -3230,12 +3347,14 @@ export default function App() {
     if (activeDepartment === 'HR') {
       if (activeSubTab === 'Employees')         return <HrOverviewView currentUser={currentUser} addNotification={addNotification} setActiveSubTab={setActiveSubTab} staffList={staffList} pendingRegistrations={pendingRegistrations} attendanceList={attendanceList} onApprove={handleApproveUser} onDeny={handleDenyUser} />;
       if (activeSubTab === 'Staff')             return <HrStaffView staffList={staffList} addNotification={addNotification} currentUser={currentUser} />;
-      if (activeSubTab === 'Registrations')     return <HrRegistrationsView pendingRegistrations={pendingRegistrations} addNotification={addNotification} onApprove={handleApproveUser} onDeny={handleDenyUser} />;
-      if (activeSubTab === 'Attendance')        return <HrAttendanceView attendanceList={attendanceList} addNotification={addNotification} />;
+      if (activeSubTab === 'Registrations')     return <HrRegistrationsView pendingRegistrations={pendingRegistrations} addNotification={addNotification} onApprove={handleApproveUser} onDeny={handleDenyUser} isAdmin={!!currentUser?.isAdmin} />;
+      if (activeSubTab === 'Attendance')        return <HrAttendanceView attendanceList={attendanceList} addNotification={addNotification} currentUser={currentUser} />;
       if (activeSubTab === 'LeaveManagement')   return <HrLeaveManagementView currentUser={currentUser} addNotification={addNotification} />;
       if (activeSubTab === 'Payroll')           return <HrPayrollView currentUser={currentUser} staffList={staffList} addNotification={addNotification} />;
       if (activeSubTab === 'DepartmentManager') return <HrDeptManagerView staffList={staffList} addNotification={addNotification} />;
       if (activeSubTab === 'PerformanceAlerts') return <HrPerformanceAlertsView currentUser={currentUser} addNotification={addNotification} />;
+      if (activeSubTab === 'Birthdays')         return <HrBirthdaysView currentUser={currentUser} addNotification={addNotification} />;
+      if (activeSubTab === 'BirthdayTemplates') return <HrBirthdayTemplatesView currentUser={currentUser} addNotification={addNotification} />;
       if (activeSubTab === 'FleetOverview')     return <LogisticsFleetOverviewView addNotification={addNotification} />;
       if (activeSubTab === 'FuelManagement')    return <LogisticsFuelManagementView addNotification={addNotification} />;
       if (activeSubTab === 'Maintenance')       return <LogisticsMaintenanceView addNotification={addNotification} />;
@@ -3296,18 +3415,11 @@ export default function App() {
           />
         );
       case 'HR':
-        return (
-          <HrDashboard
-            attendanceList={attendanceList}
-            barChartData={barChartData}
-            activeSubTab={activeSubTab}
-            addNotification={addNotification}
-            pendingRegistrations={pendingRegistrations}
-            staffList={staffList}
-            onApprove={handleApproveUser}
-            onDeny={handleDenyUser}
-          />
-        );
+        // Any HR page not handled above (e.g. a page saved from an older
+        // version) shows the real HR dashboard. The old HrDashboard view
+        // is no longer used: its "approve" showed a made-up password and a
+        // fake sign-in link that never matched the real account.
+        return <HrOverviewView currentUser={currentUser} addNotification={addNotification} setActiveSubTab={setActiveSubTab} staffList={staffList} pendingRegistrations={pendingRegistrations} attendanceList={attendanceList} onApprove={handleApproveUser} onDeny={handleDenyUser} />;
       case 'MARKETING':
         return (
           <MarketingDashboard

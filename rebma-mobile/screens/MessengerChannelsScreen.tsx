@@ -285,6 +285,20 @@ export default function MessengerChannelsScreen({ navigation, onOpenBoardroom }:
 
   const createGroup = async () => {
     if (!newGroupName.trim() || newGroupMembers.length === 0 || creatingGroup) return;
+    // A group with just one other person counts as a direct chat for
+    // invites and blocks (the database enforces it), so say so up front.
+    const others = newGroupMembers.filter((id) => id !== myId);
+    if (others.length === 1 && me) {
+      const gate = await checkChatGate(myId, me.department, others[0]);
+      if (!gate.allowed) {
+        if (gate.reason === 'blocked_by_them' || gate.reason === 'blocked_by_me') {
+          Alert.alert("Can't start this chat", "You can't start a chat with this person while one of you has blocked the other.");
+        } else {
+          Alert.alert('Invite needed', 'A group with just one other person works like a direct chat. This person is in another department, so send them a chat invite first, or add more people to the group.');
+        }
+        return;
+      }
+    }
     setCreatingGroup(true);
     try {
       const ch = await messenger.createGroupChannel(newGroupName.trim(), newGroupMembers, myId);

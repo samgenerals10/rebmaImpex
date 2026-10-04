@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { LogOut, MapPin, Navigation, Package, Wifi, WifiOff, RefreshCw, ExternalLink, Phone, CreditCard, Camera } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { uploadFile } from '../../utils/uploadFile';
+import { getFleetSpeedLimitKmh, speedKmh, DEFAULT_FLEET_SPEED_LIMIT_KMH } from '../../utils/fleetSpeedLimit';
 
 interface DriverTrackingViewProps {
   driver: { id: string; driverId: string; fullName: string; vehicleId: string | null };
@@ -38,6 +39,11 @@ export default function DriverTrackingView({ driver, onLogout }: DriverTrackingV
   const [lastLng, setLastLng] = useState<number | null>(null);
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
+  // Risk's company speed limit and this driver's live speed, same as the
+  // phone app's driver screen. Checked every 15 seconds so a change Risk
+  // makes shows up while driving.
+  const [fleetSpeedLimit, setFleetSpeedLimit] = useState(DEFAULT_FLEET_SPEED_LIMIT_KMH);
+  const [currentSpeedKmh, setCurrentSpeedKmh] = useState<number | null>(null);
   const [markingId, setMarkingId] = useState<string | null>(null);
   const [markingStage, setMarkingStage] = useState<'photo' | 'confirming' | null>(null);
   const [proofError, setProofError] = useState<string | null>(null);
@@ -45,6 +51,14 @@ export default function DriverTrackingView({ driver, onLogout }: DriverTrackingV
   const photoInputRef = useRef<HTMLInputElement>(null);
   const captureStopRef = useRef<Stop | null>(null);
   const activeDeliveryId = stops[0]?.id || null;
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadLimit = () => getFleetSpeedLimitKmh().then(v => { if (!cancelled) setFleetSpeedLimit(v); });
+    loadLimit();
+    const iv = setInterval(loadLimit, 15000);
+    return () => { cancelled = true; clearInterval(iv); };
+  }, []);
 
   const loadStops = async () => {
     setLoading(true);
@@ -144,7 +158,8 @@ export default function DriverTrackingView({ driver, onLogout }: DriverTrackingV
 
       const id = navigator.geolocation.watchPosition(
         async (pos) => {
-          const { latitude, longitude, accuracy } = pos.coords;
+          const { latitude, longitude, accuracy, speed, heading } = pos.coords;
+          setCurrentSpeedKmh(speedKmh(speed));
           setLastLat(latitude);
           setLastLng(longitude);
           setLocationError(null);
@@ -156,6 +171,10 @@ export default function DriverTrackingView({ driver, onLogout }: DriverTrackingV
             latitude,
             longitude,
             accuracy: accuracy ?? null,
+            // Speed (meters per second) and direction, straight from the
+            // device, so the fleet map can show speed against the limit.
+            speed: speed != null && !Number.isNaN(speed) ? speed : null,
+            heading: heading != null && !Number.isNaN(heading) ? heading : null,
           });
           if (!error) setLastSyncedAt(new Date());
         },
@@ -269,6 +288,19 @@ export default function DriverTrackingView({ driver, onLogout }: DriverTrackingV
             {gpsActive ? 'Sharing live location' : 'Location sharing off'}
           </span>
           {lastSyncedAt && <span className="font-mono text-[10px] opacity-70">synced {lastSyncedAt.toLocaleTimeString()}</span>}
+        </div>
+
+        {/* Live speed against the company limit */}
+        <div className={`flex items-center justify-between px-5 py-3 border-b border-border ${currentSpeedKmh != null && currentSpeedKmh > fleetSpeedLimit ? 'bg-rose-50 dark:bg-rose-950/20' : ''}`}>
+          <div>
+            <p className={`text-2xl font-black font-mono ${currentSpeedKmh != null && currentSpeedKmh > fleetSpeedLimit ? 'text-rose-600' : 'text-text-primary'}`}>
+              {currentSpeedKmh != null ? currentSpeedKmh : '--'} <span className="text-xs font-bold text-text-muted">km/h</span>
+            </p>
+            <p className={`text-[11px] font-bold ${currentSpeedKmh != null && currentSpeedKmh > fleetSpeedLimit ? 'text-rose-600' : 'text-text-muted'}`}>
+              {currentSpeedKmh != null && currentSpeedKmh > fleetSpeedLimit ? 'SLOW DOWN · Over the fleet limit' : `Fleet limit ${fleetSpeedLimit} km/h`}
+            </p>
+          </div>
+          {!gpsActive && <p className="text-[10px] text-text-muted text-right max-w-[140px]">Turn on location sharing to see your speed.</p>}
         </div>
 
         <div className="flex-1 p-5 space-y-4 overflow-y-auto bg-[var(--bg-page)]">

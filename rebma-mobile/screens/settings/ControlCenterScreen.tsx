@@ -40,11 +40,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { View, Text, ScrollView } from 'react-native';
 import { Alert } from '../../lib/appAlert';
-import { ShieldAlert, Copy, Check, X, Key, Plus, Pause, Play, KeyRound, UserX } from 'lucide-react-native';
+import { ShieldAlert, Copy, Check, X, Key, Plus, Pause, Play, KeyRound, UserX, Eye, EyeOff, Crown, Mail, Ban, ShieldCheck, LogOut } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
 import { supabase } from '../../lib/supabaseClient';
+import { newSecureToken } from '../../lib/secureToken';
 import { getCeoSetting, setCeoSetting } from '../../lib/ceoSetting';
 import { callPrivilegedApi, ApiNotConfiguredError, isPrivilegedApiConfigured } from '../../lib/apiBase';
+import { kickUserOffline } from '../../lib/presence';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '../../theme/ThemeProvider';
 import Screen from '../../components/ui/Screen';
@@ -59,9 +61,11 @@ import Toggle from '../../components/ui/Toggle';
 import IconActionButton from '../../components/ui/IconActionButton';
 import DocumentTemplatesEditor from '../../components/shared/DocumentTemplatesEditor';
 import ExportSheet from '../../components/shared/ExportSheet';
+import PasswordConfirmSheet from '../../components/shared/PasswordConfirmSheet';
 
 export type SettingField =
-  | { key: string; label: string; description?: string; kind: 'bool' }
+  | { key: string; label: string; description?: string; kind: 'bool'; defaultOn?: boolean }
+  | { key: string; label: string; description?: string; kind: 'text'; placeholder?: string }
   | { key: string; label: string; description?: string; kind: 'number' }
   | { key: string; label: string; description?: string; kind: 'select'; options: { value: string; label: string }[] };
 
@@ -169,6 +173,11 @@ export const SECTIONS: Section[] = [
   // grep before writing the plan for this fix). Both fields transcribed
   // verbatim from web's own <SettingToggle> descriptions.
   {
+    id: 'birthdays', title: 'Birthday Wishes', fields: [
+      { key: 'birthday_wishes_enabled', label: 'Birthday Wishes Allowed', description: 'Master switch. When off, no birthday wishes go out at all, automatic or by hand. HR writes the messages and runs the sending under HR → Birthdays.', kind: 'bool', defaultOn: true },
+    ],
+  },
+  {
     id: 'risk', title: 'Risk Controls', fields: [
       { key: 'risk_customer_verification_required', label: 'Customer Verification Required', description: 'Customer verification is non-blocking by design, so a pending customer can still be ordered for. This only controls whether Risk treats verification as mandatory, not any order transition.', kind: 'bool' },
       { key: 'risk_credit_hold_notify_marketing', label: 'Notify Marketing on Credit Hold', description: 'When ON, Marketing is notified whenever Risk puts a customer on credit hold.', kind: 'bool' },
@@ -183,7 +192,7 @@ export const SECTIONS: Section[] = [
 
 const ALL_KEYS = Array.from(new Set(SECTIONS.flatMap((s) => s.fields.map((f) => f.key))));
 
-interface StaffRow { id: string; full_name: string; email: string; role: string; status: string }
+interface StaffRow { id: string; full_name: string; email: string; role: string; status: string; is_admin?: boolean }
 interface DeptRow { id: string; name: string; status: string }
 interface InviteRow { id: string; token: string; email: string | null; full_name: string | null; department: string; role: string; auto_approve: boolean; expires_at: string; status: string }
 interface DelegateRow { id: string; delegated_to_email: string; delegated_to_name: string; permissions: string[]; expires_at: string | null; active: boolean }
@@ -259,6 +268,83 @@ const PERMISSION_SECTIONS: { key: string; label: string }[] = [
   { key: 'approval_controls', label: 'Approval Controls' },
 ];
 
+// Every third-party credential the app can use, in one place — the same
+// idea as the "enter your API key" screen in any other software product.
+// Stored in the same ceo_settings key/value table every other CEO
+// setting already lives in (getCeoSetting/setCeoSetting), so nothing new
+// to migrate. Each consumer (FleetMap's basemap, the attendance webhook,
+// etc.) reads its own key directly via getCeoSetting and falls back to
+// its existing free/manual behavior when the key is empty — entering one
+// here takes effect on that consumer's very next read, no separate
+// "wire it up" step.
+// `plain: true` = not a secret (shown unmasked, no reveal toggle).
+const API_KEY_DEFS: { key: string; label: string; description: string; placeholder: string; plain?: boolean }[] = [
+  {
+    key: 'app_web_address',
+    label: 'App Web Address',
+    description: 'The address people open the web app at. Links in invite emails and texts point here.',
+    placeholder: 'https://rebma-impex.vercel.app',
+    plain: true,
+  },
+  {
+    key: 'api_key_resend',
+    label: 'Email (Resend)',
+    description: 'Your Resend API key, from resend.com (free plan: 3,000 emails a month). Sends invites, approval notices and birthday wishes. Resend only delivers to other people once your company domain is verified in your Resend account.',
+    placeholder: 'Paste your Resend API key (starts with re_)',
+  },
+  {
+    key: 'email_from_address',
+    label: 'Email "From" Address',
+    description: 'Who emails come from. Must be on the domain you verified in Resend. Leave empty to use Resend\'s test sender, which only reaches your own address.',
+    placeholder: 'Rebma Impex <hr@yourcompany.com>',
+    plain: true,
+  },
+  {
+    key: 'sms_gateway_username',
+    label: 'SMS Phone: Username',
+    description: 'From the free "SMS Gateway for Android" app (sms-gate.app) on a spare Android phone with a SIM. Open the app, turn on Cloud server, and copy the username shown. Texts use that SIM\'s own SMS bundle. Keep the phone on, charged and connected.',
+    placeholder: 'Username shown in the SMS Gateway app',
+    plain: true,
+  },
+  {
+    key: 'sms_gateway_password',
+    label: 'SMS Phone: Password',
+    description: 'The password shown under Cloud server in the same SMS Gateway app.',
+    placeholder: 'Password shown in the SMS Gateway app',
+  },
+  {
+    key: 'app_download_url',
+    label: 'Mobile App Download Link',
+    description: 'Your private Google Play link for the Rebma app. Every staff invite email and WhatsApp message includes it as step 1, before the registration link. Leave empty and invites only carry the registration link.',
+    placeholder: 'https://play.google.com/store/apps/details?id=...',
+    plain: true,
+  },
+  {
+    key: 'api_key_maptiler',
+    label: 'Map Tiles (MapTiler)',
+    description: 'Gives every live map (Fleet Tracking, driver screens) a modern, styled basemap instead of the plain default OpenStreetMap look. Leave empty and the map keeps working on free OpenStreetMap tiles.',
+    placeholder: 'Paste your MapTiler API key',
+  },
+  {
+    key: 'api_key_connector',
+    label: 'Attendance Connector Key',
+    description: 'A password you make up for the connector program that runs on the office PC next to SDK and pull-mode attendance devices. Put the same value in its config.json as connectorKey. It lets the connector fetch the device list from the app, so devices you add under HR → Attendance are picked up automatically.',
+    placeholder: 'Make up a long random value and paste it here',
+  },
+  {
+    key: 'api_key_attendance_webhook_secret',
+    label: 'Attendance Webhook Secret (fallback)',
+    description: 'Only for a device that was never added under HR → Attendance → Add Device. Every added device gets its own secret there, which always takes priority. Most setups can leave this empty.',
+    placeholder: 'Paste the webhook secret',
+  },
+  {
+    key: 'api_key_scanner_lookup',
+    label: 'Barcode / Product Lookup (optional)',
+    description: 'A Barcode Lookup (barcodelookup.com) API key. When set, scanning a real product barcode that is not a REBMA waybill shows its name, brand, and image. The built-in QR/waybill scanner already works fully without this.',
+    placeholder: 'Paste your Barcode Lookup API key',
+  },
+];
+
 const INVITE_DEPT_OPTIONS = [
   ...['MARKETING', 'HR', 'PRODUCTION', 'RECEPTION', 'MANAGEMENT', 'RISK'].map((d) => ({ value: d, label: d })),
   { value: 'FINANCE', label: 'ACCOUNTS DEPARTMENT' },
@@ -266,6 +352,26 @@ const INVITE_DEPT_OPTIONS = [
 ];
 const INVITE_ROLE_OPTIONS = ['staff', 'supervisor', 'manager'].map((r) => ({ value: r, label: r }));
 const INVITE_EXPIRY_OPTIONS = [{ value: '24h', label: '24 hours' }, { value: '48h', label: '48 hours' }, { value: '7d', label: '7 days' }];
+
+// Saves when the box loses focus rather than on every keystroke.
+function TextSetting({ value, placeholder, onSave }: { value: any; placeholder?: string; onSave: (v: string) => void }) {
+  const t = useTheme();
+  const [draft, setDraft] = useState<string>(value ?? '');
+  useEffect(() => { setDraft(value ?? ''); }, [value]);
+  return (
+    <View style={{ marginTop: t.spacing.sm }}>
+      <Input
+        value={draft}
+        onChangeText={setDraft}
+        onBlur={() => { if (draft !== (value ?? '')) onSave(draft); }}
+        placeholder={placeholder}
+        multiline
+        numberOfLines={3}
+        style={{ minHeight: 72, textAlignVertical: 'top' }}
+      />
+    </View>
+  );
+}
 
 function AdminSetting({ field, value, onChange }: { field: SettingField; value: any; onChange: (v: any) => void }) {
   const t = useTheme();
@@ -277,9 +383,10 @@ function AdminSetting({ field, value, onChange }: { field: SettingField; value: 
           {field.description ? <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted, marginTop: 2 }}>{field.description}</Text> : null}
         </View>
         {field.kind === 'bool' && (
-          <Toggle value={!!value} onChange={onChange} />
+          <Toggle value={!!(value ?? field.defaultOn)} onChange={onChange} />
         )}
       </View>
+      {field.kind === 'text' && <TextSetting value={value} placeholder={field.placeholder} onSave={onChange} />}
       {field.kind === 'number' && (
         <View style={{ marginTop: t.spacing.sm }}>
           <Input value={value != null ? String(value) : ''} onChangeText={(v) => onChange(v === '' ? null : Number(v))} keyboardType="numeric" placeholder="0" />
@@ -302,6 +409,14 @@ export default function ControlCenterScreen() {
   const [activeSection, setActiveSection] = useState('access');
   const [settings, setSettings] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
+  // API Keys — one flat store of key -> saved value, plus a separate
+  // in-progress draft per row (so typing in one field doesn't touch the
+  // saved value until Save is actually pressed) and per-row reveal/save
+  // state, matching a normal "enter your API key" settings page.
+  const [apiKeys, setApiKeys] = useState<Record<string, string>>({});
+  const [apiKeyDrafts, setApiKeyDrafts] = useState<Record<string, string>>({});
+  const [revealedKeys, setRevealedKeys] = useState<Record<string, boolean>>({});
+  const [savingApiKey, setSavingApiKey] = useState<string | null>(null);
   // Phase 11.6 — message export + audit trail (mirrors web's
   // MessageExportSection exactly, reusing the Gap-Closure Backlog's
   // ExportSheet/lib/exportEngine.ts infra).
@@ -316,11 +431,48 @@ export default function ControlCenterScreen() {
   const [departments, setDepartments] = useState<DeptRow[]>([]);
   const [busyUserId, setBusyUserId] = useState<string | null>(null);
 
+  // CEO Account (approved Part A). Every action here needs the CEO's
+  // password, checked on the server (api/_shared/reauth.ts).
+  type StatusAction = 'suspend' | 'reactivate' | 'block' | 'unblock';
+  type PasswordAction =
+    | { kind: 'changeEmail'; newEmail: string }
+    | { kind: 'coCeo'; fullName: string; email: string; phone: string }
+    | { kind: 'terminate'; row: StaffRow }
+    | { kind: 'status'; row: StaffRow; action: StatusAction }
+    | { kind: 'removeRequest'; target: StaffRow; reason: string }
+    | { kind: 'removalDecision'; request: RemovalRequest; decision: 'approve' | 'reject' };
+  const [passwordAction, setPasswordAction] = useState<PasswordAction | null>(null);
+
+  // Removing a CEO needs two CEOs: one asks, a different one decides.
+  type RemovalRequest = { id: string; target_id: string; target_name: string | null; requested_by: string; requested_by_name: string | null; reason: string | null; created_at: string };
+  const [removalRequests, setRemovalRequests] = useState<RemovalRequest[]>([]);
+  const [removeTarget, setRemoveTarget] = useState<StaffRow | null>(null);
+  const [removeReason, setRemoveReason] = useState('');
+  const loadRemovalRequests = useCallback(async () => {
+    const { data } = await (supabase.from('ceo_removal_requests' as any) as any).select('id, target_id, target_name, requested_by, requested_by_name, reason, created_at').eq('status', 'pending').order('created_at', { ascending: false });
+    setRemovalRequests((data as any) || []);
+  }, []);
+  const [changeEmailOpen, setChangeEmailOpen] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [coCeoOpen, setCoCeoOpen] = useState(false);
+  const [coCeoForm, setCoCeoForm] = useState({ fullName: '', email: '', phone: '' });
+  const [coCeoResult, setCoCeoResult] = useState<{ message: string; link: string } | null>(null);
+  const [ceoInvites, setCeoInvites] = useState<{ id: string; full_name: string | null; email: string | null; expires_at: string }[]>([]);
+
+  const loadCeoInvites = useCallback(async () => {
+    const { data } = await supabase.from('staff_invites').select('id, full_name, email, expires_at').eq('department', 'CEO').eq('status', 'pending').order('created_at', { ascending: false });
+    setCeoInvites((data as any) || []);
+  }, []);
+
+
   // Invite Links (D96)
   const [invites, setInvites] = useState<InviteRow[]>([]);
   const [showInviteForm, setShowInviteForm] = useState(false);
-  const [inviteForm, setInviteForm] = useState({ fullName: '', email: '', department: 'MARKETING', role: 'staff', expiry: '24h', autoApprove: false });
+  const [inviteForm, setInviteForm] = useState({ fullName: '', email: '', phone: '', department: 'MARKETING', role: 'staff', expiry: '24h', autoApprove: false });
   const [generatedLink, setGeneratedLink] = useState('');
+  // What happened when the link was sent by email / SMS, so the CEO is
+  // never told it went out when it didn't.
+  const [inviteDelivery, setInviteDelivery] = useState('');
   const [linkCopied, setLinkCopied] = useState(false);
   const [invitesBusy, setInvitesBusy] = useState(false);
 
@@ -336,6 +488,8 @@ export default function ControlCenterScreen() {
   const [resetRunning, setResetRunning] = useState(false);
   const [resetResults, setResetResults] = useState<{ table: string; deleted: number; error?: string }[]>([]);
   const [resetDone, setResetDone] = useState(false);
+  const [resetPw, setResetPw] = useState('');
+  const [resetError, setResetError] = useState('');
 
   const loadSettings = useCallback(async () => {
     const results = await Promise.all(ALL_KEYS.map((k) => getCeoSetting(k, null)));
@@ -345,9 +499,16 @@ export default function ControlCenterScreen() {
     setLoading(false);
   }, []);
 
+  const loadApiKeys = useCallback(async () => {
+    const results = await Promise.all(API_KEY_DEFS.map((d) => getCeoSetting<string>(d.key, '')));
+    const map: Record<string, string> = {};
+    API_KEY_DEFS.forEach((d, i) => { map[d.key] = results[i] || ''; });
+    setApiKeys(map);
+  }, []);
+
   const loadStaffAndDepts = useCallback(async () => {
     const [{ data: staffRows }, { data: deptRows }] = await Promise.all([
-      supabase.from('profiles').select('id, full_name, email, role, status').order('created_at', { ascending: false }),
+      supabase.from('profiles').select('id, full_name, email, role, status, is_admin').neq('status', 'TERMINATED').order('created_at', { ascending: false }),
       supabase.from('departments').select('id, name, status').eq('status', 'pending').order('name'),
     ]);
     setStaff((staffRows as any) || []);
@@ -366,9 +527,12 @@ export default function ControlCenterScreen() {
   useEffect(() => {
     if (!isAdmin) return;
     loadSettings();
+    loadApiKeys();
     loadStaffAndDepts();
     loadInvitesAndDelegates();
-  }, [isAdmin, loadSettings, loadStaffAndDepts, loadInvitesAndDelegates]);
+    loadCeoInvites();
+    loadRemovalRequests();
+  }, [isAdmin, loadSettings, loadApiKeys, loadStaffAndDepts, loadInvitesAndDelegates, loadCeoInvites, loadRemovalRequests]);
 
   useEffect(() => {
     if (!isAdmin || activeSection !== 'messages' || exportChannels.length > 0) return;
@@ -420,24 +584,63 @@ export default function ControlCenterScreen() {
     await setCeoSetting(key, value);
   };
 
-  const suspendUser = async (row: StaffRow) => {
-    setBusyUserId(row.id);
+  const saveApiKey = async (key: string) => {
+    const draft = (apiKeyDrafts[key] ?? '').trim();
+    setSavingApiKey(key);
     try {
-      await supabase.from('profiles').update({ status: 'SUSPENDED' }).eq('id', row.id);
-      await loadStaffAndDepts();
+      await setCeoSetting(key, draft);
+      setApiKeys((prev) => ({ ...prev, [key]: draft }));
+      setApiKeyDrafts((prev) => { const next = { ...prev }; delete next[key]; return next; });
+      setRevealedKeys((prev) => ({ ...prev, [key]: false }));
+    } catch (e: any) {
+      Alert.alert('Could Not Save', e.message || 'Something went wrong saving that key.');
     } finally {
-      setBusyUserId(null);
+      setSavingApiKey(null);
     }
   };
 
-  const reactivateUser = async (row: StaffRow) => {
-    setBusyUserId(row.id);
+  const clearApiKey = (def: { key: string; label: string }) => {
+    Alert.alert('Remove This Key?', `${def.label} will fall back to its default free/manual behavior.`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Remove', style: 'destructive', onPress: () => saveApiKeyValue(def.key, '') },
+    ]);
+  };
+
+  const saveApiKeyValue = async (key: string, value: string) => {
+    setSavingApiKey(key);
     try {
-      await supabase.from('profiles').update({ status: 'ACTIVE' }).eq('id', row.id);
-      await loadStaffAndDepts();
+      await setCeoSetting(key, value);
+      setApiKeys((prev) => ({ ...prev, [key]: value }));
+      setApiKeyDrafts((prev) => { const next = { ...prev }; delete next[key]; return next; });
     } finally {
-      setBusyUserId(null);
+      setSavingApiKey(null);
     }
+  };
+
+  // Suspend / Reactivate / Block / Unblock go through the server
+  // (api/set-user-status.ts), which checks the password, locks or unlocks
+  // sign-in, ends open sessions and logs it. The database itself now
+  // refuses a status change made straight from the app.
+  const changeStatus = (row: StaffRow, action: StatusAction) => setPasswordAction({ kind: 'status', row, action });
+
+  const kickUser = (row: StaffRow) => {
+    Alert.alert('Kick offline', `Sign ${row.full_name} out of every device now? They can sign in again unless you also suspend or block them.`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Kick offline', style: 'destructive', onPress: async () => {
+          setBusyUserId(row.id);
+          try {
+            const res: any = await callPrivilegedApi('/api/kick-user', { userId: row.id });
+            kickUserOffline(row.id);
+            Alert.alert('Signed out', res?.message || `${row.full_name} has been signed out.`);
+          } catch (e: any) {
+            Alert.alert('Failed', e instanceof ApiNotConfiguredError ? e.message : (e?.message || 'Could not sign them out.'));
+          } finally {
+            setBusyUserId(null);
+          }
+        },
+      },
+    ]);
   };
 
   const resetPassword = (row: StaffRow) => {
@@ -460,25 +663,126 @@ export default function ControlCenterScreen() {
     ]);
   };
 
-  const terminateUser = (row: StaffRow) => {
-    Alert.alert('Terminate User', `Terminate ${row.full_name}? This revokes their login immediately.`, [
-      { text: 'Cancel', style: 'cancel' },
+  // Terminate takes effect at once and deletes nothing: all their work
+  // stays in the system (api/terminate-user.ts).
+  const terminateUser = (row: StaffRow) => setPasswordAction({ kind: 'terminate', row });
+
+  const STATUS_WORDING: Record<StatusAction, { title: string; verb: string; effect: string }> = {
+    suspend: { title: 'Confirm Suspension', verb: 'Suspend', effect: 'They are signed out everywhere and cannot sign in until reactivated.' },
+    reactivate: { title: 'Confirm Reactivation', verb: 'Reactivate', effect: 'They can sign in again.' },
+    block: { title: 'Confirm Block', verb: 'Block', effect: 'They are signed out everywhere and cannot sign in until unblocked.' },
+    unblock: { title: 'Confirm Unblock', verb: 'Unblock', effect: 'They can sign in again.' },
+  };
+  const passwordTitle = (a: PasswordAction | null): string => {
+    if (!a) return '';
+    switch (a.kind) {
+      case 'terminate': return 'Confirm Termination';
+      case 'changeEmail': return 'Confirm Email Change';
+      case 'coCeo': return 'Confirm Co-CEO Invite';
+      case 'status': return STATUS_WORDING[a.action].title;
+      case 'removeRequest': return 'Confirm Removal Request';
+      case 'removalDecision': return a.decision === 'approve' ? 'Confirm CEO Removal' : 'Confirm Rejection';
+    }
+  };
+  const passwordDescription = (a: PasswordAction | null): string => {
+    if (!a) return '';
+    const tail = ' Type your password to confirm it is you.';
+    switch (a.kind) {
+      case 'terminate': return `Terminate ${a.row.full_name}? They can no longer sign in. Nothing is deleted: all their work stays in the system.${tail}`;
+      case 'changeEmail': return `Change your sign-in email to ${a.newEmail}?${tail}`;
+      case 'coCeo': return `Invite ${a.fullName} (${a.email}) as a co-CEO?${tail}`;
+      case 'status': return `${STATUS_WORDING[a.action].verb} ${a.row.full_name}? ${STATUS_WORDING[a.action].effect}${tail}`;
+      case 'removeRequest': return `Ask to remove ${a.target.full_name} as CEO? A different CEO must approve it.${tail}`;
+      case 'removalDecision': return a.decision === 'approve'
+        ? `Remove ${a.request.target_name || 'this CEO'} as CEO? Their sign-in is deleted and they lose all access.${tail}`
+        : `Reject the request to remove ${a.request.target_name || 'this CEO'}? They stay CEO.${tail}`;
+    }
+  };
+  const passwordConfirmLabel = (a: PasswordAction | null): string => {
+    if (!a) return 'Confirm';
+    switch (a.kind) {
+      case 'terminate': return 'Terminate';
+      case 'changeEmail': return 'Send confirmation link';
+      case 'coCeo': return 'Send invite';
+      case 'status': return STATUS_WORDING[a.action].verb;
+      case 'removeRequest': return 'Send request';
+      case 'removalDecision': return a.decision === 'approve' ? 'Remove CEO' : 'Reject';
+    }
+  };
+  const isDangerAction = (a: PasswordAction | null): boolean => !!a && (
+    a.kind === 'terminate'
+    || a.kind === 'removeRequest'
+    || (a.kind === 'removalDecision' && a.decision === 'approve')
+    || (a.kind === 'status' && (a.action === 'suspend' || a.action === 'block'))
+  );
+
+  // Cancelling your own removal request needs no password: it only
+  // withdraws something you asked for.
+  const cancelRemoval = (request: RemovalRequest) => {
+    Alert.alert('Cancel request', `Withdraw your request to remove ${request.target_name || 'this CEO'}?`, [
+      { text: 'Keep it', style: 'cancel' },
       {
-        text: 'Terminate', style: 'destructive', onPress: async () => {
-          setBusyUserId(row.id);
+        text: 'Withdraw', onPress: async () => {
           try {
-            const res: any = await callPrivilegedApi('/api/terminate-user', { userId: row.id });
-            Alert.alert('Terminated', res?.message || `User ${row.full_name} terminated.`);
-            await loadStaffAndDepts();
+            const res: any = await callPrivilegedApi('/api/ceo-removal', { action: 'cancel', requestId: request.id });
+            Alert.alert('Withdrawn', res?.message || 'Request cancelled.');
+            loadRemovalRequests();
           } catch (e: any) {
-            if (e instanceof ApiNotConfiguredError) Alert.alert('Not Configured', e.message);
-            else Alert.alert('Failed', e.message || 'Could not terminate user.');
-          } finally {
-            setBusyUserId(null);
+            Alert.alert('Failed', e instanceof ApiNotConfiguredError ? e.message : (e?.message || 'Could not cancel it.'));
           }
         },
       },
     ]);
+  };
+
+  // Runs the pending high-risk action with the password the CEO typed.
+  // Errors are thrown back to PasswordConfirmSheet, which shows them and
+  // stays open so a wrong password can be retried.
+  const runPasswordAction = async (password: string) => {
+    const action = passwordAction;
+    if (!action) return;
+    try {
+      if (action.kind === 'terminate') {
+        const res: any = await callPrivilegedApi('/api/terminate-user', { userId: action.row.id, password });
+        setPasswordAction(null);
+        Alert.alert('Terminated', res?.message || `User ${action.row.full_name} terminated.`);
+        await loadStaffAndDepts();
+      } else if (action.kind === 'changeEmail') {
+        const res: any = await callPrivilegedApi('/api/ceo-change-email', { newEmail: action.newEmail, password });
+        setPasswordAction(null);
+        setChangeEmailOpen(false);
+        setNewEmail('');
+        Alert.alert('Check the new email', res?.message || 'A confirmation link was sent to the new address.');
+      } else if (action.kind === 'coCeo') {
+        const res: any = await callPrivilegedApi('/api/ceo-invite-co-ceo', { fullName: action.fullName, email: action.email, phone: action.phone, password });
+        setPasswordAction(null);
+        setCoCeoOpen(false);
+        setCoCeoForm({ fullName: '', email: '', phone: '' });
+        setCoCeoResult({ message: res?.message || 'Invite sent.', link: res?.link || '' });
+        loadCeoInvites();
+      } else if (action.kind === 'status') {
+        const res: any = await callPrivilegedApi('/api/set-user-status', { userId: action.row.id, action: action.action, password });
+        setPasswordAction(null);
+        // Suspend and Block also close any screen they still have open.
+        if (action.action === 'suspend' || action.action === 'block') kickUserOffline(action.row.id);
+        Alert.alert('Done', res?.message || 'Status updated.');
+        await loadStaffAndDepts();
+      } else if (action.kind === 'removeRequest') {
+        const res: any = await callPrivilegedApi('/api/ceo-removal', { action: 'request', targetId: action.target.id, reason: action.reason, password });
+        setPasswordAction(null);
+        setRemoveReason('');
+        Alert.alert('Request sent', res?.message || 'Another CEO must approve it.');
+        loadRemovalRequests();
+      } else {
+        const res: any = await callPrivilegedApi('/api/ceo-removal', { action: action.decision, requestId: action.request.id, password });
+        setPasswordAction(null);
+        Alert.alert(action.decision === 'approve' ? 'CEO removed' : 'Request rejected', res?.message || 'Done.');
+        loadRemovalRequests();
+        loadStaffAndDepts();
+      }
+    } catch (e: any) {
+      throw new Error(e instanceof ApiNotConfiguredError ? e.message : (e?.message || 'That did not work.'));
+    }
   };
 
   const decideDepartment = async (dept: DeptRow, approve: boolean) => {
@@ -495,29 +799,48 @@ export default function ControlCenterScreen() {
     if (invitesBusy) return;
     setInvitesBusy(true);
     try {
-      const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
+      const token = await newSecureToken();
       const expiryHours: Record<string, number> = { '24h': 24, '48h': 48, '7d': 168 };
       const hours = expiryHours[inviteForm.expiry] ?? 24;
       const expiresAt = new Date(Date.now() + hours * 3600000).toISOString();
 
-      const { error } = await supabase.from('staff_invites').insert([{
+      const email = inviteForm.email.trim();
+      const phone = inviteForm.phone.trim();
+      const { data: created, error } = await supabase.from('staff_invites').insert([{
         token,
-        email: inviteForm.email || null,
-        full_name: inviteForm.fullName || null,
+        email: email || null,
+        phone: phone || null,
+        full_name: inviteForm.fullName.trim() || null,
         department: inviteForm.department,
         role: inviteForm.role,
         auto_approve: inviteForm.autoApprove,
         expires_at: expiresAt,
         status: 'pending',
-      }]);
-      if (error) throw error;
+      }]).select('id').single();
+      if (error || !created) throw new Error(error?.message || 'The invite was not saved.');
 
+      setInviteDelivery('');
       if (isPrivilegedApiConfigured()) {
         const base = process.env.EXPO_PUBLIC_API_BASE_URL || '';
         setGeneratedLink(`${base}/register?token=${token}`);
+        // Send the link to the person by email and SMS, whichever details
+        // were given. The server builds the link itself, so the message
+        // always carries the real web address.
+        const channels = [email ? 'email' : null, phone ? 'sms' : null].filter(Boolean) as string[];
+        if (channels.length) {
+          try {
+            const res: any = await callPrivilegedApi('/api/send-staff-invite-email', { inviteId: created.id, channels });
+            if (res?.link) setGeneratedLink(res.link);
+            setInviteDelivery(res?.message || 'Nothing was sent.');
+          } catch (sendErr: any) {
+            setInviteDelivery(`The link was created but not sent: ${sendErr?.message || 'unknown error'}`);
+          }
+        } else {
+          setInviteDelivery('No email or phone was given, so nothing was sent. Copy the link below and share it yourself.');
+        }
       } else {
         setGeneratedLink('');
-        Alert.alert('Not Configured', "The registration link's base URL isn't set yet. Ask an admin to set EXPO_PUBLIC_API_BASE_URL. The invite was still created and can be used once it is.");
+        Alert.alert('Not Configured', "The registration link's base URL isn't set yet, so the link could not be shown or sent from the phone. Ask an admin to set EXPO_PUBLIC_API_BASE_URL. The invite was still created and can be sent from the web app.");
       }
       setLinkCopied(false);
       await loadInvitesAndDelegates();
@@ -591,84 +914,36 @@ export default function ControlCenterScreen() {
   };
 
   // ── Data Reset Center (D98) ─────────────────────────────────────────
-  // Ported verbatim from CeoControlCenter.tsx's DataResetSection,
-  // including the stock_ledger reversal safeguard — see the header
-  // comment on DEPT_TABLES above for why it's needed.
+  // Runs on the server now (api/data-reset.ts): CEO only, the password is
+  // checked there, the table list there is the one that counts, and the
+  // stock safeguard (sold quantities put back before the sale records go)
+  // runs there too. The counts shown are the server's real counts.
   const openReset = (dept: string) => {
     setResetDept(dept);
     setResetConfirmText('');
+    setResetPw('');
+    setResetError('');
     setResetResults([]);
     setResetDone(false);
   };
 
-  const closeReset = () => { if (resetRunning) return; setResetDept(null); };
+  const closeReset = () => { if (resetRunning) return; setResetDept(null); setResetPw(''); };
 
   const runReset = async () => {
     if (resetConfirmText !== 'CONFIRM DELETE' || !resetDept) return;
-    const cfg = DEPT_TABLES[resetDept];
-    if (!cfg) return;
+    if (!resetPw) { setResetError('Enter your password.'); return; }
     setResetRunning(true);
-    setResetResults([]);
-    const res: typeof resetResults = [];
-
-    for (const tbl of cfg.tables) {
-      try {
-        const query = tbl.name === 'global_audit_history' && resetDept !== 'ALL'
-          ? (supabase.from(tbl.name as any).delete() as any).eq('department', resetDept)
-          : (supabase.from(tbl.name as any).delete() as any).not('id', 'is', null);
-        const { error, count } = await query;
-        res.push({ table: tbl.name, deleted: count ?? 0, error: error?.message });
-      } catch (e: any) {
-        res.push({ table: tbl.name, deleted: 0, error: e?.message || 'Unknown error' });
-      }
+    setResetError('');
+    try {
+      const res: any = await callPrivilegedApi('/api/data-reset', { department: resetDept, confirmText: resetConfirmText, password: resetPw });
+      setResetResults(res?.results || []);
+      setResetDone(true);
+      setResetPw('');
+    } catch (e: any) {
+      setResetError(e instanceof ApiNotConfiguredError ? e.message : (e?.message || 'The reset did not run.'));
+    } finally {
+      setResetRunning(false);
     }
-
-    // Stock-ledger reversal safeguard: wiping `orders` without also
-    // wiping `stock_ledger`/`stock` directly would orphan the REMOVE
-    // rows deductStockForOrder wrote when those orders were sold —
-    // permanently understating real inventory. Add each orphaned row's
-    // quantity back to `stock` before deleting it. Skipped when this
-    // reset already wipes stock_ledger directly (OPERATIONS or ALL).
-    if (cfg.tables.some((t) => t.name === 'orders') && !cfg.tables.some((t) => t.name === 'stock_ledger')) {
-      try {
-        const { data: orphaned, error: fetchErr } = await supabase
-          .from('stock_ledger')
-          .select('id, product_name, quantity')
-          .ilike('reference', '%Order Approved%');
-        if (fetchErr) throw fetchErr;
-
-        const reversalByProduct = new Map<string, number>();
-        for (const row of orphaned || []) {
-          const key = String(row.product_name || '').trim().toLowerCase();
-          if (!key) continue;
-          reversalByProduct.set(key, (reversalByProduct.get(key) || 0) + (Number(row.quantity) || 0));
-        }
-        for (const [productKey, qty] of reversalByProduct) {
-          if (qty <= 0) continue;
-          const { data: stockRow } = await supabase.from('stock').select('id, quantity').ilike('product_name', productKey).limit(1);
-          if (stockRow && stockRow[0]) {
-            await supabase.from('stock').update({ quantity: (Number(stockRow[0].quantity) || 0) + qty, last_updated: new Date().toISOString() }).eq('id', stockRow[0].id);
-          }
-        }
-
-        const { error, count } = await (supabase.from('stock_ledger').delete() as any).ilike('reference', '%Order Approved%');
-        res.push({ table: 'stock_ledger (orphaned sale entries, reversed into stock)', deleted: count ?? 0, error: error?.message });
-      } catch (e: any) {
-        res.push({ table: 'stock_ledger (orphaned sale entries)', deleted: 0, error: e?.message || 'Unknown error' });
-      }
-    }
-
-    supabase.from('global_audit_history').insert([{
-      action: 'DATA_RESET',
-      department: resetDept,
-      performed_by: profile?.fullName || 'CEO',
-      details: `Cleared: ${cfg.tables.map((t) => t.label || t.name).join(', ')}`,
-      timestamp: new Date().toISOString(),
-    }]).then(() => {}, () => {});
-
-    setResetResults(res);
-    setResetRunning(false);
-    setResetDone(true);
   };
 
   // Double-gate matching web's own explicit "against stale tab state"
@@ -682,7 +957,10 @@ export default function ControlCenterScreen() {
     );
   }
 
-  const filteredStaff = staff.filter((s) => !staffSearch || s.full_name?.toLowerCase().includes(staffSearch.toLowerCase()) || s.email?.toLowerCase().includes(staffSearch.toLowerCase()));
+  // CEO accounts are never acted on from this list (no CEO acts on himself
+  // or on another CEO); they're shown under CEO Account instead.
+  const ceoAccounts = staff.filter((s) => s.is_admin);
+  const filteredStaff = staff.filter((s) => !s.is_admin).filter((s) => !staffSearch || s.full_name?.toLowerCase().includes(staffSearch.toLowerCase()) || s.email?.toLowerCase().includes(staffSearch.toLowerCase()));
   const activeSectionDef = SECTIONS.find((s) => s.id === activeSection);
 
   return (
@@ -690,11 +968,13 @@ export default function ControlCenterScreen() {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: t.spacing.lg }}>
         <View style={{ flexDirection: 'row', gap: t.spacing.xs }}>
           {[
+            { id: 'ceo', title: 'CEO Account' },
             ...SECTIONS.map((s) => ({ id: s.id, title: s.title })),
             { id: 'staff', title: 'Staff' },
             { id: 'departments', title: `Departments${departments.length ? ` (${departments.length})` : ''}` },
             { id: 'invites', title: `Invite Links${invites.length ? ` (${invites.length})` : ''}` },
             { id: 'delegates', title: `Delegated Access${delegates.length ? ` (${delegates.length})` : ''}` },
+            { id: 'keys', title: `API Keys${API_KEY_DEFS.filter((d) => !apiKeys[d.key]).length ? ` (${API_KEY_DEFS.filter((d) => !apiKeys[d.key]).length} empty)` : ''}` },
             { id: 'templates', title: 'Document Templates' },
             { id: 'messages', title: 'Message Export' },
             { id: 'reset', title: 'Data Reset Center' },
@@ -704,7 +984,88 @@ export default function ControlCenterScreen() {
         </View>
       </ScrollView>
 
-      {activeSection === 'staff' ? (
+      {activeSection === 'ceo' ? (
+        <View style={{ gap: t.spacing.md }}>
+          <Card>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, marginBottom: t.spacing.xs }}>
+              <Mail size={16} color={t.colors.accent} />
+              <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>Your sign-in email</Text>
+            </View>
+            <Text selectable style={{ fontFamily: t.font.semibold, fontSize: t.type.body14.size, color: t.colors.textPrimary }}>{profile?.email || ''}</Text>
+            <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted, marginTop: 4, marginBottom: t.spacing.sm }}>
+              This is the CEO email. To change it you type your password, then confirm from a link sent to the new address.
+            </Text>
+            <View style={{ alignItems: 'flex-start' }}>
+              <Button label="Change email" size="sm" variant="ghost" onPress={() => { setNewEmail(''); setChangeEmailOpen(true); }} />
+            </View>
+          </Card>
+
+          <Card>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, marginBottom: t.spacing.sm }}>
+              <Crown size={16} color={t.colors.action.amber} />
+              <Text style={{ flex: 1, fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>CEOs</Text>
+              <Button label="Add Co-CEO" size="sm" icon={<Plus size={12} color="#fff" />} onPress={() => { setCoCeoForm({ fullName: '', email: '', phone: '' }); setCoCeoOpen(true); }} />
+            </View>
+            {ceoAccounts.map((c) => (
+              <View key={c.id} style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, paddingVertical: 6 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>{c.full_name}{c.id === profile?.id ? ' (you)' : ''}</Text>
+                  <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted }}>{c.email}</Text>
+                </View>
+                <Badge tone={c.status === 'ACTIVE' ? 'success' : 'muted'} label={c.status} size="xs" />
+                {c.id !== profile?.id && c.status === 'ACTIVE' && !removalRequests.some((r) => r.target_id === c.id) && (
+                  <IconActionButton icon={UserX} tone="danger" accessibilityLabel={`Request removal of ${c.full_name}`} onPress={() => { setRemoveReason(''); setRemoveTarget(c); }} />
+                )}
+              </View>
+            ))}
+            {ceoInvites.map((inv) => (
+              <View key={inv.id} style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, paddingVertical: 6 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>{inv.full_name || inv.email}</Text>
+                  <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted }}>Invited, not registered yet. Link expires {new Date(inv.expires_at).toLocaleDateString()}.</Text>
+                </View>
+                <Badge tone="warning" label="INVITED" size="xs" />
+              </View>
+            ))}
+            <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted, marginTop: t.spacing.sm }}>
+              A co-CEO registers in the app with the link they receive, then you approve them in Approvals (with your password). Until then they have no access.
+            </Text>
+          </Card>
+
+          <Card>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, marginBottom: t.spacing.xs }}>
+              <ShieldAlert size={16} color={t.colors.status.danger.text} />
+              <Text style={{ flex: 1, fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>CEO removal requests</Text>
+            </View>
+            <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted, marginBottom: t.spacing.sm }}>
+              Removing a CEO needs two CEOs. One asks, and a different CEO approves or rejects it. Every step is logged by name.
+            </Text>
+            {removalRequests.length === 0 ? (
+              <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted }}>No requests waiting.</Text>
+            ) : removalRequests.map((r) => {
+              const mine = r.requested_by === profile?.id;
+              return (
+                <View key={r.id} style={{ paddingVertical: t.spacing.sm, borderTopWidth: 1, borderTopColor: t.colors.border, gap: 6 }}>
+                  <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>Remove {r.target_name || 'a CEO'}</Text>
+                  <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted }}>
+                    Asked by {mine ? 'you' : (r.requested_by_name || 'another CEO')} on {new Date(r.created_at).toLocaleDateString()}.{r.reason ? ` Reason: ${r.reason}` : ''}
+                  </Text>
+                  <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+                    {mine ? (
+                      <Button label="Withdraw" size="sm" variant="ghost" onPress={() => cancelRemoval(r)} />
+                    ) : (
+                      <>
+                        <Button label="Approve" size="sm" variant="danger" onPress={() => setPasswordAction({ kind: 'removalDecision', request: r, decision: 'approve' })} />
+                        <Button label="Reject" size="sm" variant="ghost" onPress={() => setPasswordAction({ kind: 'removalDecision', request: r, decision: 'reject' })} />
+                      </>
+                    )}
+                  </View>
+                </View>
+              );
+            })}
+          </Card>
+        </View>
+      ) : activeSection === 'staff' ? (
         <View style={{ gap: t.spacing.md }}>
           <Input value={staffSearch} onChangeText={setStaffSearch} placeholder="Search staff by name or email..." />
           {filteredStaff.map((row) => (
@@ -714,16 +1075,30 @@ export default function ControlCenterScreen() {
                   <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>{row.full_name}</Text>
                   <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted }}>{row.email} · {row.role}</Text>
                 </View>
-                <Badge tone={row.status === 'ACTIVE' ? 'success' : row.status === 'SUSPENDED' ? 'danger' : 'muted'} label={row.status} size="xs" />
+                <Badge tone={row.status === 'ACTIVE' ? 'success' : row.status === 'SUSPENDED' || row.status === 'BLOCKED' ? 'danger' : 'muted'} label={row.status} size="xs" />
               </View>
-              <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
-                {row.status === 'ACTIVE' ? (
-                  <IconActionButton icon={Pause} tone="warning" accessibilityLabel="Suspend" onPress={() => suspendUser(row)} disabled={busyUserId === row.id} />
-                ) : row.status === 'SUSPENDED' ? (
-                  <IconActionButton icon={Play} tone="success" accessibilityLabel="Reactivate" onPress={() => reactivateUser(row)} disabled={busyUserId === row.id} />
-                ) : null}
-                <IconActionButton icon={KeyRound} tone="info" accessibilityLabel="Reset Password" onPress={() => resetPassword(row)} disabled={busyUserId === row.id} />
-                <IconActionButton icon={UserX} tone="danger" accessibilityLabel="Terminate" onPress={() => terminateUser(row)} disabled={busyUserId === row.id} />
+              <View style={{ flexDirection: 'row', gap: t.spacing.sm, flexWrap: 'wrap' }}>
+                {row.status === 'ACTIVE' && (
+                  <IconActionButton icon={Pause} tone="warning" accessibilityLabel="Suspend" onPress={() => changeStatus(row, 'suspend')} disabled={busyUserId === row.id} />
+                )}
+                {row.status === 'SUSPENDED' && (
+                  <IconActionButton icon={Play} tone="success" accessibilityLabel="Reactivate" onPress={() => changeStatus(row, 'reactivate')} disabled={busyUserId === row.id} />
+                )}
+                {(row.status === 'ACTIVE' || row.status === 'SUSPENDED') && (
+                  <IconActionButton icon={Ban} tone="danger" accessibilityLabel="Block" onPress={() => changeStatus(row, 'block')} disabled={busyUserId === row.id} />
+                )}
+                {row.status === 'BLOCKED' && (
+                  <IconActionButton icon={ShieldCheck} tone="success" accessibilityLabel="Unblock" onPress={() => changeStatus(row, 'unblock')} disabled={busyUserId === row.id} />
+                )}
+                {row.status === 'ACTIVE' && (
+                  <IconActionButton icon={LogOut} tone="muted" accessibilityLabel="Kick offline" onPress={() => kickUser(row)} disabled={busyUserId === row.id} />
+                )}
+                {row.status !== 'TERMINATED' && (
+                  <>
+                    <IconActionButton icon={KeyRound} tone="info" accessibilityLabel="Reset Password" onPress={() => resetPassword(row)} disabled={busyUserId === row.id} />
+                    <IconActionButton icon={UserX} tone="danger" accessibilityLabel="Terminate" onPress={() => terminateUser(row)} disabled={busyUserId === row.id} />
+                  </>
+                )}
               </View>
             </Card>
           ))}
@@ -754,7 +1129,8 @@ export default function ControlCenterScreen() {
           {showInviteForm ? (
             <Card>
               <Field label="Full Name (optional)"><Input value={inviteForm.fullName} onChangeText={(v) => setInviteForm((p) => ({ ...p, fullName: v }))} placeholder="Full name" /></Field>
-              <Field label="Email (optional)"><Input value={inviteForm.email} onChangeText={(v) => setInviteForm((p) => ({ ...p, email: v }))} placeholder="email@example.com" keyboardType="email-address" autoCapitalize="none" /></Field>
+              <Field label="Email (the link is sent here)"><Input value={inviteForm.email} onChangeText={(v) => setInviteForm((p) => ({ ...p, email: v }))} placeholder="email@example.com" keyboardType="email-address" autoCapitalize="none" /></Field>
+              <Field label="Phone (the link is texted here)"><Input value={inviteForm.phone} onChangeText={(v) => setInviteForm((p) => ({ ...p, phone: v }))} placeholder="e.g. 024 123 4567" keyboardType="phone-pad" /></Field>
               <Field label="Department"><SearchablePicker value={inviteForm.department} onChange={(v) => setInviteForm((p) => ({ ...p, department: v }))} options={INVITE_DEPT_OPTIONS} /></Field>
               <Field label="Role"><SearchablePicker value={inviteForm.role} onChange={(v) => setInviteForm((p) => ({ ...p, role: v }))} options={INVITE_ROLE_OPTIONS} /></Field>
               <Field label="Link Expiry"><SearchablePicker value={inviteForm.expiry} onChange={(v) => setInviteForm((p) => ({ ...p, expiry: v }))} options={INVITE_EXPIRY_OPTIONS} /></Field>
@@ -767,11 +1143,12 @@ export default function ControlCenterScreen() {
                   {inviteForm.autoApprove ? 'Staff will be automatically approved on registration without HR review.' : 'Staff will require HR review after registering.'}
                 </Text>
               </View>
-              <Button label="Generate Link" onPress={generateInviteLink} loading={invitesBusy} disabled={invitesBusy} fullWidth />
+              <Button label={invitesBusy ? 'Sending…' : 'Generate and Send Link'} onPress={generateInviteLink} loading={invitesBusy} disabled={invitesBusy} fullWidth />
 
               {generatedLink ? (
                 <View style={{ marginTop: t.spacing.md, padding: t.spacing.sm, borderRadius: t.radius.sm, backgroundColor: t.colors.status.success.bg, borderWidth: 1, borderColor: t.colors.status.success.text }}>
                   <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta10.size, color: t.colors.textPrimary, marginBottom: 4 }}>Invite Link Generated:</Text>
+                  {inviteDelivery ? <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textSecondary, marginBottom: 4 }}>{inviteDelivery}</Text> : null}
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm }}>
                     <Text style={{ flex: 1, fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted }} numberOfLines={2}>{generatedLink}</Text>
                     <Button icon={linkCopied ? <Check size={13} color="#fff" /> : <Copy size={13} color="#fff" />} label="" onPress={copyGeneratedLink} size="sm" />
@@ -844,6 +1221,55 @@ export default function ControlCenterScreen() {
             ))
           )}
         </View>
+      ) : activeSection === 'keys' ? (
+        <View style={{ gap: t.spacing.md }}>
+          <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted, lineHeight: 16 }}>
+            Every external key or secret the app can use, in one place — the same kind of "enter your API key" screen you'd see on any other platform. Empty rows fall back to their existing free or manual behavior; a saved key takes effect immediately, the next time that feature is used.
+          </Text>
+          {API_KEY_DEFS.map((def) => {
+            const saved = apiKeys[def.key] || '';
+            const draft = apiKeyDrafts[def.key];
+            const isDirty = draft != null && draft !== saved;
+            const revealed = !!revealedKeys[def.key];
+            const isSaving = savingApiKey === def.key;
+            return (
+              <Card key={def.key}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, marginBottom: 4 }}>
+                  <Text style={{ flex: 1, fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>{def.label}</Text>
+                  <Badge tone={saved ? 'success' : 'muted'} label={saved ? 'Configured' : 'Not Configured'} size="xs" />
+                </View>
+                <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted, marginBottom: t.spacing.sm }}>{def.description}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.xs }}>
+                  <View style={{ flex: 1 }}>
+                    <Input
+                      value={draft != null ? draft : saved}
+                      onChangeText={(v) => setApiKeyDrafts((prev) => ({ ...prev, [def.key]: v }))}
+                      placeholder={def.placeholder}
+                      secureTextEntry={!def.plain && !revealed}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                    />
+                  </View>
+                  {!def.plain && (
+                    <Button
+                      icon={revealed ? <EyeOff size={14} color={t.colors.textSecondary} /> : <Eye size={14} color={t.colors.textSecondary} />}
+                      label=""
+                      variant="ghost"
+                      size="sm"
+                      onPress={() => setRevealedKeys((prev) => ({ ...prev, [def.key]: !prev[def.key] }))}
+                    />
+                  )}
+                </View>
+                <View style={{ flexDirection: 'row', gap: t.spacing.sm, marginTop: t.spacing.sm }}>
+                  <Button label={isSaving ? 'Saving…' : 'Save'} size="sm" onPress={() => saveApiKey(def.key)} disabled={!isDirty || isSaving} loading={isSaving} />
+                  {!!saved && (
+                    <Button label="Remove" size="sm" variant="danger" onPress={() => clearApiKey(def)} disabled={isSaving} />
+                  )}
+                </View>
+              </Card>
+            );
+          })}
+        </View>
       ) : activeSection === 'templates' ? (
         <DocumentTemplatesEditor updatedBy={profile?.fullName || 'CEO'} />
       ) : activeSection === 'messages' ? (
@@ -889,7 +1315,7 @@ export default function ControlCenterScreen() {
 
       {resetDept ? (() => {
         const cfg = DEPT_TABLES[resetDept];
-        const ready = resetConfirmText === 'CONFIRM DELETE';
+        const ready = resetConfirmText === 'CONFIRM DELETE' && !!resetPw;
         return (
           <Sheet
             open
@@ -918,6 +1344,12 @@ export default function ControlCenterScreen() {
                 <Field label="Type CONFIRM DELETE to unlock the reset button" hint="Case-sensitive, exact match.">
                   <Input value={resetConfirmText} onChangeText={setResetConfirmText} placeholder="CONFIRM DELETE" autoCapitalize="characters" />
                 </Field>
+                <Field label="Your password" hint="Checked on the server to confirm it is you.">
+                  <Input value={resetPw} onChangeText={(v) => { setResetPw(v); setResetError(''); }} secureTextEntry autoCapitalize="none" autoComplete="current-password" textContentType="password" placeholder="Type your sign-in password" />
+                </Field>
+                {!!resetError && (
+                  <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta11.size, color: t.colors.status.danger.text }}>{resetError}</Text>
+                )}
               </View>
             ) : (
               <View style={{ gap: t.spacing.sm }}>
@@ -927,7 +1359,7 @@ export default function ControlCenterScreen() {
                   return (
                     <View key={r.table} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: t.spacing.xs, paddingHorizontal: t.spacing.sm, borderRadius: t.radius.sm, backgroundColor: r.error ? t.colors.status.danger.bg : t.colors.status.success.bg }}>
                       <Text style={{ flex: 1, fontFamily: t.font.semibold, fontSize: t.type.meta10.size, color: r.error ? t.colors.status.danger.text : t.colors.status.success.text }} numberOfLines={2}>{displayLabel}</Text>
-                      <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta10.size, color: r.error ? t.colors.status.danger.text : t.colors.status.success.text }}>{r.error ? `Error: ${r.error}` : '✓ Cleared'}</Text>
+                      <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta10.size, color: r.error ? t.colors.status.danger.text : t.colors.status.success.text }}>{r.error ? `Error: ${r.error}` : `${r.deleted} deleted`}</Text>
                     </View>
                   );
                 })}
@@ -950,6 +1382,76 @@ export default function ControlCenterScreen() {
           { key: 'created_at', label: 'Created At' },
           { key: 'attachment_type', label: 'Attachment Type' },
         ]}
+      />
+      {/* Each form closes before the password sheet opens (iOS can't show two
+          sheets at once); what was typed is kept if they come back. */}
+      <Sheet open={changeEmailOpen} onClose={() => setChangeEmailOpen(false)} title="Change CEO Email" side="bottom" maxHeight={360}
+        footer={<Button label="Continue" onPress={() => {
+          const v = newEmail.trim().toLowerCase();
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) { Alert.alert('Check the email', 'Enter a valid new email address.'); return; }
+          setChangeEmailOpen(false);
+          setTimeout(() => setPasswordAction({ kind: 'changeEmail', newEmail: v }), 350);
+        }} fullWidth />}>
+        <Field label="New email" hint="A confirmation link goes here. Nothing changes until it is opened.">
+          <Input value={newEmail} onChangeText={setNewEmail} placeholder="e.g. ceo@yourcompany.com" autoCapitalize="none" keyboardType="email-address" />
+        </Field>
+      </Sheet>
+
+      <Sheet open={coCeoOpen} onClose={() => setCoCeoOpen(false)} title="Add Co-CEO" side="bottom" maxHeight={520}
+        footer={<Button label="Continue" onPress={() => {
+          const email = coCeoForm.email.trim().toLowerCase();
+          if (!coCeoForm.fullName.trim()) { Alert.alert('Missing Info', 'Enter their full name.'); return; }
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { Alert.alert('Missing Info', 'Enter a valid email address.'); return; }
+          setCoCeoOpen(false);
+          setTimeout(() => setPasswordAction({ kind: 'coCeo', fullName: coCeoForm.fullName.trim(), email, phone: coCeoForm.phone.trim() }), 350);
+        }} fullWidth />}>
+        <Field label="Full name"><Input value={coCeoForm.fullName} onChangeText={(v) => setCoCeoForm((f) => ({ ...f, fullName: v }))} placeholder="e.g. Ama Mensah" /></Field>
+        <Field label="Email"><Input value={coCeoForm.email} onChangeText={(v) => setCoCeoForm((f) => ({ ...f, email: v }))} placeholder="e.g. ama@yourcompany.com" autoCapitalize="none" keyboardType="email-address" /></Field>
+        <Field label="Phone (optional)" hint="If given, the invite also goes by SMS."><Input value={coCeoForm.phone} onChangeText={(v) => setCoCeoForm((f) => ({ ...f, phone: v }))} placeholder="e.g. 0244123456" keyboardType="phone-pad" /></Field>
+      </Sheet>
+
+      <Sheet open={!!coCeoResult} onClose={() => setCoCeoResult(null)} title="Co-CEO Invited" side="bottom" maxHeight={380}
+        footer={<Button label="Done" onPress={() => setCoCeoResult(null)} fullWidth />}>
+        {coCeoResult && (
+          <View style={{ gap: t.spacing.sm }}>
+            <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textMuted }}>{coCeoResult.message}</Text>
+            {!!coCeoResult.link && (
+              <>
+                <Text selectable style={{ fontFamily: t.font.medium, fontSize: t.type.meta11.size, color: t.colors.textPrimary }}>{coCeoResult.link}</Text>
+                <View style={{ alignItems: 'flex-start' }}>
+                  <Button label="Copy link" size="sm" variant="ghost" icon={<Copy size={13} color={t.colors.textSecondary} />} onPress={async () => { await Clipboard.setStringAsync(coCeoResult.link); Alert.alert('Copied', 'Link copied.'); }} />
+                </View>
+              </>
+            )}
+          </View>
+        )}
+      </Sheet>
+
+      <Sheet open={!!removeTarget} onClose={() => setRemoveTarget(null)} title="Request CEO Removal" side="bottom" maxHeight={420}
+        footer={<Button label="Continue" variant="danger" onPress={() => {
+          const target = removeTarget;
+          if (!target) return;
+          setRemoveTarget(null);
+          setTimeout(() => setPasswordAction({ kind: 'removeRequest', target, reason: removeReason.trim() }), 350);
+        }} fullWidth />}>
+        <View style={{ gap: t.spacing.md }}>
+          <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>
+            {removeTarget?.full_name} stays CEO until a different CEO approves this request.
+          </Text>
+          <Field label="Reason (optional)" hint="Shown to the CEO who decides, and kept in the log.">
+            <Input value={removeReason} onChangeText={setRemoveReason} placeholder="e.g. Left the company" multiline />
+          </Field>
+        </View>
+      </Sheet>
+
+      <PasswordConfirmSheet
+        open={!!passwordAction}
+        onClose={() => setPasswordAction(null)}
+        title={passwordTitle(passwordAction)}
+        description={passwordDescription(passwordAction)}
+        confirmLabel={passwordConfirmLabel(passwordAction)}
+        danger={isDangerAction(passwordAction)}
+        onConfirm={runPasswordAction}
       />
     </Screen>
   );

@@ -19,6 +19,7 @@ import { useCollapsibleHeader } from '../../hooks/useCollapsibleHeader';
 import Card from '../../components/ui/Card';
 import MetricCard from '../../components/ui/MetricCard';
 import ModuleLauncher from '../../components/chrome/ModuleLauncher';
+import PendingApprovalsAlertCard from '../../components/shared/PendingApprovalsAlertCard';
 import TrackedSection from '../../components/ui/TrackedSection';
 
 interface OrderRow {
@@ -65,6 +66,7 @@ export default function OverviewScreen() {
   return (
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} onScroll={scrollHandler} scrollEventThrottle={16}>
       <View style={{ gap: t.spacing.xl }}>
+        <PendingApprovalsAlertCard department="FINANCE" onNavigate={(tab) => navigation.navigate(tab)} />
         {/* Accounts Snapshot — two clickable tiles, not one oversized
             banner (per direct correction: a full-bleed color block that
             does nothing on tap doesn't belong in a mobile app). */}

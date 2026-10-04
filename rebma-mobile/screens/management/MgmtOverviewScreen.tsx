@@ -14,6 +14,7 @@ import MetricCard from '../../components/ui/MetricCard';
 import Button from '../../components/ui/Button';
 import ModuleLauncher from '../../components/chrome/ModuleLauncher';
 import SectionHeader from '../../components/ui/SectionHeader';
+import PendingApprovalsAlertCard from '../../components/shared/PendingApprovalsAlertCard';
 
 export default function MgmtOverviewScreen() {
   const t = useTheme();
@@ -31,7 +32,13 @@ export default function MgmtOverviewScreen() {
 
   const load = useCallback(async () => {
     const [cargo, orders, production, purchases, float] = await Promise.all([
-      supabase.from('cargo_intake').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_MANAGEMENT_APPROVAL'),
+      // FIX: was checking PENDING_MANAGEMENT_APPROVAL, a status the real
+      // cargo pipeline stopped writing once Risk took over cargo approval
+      // entirely (Phase 1/9 reform) — this always read 0 regardless of
+      // how much cargo was actually pending. The real status is
+      // PENDING_RISK_APPROVAL; Management can see this count but doesn't
+      // act on it (Risk owns the approval), hence read-only awareness.
+      supabase.from('cargo_intake').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_RISK_APPROVAL'),
       supabase.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_MANAGEMENT'),
       supabase.from('production_requests').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_MANAGEMENT').then((r) => r, () => ({ count: 0 })),
       supabase.from('general_purchases').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_MANAGEMENT_APPROVAL').then((r) => r, () => ({ count: 0 })),
@@ -48,11 +55,17 @@ export default function MgmtOverviewScreen() {
 
   useEffect(() => { load(); }, [load]);
 
-  const totalApprovals = cargoCount + ordersCount + productionCount + purchasesCount + floatCount;
+  // Cargo intentionally excluded — Risk owns cargo approval entirely
+  // (Phase 1/9 reform), so it's not an "Executive Approval" Management
+  // acts on. Counting it here would inflate this total with something
+  // tapping through leads nowhere actionable for Management.
+  const totalApprovals = ordersCount + productionCount + purchasesCount + floatCount;
 
   return (
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} onScroll={scrollHandler} scrollEventThrottle={16}>
       <View style={{ gap: t.spacing.xl }}>
+
+        <PendingApprovalsAlertCard department="MANAGEMENT" onNavigate={(tab) => navigation.navigate(tab)} />
 
         {/* Management Executive Desk snapshot — two clickable tiles, not
             one oversized banner (per direct correction: a full-bleed
@@ -71,6 +84,12 @@ export default function MgmtOverviewScreen() {
             />
           </View>
           <View style={{ flex: 1 }}>
+            {/* Risk owns cargo APPROVAL, but Management still has a real,
+                actionable next step once cargo's approved: setting its
+                selling price. SetPricesScreen already computes
+                unpricedGoods (APPROVED cargo vs. goods_prices) and shows
+                a live "N approved products need a price" banner — that's
+                the real destination, not a passive log. */}
             <MetricCard
               emphasis="primary"
               tone="info"
@@ -78,27 +97,18 @@ export default function MgmtOverviewScreen() {
               value={loading ? '—' : cargoCount}
               sublabel="Port arrivals"
               icon={<Package size={18} color={t.colors.status.info.text} />}
-              onPress={() => navigation.navigate('CreditApproval')}
+              onPress={() => navigation.navigate('SetPrices')}
             />
           </View>
         </View>
 
-        {/* 5 Approval Lanes — 4 across and wrapping, per direct correction */}
+        {/* 4 Approval Lanes — cargo removed (Risk owns that approval
+            entirely, it was never an Executive Decision Lane), reflowed
+            to a clean 2x2 instead of the old 3+2-with-a-spacer layout. */}
         <View style={{ gap: t.spacing.sm }}>
-          <SectionHeader title="Executive Decision Lanes" subtitle="5 critical operational sign-off queues" />
+          <SectionHeader title="Executive Decision Lanes" subtitle="4 critical operational sign-off queues" />
           <View style={{ gap: t.spacing.sm }}>
             <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
-              <View style={{ flex: 1 }}>
-              <MetricCard
-                emphasis="compact"
-                label="Cargo Intake"
-                value={loading ? '—' : cargoCount}
-                sublabel="Port arrivals"
-                icon={<Package size={14} color={t.colors.action.sky} />}
-                tone={cargoCount > 0 ? 'warning' : 'neutral'}
-                onPress={() => navigation.navigate('CreditApproval')}
-              />
-              </View>
               <View style={{ flex: 1 }}>
               <MetricCard
                 emphasis="compact"
@@ -145,7 +155,6 @@ export default function MgmtOverviewScreen() {
                 onPress={() => navigation.navigate('CreditApproval')}
               />
               </View>
-              <View style={{ flex: 1 }} />
             </View>
           </View>
         </View>

@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabaseClient';
 import type { CurrentUser } from '../../types/erp';
 import SearchableDropdown from '../ui/SearchableDropdown';
 import SidePanel from '../ui/SidePanel';
+import { sendNotification } from '../../utils/sendNotification';
 
 interface Task {
   id: string;
@@ -77,6 +78,7 @@ export default function TasksPanel({ currentUser, addNotification }: TasksPanelP
         .from('profiles_directory')
         .select('id, full_name, department')
         .eq('department', currentUser.department)
+        .eq('status', 'ACTIVE')
         .neq('id', currentUser.id);
       if (profs) setColleagues(profs);
     } catch (e) { console.error('Failed to load tasks:', e); }
@@ -142,14 +144,23 @@ export default function TasksPanel({ currentUser, addNotification }: TasksPanelP
     if (!currentUser || !escModal.reason.trim()) return;
     setSaving(true);
     try {
-      await supabase.from('tasks').update({
+      const { error } = await supabase.from('tasks').update({
         escalated: true, escalated_to: escModal.escalate_to,
         escalated_by: currentUser.id, escalation_reason: escModal.reason,
         escalated_at: new Date().toISOString(),
       }).eq('id', escModal.taskId);
-      addNotification(`${currentUser.fullName} escalated task: ${escModal.taskTitle}`);
+      if (error) throw error;
+      // Tell Management or the CEO. Before, escalating only marked the
+      // task; nobody it was escalated to was ever told.
+      await sendNotification({
+        recipientDepartment: escModal.escalate_to,
+        title: 'Task escalated to you',
+        message: `${currentUser.fullName} (${currentUser.department}) escalated "${escModal.taskTitle}". Reason: ${escModal.reason}`,
+        type: 'task_escalated',
+      });
+      addNotification(`Escalated to ${escModal.escalate_to === 'CEO' ? 'the CEO' : 'Management'}: ${escModal.taskTitle}`);
       closeEsc(); load();
-    } catch { addNotification('Could not escalate.'); }
+    } catch (err: any) { addNotification(`Could not escalate: ${err?.message || 'unknown error'}`); }
     setSaving(false);
   };
 

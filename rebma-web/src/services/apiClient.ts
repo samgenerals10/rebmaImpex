@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabaseClient';
 import { sendNotification } from '../utils/sendNotification';
 import { waLink, buildDirectionsMessage } from '../utils/whatsapp';
 import { normalizeDeptCode } from '../utils/departments';
+import { isRegistrationExpired } from '../utils/registration';
 
 // A stalled network call (flaky connection, rate-limit) otherwise hangs
 // whatever awaits it forever — Supabase calls have no built-in timeout, so
@@ -321,8 +322,12 @@ export const auth = {
     if (userStatus !== 'ACTIVE') {
       await supabase.auth.signOut().catch(() => {});
       
+      // Someone still being registered is never told who approves them.
+      if (isRegistrationExpired(userStatus, (users[0] as any).registered_at)) {
+        throw new Error('Your registration has expired because it was not approved in time. Ask HR to send you a new link.');
+      }
       if (userStatus === 'PENDING' || userStatus === 'PENDING_APPROVAL') {
-        throw new Error('Your account is pending HR approval.');
+        throw new Error('Your account is waiting for approval. We will email you as soon as you can sign in.');
       }
       if (userStatus === 'REJECTED') {
         throw new Error('Your account access has been denied.');
@@ -358,6 +363,7 @@ export const auth = {
   register: async (data: {
     email: string; fullName: string;
     department?: string; ghanaCardId?: string; phone?: string; inviteToken?: string;
+    password?: string; device?: Record<string, unknown>; location?: Record<string, unknown>;
   }) => {
     const res = await fetch('/api/register-standard-user', {
       method: 'POST',
@@ -452,7 +458,22 @@ export const hr = {
       .eq('status', 'PENDING_APPROVAL')
       .order('created_at', { ascending: false });
     if (error) throw new Error(error.message);
-    return (data || []).map(mapProfileToFrontend);
+    return (data || []).map((d: any) => ({ ...mapProfileToFrontend(d), registeredAt: d.registered_at || null, rawStatus: d.status }));
+  },
+
+  /** HR's "Resend link": a fresh invite link for an expired registration (userId) or an unused invite (inviteId). */
+  resendInvite: async (target: { userId?: string; inviteId?: string }) => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (!accessToken) throw new Error('Not authenticated');
+    const res = await fetch('/api/resend-invite', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify(target),
+    });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.error || 'Could not resend the link.');
+    return body as { message: string; link: string; emailSent: boolean };
   },
 
   getAllUsers: async () => {
@@ -2471,7 +2492,7 @@ export const messenger = {
     return { ...meeting, callMessageId: callMsg?.id as string | undefined };
   },
 
-  // Phase 11.5 — fired when a call ends (JitsiCallModal's onClose), for
+  // Phase 11.5 — fired when a call ends (the call window's onClose), for
   // any invited member who never read the call-started message. Not a
   // perfect "did they actually join the Jitsi room" signal (this app has
   // no server-side scheduler/cron to watch that reliably), but a real,

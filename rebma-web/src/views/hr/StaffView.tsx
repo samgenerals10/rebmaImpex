@@ -2,15 +2,21 @@ import React, { useState, useEffect } from 'react';
 import {
   Users, Plus, Search, MoreVertical, ChevronLeft, Mail, Phone, CreditCard,
   Calendar, Award, Clock, Edit2, UserX, Eye, TrendingUp, MapPin, Upload,
-  FileText, ExternalLink, Download
+  FileText, ExternalLink, Download, Send, UserMinus, MessageCircle, Copy
 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import type { StaffMember } from '../../types/erp';
 import { hr } from '../../services/apiClient';
 import { uploadFile, uploadPrivateFile, getSignedFileUrl } from '../../utils/uploadFile';
-import { downloadRowPDF } from '../../utils/export';
-import { usePaginatedQuery } from '../../hooks/usePaginatedQuery';
+import { downloadRowPDF, exportToCSV } from '../../utils/export';
+import { loadDirectory, STATUS_LABEL, KIND_LABEL, terminateApi, findPreviousHolders, type DirectoryRow, type PreviousHolder } from '../../utils/staffDirectory';
+import { createNonAppStaff, setNonAppStaffStatus, type NonAppStaffRow } from '../../utils/nonAppStaff';
+import { newSecureToken } from '../../utils/secureToken';
+import DeletionRequestsPanel from '../../components/hr/DeletionRequestsPanel';
+import EnrollmentSection from '../../components/hr/EnrollmentSection';
 import SidePanel from '../../components/ui/SidePanel';
+import PasswordConfirmModal from '../../components/ui/PasswordConfirmModal';
+import { callPrivilegedApi } from '../../utils/privilegedApi';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
 import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 
@@ -54,6 +60,7 @@ const mapStaffRow = (p: any): StaffMember => ({
   joinedAt: p.created_at ? p.created_at.split('T')[0] : '',
   status: p.status || 'ACTIVE',
   photo: p.photo || undefined,
+  dateOfBirth: p.date_of_birth || undefined,
   employeeNumber: p.employee_number || undefined,
   resumeUrl: p.resume_url || undefined,
   address: p.address || undefined,
@@ -75,19 +82,46 @@ const mapStaffRow = (p: any): StaffMember => ({
 interface Props {
   staffList: StaffMember[];
   addNotification: (msg: string) => void;
-  currentUser?: { fullName: string; department: string; isAdmin?: boolean } | null;
+  currentUser?: { id?: string; fullName: string; department: string; isAdmin?: boolean } | null;
 }
 
 export default function StaffView({ staffList: propStaff, addNotification, currentUser }: Props) {
   const isHrOrAdmin = currentUser?.isAdmin || currentUser?.department === 'HR' || currentUser?.department === 'MANAGEMENT';
-  const { rows: staff, setRows: setStaff, loading: loadingStaff, hasMore, total, loadMore } = usePaginatedQuery<StaffMember>({
-    table: 'profiles',
-    pageSize: 100,
-    map: mapStaffRow,
-  });
+  // Step 4: one list for everyone (app users, staff without the app,
+  // unused invites, former staff), loaded by utils/staffDirectory.ts.
+  const [directory, setDirectory] = useState<DirectoryRow[]>([]);
+  const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [loadingStaff, setLoadingStaff] = useState(true);
+  const [staffError, setStaffError] = useState<string | null>(null);
+  const reloadDirectory = async () => {
+    try {
+      const rows = await loadDirectory();
+      setDirectory(rows);
+      setStaff(rows.filter(r => r.kind === 'app').map(r => mapStaffRow(r.raw)));
+      setStaffError(null);
+    } catch (e: any) {
+      setStaffError(e.message || 'Could not load staff.');
+    } finally {
+      setLoadingStaff(false);
+    }
+  };
+  useEffect(() => { reloadDirectory(); }, []);
+  const [kindFilter, setKindFilter] = useState('All');
+  const [enrollFilter, setEnrollFilter] = useState('All');
+  const [sortBy, setSortBy] = useState('name');
+  const [selectedOther, setSelectedOther] = useState<DirectoryRow | null>(null);
+  const [terminating, setTerminating] = useState<DirectoryRow | null>(null);
+  // Hiring into a department and role where someone was terminated: HR
+  // picks Continue previous work or Start new (api/approve-user.ts carries
+  // out Continue once the new person is approved).
+  const [previousHolders, setPreviousHolders] = useState<PreviousHolder[]>([]);
+  const [continueFromId, setContinueFromId] = useState('');
+  const [workChoice, setWorkChoice] = useState<'continue' | 'start_new' | null>(null);
+  const [resendingInvite, setResendingInvite] = useState(false);
+  const [resent, setResent] = useState<{ name: string; message: string; link: string; phone: string } | null>(null);
   const [search, setSearch] = useState('');
   const [deptFilter, setDeptFilter] = useState('All');
-  const [statusFilter, setStatusFilter] = useState('All');
+  const [statusFilter, setStatusFilter] = useState('Current');
   const [roleFilter, setRoleFilter] = useState('');
   const [selected, setSelected] = useState<StaffMember | null>(null);
   const [profileTab, setProfileTab] = useState<'attendance' | 'leave' | 'performance'>('attendance');
@@ -97,7 +131,13 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
   const blankForm = {
     fullName: '', email: '', department: 'Admin & Warehouse', role: '', phone: '', ghanaCard: '',
     address: '', staffCategory: '', guarantorName: '', guarantorPhone: '', guarantorRelationship: '', guarantorIdNumber: '', guarantorAddress: '',
+    dateOfBirth: '',
   };
+  // Not everyone hired uses the app. "Employee number only" issues a real
+  // employee number for attendance devices, with no invite and no app
+  // account (same as the phone; utils/nonAppStaff.ts).
+  const [appAccessMode, setAppAccessMode] = useState<'full' | 'none'>('full');
+  const [createdNonAppStaff, setCreatedNonAppStaff] = useState<NonAppStaffRow | null>(null);
   const [form, setForm] = useState(blankForm);
   const [resumeUrl, setResumeUrl] = useState<string | null>(null);
   const [uploadingResume, setUploadingResume] = useState(false);
@@ -126,6 +166,17 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
     supabase.from('department_roles').select('role_name').eq('department', dbDept).order('role_name')
       .then(({ data }) => setDepartmentRoles((data || []).map(r => r.role_name)));
   }, [form.department]);
+  useEffect(() => {
+    setWorkChoice(null);
+    if (!showAdd || appAccessMode !== 'full' || !form.role.trim()) { setPreviousHolders([]); setContinueFromId(''); return; }
+    const dbDept = DEPT_TO_ROLE[form.department] || form.department;
+    findPreviousHolders(dbDept, form.role).then(list => {
+      const sorted = [...list].sort((a, b) => b.leftOn.localeCompare(a.leftOn));
+      setPreviousHolders(sorted);
+      setContinueFromId(sorted[0]?.id || '');
+    }).catch(() => setPreviousHolders([]));
+  }, [showAdd, appAccessMode, form.department, form.role]);
+
   const addDepartmentRole = async () => {
     const name = newRoleName.trim();
     if (!name) return;
@@ -212,13 +263,21 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
     loadDetails();
   }, [selected]);
 
-  const filtered = staff.filter(s => {
-    const matchSearch = s.fullName.toLowerCase().includes(search.toLowerCase()) || s.email.toLowerCase().includes(search.toLowerCase());
-    const matchDept = deptFilter === 'All' || s.department === deptFilter;
-    const matchStatus = statusFilter === 'All' || s.status === statusFilter;
-    const matchRole = !roleFilter || s.role.toLowerCase().includes(roleFilter.toLowerCase());
-    return matchSearch && matchDept && matchStatus && matchRole;
-  });
+  const filtered = directory.filter(r => {
+    const q = search.toLowerCase();
+    if (q && !(r.fullName.toLowerCase().includes(q) || (r.email || '').toLowerCase().includes(q) || (r.employeeNumber || '').toLowerCase().includes(q) || (r.phone || '').includes(q))) return false;
+    if (deptFilter !== 'All' && r.department !== deptFilter) return false;
+    if (kindFilter !== 'All' && r.kind !== kindFilter) return false;
+    if (statusFilter === 'Current' && (r.status === 'TERMINATED' || r.status === 'REJECTED')) return false;
+    if (statusFilter !== 'All' && statusFilter !== 'Current' && r.status !== statusFilter) return false;
+    if (roleFilter && !(r.role || '').toLowerCase().includes(roleFilter.toLowerCase())) return false;
+    if (enrollFilter === 'Enrolled' && r.devices.length === 0) return false;
+    if (enrollFilter === 'Not enrolled' && (r.devices.length > 0 || r.kind === 'invite')) return false;
+    return true;
+  }).sort((a, b) =>
+    sortBy === 'newest' ? b.joinedAt.localeCompare(a.joinedAt)
+    : sortBy === 'number' ? (a.employeeNumber || '~').localeCompare(b.employeeNumber || '~')
+    : a.fullName.localeCompare(b.fullName));
 
   const totalActive = staff.filter(s => s.status === 'ACTIVE').length;
   const totalSuspended = staff.filter(s => s.status === 'SUSPENDED').length;
@@ -230,6 +289,7 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
       address: s.address || '', staffCategory: s.staffCategory || '',
       guarantorName: s.guarantorName || '', guarantorPhone: s.guarantorPhone || '', guarantorRelationship: s.guarantorRelationship || '',
       guarantorIdNumber: s.guarantorIdNumber || '', guarantorAddress: s.guarantorAddress || '',
+      dateOfBirth: s.dateOfBirth || '',
     });
     setResumeUrl(s.resumeUrl || null);
     setPhotoDataUrl(s.photo || null);
@@ -241,9 +301,51 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
   // and hands off to the Send panel — HR picks the channel(s) next. The
   // candidate only ever confirms this record via the link; they never
   // type any of it themselves.
+  const handleSaveNonAppStaff = async () => {
+    if (submitting) return;
+    if (!form.fullName.trim()) { addNotification('Full name is required.'); return; }
+    setSubmitting(true);
+    try {
+      const dbDept = DEPT_TO_ROLE[form.department] || form.department;
+      const created = await createNonAppStaff({
+        fullName: form.fullName.trim(), department: dbDept, role: form.role || undefined, phone: form.phone || undefined,
+        address: form.address || undefined, staffCategory: form.staffCategory || undefined,
+        guarantorName: form.guarantorName || undefined, guarantorPhone: form.guarantorPhone || undefined,
+        guarantorRelationship: form.guarantorRelationship || undefined, guarantorIdNumber: form.guarantorIdNumber || undefined,
+        guarantorAddress: form.guarantorAddress || undefined, dateOfBirth: form.dateOfBirth || undefined,
+        photo: photoDataUrl || undefined,
+      }, currentUser?.fullName || null);
+      setShowAdd(false);
+      setCreatedNonAppStaff(created);
+      setForm(blankForm);
+      setPhotoDataUrl(null);
+      setResumeUrl(null);
+      reloadDirectory();
+    } catch (err: any) {
+      addNotification(`Error saving employee: ${err.message}`);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleSaveAdd = async () => {
+    if (appAccessMode === 'none') return handleSaveNonAppStaff();
     if (submitting) return;
     if (!form.email.trim()) { addNotification('Email is required.'); return; }
+    // The live staff_invites.role column is required (found in live
+    // testing on the phone), so ask for it clearly instead of failing on a
+    // raw database error.
+    if (!form.role.trim()) { addNotification('Role is required.'); return; }
+    // Someone joining HR is invited by the CEO, by email (the database
+    // enforces this too, supabase_staff_lifecycle.sql).
+    if (form.department === 'HR' && !currentUser?.isAdmin) {
+      addNotification('Someone joining HR is invited by the CEO. The CEO adds them here and sends the link to their email.');
+      return;
+    }
+    if (previousHolders.length > 0 && !workChoice) {
+      addNotification('Someone was in this department and role before. Choose Continue previous work or Start new.');
+      return;
+    }
     setSubmitting(true);
     try {
       const { data: gate } = await supabase.from('ceo_settings').select('setting_value').eq('setting_key', 'hr_can_invite_staff').maybeSingle();
@@ -253,7 +355,7 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
         return;
       }
 
-      const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
+      const token = await newSecureToken();
       const dbDept = DEPT_TO_ROLE[form.department] || form.department;
       const { data: inviteRow, error: inviteError } = await supabase.from('staff_invites').insert({
         token,
@@ -271,10 +373,18 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
         guarantor_relationship: form.guarantorRelationship || null,
         guarantor_id_number: form.guarantorIdNumber || null,
         guarantor_address: form.guarantorAddress || null,
+        date_of_birth: form.dateOfBirth || null,
         status: 'pending',
         expires_at: new Date(Date.now() + 7 * 24 * 3600000).toISOString(),
-        created_by: currentUser?.fullName || null,
-      }).select().single();
+        // The live column holds the account id (uuid), not a name; sending
+        // a name failed with "invalid input syntax for type uuid" on the
+        // phone in live testing.
+        created_by: currentUser?.id || null,
+        ...(workChoice === 'continue' && continueFromId ? {
+          continue_from_id: continueFromId,
+          continue_from_name: previousHolders.find(h => h.id === continueFromId)?.name || null,
+        } : {}),
+      } as any).select().single();
       if (inviteError) throw inviteError;
 
       // Risk sees everything about this candidate, not a summary — the
@@ -293,6 +403,7 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
       setForm(blankForm);
       setResumeUrl(null);
       setPhotoDataUrl(null);
+      reloadDirectory();
     } catch (err: any) {
       addNotification(`Error saving candidate: ${err.message}`);
     } finally {
@@ -321,13 +432,15 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
           guarantor_relationship: form.guarantorRelationship || null,
           guarantor_id_number: form.guarantorIdNumber || null,
           guarantor_address: form.guarantorAddress || null,
-        })
+          date_of_birth: form.dateOfBirth || null,
+        } as any)
         .eq('id', editTarget.id);
 
       if (error) throw error;
 
       const updated = { ...editTarget, ...form, resumeUrl: resumeUrl || undefined, photo: photoDataUrl || undefined };
       setStaff(prev => prev.map(s => s.id === editTarget.id ? updated : s));
+      reloadDirectory();
       if (selected?.id === editTarget.id) setSelected(updated);
       addNotification(`${form.fullName} updated`);
       setEditTarget(null);
@@ -338,50 +451,72 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
     }
   };
 
-  const handleSuspend = async (s: StaffMember) => {
-    if (submitting) return;
-    setSubmitting(true);
-    const newStatus = s.status === 'SUSPENDED' ? 'ACTIVE' : 'SUSPENDED';
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ status: newStatus })
-        .eq('id', s.id);
-      if (error) throw error;
+  // Suspend / Reactivate go through the server (api/set-user-status.ts):
+  // it checks the password, locks or unlocks sign-in, ends open sessions
+  // and logs it. HR may only do this to ordinary staff; HR, Management and
+  // CEO accounts are the CEO's to manage, so the option is hidden there.
+  const [statusPending, setStatusPending] = useState<{ member: StaffMember; action: 'suspend' | 'reactivate' } | null>(null);
+  const canChangeStatus = (s: StaffMember) => {
+    if (s.role === 'CEO') return false;
+    if (s.status !== 'ACTIVE' && s.status !== 'SUSPENDED') return false;
+    if (currentUser?.isAdmin) return true;
+    if (currentUser?.department !== 'HR') return false;
+    return s.department !== 'HR' && s.department !== 'Management';
+  };
 
-      setStaff(prev => prev.map(m => m.id === s.id ? { ...m, status: newStatus } : m));
-      if (selected?.id === s.id) setSelected(prev => prev ? { ...prev, status: newStatus } : null);
-      addNotification(`${s.fullName} ${newStatus === 'SUSPENDED' ? 'suspended' : 'reactivated'}`);
-      setMenuOpen(null);
-    } catch (err: any) {
-      addNotification(`Error updating status: ${err.message}`);
-    } finally {
-      setSubmitting(false);
-    }
+  const handleSuspend = (s: StaffMember) => {
+    setMenuOpen(null);
+    setStatusPending({ member: s, action: s.status === 'SUSPENDED' ? 'reactivate' : 'suspend' });
+  };
+
+  const runStatusChange = async (password: string) => {
+    const pending = statusPending;
+    if (!pending) return;
+    const res = await callPrivilegedApi<{ status?: string; message?: string }>('/api/set-user-status', { userId: pending.member.id, action: pending.action, password });
+    const newStatus = (res.status || (pending.action === 'suspend' ? 'SUSPENDED' : 'ACTIVE')) as StaffMember['status'];
+    setStaff(prev => prev.map(m => m.id === pending.member.id ? { ...m, status: newStatus } : m));
+    reloadDirectory();
+    if (selected?.id === pending.member.id) setSelected(prev => prev ? { ...prev, status: newStatus } : null);
+    setStatusPending(null);
+    addNotification(res.message || `${pending.member.fullName} ${pending.action === 'suspend' ? 'suspended' : 'reactivated'}`);
   };
 
   // Phase 8: replaces the old "here are the credentials" modal. HR picks
   // one or more real channels; each shows the exact message before
   // anything goes out, and a plain input if a contact detail is missing.
+  // Same panel as the phone (rebma-mobile StaffScreen): one tap sends by
+  // email and SMS (each line then says whether it went out), and WhatsApp
+  // opens with the same message, including the app download link.
+  const [appDownloadUrl, setAppDownloadUrl] = useState('');
+  const [sendResult, setSendResult] = useState<{ email?: { sent: boolean; reason?: string }; sms?: { sent: boolean; reason?: string } } | null>(null);
+  useEffect(() => {
+    if (!createdInvite) return;
+    setSendResult(null);
+    (supabase as any).from('ceo_settings').select('setting_value').eq('setting_key', 'app_download_url').maybeSingle()
+      .then(({ data }: any) => {
+        let v = data?.setting_value;
+        if (typeof v === 'string') { try { v = JSON.parse(v); } catch { /* plain text */ } }
+        setAppDownloadUrl(String(v || '').trim());
+      });
+  }, [createdInvite?.id]);
+
   const SendInvitePanel = () => {
     if (!createdInvite) return null;
     const link = `${window.location.origin}/register?token=${createdInvite.token}`;
-    const message = `Hi ${createdInvite.fullName}, HR has approved your registration with Rebma Impex. Complete your registration here: ${link}\n\nThis link expires in 7 days.`;
+    // Same two-step wording as the email (api/_shared/mailer.ts).
+    const steps = appDownloadUrl
+      ? `1. Download the Rebma app: ${appDownloadUrl}\n2. Open the app, tap Register on the sign-in page, and paste this link: ${link}`
+      : `Open the Rebma app, tap Register on the sign-in page, and paste this link: ${link}`;
+    const message = `Hi ${createdInvite.fullName}, you have been invited to join Rebma Impex.\n\n${steps}\n\nWhen you register you choose your own password. Your registration then waits for approval, and you will get an email as soon as you can sign in. The link expires in 7 days, and once you register it must be approved within 12 hours.`;
 
-    const sendEmail = async () => {
+    const sendEmailAndSms = async () => {
       setSendingEmail(true);
       try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const res = await fetch('/api/send-staff-invite-email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...(sessionData.session ? { Authorization: `Bearer ${sessionData.session.access_token}` } : {}) },
-          body: JSON.stringify({ inviteId: createdInvite.id }),
-        });
-        const json = await res.json();
-        if (!res.ok) throw new Error(json.error || 'Failed to send email.');
-        addNotification(`Invite emailed to ${createdInvite.email}.`);
+        const res: any = await callPrivilegedApi('/api/send-staff-invite-email', { inviteId: createdInvite.id, channels: ['email', 'sms'] });
+        setSendResult({ email: res?.email, sms: res?.sms });
+        reloadDirectory();
       } catch (err: any) {
-        addNotification(`Email send failed: ${err.message}`);
+        addNotification(`Send failed: ${err.message}`);
       } finally {
         setSendingEmail(false);
       }
@@ -393,6 +528,12 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
       window.open(`https://wa.me/${num.replace(/^0/, '233').replace('+', '')}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
     };
 
+    const resultLine = (label: string, r?: { sent: boolean; reason?: string }) => !r ? null : (
+      <p style={{ margin: '4px 0 0', fontSize: 12, fontWeight: 600, color: r.sent ? '#10b981' : '#ef4444' }}>
+        {r.sent ? `${label}: sent` : `${label}: not sent. ${r.reason || ''}`}
+      </p>
+    );
+
     return (
       <SidePanel
         open={!!createdInvite}
@@ -400,49 +541,33 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
         title="Send Invite"
         footer={<button onClick={() => setCreatedInvite(null)} className="erp-btn erp-btn-primary w-full">Done</button>}
       >
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 1rem' }}>Saved. Choose how to send the link to {createdInvite.fullName}, any combination.</p>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 1rem' }}>Saved. Choose how to send the link to {createdInvite.fullName}.</p>
 
         <div style={{ display: 'grid', gap: '1rem' }}>
           <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '0.75rem' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, fontSize: 13, marginBottom: 8 }}>
-              <input type="checkbox" checked={sendChannels.email} onChange={e => setSendChannels(p => ({ ...p, email: e.target.checked }))} />
-              Email — {createdInvite.email}
-            </label>
-            {sendChannels.email && (
-              <>
-                <pre style={{ whiteSpace: 'pre-wrap', background: 'var(--bg)', borderRadius: 8, padding: '0.5rem 0.75rem', fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 0.5rem' }}>{message}</pre>
-                <button type="button" onClick={sendEmail} disabled={sendingEmail} className="erp-btn erp-btn-primary" style={{ width: '100%' }}>{sendingEmail ? 'Sending…' : 'Send Email'}</button>
-              </>
+            <p style={{ margin: 0, fontWeight: 600, fontSize: 13 }}>Email: {createdInvite.email || 'none on file'}</p>
+            <p style={{ margin: '0 0 8px', fontWeight: 600, fontSize: 13 }}>SMS: {createdInvite.phone || 'no phone on file'}</p>
+            <pre style={{ whiteSpace: 'pre-wrap', background: 'var(--bg)', borderRadius: 8, padding: '0.5rem 0.75rem', fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 0.5rem' }}>{message}</pre>
+            <button type="button" onClick={sendEmailAndSms} disabled={sendingEmail} className="erp-btn erp-btn-primary" style={{ width: '100%' }}>{sendingEmail ? 'Sending…' : 'Send by Email and SMS'}</button>
+            {sendResult && (
+              <div style={{ marginTop: 6 }}>
+                {resultLine('Email', sendResult.email)}
+                {resultLine('SMS', sendResult.sms)}
+              </div>
             )}
           </div>
 
           <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '0.75rem' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, fontSize: 13, marginBottom: 8 }}>
-              <input type="checkbox" checked={sendChannels.whatsapp} onChange={e => setSendChannels(p => ({ ...p, whatsapp: e.target.checked }))} />
-              WhatsApp
-            </label>
-            {sendChannels.whatsapp && (
-              <>
-                <input value={sendWhatsappNumber} onChange={e => setSendWhatsappNumber(e.target.value)} placeholder="WhatsApp number (e.g. 0244123456)"
-                  style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', fontSize: 13, marginBottom: 8, boxSizing: 'border-box' }} />
-                <pre style={{ whiteSpace: 'pre-wrap', background: 'var(--bg)', borderRadius: 8, padding: '0.5rem 0.75rem', fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 0.5rem' }}>{message}</pre>
-                <button type="button" onClick={openWhatsapp} className="erp-btn erp-btn-primary" style={{ width: '100%' }}>Open WhatsApp to Send</button>
-                <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '6px 0 0' }}>Opens your own WhatsApp with the message ready, so you can tap Send.</p>
-              </>
-            )}
-          </div>
-
-          <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '0.75rem', opacity: 0.6 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, fontSize: 13 }}>
-              <input type="checkbox" disabled />
-              SMS
-            </label>
-            <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '6px 0 0' }}>Not configured yet. Needs an SMS gateway account connected.</p>
+            <p style={{ margin: '0 0 8px', fontWeight: 600, fontSize: 13 }}>WhatsApp</p>
+            <input value={sendWhatsappNumber} onChange={e => setSendWhatsappNumber(e.target.value)} placeholder="WhatsApp number (e.g. 0244123456)"
+              style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', fontSize: 13, marginBottom: 8, boxSizing: 'border-box' }} />
+            <button type="button" onClick={openWhatsapp} className="erp-btn erp-btn-primary" style={{ width: '100%' }}>Open WhatsApp to Send</button>
+            <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '6px 0 0' }}>Opens your own WhatsApp with the message ready. You tap Send.</p>
           </div>
 
           <div style={{ display: 'flex', gap: 8 }}>
             <code style={{ flex: 1, fontSize: 11, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', background: 'var(--bg)', borderRadius: 8, padding: '0.5rem 0.75rem' }}>{link}</code>
-            <button type="button" onClick={() => navigator.clipboard.writeText(link)} className="erp-btn erp-btn-ghost">Copy Link</button>
+            <button type="button" onClick={() => { navigator.clipboard.writeText(link); addNotification('Link copied'); }} className="erp-btn erp-btn-ghost">Copy Link</button>
           </div>
         </div>
       </SidePanel>
@@ -462,7 +587,22 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
       }
     >
         <div style={{ display: 'grid', gap: '0.75rem' }}>
-          {(['fullName', 'email', 'phone', 'ghanaCard'] as const).map(field => (
+          {title === 'Add Staff' && (
+            <div>
+              <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>App Access</label>
+              <div className="flex gap-1 p-1 rounded-xl bg-[var(--bg-input)] border border-[var(--border)]">
+                {([['full', 'Full App Account'], ['none', 'Employee # Only']] as const).map(([v, label]) => (
+                  <button key={v} type="button" onClick={() => setAppAccessMode(v)}
+                    className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer ${appAccessMode === v ? 'text-white' : 'text-[var(--text-secondary)]'}`}
+                    style={appAccessMode === v ? { background: 'var(--accent)' } : undefined}>{label}</button>
+                ))}
+              </div>
+              <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                {appAccessMode === 'none' ? 'Only an employee number is issued, for attendance devices. No invite and no app account.' : 'Sends an invite link to register and download the app.'}
+              </p>
+            </div>
+          )}
+          {(['fullName', 'email', 'phone', 'ghanaCard'] as const).filter(f => !(title === 'Add Staff' && appAccessMode === 'none' && (f === 'email' || f === 'ghanaCard'))).map(field => (
             <div key={field}>
               <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>
                 {field === 'fullName' ? 'Full Name' : field === 'ghanaCard' ? 'Ghana Card' : field.charAt(0).toUpperCase() + field.slice(1)}
@@ -470,6 +610,7 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
               <input
                 value={form[field]}
                 disabled={submitting}
+                placeholder={({ fullName: 'e.g. Kofi Mensah', email: 'e.g. kofi@yourcompany.com', phone: 'e.g. 0244123456', ghanaCard: 'e.g. GHA-123456789-0' } as Record<string, string>)[field]}
                 onChange={e => setForm(p => ({ ...p, [field]: e.target.value }))}
                 style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box', opacity: submitting ? 0.5 : 1 }}
               />
@@ -504,12 +645,56 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
               </button>
             </div>
           </div>
+          {title === 'Add Staff' && appAccessMode === 'full' && previousHolders.length > 0 && (
+            <div style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.75rem' }}>
+              <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: 'var(--text-primary)' }}>Someone was here before</p>
+              <p style={{ margin: '4px 0 8px', fontSize: 12, color: 'var(--text-secondary)' }}>
+                {previousHolders.length === 1
+                  ? `${previousHolders[0].name} was ${form.role} in ${form.department} and was terminated${previousHolders[0].leftOn ? ` on ${previousHolders[0].leftOn}` : ''}.`
+                  : `${previousHolders.length} people were ${form.role} in ${form.department} before.`} Should this new person continue that work or start new?
+              </p>
+              {previousHolders.length > 1 && (
+                <div style={{ marginBottom: 8 }}>
+                  <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Continue whose work?</label>
+                  <SearchableDropdown value={continueFromId} onChange={setContinueFromId}
+                    options={previousHolders.map(h => ({ value: h.id, label: h.name, sublabel: h.leftOn ? `Left ${h.leftOn}` : undefined }))} />
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 8 }}>
+                {([['continue', 'Continue previous work'], ['start_new', 'Start new']] as const).map(([v, label]) => (
+                  <button key={v} type="button" onClick={() => setWorkChoice(v)}
+                    style={{ flex: 1, padding: '0.45rem 0.75rem', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: workChoice === v ? 'none' : '1px solid var(--border)', background: workChoice === v ? 'var(--accent)' : 'transparent', color: workChoice === v ? '#fff' : 'var(--text-secondary)' }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--text-muted)' }}>
+                {workChoice === 'continue'
+                  ? "Once they are approved, the open work the previous person was handling becomes theirs: open tasks, their spreadsheets, and the open orders, customers and cargo they looked after. Chats and meetings stay private. Past work keeps the previous person's name."
+                  : workChoice === 'start_new'
+                    ? 'Nothing is moved. All the previous work stays in the system for the department.'
+                    : 'Pick one to continue.'}
+              </p>
+            </div>
+          )}
           <div>
             <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Staff Category</label>
             <SearchableDropdown
               value={form.staffCategory}
               onChange={v => setForm(p => ({ ...p, staffCategory: v }))}
               options={STAFF_CATEGORIES.map(c => ({ value: c, label: c }))}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Date of Birth (for birthday wishes)</label>
+            <input
+              type="date"
+              value={form.dateOfBirth}
+              disabled={submitting}
+              placeholder="YYYY-MM-DD"
+              max={new Date().toISOString().slice(0, 10)}
+              onChange={e => setForm(p => ({ ...p, dateOfBirth: e.target.value }))}
+              style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box', opacity: submitting ? 0.5 : 1 }}
             />
           </div>
           <div>
@@ -610,6 +795,7 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
                   <input
                     value={form[field]}
                     disabled={submitting}
+                    placeholder={({ guarantorName: 'e.g. Ama Owusu', guarantorPhone: 'e.g. 0201234567', guarantorRelationship: 'e.g. Aunt', guarantorIdNumber: 'e.g. GHA-987654321-0', guarantorAddress: 'e.g. Plot 4, Tema Community 9' } as Record<string, string>)[field]}
                     onChange={e => setForm(p => ({ ...p, [field]: e.target.value }))}
                     style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box', opacity: submitting ? 0.5 : 1 }}
                   />
@@ -619,6 +805,202 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
           </div>
         </div>
     </SidePanel>
+  );
+
+  // ── Step 4: the one staff list ──────────────────────────────────────
+  const callerIsCeo = !!currentUser?.isAdmin;
+  const callerIsHr = currentUser?.department === 'HR';
+  const canManagePeople = callerIsCeo || callerIsHr;
+  const ceoOnlyDept = (r: { department?: string; departmentCode?: string }) =>
+    r.department === 'HR' || r.department === 'Management' || r.department === 'CEO'
+    || ['hr', 'management', 'ceo'].includes(String(r.departmentCode || '').toLowerCase());
+  const rowFor = (kind: 'app' | 'no_app', id: string) => directory.find(r => r.key === `${kind}:${id}`);
+
+  // The CEO terminates someone at once, with his password. Nothing is
+  // deleted: all their work stays in the system (api/terminate-user.ts).
+  const canTerminate = (r: DirectoryRow) =>
+    callerIsCeo && r.kind !== 'invite' && !r.isCeo && r.status !== 'TERMINATED' && r.id !== currentUser?.id;
+  const startTerminate = (r: DirectoryRow) => { setMenuOpen(null); setTerminating(r); };
+  const runTerminate = async (password: string) => {
+    if (!terminating) return;
+    const res = await terminateApi.terminate({ kind: terminating.kind as 'app' | 'no_app', id: terminating.id }, password);
+    setTerminating(null);
+    setSelected(null);
+    setSelectedOther(null);
+    addNotification(res.message);
+    reloadDirectory();
+  };
+
+  const openRow = (r: DirectoryRow) => {
+    setMenuOpen(null);
+    if (r.kind === 'app') setSelected(staff.find(m => m.id === r.id) || mapStaffRow(r.raw));
+    else setSelectedOther(r);
+  };
+
+  const resendInvite = async (r: DirectoryRow) => {
+    if (resendingInvite) return;
+    setResendingInvite(true);
+    try {
+      const res: any = await callPrivilegedApi('/api/resend-invite', { inviteId: r.id });
+      setSelectedOther(null);
+      setResent({ name: r.fullName, message: res?.message || 'A new link is ready.', link: res?.link || '', phone: res?.phone || r.phone || '' });
+      reloadDirectory();
+    } catch (e: any) {
+      addNotification(`Could not resend the link: ${e.message}`);
+    } finally {
+      setResendingInvite(false);
+    }
+  };
+
+  const toggleNonAppStatus = async (r: DirectoryRow) => {
+    const next = r.status === 'SUSPENDED' ? 'ACTIVE' : 'SUSPENDED';
+    try {
+      await setNonAppStaffStatus(r.id, next);
+      setSelectedOther(prev => (prev && prev.id === r.id ? { ...prev, status: next } : prev));
+      addNotification(`${r.fullName} ${next === 'SUSPENDED' ? 'suspended' : 'reactivated'}`);
+      reloadDirectory();
+    } catch (e: any) {
+      addNotification(`Error updating status: ${e.message}`);
+    }
+  };
+
+  const dirStatusStyle = (st: string) =>
+    st === 'ACTIVE' ? { bg: 'rgba(16,185,129,0.12)', color: '#10b981' }
+    : st === 'SUSPENDED' || st === 'BLOCKED' ? { bg: 'rgba(239,68,68,0.12)', color: '#ef4444' }
+    : st === 'TERMINATED' ? { bg: 'var(--bg-input)', color: 'var(--text-muted)' }
+    : st === 'INVITED' ? { bg: 'rgba(14,165,233,0.12)', color: '#0ea5e9' }
+    : { bg: 'rgba(245,158,11,0.12)', color: '#f59e0b' };
+
+  const PersonPhoto = ({ name, photo, size = 34 }: { name: string; photo?: string; size?: number }) => photo ? (
+    <img src={photo} alt={name} onClick={e => { e.stopPropagation(); window.open(photo, '_blank', 'noopener,noreferrer'); }}
+      style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', cursor: 'zoom-in', flexShrink: 0 }} />
+  ) : (
+    <div style={{ width: size, height: size, borderRadius: '50%', background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: size * 0.36, fontWeight: 700, flexShrink: 0 }}>
+      {initials(name)}
+    </div>
+  );
+
+  const formerStaffBlock = (r: DirectoryRow | undefined) => {
+    if (!r || r.status !== 'TERMINATED') return null;
+    return (
+      <div style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '1rem 1.25rem', marginBottom: '1rem' }}>
+        <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>Former staff</p>
+        <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>
+          Terminated. They can no longer sign in. All the work they did stays in the system for their department.
+        </p>
+      </div>
+    );
+  };
+
+  const exportDirectory = () => exportToCSV(filtered.map(r => ({
+    fullName: r.fullName, type: KIND_LABEL[r.kind], status: STATUS_LABEL[r.status] || r.status, employeeNumber: r.employeeNumber || '',
+    department: r.department, role: r.role || '', email: r.email || '', phone: r.phone || '', devices: r.devices.join('; '), joinedAt: r.joinedAt,
+  })), ['fullName', 'type', 'status', 'employeeNumber', 'department', 'role', 'email', 'phone', 'devices', 'joinedAt'], 'staff_directory');
+
+  // Panels shared by the list and the profile views.
+  const extraPanels = () => (
+    <>
+      <SidePanel open={!!selectedOther} onClose={() => setSelectedOther(null)} title={selectedOther?.fullName || ''}
+        subtitle={selectedOther ? `${KIND_LABEL[selectedOther.kind]}${selectedOther.department ? `, ${selectedOther.department}` : ''}` : undefined}>
+        {selectedOther && (
+          <div style={{ display: 'grid', gap: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <PersonPhoto name={selectedOther.fullName} photo={selectedOther.photo} size={52} />
+              <div>
+                <p style={{ margin: 0, fontWeight: 700, color: 'var(--text-primary)' }}>{selectedOther.fullName}</p>
+                <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>{selectedOther.kind === 'invite' ? 'Invited, not registered yet' : (selectedOther.employeeNumber || 'No employee number')}</p>
+                <span style={{ display: 'inline-block', marginTop: 4, padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: dirStatusStyle(selectedOther.status).bg, color: dirStatusStyle(selectedOther.status).color }}>{STATUS_LABEL[selectedOther.status] || selectedOther.status}</span>
+              </div>
+            </div>
+            {formerStaffBlock(selectedOther)}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+              {([
+                ['Role', selectedOther.role], ['Phone', selectedOther.phone], ['Email', selectedOther.email],
+                ['Address', selectedOther.raw?.address], ['Staff category', selectedOther.raw?.staff_category],
+                ['Date of birth', selectedOther.raw?.date_of_birth], ['Added', selectedOther.joinedAt],
+                ...(selectedOther.kind === 'invite' ? [['Link expires', selectedOther.raw?.expires_at ? new Date(selectedOther.raw.expires_at).toLocaleDateString() : ''], ['Sent by', (selectedOther.raw?.sent_via || []).join(', ') || 'Not sent yet']] : []),
+                ['Guarantor', selectedOther.raw?.guarantor_name], ['Guarantor phone', selectedOther.raw?.guarantor_phone],
+              ] as [string, string | undefined][]).filter(([, v]) => v).map(([k, v]) => (
+                <div key={k}>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{k}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{v}</div>
+                </div>
+              ))}
+            </div>
+            {selectedOther.kind === 'no_app' && (
+              <EnrollmentSection personKind="no_app" personId={selectedOther.id} employeeNumber={selectedOther.employeeNumber} canEdit={canManagePeople} enrolledBy={currentUser?.fullName || 'HR'} addNotification={addNotification} onChanged={reloadDirectory} />
+            )}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {selectedOther.kind === 'invite' && canManagePeople && (
+                <button onClick={() => resendInvite(selectedOther)} disabled={resendingInvite} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0.45rem 1rem', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer', opacity: resendingInvite ? 0.6 : 1 }}>
+                  <Send size={13} /> {resendingInvite ? 'Sending…' : 'Resend link'}
+                </button>
+              )}
+              {selectedOther.kind === 'no_app' && canManagePeople && (selectedOther.status === 'ACTIVE' || selectedOther.status === 'SUSPENDED') && (callerIsCeo || !ceoOnlyDept(selectedOther)) && (
+                <button onClick={() => toggleNonAppStatus(selectedOther)} style={{ padding: '0.45rem 1rem', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
+                  {selectedOther.status === 'SUSPENDED' ? 'Reactivate' : 'Suspend'}
+                </button>
+              )}
+              {canTerminate(selectedOther) && (
+                <button onClick={() => startTerminate(selectedOther)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0.45rem 1rem', borderRadius: 8, border: 'none', background: '#ef4444', color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
+                  <UserMinus size={13} /> Terminate
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </SidePanel>
+
+      <SidePanel open={!!resent} onClose={() => setResent(null)} title="Link Resent" subtitle={resent?.name}
+        footer={<button onClick={() => setResent(null)} className="erp-btn erp-btn-primary w-full">Done</button>}>
+        {resent && (
+          <div style={{ display: 'grid', gap: 10 }}>
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)' }}>{resent.message}</p>
+            {resent.link && (
+              <>
+                <p style={{ margin: 0, fontSize: 12, wordBreak: 'break-all', color: 'var(--text-primary)', userSelect: 'all' }}>{resent.link}</p>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {resent.phone && (
+                    <button onClick={() => {
+                      const digits = resent.phone.replace(/[^\d+]/g, '').replace(/^\+/, '').replace(/^0/, '233');
+                      const text = `Hi ${resent.name}, here is your new Rebma Impex registration link. Open the Rebma app, tap Register and paste it: ${resent.link}`;
+                      window.open(`https://wa.me/${digits}?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
+                    }} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0.45rem 1rem', borderRadius: 8, border: 'none', background: '#25D366', color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
+                      <MessageCircle size={13} /> Send on WhatsApp
+                    </button>
+                  )}
+                  <button onClick={() => { navigator.clipboard.writeText(resent.link); addNotification('Link copied'); }} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0.45rem 1rem', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
+                    <Copy size={13} /> Copy link
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </SidePanel>
+
+      <SidePanel open={!!createdNonAppStaff} onClose={() => setCreatedNonAppStaff(null)} title="Employee Number Issued"
+        footer={<button onClick={() => setCreatedNonAppStaff(null)} className="erp-btn erp-btn-primary w-full">Done</button>}>
+        {createdNonAppStaff && (
+          <div style={{ textAlign: 'center', padding: '1rem 0' }}>
+            <p style={{ margin: 0, fontSize: 22, fontWeight: 700, color: 'var(--text-primary)' }}>{createdNonAppStaff.employeeNumber}</p>
+            <p style={{ margin: '8px 0 0', fontSize: 13, color: 'var(--text-muted)' }}>
+              Assigned to {createdNonAppStaff.fullName}. No invite was sent and no app account was created. Enroll this exact employee number on their attendance device.
+            </p>
+          </div>
+        )}
+      </SidePanel>
+
+      <PasswordConfirmModal
+        open={!!terminating}
+        onClose={() => setTerminating(null)}
+        title="Confirm Termination"
+        description={terminating ? `Terminate ${terminating.fullName}? They can no longer sign in. Nothing is deleted: all their work stays in the system. Type your password to confirm it is you.` : ''}
+        confirmLabel="Terminate"
+        danger
+        onConfirm={runTerminate}
+      />
+    </>
   );
 
   if (selected) {
@@ -657,6 +1039,7 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
               { icon: <CreditCard size={14} />, label: 'Ghana Card', value: selected.ghanaCard },
               { icon: <MapPin size={14} />, label: 'Address', value: selected.address || '—' },
               { icon: <Calendar size={14} />, label: 'Joined', value: selected.joinedAt },
+              { icon: <Calendar size={14} />, label: 'Date of Birth', value: selected.dateOfBirth || '—' },
             ].map(item => (
               <div key={item.label} style={{ background: 'var(--bg)', borderRadius: 8, padding: '0.75rem', border: '1px solid var(--border)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)', fontSize: 11, marginBottom: 4 }}>{item.icon}{item.label}</div>
@@ -665,6 +1048,38 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
             ))}
           </div>
         </div>
+
+        {(() => {
+          const r = rowFor('app', selected.id);
+          const m = staff.find(x => x.id === selected.id) || selected;
+          return (
+            <>
+              {formerStaffBlock(r)}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: '1rem' }}>
+                {isHrOrAdmin && selected.status !== 'TERMINATED' && (
+                  <button onClick={() => openEdit(m)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0.45rem 1rem', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
+                    <Edit2 size={13} /> Edit
+                  </button>
+                )}
+                {canChangeStatus(m) && (
+                  <button onClick={() => handleSuspend(m)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0.45rem 1rem', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: '#ef4444', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
+                    <UserX size={13} /> {m.status === 'SUSPENDED' ? 'Reactivate' : 'Suspend'}
+                  </button>
+                )}
+                {r && canTerminate(r) && (
+                  <button onClick={() => startTerminate(r)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0.45rem 1rem', borderRadius: 8, border: 'none', background: '#ef4444', color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
+                    <UserMinus size={13} /> Terminate
+                  </button>
+                )}
+              </div>
+              {selected.role !== 'CEO' && (
+                <div style={{ marginBottom: '1rem' }}>
+                  <EnrollmentSection personKind="app" personId={selected.id} employeeNumber={selected.employeeNumber} canEdit={canManagePeople} enrolledBy={currentUser?.fullName || 'HR'} addNotification={addNotification} onChanged={reloadDirectory} />
+                </div>
+              )}
+            </>
+          );
+        })()}
 
         {(selected.resumeUrl || selected.guarantorName || selected.guarantorPhone || selected.guarantorIdNumber) && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '0.75rem', marginBottom: '1rem' }}>
@@ -783,7 +1198,7 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
             const overall = setScores.length > 0 ? Math.round(setScores.reduce((s, v) => s + v, 0) / setScores.length) : null;
 
             const exportReport = () => {
-              downloadRowPDF(`Performance Report — ${selected.fullName}`, {
+              downloadRowPDF(`Performance Report: ${selected.fullName}`, {
                 'Employee Number': selected.employeeNumber || '—',
                 'Full Name': selected.fullName,
                 'Department': selected.department,
@@ -849,6 +1264,7 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
             );
           })()}
         </div>
+        {extraPanels()}
         {showAdd && FormModal({ title: "Add Staff", onClose: () => setShowAdd(false), onSave: handleSaveAdd })}
         {SendInvitePanel()}
         {editTarget && FormModal({ title: "Edit Staff", onClose: () => setEditTarget(null), onSave: handleSaveEdit })}
@@ -967,9 +1383,9 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
         <div>
           <h1 style={{ margin: 0, color: 'var(--text-primary)', fontWeight: 700, fontSize: 22 }}>Staff Directory</h1>
-          <p style={{ margin: '4px 0 0', color: 'var(--text-muted)', fontSize: 13 }}>{staff.length} total employees</p>
+          <p style={{ margin: '4px 0 0', color: 'var(--text-muted)', fontSize: 13 }}>Everyone in one list: app users, staff without the app, invites and former staff.</p>
         </div>
-        <button onClick={() => { setForm(blankForm); setResumeUrl(null); setPhotoDataUrl(null); setShowAdd(true); }}
+        <button onClick={() => { setForm(blankForm); setResumeUrl(null); setPhotoDataUrl(null); setAppAccessMode('full'); setShowAdd(true); }}
           style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0.5rem 1.25rem', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>
           <Plus size={16} /> Add Staff
         </button>
@@ -994,16 +1410,31 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
         ))}
       </div>
 
+      {canManagePeople && (
+        <div style={{ marginBottom: '1rem' }}>
+          <DeletionRequestsPanel callerIsCeo={callerIsCeo} callerId={currentUser?.id} addNotification={addNotification} onChanged={reloadDirectory} />
+        </div>
+      )}
+
       <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-        <div style={{ flex: 1, minWidth: 180, display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem' }}>
+        <div style={{ flex: 1, minWidth: 200, display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem' }}>
           <Search size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or email..."
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name, email, phone or employee number..."
             style={{ background: 'none', border: 'none', outline: 'none', color: 'var(--text-primary)', fontSize: 13, width: '100%' }} />
         </div>
-        <SearchableDropdown value={deptFilter} onChange={setDeptFilter} options={DEPARTMENTS.map(d => ({ value: d, label: d }))} className="w-40" />
-        <SearchableDropdown value={statusFilter} onChange={setStatusFilter} options={['All', 'ACTIVE', 'INACTIVE', 'SUSPENDED'].map(s => ({ value: s, label: s }))} className="w-36" />
+        <SearchableDropdown value={kindFilter} onChange={setKindFilter} options={[{ value: 'All', label: 'All types' }, { value: 'app', label: 'App users' }, { value: 'no_app', label: 'No app' }, { value: 'invite', label: 'Invited' }]} className="w-36" />
+        <SearchableDropdown value={deptFilter} onChange={setDeptFilter} options={['All', ...Array.from(new Set(directory.map(r => r.department).filter(Boolean))).sort()].map(d => ({ value: d, label: d === 'All' ? 'All departments' : d }))} className="w-44" />
+        <SearchableDropdown value={statusFilter} onChange={setStatusFilter} options={[
+          { value: 'Current', label: 'Current staff' }, { value: 'All', label: 'Everyone' },
+          ...['ACTIVE', 'SUSPENDED', 'BLOCKED', 'PENDING_APPROVAL', 'INVITED', 'EXPIRED', 'TERMINATED'].map(st => ({ value: st, label: STATUS_LABEL[st] })),
+        ]} className="w-40" />
+        <SearchableDropdown value={enrollFilter} onChange={setEnrollFilter} options={['All', 'Enrolled', 'Not enrolled'].map(v => ({ value: v, label: v === 'All' ? 'Any enrollment' : v }))} className="w-40" />
+        <SearchableDropdown value={sortBy} onChange={setSortBy} options={[{ value: 'name', label: 'Sort by name' }, { value: 'newest', label: 'Newest first' }, { value: 'number', label: 'By employee number' }]} className="w-44" />
         <input value={roleFilter} onChange={e => setRoleFilter(e.target.value)} placeholder="Filter by role..."
           style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: 13, minWidth: 140 }} />
+        <button onClick={exportDirectory} disabled={filtered.length === 0} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0.5rem 0.9rem', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+          <Download size={14} /> Export CSV
+        </button>
       </div>
 
       <div style={{ background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border)', overflow: 'hidden' }}>
@@ -1014,69 +1445,83 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
         ) : (
         <>
         <div style={{ padding: '0.75rem' }}>
-          <ResponsiveDataView<StaffMember>
+          <ResponsiveDataView<DirectoryRow>
             columns={[
               {
-                key: 'fullName', label: 'Name', primary: true, render: s => (
+                key: 'fullName', label: 'Name', primary: true, render: r => (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
-                      {initials(s.fullName)}
+                    <PersonPhoto name={r.fullName} photo={r.photo} />
+                    <div>
+                      <div style={{ whiteSpace: 'nowrap', fontWeight: 600 }}>{r.fullName}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{KIND_LABEL[r.kind]}{r.employeeNumber ? ` · ${r.employeeNumber}` : ''}</div>
                     </div>
-                    <span style={{ whiteSpace: 'nowrap' }}>{s.fullName}</span>
                   </div>
                 )
               },
-              { key: 'email', label: 'Email' },
-              { key: 'department', label: 'Department' },
-              { key: 'role', label: 'Role' },
-              { key: 'phone', label: 'Phone' },
+              { key: 'department', label: 'Department', render: r => r.department || '—' },
+              { key: 'role', label: 'Role', render: r => r.role || '—' },
+              { key: 'phone', label: 'Phone', mobileHidden: true, render: r => r.phone || '—' },
+              { key: 'devices', label: 'Devices', render: r => (r.kind === 'invite' ? '—' : r.devices.length ? r.devices.join(', ') : 'Not enrolled') },
               {
-                key: 'status', label: 'Status', status: true, render: s => {
-                  const sc = statusColor(s.status);
-                  return <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: sc.bg, color: sc.color }}>{s.status}</span>;
+                key: 'status', label: 'Status', status: true, render: r => {
+                  const sc = dirStatusStyle(r.status);
+                  return <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: sc.bg, color: sc.color }}>{STATUS_LABEL[r.status] || r.status}</span>;
                 }
               },
-              { key: 'joinedAt', label: 'Joined' },
+              { key: 'joinedAt', label: 'Added' },
             ]}
             data={filtered}
-            rowKey={s => s.id}
-            onRowClick={s => setSelected(s)}
-            emptyTitle={staff.length === 0 ? 'No staff members yet' : 'No staff members found'}
-            emptyDescription={staff.length === 0 ? 'They will appear here once added' : undefined}
-            renderActions={s => (
+            rowKey={r => r.key}
+            onRowClick={openRow}
+            emptyTitle={staffError ? 'Couldn’t load staff' : directory.length === 0 ? 'No staff members yet' : 'No one matches'}
+            emptyDescription={staffError || (directory.length === 0 ? 'They will appear here once added' : undefined)}
+            renderActions={r => (
               <div style={{ position: 'relative' }}>
-                <button onClick={() => setMenuOpen(menuOpen === s.id ? null : s.id)}
+                <button onClick={e => { e.stopPropagation(); setMenuOpen(menuOpen === r.key ? null : r.key); }}
                   style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4, borderRadius: 6 }}>
                   <MoreVertical size={16} />
                 </button>
-                {menuOpen === s.id && (
-                  <div style={{ position: 'absolute', right: 0, top: '100%', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: 'var(--box-shadow)', zIndex: 50, minWidth: 150 }}>
-                    <button onClick={() => { setSelected(s); setMenuOpen(null); }}
+                {menuOpen === r.key && (
+                  <div style={{ position: 'absolute', right: 0, top: '100%', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: 'var(--box-shadow)', zIndex: 50, minWidth: 170 }}>
+                    <button onClick={() => openRow(r)}
                       style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '0.6rem 1rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-primary)', fontSize: 13 }}>
-                      <Eye size={14} /> View Profile
+                      <Eye size={14} /> {r.kind === 'invite' ? 'View invite' : 'View Profile'}
                     </button>
-                    <button onClick={() => openEdit(s)}
-                      style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '0.6rem 1rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-primary)', fontSize: 13 }}>
-                      <Edit2 size={14} /> Edit
-                    </button>
-                    <button onClick={() => handleSuspend(s)}
-                      style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '0.6rem 1rem', background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 13 }}>
-                      <UserX size={14} /> {s.status === 'SUSPENDED' ? 'Reactivate' : 'Suspend'}
-                    </button>
+                    {r.kind === 'app' && (() => { const m = staff.find(x => x.id === r.id); return m ? (
+                      <>
+                        <button onClick={() => openEdit(m)}
+                          style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '0.6rem 1rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-primary)', fontSize: 13 }}>
+                          <Edit2 size={14} /> Edit
+                        </button>
+                        {canChangeStatus(m) && (
+                          <button onClick={() => handleSuspend(m)}
+                            style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '0.6rem 1rem', background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 13 }}>
+                            <UserX size={14} /> {m.status === 'SUSPENDED' ? 'Reactivate' : 'Suspend'}
+                          </button>
+                        )}
+                      </>
+                    ) : null; })()}
+                    {r.kind === 'invite' && canManagePeople && (
+                      <button onClick={() => { setMenuOpen(null); resendInvite(r); }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '0.6rem 1rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-primary)', fontSize: 13 }}>
+                        <Send size={14} /> Resend link
+                      </button>
+                    )}
+                    {canTerminate(r) && (
+                      <button onClick={() => startTerminate(r)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '0.6rem 1rem', background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 13 }}>
+                        <UserMinus size={14} /> Terminate
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
             )}
           />
         </div>
-        {!loadingStaff && staff.length > 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1rem', borderTop: '1px solid var(--border)', fontSize: 12, color: 'var(--text-muted)' }}>
-            <span>Showing {staff.length}{typeof total === 'number' ? ` of ${total.toLocaleString()}` : ''}</span>
-            {hasMore && (
-              <button onClick={loadMore} style={{ padding: '0.4rem 0.75rem', borderRadius: 8, background: 'var(--bg-input)', color: 'var(--text-secondary)', border: 'none', cursor: 'pointer', fontWeight: 600 }}>Load more</button>
-            )}
-          </div>
-        )}
+        <div style={{ padding: '0.75rem 1rem', borderTop: '1px solid var(--border)', fontSize: 12, color: 'var(--text-muted)' }}>
+          Showing {filtered.length} of {directory.length} people
+        </div>
         </>
         )}
       </div>
@@ -1085,6 +1530,20 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
         {SendInvitePanel()}
       {editTarget && FormModal({ title: "Edit Staff", onClose: () => setEditTarget(null), onSave: handleSaveEdit })}
       {menuOpen && <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setMenuOpen(null)} />}
+      {extraPanels()}
+      <PasswordConfirmModal
+        open={!!statusPending}
+        onClose={() => setStatusPending(null)}
+        title={statusPending?.action === 'reactivate' ? 'Confirm Reactivation' : 'Confirm Suspension'}
+        description={statusPending
+          ? (statusPending.action === 'reactivate'
+            ? `Reactivate ${statusPending.member.fullName}? They can sign in again. Type your password to confirm it is you.`
+            : `Suspend ${statusPending.member.fullName}? They are signed out everywhere and cannot sign in until reactivated. Type your password to confirm it is you.`)
+          : ''}
+        confirmLabel={statusPending?.action === 'reactivate' ? 'Reactivate' : 'Suspend'}
+        danger={statusPending?.action === 'suspend'}
+        onConfirm={runStatusChange}
+      />
     </div>
   );
 }

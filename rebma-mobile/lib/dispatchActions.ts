@@ -72,6 +72,17 @@ export async function releaseOrderToDispatch(orderId: string): Promise<{ driverN
     .select();
   if (delErr) throw new Error(delErr.message);
 
+  // Same required step as ApprovedGoodsScreen's submitDispatch() — an
+  // order must pass through PROCESSING before enforce_order_status_
+  // transition() will ever allow it to reach OUT_FOR_DELIVERY. This is
+  // the second of two dispatch-initiating code paths, so it needs the
+  // exact same fix or auto-assigned orders get stuck the same way.
+  const { error: statusErr } = await supabase
+    .from('orders')
+    .update({ status: 'PROCESSING', updated_at: new Date().toISOString() })
+    .eq('id', orderId);
+  if (statusErr) throw new Error(`Delivery created, but order status could not be updated: ${statusErr.message}`);
+
   if (delivery && delivery[0]) {
     const deliveryId = delivery[0].id;
     const { data: existing } = await supabase.from('waybills').select('id').eq('delivery_log_id', deliveryId).limit(1);

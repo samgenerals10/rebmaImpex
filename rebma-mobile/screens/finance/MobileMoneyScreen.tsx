@@ -194,13 +194,13 @@ export default function MobileMoneyScreen() {
         side="bottom"
         footer={<Button label={savingEdit ? 'Saving…' : 'Save Changes'} onPress={saveEdit} loading={savingEdit} disabled={savingEdit} fullWidth />}
       >
-        <Field label="Transaction ID *"><Input value={editForm.transactionId} onChangeText={(v) => setEditForm((f) => ({ ...f, transactionId: v }))} /></Field>
+        <Field label="Transaction ID *"><Input value={editForm.transactionId} onChangeText={(v) => setEditForm((f) => ({ ...f, transactionId: v }))} placeholder="e.g. MP240915.1234.A56789" /></Field>
         <Field label="Network">
           <SearchablePicker value={editForm.network} onChange={(v) => setEditForm((f) => ({ ...f, network: v }))} options={[{ value: 'MTN', label: 'MTN' }, { value: 'Vodafone', label: 'Vodafone' }, { value: 'AirtelTigo', label: 'AirtelTigo' }]} />
         </Field>
-        <Field label="Customer Name *"><Input value={editForm.customerName} onChangeText={(v) => setEditForm((f) => ({ ...f, customerName: v }))} /></Field>
-        <Field label="MoMo Number" hint="Optional"><Input value={editForm.momoNumber} onChangeText={(v) => setEditForm((f) => ({ ...f, momoNumber: v }))} /></Field>
-        <Field label="Amount (GHS) *"><Input value={editForm.amount} onChangeText={(v) => setEditForm((f) => ({ ...f, amount: v }))} keyboardType="decimal-pad" /></Field>
+        <Field label="Customer Name *"><Input value={editForm.customerName} onChangeText={(v) => setEditForm((f) => ({ ...f, customerName: v }))} placeholder="e.g. Kofi Mensah" /></Field>
+        <Field label="MoMo Number" hint="Optional"><Input value={editForm.momoNumber} onChangeText={(v) => setEditForm((f) => ({ ...f, momoNumber: v }))} placeholder="0244000000" /></Field>
+        <Field label="Amount (GHS) *"><Input value={editForm.amount} onChangeText={(v) => setEditForm((f) => ({ ...f, amount: v }))} keyboardType="decimal-pad" placeholder="0.00" /></Field>
       </Sheet>
 
       <ExportSheet

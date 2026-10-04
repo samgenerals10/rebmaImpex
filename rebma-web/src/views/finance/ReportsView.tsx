@@ -7,6 +7,9 @@ import SidePanel from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
 import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 
+import DateRangeField from '../../components/ui/DateRangeField';
+import type { CalendarValue } from '../../components/ui/CalendarPicker';
+import { thisMonth, rangeBounds, rangeLabel } from '../../utils/dateRange';
 interface ReportCard {
   id: string;
   name: string;
@@ -51,7 +54,10 @@ export default function FinanceReportsView({ addNotification, currentUser }: Pro
   };
   const [generating, setGenerating] = useState<string | null>(null);
   const [showPeriodModal, setShowPeriodModal] = useState<ReportCard | null>(null);
-  const [selectedPeriod, setSelectedPeriod] = useState('This Month');
+  // One calendar range instead of named periods (Part C); starts on this
+  // month so far, the old default.
+  const [range, setRange] = useState<CalendarValue>(() => thisMonth());
+  const selectedPeriod = rangeLabel(range);
   const [reportHistory, setReportHistory] = useState<ReportHistoryEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
 
@@ -83,34 +89,17 @@ export default function FinanceReportsView({ addNotification, currentUser }: Pro
       let dataToExport: any[] = [];
       let headers: string[] = [];
 
-      // Determine date ranges based on selectedPeriod
-      let dateFilterGte = '';
-      const now = new Date();
-      if (selectedPeriod === 'Today') {
-        const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        dateFilterGte = d.toISOString();
-      } else if (selectedPeriod === 'This Week') {
-        const d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        dateFilterGte = d.toISOString();
-      } else if (selectedPeriod === 'This Month') {
-        const d = new Date(now.getFullYear(), now.getMonth(), 1);
-        dateFilterGte = d.toISOString();
-      } else if (selectedPeriod === 'Last Month') {
-        const d = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        dateFilterGte = d.toISOString();
-      } else if (selectedPeriod === 'This Quarter') {
-        const currentQuarterMonth = Math.floor(now.getMonth() / 3) * 3;
-        const d = new Date(now.getFullYear(), currentQuarterMonth, 1);
-        dateFilterGte = d.toISOString();
-      } else if (selectedPeriod === 'This Year') {
-        const d = new Date(now.getFullYear(), 0, 1);
-        dateFilterGte = d.toISOString();
-      }
+      // Both ends of the chosen range. The old named periods only had a
+      // start, so "Last Month" also counted this month.
+      const { from, to } = rangeBounds(range);
+      const dateFilterGte = from ? from.toISOString() : '';
+      const dateFilterLte = to ? to.toISOString() : '';
 
       if (report.id === 'daily_cash') {
         // Daily Cash Report: Cash inflow from cash payments
         let query = supabase.from('finance_payments').select('*').eq('payment_mode', 'Cash');
         if (dateFilterGte) query = query.gte('created_at', dateFilterGte);
+        if (dateFilterLte) query = query.lte('created_at', dateFilterLte);
         const { data } = await query;
         const payments = data || [];
         dataToExport = payments.map(p => ({
@@ -128,6 +117,7 @@ export default function FinanceReportsView({ addNotification, currentUser }: Pro
         // Weekly Sales Report: sales orders in selected period
         let query = supabase.from('orders').select('*');
         if (dateFilterGte) query = query.gte('created_at', dateFilterGte);
+        if (dateFilterLte) query = query.lte('created_at', dateFilterLte);
         const { data } = await query;
         const orders = data || [];
         dataToExport = orders.map(o => ({
@@ -149,6 +139,10 @@ export default function FinanceReportsView({ addNotification, currentUser }: Pro
         if (dateFilterGte) {
           pQuery = pQuery.gte('created_at', dateFilterGte);
           eQuery = eQuery.gte('created_at', dateFilterGte);
+        }
+        if (dateFilterLte) {
+          pQuery = pQuery.lte('created_at', dateFilterLte);
+          eQuery = eQuery.lte('created_at', dateFilterLte);
         }
         const { data: pData } = await pQuery;
         const { data: eData } = await eQuery;
@@ -228,6 +222,7 @@ export default function FinanceReportsView({ addNotification, currentUser }: Pro
         // Expense Report: approved and pending general purchases
         let query = supabase.from('general_purchases').select('*');
         if (dateFilterGte) query = query.gte('created_at', dateFilterGte);
+        if (dateFilterLte) query = query.lte('created_at', dateFilterLte);
         const { data } = await query;
         const expenses = data || [];
         dataToExport = expenses.map(e => ({
@@ -248,7 +243,7 @@ export default function FinanceReportsView({ addNotification, currentUser }: Pro
       }
 
       exportToPDF(
-        `${report.name} — ${selectedPeriod}`,
+        `${report.name}, ${selectedPeriod}`,
         dataToExport,
         headers
       );
@@ -359,12 +354,8 @@ export default function FinanceReportsView({ addNotification, currentUser }: Pro
         }
       >
         <div className="erp-form-group">
-          <label className="erp-label">Select Period</label>
-          <SearchableDropdown
-            value={selectedPeriod}
-            onChange={setSelectedPeriod}
-            options={['Today', 'This Week', 'This Month', 'Last Month', 'This Quarter', 'Last Quarter', 'This Year', 'Last Year'].map(p => ({ value: p, label: p }))}
-          />
+          <label className="erp-label">Report dates</label>
+          <DateRangeField value={range} onChange={setRange} />
         </div>
       </SidePanel>
     </div>

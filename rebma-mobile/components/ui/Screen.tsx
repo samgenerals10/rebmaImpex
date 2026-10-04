@@ -16,6 +16,17 @@ interface Props {
   onRefresh?: () => void;
   padded?: boolean;
   footer?: ReactNode;
+  /** Which sides get safe-area inset padding. Defaults to top+left+right,
+   * correct for a screen with no header above it. A screen pushed under
+   * `SubScreenHeader` (every department sub-tab) already gets its own
+   * `paddingTop: insets.top` there — leaving 'top' in this list too
+   * double-counts that inset, showing as a real, large dead gap on any
+   * device with a notch/Dynamic Island (invisible in a plain browser
+   * preview, which has no such inset — confirmed as the real cause of a
+   * reported "huge padding above the tabs" that never showed up in
+   * screenshots taken here). Pass `edges={['left','right']}` from a
+   * screen that already sits under that header. */
+  edges?: ('top' | 'left' | 'right' | 'bottom')[];
   /** Auto-detected from `onScroll` being passed (every department
    * home/dashboard screen wires this in via `useCollapsibleHeader()`,
    * nothing else does) — renders DashboardHeader as a fixed sibling,
@@ -31,7 +42,7 @@ interface Props {
   scrollEventThrottle?: number;
 }
 
-export default function Screen({ children, scroll = true, refreshing, onRefresh, padded = true, footer, onScroll, scrollEventThrottle }: Props) {
+export default function Screen({ children, scroll = true, refreshing, onRefresh, padded = true, footer, onScroll, scrollEventThrottle, edges = ['top', 'left', 'right'] }: Props) {
   const t = useTheme();
   const isDashboard = !!onScroll;
   const pinnedHeaderH = usePinnedHeaderHeight();
@@ -121,7 +132,7 @@ export default function Screen({ children, scroll = true, refreshing, onRefresh,
   };
 
   return (
-    <SafeAreaView style={styles.root} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={styles.root} edges={edges}>
       {scroll ? (
         <>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>

@@ -184,8 +184,9 @@ export interface StaffMember {
   ghanaCard: string;
   phone: string;
   photo?: string;
+  dateOfBirth?: string;
   joinedAt: string;
-  status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'BLOCKED';
+  status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'BLOCKED' | 'TERMINATED' | 'PENDING_APPROVAL';
   employeeNumber?: string;
   resumeUrl?: string;
   address?: string;
@@ -227,6 +228,9 @@ export interface PendingRegistration {
   phone?: string;
   submittedAt: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  /** Set for people who registered with their own password (12-hour approval window). */
+  registeredAt?: string | null;
+  expired?: boolean;
 }
 
 export interface GoodsPrice {

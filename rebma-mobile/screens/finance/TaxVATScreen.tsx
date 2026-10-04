@@ -125,12 +125,12 @@ export default function TaxVATScreen() {
         <Card>
           <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginBottom: t.spacing.md }}>Tax Rates</Text>
           <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
-            <View style={{ flex: 1 }}><Field label="VAT %"><Input value={rates.vat} onChangeText={(v) => setRates((r) => ({ ...r, vat: v }))} keyboardType="decimal-pad" /></Field></View>
-            <View style={{ flex: 1 }}><Field label="NHIL %"><Input value={rates.nhil} onChangeText={(v) => setRates((r) => ({ ...r, nhil: v }))} keyboardType="decimal-pad" /></Field></View>
+            <View style={{ flex: 1 }}><Field label="VAT %"><Input value={rates.vat} onChangeText={(v) => setRates((r) => ({ ...r, vat: v }))} keyboardType="decimal-pad" placeholder="0.00" /></Field></View>
+            <View style={{ flex: 1 }}><Field label="NHIL %"><Input value={rates.nhil} onChangeText={(v) => setRates((r) => ({ ...r, nhil: v }))} keyboardType="decimal-pad" placeholder="0.00" /></Field></View>
           </View>
           <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
-            <View style={{ flex: 1 }}><Field label="GETFund %"><Input value={rates.getfund} onChangeText={(v) => setRates((r) => ({ ...r, getfund: v }))} keyboardType="decimal-pad" /></Field></View>
-            <View style={{ flex: 1 }}><Field label="COVID Levy %"><Input value={rates.covid} onChangeText={(v) => setRates((r) => ({ ...r, covid: v }))} keyboardType="decimal-pad" /></Field></View>
+            <View style={{ flex: 1 }}><Field label="GETFund %"><Input value={rates.getfund} onChangeText={(v) => setRates((r) => ({ ...r, getfund: v }))} keyboardType="decimal-pad" placeholder="0.00" /></Field></View>
+            <View style={{ flex: 1 }}><Field label="COVID Levy %"><Input value={rates.covid} onChangeText={(v) => setRates((r) => ({ ...r, covid: v }))} keyboardType="decimal-pad" placeholder="0.00" /></Field></View>
           </View>
           <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.accent, marginBottom: t.spacing.md }}>Total: {totalRatePct.toFixed(2)}%</Text>
           <Button label={savingRates ? 'Saving…' : 'Save Tax Rates'} onPress={saveRates} loading={savingRates} disabled={savingRates} fullWidth />

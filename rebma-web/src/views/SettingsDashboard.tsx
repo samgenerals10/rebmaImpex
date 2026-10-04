@@ -1,11 +1,14 @@
 import { useState, useRef } from 'react';
-import { Settings, User, Lock, Trash2, Camera, ShieldCheck, Eye, EyeOff, Volume2, VolumeX, Play } from 'lucide-react';
+import DeleteAccountRequest from '../components/hr/DeleteAccountRequest';
+import DepartmentChangeCard from '../components/hr/DepartmentChangeCard';
+import { Settings, User, Lock, Trash2, Camera, ShieldCheck, Eye, EyeOff, Volume2, VolumeX, Play, Bell } from 'lucide-react';
 import type { CurrentUser } from '../types/erp';
 import { auth } from '../services/apiClient';
 import { supabase } from '../lib/supabaseClient';
 import SearchableDropdown from '../components/ui/SearchableDropdown';
 import { applyAccentOverride, clearAccentOverride } from '../utils/accentOverride';
 import { playNotificationSound, getSavedSound, saveSound, getSavedVolume, saveVolume, stopAlertSound } from '../utils/notificationSound';
+import { getDeviceAlertsEnabled, setDeviceAlertsEnabled, devicePermission, requestDevicePermission } from '../utils/deviceAlerts';
 import type { NotificationSoundType } from '../utils/notificationSound';
 import TwoFactorSetup from '../components/TwoFactorSetup';
 
@@ -90,6 +93,17 @@ export default function SettingsDashboard({
   setSidebarCollapsed,
   setCurrentUser
 }: SettingsDashboardProps) {
+
+  // Pop-up alerts on this laptop (per device, see utils/deviceAlerts.ts)
+  const [deviceAlertsOn, setDeviceAlertsOn] = useState<boolean>(getDeviceAlertsEnabled);
+  const [devicePerm, setDevicePerm] = useState(devicePermission);
+
+  const handleToggleDeviceAlerts = async () => {
+    const next = !deviceAlertsOn;
+    setDeviceAlertsEnabled(next);
+    setDeviceAlertsOn(next);
+    if (next) setDevicePerm(await requestDevicePermission());
+  };
 
   // Notification sound
   const [selectedSound, setSelectedSound] = useState<NotificationSoundType>(getSavedSound);
@@ -201,13 +215,6 @@ export default function SettingsDashboard({
     } catch (err: any) {
       setPwMsg(`❌ Error: ${err.message || 'Failed to update password'}`);
     }
-  };
-
-  const handleDeleteRequest = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!deleteReason) return;
-    setDeleteSubmitted(true);
-    addNotification?.(`Account deletion request submitted for ${currentUser?.fullName}. Contact your administrator directly to follow up.`);
   };
 
   const pwStrength = () => {
@@ -483,6 +490,9 @@ export default function SettingsDashboard({
               </button>
             </form>
           </div>
+          {currentUser?.id && !currentUser?.isAdmin && (
+            <DepartmentChangeCard userId={currentUser.id} currentDepartment={currentUser.department || ''} addNotification={(m) => addNotification?.(m)} />
+          )}
         </div>
       )}
 
@@ -562,62 +572,9 @@ export default function SettingsDashboard({
         </div>
       )}
 
-      {/* DELETE ACCOUNT */}
+      {/* DELETE ACCOUNT: the request goes to HR to confirm. */}
       {activeSubTab === 'DeleteAccount' && (
-        <div className="max-w-md">
-          <div className="p-4 md:p-6 bg-[var(--bg-card)] border-2 border-red-500/30 rounded-2xl space-y-5 shadow-[var(--box-shadow)]">
-            <div className="flex items-center gap-2">
-              <Trash2 className="w-5 h-5 text-rose-600" />
-              <h3 className="text-base md:text-lg font-bold text-rose-600">Delete Account</h3>
-            </div>
-
-            {deleteSubmitted ? (
-              <div className="space-y-4">
-                <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl space-y-2">
-                  <div className="flex items-center gap-2">
-                    <ShieldCheck className="w-5 h-5 text-amber-500" />
-                    <p className="text-xs font-bold text-amber-600">Deletion Request Submitted</p>
-                  </div>
-                  <p className="text-xs text-amber-700">
-                    Your account deletion request for <strong>{currentUser?.fullName}</strong> has been recorded. Contact your administrator directly to follow up.
-                  </p>
-                </div>
-                <button onClick={() => setDeleteSubmitted(false)} className="w-full py-2 bg-[var(--bg)] border border-[var(--border)] text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-xl text-xs font-semibold cursor-pointer">
-                  Cancel Request
-                </button>
-              </div>
-            ) : (
-              <form onSubmit={handleDeleteRequest} className="space-y-4">
-                <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-xs text-red-600 space-y-1">
-                  <p className="font-bold">⚠ This action requires HR approval</p>
-                  <p>Submitting a deletion request does not immediately delete your account. HR must review and approve the request before any data is removed. You will remain logged in until the request is processed.</p>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Reason for Deletion <span className="text-rose-500">*</span></label>
-                  <textarea
-                    value={deleteReason}
-                    onChange={e => setDeleteReason(e.target.value)}
-                    required
-                    rows={3}
-                    placeholder="Please provide a reason for your account deletion request..."
-                    className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-red-400 resize-none"
-                  />
-                </div>
-
-                <div className="p-3 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-[10px] text-[var(--text-muted)]">
-                  Account: <strong className="text-[var(--text-primary)]">{currentUser?.fullName}</strong><br />
-                  Department: <strong className="text-[var(--text-primary)]">{currentUser?.department}</strong><br />
-                  Email: <strong className="text-[var(--text-primary)]">{currentUser?.email}</strong>
-                </div>
-
-                <button type="submit" className="w-full py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold cursor-pointer transition-all">
-                  Submit Deletion Request to HR
-                </button>
-              </form>
-            )}
-          </div>
-        </div>
+        <DeleteAccountRequest currentUser={currentUser} addNotification={addNotification} />
       )}
 
       {/* DISPLAY & APPEARANCE — 3-Layer System */}
@@ -1059,6 +1016,34 @@ export default function SettingsDashboard({
                   ))}
                 </div>
               </div>
+            </div>
+
+            {/* ── Pop-up alerts on this device ── */}
+            <div className="p-5 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-card space-y-3">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-base font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                    <Bell className="w-4 h-4 text-[var(--accent)]" /> Alerts on this device
+                  </h3>
+                  <p className="text-xs text-[var(--text-muted)] mt-0.5">Show a pop-up on this computer when a new alert arrives while you are in another tab or app. The bell always keeps every alert.</p>
+                </div>
+                <button type="button" onClick={handleToggleDeviceAlerts} aria-label="Alerts on this device" aria-pressed={deviceAlertsOn}
+                  className={`relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors cursor-pointer ${deviceAlertsOn ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'}`}>
+                  <span className={`inline-block h-3 w-3 rounded-full bg-bg-card shadow transition-transform ${deviceAlertsOn ? 'translate-x-5' : 'translate-x-1'}`} />
+                </button>
+              </div>
+              {deviceAlertsOn && devicePerm === 'denied' && (
+                <p className="text-xs text-rose-600">This browser is blocking pop-ups for this site. Allow notifications in the browser's site settings, then come back here.</p>
+              )}
+              {deviceAlertsOn && devicePerm === 'default' && (
+                <button type="button" onClick={async () => setDevicePerm(await requestDevicePermission())}
+                  className="text-xs font-semibold text-[var(--accent)] hover:underline">
+                  Allow pop-ups in this browser
+                </button>
+              )}
+              {devicePerm === 'unsupported' && (
+                <p className="text-xs text-[var(--text-muted)]">This browser does not support pop-up alerts. The bell still shows every alert.</p>
+              )}
             </div>
 
             {/* ── Notification Sound ── */}

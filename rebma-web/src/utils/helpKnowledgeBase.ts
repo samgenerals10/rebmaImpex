@@ -177,6 +177,8 @@ function stepsForField(sectionTitle: string, f: SettingFieldSpec): string[] {
       ];
     case 'number':
       return [...openSteps, `Find "${f.label}" and type in the new number, then tap elsewhere to save.`];
+    case 'text':
+      return [...openSteps, `Find "${f.label}", type the new wording, then click elsewhere to save.`];
     case 'select':
       return [...openSteps, `Find "${f.label}" and pick the option you want from the list.`];
   }

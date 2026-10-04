@@ -19,6 +19,9 @@ import {
   XAxis, YAxis, Tooltip, PieChart, Pie, Cell
 } from 'recharts';
 
+import DateRangeField from '../../components/ui/DateRangeField';
+import type { CalendarValue } from '../../components/ui/CalendarPicker';
+import { dayKey, inRange, trendBuckets, bucketKeyFor } from '../../utils/dateRange';
 interface Props {
   addNotification?: (msg: string) => void;
   setActiveSubTab?: (tab: string) => void;
@@ -59,7 +62,12 @@ const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?:
 
 export default function FinanceOverviewView({ addNotification, setActiveSubTab, currentUser, ordersList = [] }: Props) {
   const [cashflowTab, setCashflowTab] = useState<'income' | 'expense' | 'savings'>('income');
-  const [earnPeriod, setEarnPeriod] = useState('6M');
+  // Calendar range instead of 3M / 6M / 12M (Part C). Starts on the last
+  // 6 months, the old default.
+  const [earnRange, setEarnRange] = useState<CalendarValue>(() => {
+    const now = new Date();
+    return { start: dayKey(new Date(now.getFullYear(), now.getMonth() - 5, 1)), end: dayKey(now) };
+  });
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [pendingCount, setPendingCount] = useState(0);
   const [invoiceCount, setInvoiceCount] = useState(0);
@@ -234,31 +242,30 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
       const { data: payments } = await supabase.from('finance_payments').select('amount, created_at');
       const { data: expenses } = await supabase.from('finance_expenses').select('amount, created_at');
 
-      const monthKey = (iso: string) => { const d = new Date(iso); return d.toLocaleDateString('en-GB', { month: 'short' }); };
-      const nMonths = earnPeriod === '3M' ? 3 : earnPeriod === '12M' ? 12 : 6;
-      const last = Array.from({ length: nMonths }, (_, i) => {
-        const d = new Date(); d.setMonth(d.getMonth() - (nMonths - 1 - i));
-        return d.toLocaleDateString('en-GB', { month: 'short' });
-      });
+      // Buckets by day for short ranges, by month (year included) for long ones.
+      const { granularity, buckets } = trendBuckets(earnRange);
+      const keyOf = (iso: string) => bucketKeyFor(new Date(iso), granularity);
 
       const revenueMap: Record<string, number> = {};
       const paymentMap: Record<string, number> = {};
       const expenseMap: Record<string, number> = {};
-      for (const o of (orders || []) as any[]) { const k = monthKey(o.created_at); revenueMap[k] = (revenueMap[k] || 0) + Number(o.total_amount || 0); }
-      for (const p of (payments || []) as any[]) { const k = monthKey(p.created_at); paymentMap[k] = (paymentMap[k] || 0) + Number(p.amount || 0); }
-      for (const e of (expenses || []) as any[]) { const k = monthKey(e.created_at); expenseMap[k] = (expenseMap[k] || 0) + Number(e.amount || 0); }
+      for (const o of (orders || []) as any[]) { if (!inRange(o.created_at, earnRange)) continue; const k = keyOf(o.created_at); revenueMap[k] = (revenueMap[k] || 0) + Number(o.total_amount || 0); }
+      for (const p of (payments || []) as any[]) { if (!inRange(p.created_at, earnRange)) continue; const k = keyOf(p.created_at); paymentMap[k] = (paymentMap[k] || 0) + Number(p.amount || 0); }
+      for (const e of (expenses || []) as any[]) { if (!inRange(e.created_at, earnRange)) continue; const k = keyOf(e.created_at); expenseMap[k] = (expenseMap[k] || 0) + Number(e.amount || 0); }
 
-      const earning = last.map(k => ({ month: k, value: (paymentMap[k] || 0) + (revenueMap[k] || 0) }));
-      setEarningData(earning);
-      setCashflowData(earning.map(p => ({ month: p.month, income: p.value, expense: expenseMap[p.month] || 0 })));
+      const earning = buckets.map(b => ({ month: b.label, value: (paymentMap[b.key] || 0) + (revenueMap[b.key] || 0), _key: b.key }));
+      setEarningData(earning.map(({ _key, ...rest }) => rest));
+      setCashflowData(earning.map(p => ({ month: p.month, income: p.value, expense: expenseMap[p._key] || 0 })));
     } catch { /* silent */ }
 
     setIsRefreshing(false);
   };
 
+  // Reloads when the Earning Overview dates change (the old 3M/6M/12M
+  // buttons never did, so they had no effect).
   useEffect(() => {
     fetchAllData();
-  }, []);
+  }, [earnRange]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useRealtimeChannel('finance-overview-realtime', ['orders', 'finance_payments', 'finance_expenses', 'stock'], () => fetchAllData());
 
@@ -1211,15 +1218,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
               <h3 className="font-semibold text-[var(--text-primary)]">Earning Overview</h3>
               <p className="text-xs text-[var(--text-muted)]">Revenue & payment flow trend</p>
             </div>
-            <div className="flex items-center gap-1">
-              {(['3M', '6M', '12M'] as const).map(p => (
-                <button key={p} onClick={() => setEarnPeriod(p)}
-                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-colors ${earnPeriod === p ? 'text-white' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-input)]'}`}
-                  style={earnPeriod === p ? { background: 'var(--accent)' } : {}}>
-                  {p}
-                </button>
-              ))}
-            </div>
+            <DateRangeField value={earnRange} onChange={setEarnRange} align="right" />
           </div>
           <p className="text-3xl font-extrabold text-[var(--text-primary)] mb-4">GHS <CountUp value={totalRevenue} /></p>
           <div className="h-32">

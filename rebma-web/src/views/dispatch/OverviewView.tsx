@@ -15,6 +15,9 @@ import { dispatch as dispatchApi } from '../../services/apiClient';
 import type { Driver, DeliveryRecord, CurrentUser } from '../../types/erp';
 import DispatchMap from '../../components/dispatch/DispatchMap';
 import CountUp from '../../components/CountUp';
+import DateRangeField from '../../components/ui/DateRangeField';
+import type { CalendarValue } from '../../components/ui/CalendarPicker';
+import { lastNDays, rangeBounds, inRange, rangeLabel, rangeDays, previousRange, trendBuckets, bucketKeyFor } from '../../utils/dateRange';
 
 interface Props {
   addNotification?: (msg: string) => void;
@@ -42,6 +45,24 @@ function timeAgo(iso: string) {
   return `${Math.floor(m / 60)}h ago`;
 }
 const DAY_MS = 24 * 60 * 60 * 1000;
+// One delivery_logs row in the shape this screen uses.
+function mapDeliveryRow(row: any): DeliveryRecord {
+  return {
+    id: row.id,
+    orderId: row.order_id || '',
+    clientName: row.customer_name || '',
+    destination: row.delivery_address || '',
+    driverName: row.driver_name || '',
+    driverId: row.driver_id || '',
+    dispatchedAt: row.created_at || '',
+    deliveredAt: row.delivered_at || undefined,
+    status: row.status || 'PENDING_ASSIGNMENT',
+    vehicleId: row.vehicle_id || undefined,
+    proofUrl: row.proof_photo || undefined,
+    recipientName: row.recipient_name || undefined,
+    deliveryNotes: row.notes || undefined,
+  } as DeliveryRecord;
+}
 function startOfDay(d: Date) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
 function daysAgo(n: number) { return new Date(Date.now() - n * DAY_MS); }
 function formatDuration(ms: number | null) {
@@ -86,8 +107,12 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
   const [loadingDrivers, setLoadingDrivers]       = useState(true);
   const [menuOpen, setMenuOpen]     = useState<string | null>(null);
   const [menuOpenUp, setMenuOpenUp] = useState(false);
-  const [volPeriod, setVolPeriod]   = useState('This Week');
-  const [perfPeriod, setPerfPeriod] = useState('This Week');
+  // Calendar ranges instead of Today / This Week / This Month (Part C).
+  // Both start on the last 7 days, the old default.
+  const [volRange, setVolRange]   = useState<CalendarValue>(() => lastNDays(7));
+  const [perfRange, setPerfRange] = useState<CalendarValue>(() => lastNDays(7));
+  // The charts load their own dates (the list above is only the latest 50).
+  const [statsDeliveries, setStatsDeliveries] = useState<DeliveryRecord[]>([]);
 
   // Assign driver form state
   const [assignDeliveryId, setAssignDeliveryId] = useState('');
@@ -98,28 +123,36 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
   const loadDeliveries = async () => {
     try {
       const { data } = await supabase.from('delivery_logs').select('*').order('created_at', { ascending: false }).limit(50);
-      const mapped = (data ?? []).map((row: any) => ({
-        id: row.id,
-        orderId: row.order_id || '',
-        clientName: row.customer_name || '',
-        destination: row.delivery_address || '',
-        driverName: row.driver_name || '',
-        driverId: row.driver_id || '',
-        dispatchedAt: row.created_at || '',
-        deliveredAt: row.delivered_at || undefined,
-        status: row.status || 'PENDING_ASSIGNMENT',
-        vehicleId: row.vehicle_id || undefined,
-        proofUrl: row.proof_photo || undefined,
-        recipientName: row.recipient_name || undefined,
-        deliveryNotes: row.notes || undefined,
-      }));
-      setDeliveries(mapped);
+      setDeliveries((data ?? []).map(mapDeliveryRow));
     } catch {
       setDeliveries([]);
     } finally {
       setLoadingDeliveries(false);
     }
   };
+
+  // Everything the two charts need: the chosen ranges plus the same-length
+  // periods before them (for the "vs previous" figures). A delivery counts
+  // if it was dispatched OR delivered in that window.
+  const loadStats = async () => {
+    const windows = [volRange, previousRange(volRange), perfRange, previousRange(perfRange)];
+    const starts = windows.map(w => rangeBounds(w).from).filter(Boolean) as Date[];
+    const ends = windows.map(w => rangeBounds(w).to).filter(Boolean) as Date[];
+    if (!starts.length || !ends.length) return;
+    const fromIso = new Date(Math.min(...starts.map(d => d.getTime()))).toISOString();
+    const toIso = new Date(Math.max(...ends.map(d => d.getTime()))).toISOString();
+    try {
+      const { data } = await supabase.from('delivery_logs').select('*')
+        .or(`created_at.gte.${fromIso},delivered_at.gte.${fromIso}`)
+        .lte('created_at', toIso)
+        .order('created_at', { ascending: false })
+        .limit(5000);
+      setStatsDeliveries((data ?? []).map(mapDeliveryRow));
+    } catch {
+      setStatsDeliveries([]);
+    }
+  };
+  useEffect(() => { loadStats(); }, [volRange, perfRange]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadDrivers = async () => {
     try {
@@ -149,7 +182,7 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
   }, []);
 
   useRealtimeChannel('dispatch-overview-realtime', ['delivery_logs', 'drivers'], (table) => {
-    if (table === 'delivery_logs') loadDeliveries();
+    if (table === 'delivery_logs') { loadDeliveries(); loadStats(); }
     else loadDrivers();
   });
 
@@ -175,15 +208,8 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
   // "On-time" isn't a concept the schema tracks (no SLA/expected-time field),
   // so this measures success rate (delivered vs failed among ones that have
   // actually resolved) rather than inventing a fake on-time threshold.
-  const perfWindowDays = perfPeriod === 'Today' ? 1 : perfPeriod === 'This Week' ? 7 : 30;
-  const perfWindowStart = startOfDay(daysAgo(perfWindowDays - 1));
-  const perfPrevStart = startOfDay(daysAgo(perfWindowDays * 2 - 1));
-  const perfPrevEnd = perfWindowStart;
-  const inPerfWindow = deliveries.filter(d => new Date(d.dispatchedAt) >= perfWindowStart);
-  const inPerfPrevWindow = deliveries.filter(d => {
-    const t = new Date(d.dispatchedAt);
-    return t >= perfPrevStart && t < perfPrevEnd;
-  });
+  const inPerfWindow = statsDeliveries.filter(d => inRange(d.dispatchedAt, perfRange));
+  const inPerfPrevWindow = statsDeliveries.filter(d => inRange(d.dispatchedAt, previousRange(perfRange)));
   const successStats = (list: DeliveryRecord[]) => {
     const delivered = list.filter(d => d.status === 'DELIVERED').length;
     const failed = list.filter(d => d.status === 'FAILED').length;
@@ -201,56 +227,37 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
   const avgDeliveryMs = deliveredWithTimes.length
     ? deliveredWithTimes.reduce((sum, d) => sum + (new Date(d.deliveredAt!).getTime() - new Date(d.dispatchedAt).getTime()), 0) / deliveredWithTimes.length
     : null;
-  const perfTrendLabel = perfPeriod === 'Today' ? 'vs yesterday' : perfPeriod === 'This Week' ? 'vs last week' : 'vs last month';
+  const perfDays = rangeDays(perfRange);
+  const perfTrendLabel = perfDays === 1 ? 'vs the day before' : `vs the previous ${perfDays} days`;
 
   // ── Deliveries Movement / Delivery Volume charts — buckets computed from
-  // delivery_logs, not mocked. Both cards share the same `volPeriod` control.
-  const buildVolumeBuckets = (period: string): { day: string; assigned: number; completed: number }[] => {
-    if (period === 'This Month') {
-      return Array.from({ length: 4 }).map((_, i) => {
-        const weeksBack = 3 - i;
-        const start = startOfDay(daysAgo(weeksBack * 7 + 6));
-        const end = new Date(startOfDay(daysAgo(weeksBack * 7)).getTime() + DAY_MS);
-        const assigned = deliveries.filter(d => { const t = new Date(d.dispatchedAt); return t >= start && t < end; }).length;
-        const completed = deliveries.filter(d => d.deliveredAt && new Date(d.deliveredAt) >= start && new Date(d.deliveredAt) < end).length;
-        return { day: `Wk ${i + 1}`, assigned, completed };
-      });
+  // delivery_logs, not mocked. Both cards share the same `volRange` calendar.
+  // One bar per day for short ranges, per month for long ones.
+  const volumeData = (() => {
+    const { granularity, buckets } = trendBuckets(volRange);
+    const assigned: Record<string, number> = {};
+    const completed: Record<string, number> = {};
+    for (const d of statsDeliveries) {
+      if (d.dispatchedAt && inRange(d.dispatchedAt, volRange)) {
+        const k = bucketKeyFor(new Date(d.dispatchedAt), granularity);
+        assigned[k] = (assigned[k] || 0) + 1;
+      }
+      if (d.deliveredAt && inRange(d.deliveredAt, volRange)) {
+        const k = bucketKeyFor(new Date(d.deliveredAt), granularity);
+        completed[k] = (completed[k] || 0) + 1;
+      }
     }
-    if (period === 'This Quarter') {
-      const now = new Date();
-      return Array.from({ length: 3 }).map((_, i) => {
-        const monthsBack = 2 - i;
-        const start = new Date(now.getFullYear(), now.getMonth() - monthsBack, 1);
-        const end = new Date(now.getFullYear(), now.getMonth() - monthsBack + 1, 1);
-        const assigned = deliveries.filter(d => { const t = new Date(d.dispatchedAt); return t >= start && t < end; }).length;
-        const completed = deliveries.filter(d => d.deliveredAt && new Date(d.deliveredAt) >= start && new Date(d.deliveredAt) < end).length;
-        return { day: start.toLocaleDateString('en-GB', { month: 'short' }), assigned, completed };
-      });
-    }
-    // This Week — last 7 days ending today
-    return Array.from({ length: 7 }).map((_, i) => {
-      const dayStart = startOfDay(daysAgo(6 - i));
-      const dayEnd = new Date(dayStart.getTime() + DAY_MS);
-      const assigned = deliveries.filter(d => { const t = new Date(d.dispatchedAt); return t >= dayStart && t < dayEnd; }).length;
-      const completed = deliveries.filter(d => d.deliveredAt && new Date(d.deliveredAt) >= dayStart && new Date(d.deliveredAt) < dayEnd).length;
-      return { day: dayStart.toLocaleDateString('en-GB', { weekday: 'short' }), assigned, completed };
-    });
-  };
-  // delivery_logs is loaded capped at 50 rows (see loadDeliveries above) — fine
-  // for the current data volume, but Month/Quarter buckets will silently under-
-  // count once the account has more than 50 recent deliveries. Flagging rather
-  // than solving here since a real fix means paginating loadDeliveries itself.
-  const volumeData = buildVolumeBuckets(volPeriod);
+    return buckets.map(b => ({ day: b.label, assigned: assigned[b.key] || 0, completed: completed[b.key] || 0 }));
+  })();
   const totalAssigned = volumeData.reduce((s, b) => s + b.assigned, 0);
   const totalCompleted = volumeData.reduce((s, b) => s + b.completed, 0);
-  const volPeriodDays = volPeriod === 'This Week' ? 7 : volPeriod === 'This Month' ? 30 : 90;
-  const volPrevStart = startOfDay(daysAgo(volPeriodDays * 2 - 1));
-  const volPrevEnd = startOfDay(daysAgo(volPeriodDays - 1));
-  const prevAssigned = deliveries.filter(d => { const t = new Date(d.dispatchedAt); return t >= volPrevStart && t < volPrevEnd; }).length;
-  const prevCompleted = deliveries.filter(d => d.deliveredAt && new Date(d.deliveredAt) >= volPrevStart && new Date(d.deliveredAt) < volPrevEnd).length;
+  const volPrev = previousRange(volRange);
+  const prevAssigned = statsDeliveries.filter(d => inRange(d.dispatchedAt, volPrev)).length;
+  const prevCompleted = statsDeliveries.filter(d => d.deliveredAt && inRange(d.deliveredAt, volPrev)).length;
   const assignedDelta = totalAssigned - prevAssigned;
   const completedDelta = totalCompleted - prevCompleted;
-  const volTrendLabel = volPeriod === 'This Week' ? 'vs last week' : volPeriod === 'This Month' ? 'vs last month' : 'vs last quarter';
+  const volDays = rangeDays(volRange);
+  const volTrendLabel = volDays === 1 ? 'vs the day before' : `vs the previous ${volDays} days`;
 
   // Assign driver handler — updates a delivery Operations already created
   // (status PENDING_ASSIGNMENT) rather than inserting a brand new one from a
@@ -552,7 +559,7 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-bold text-sm text-[var(--text-primary)]">Delivery Performance</h3>
-            <SearchableDropdown value={perfPeriod} onChange={setPerfPeriod} options={['Today', 'This Week', 'This Month'].map(p => ({ value: p, label: p }))} className="w-32" />
+            <DateRangeField value={perfRange} onChange={setPerfRange} align="right" />
           </div>
           {/* Success Rate */}
           <div className="flex items-end gap-3 mb-5">
@@ -575,7 +582,7 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
           <div className="mb-4">
             <div className="flex items-center justify-between text-xs text-[var(--text-muted)] mb-1.5">
               <span>Status Breakdown</span>
-              <span className="text-[var(--text-secondary)]">{perfPeriod}</span>
+              <span className="text-[var(--text-secondary)]">{rangeLabel(perfRange)}</span>
             </div>
             {inPerfWindow.length === 0 ? (
               <p className="text-xs text-[var(--text-muted)] py-2">No deliveries dispatched in this period yet.</p>
@@ -621,7 +628,7 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-bold text-sm text-[var(--text-primary)]">Deliveries Movement</h3>
-            <SearchableDropdown value={volPeriod} onChange={setVolPeriod} options={['This Week', 'This Month', 'This Quarter'].map(p => ({ value: p, label: p }))} className="w-36" />
+            <DateRangeField value={volRange} onChange={setVolRange} align="right" />
           </div>
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
@@ -703,10 +710,10 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
         <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
           <div>
             <h3 className="font-bold text-sm text-[var(--text-primary)]">Delivery Volume</h3>
-            <p className="text-sm text-[var(--text-secondary)] mt-0.5">Assigned vs completed deliveries — {volPeriod.toLowerCase()}</p>
+            <p className="text-sm text-[var(--text-secondary)] mt-0.5">Assigned vs completed deliveries, {rangeLabel(volRange)}</p>
           </div>
           <div className="flex items-center gap-2">
-            <SearchableDropdown value={volPeriod} onChange={setVolPeriod} options={['This Week', 'This Month', 'This Quarter'].map(p => ({ value: p, label: p }))} className="w-36" />
+            <DateRangeField value={volRange} onChange={setVolRange} align="right" />
             <button
               onClick={() => exportToCSV(volumeData, ['day', 'assigned', 'completed'], 'delivery_volume')}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--border)] text-xs text-[var(--text-secondary)] hover:bg-[var(--bg-input)] transition-colors">

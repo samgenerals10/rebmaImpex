@@ -3,14 +3,17 @@ import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, R
 import { supabase } from '../../lib/supabaseClient';
 import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 
-type Period = 'week' | 'month' | 'quarter' | 'year';
+import DateRangeField from '../../components/ui/DateRangeField';
+import type { CalendarValue } from '../../components/ui/CalendarPicker';
+import { lastNDays, inRange } from '../../utils/dateRange';
 
-const PERIOD_DAYS: Record<Period, number> = { week: 7, month: 30, quarter: 90, year: 365 };
 
 const tooltipStyle = { background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, color: 'var(--text-primary)', fontSize: 13 };
 
 export default function FleetAnalyticsView({ addNotification: _addNotification }: { addNotification: (msg: string) => void }) {
-  const [period, setPeriod] = useState<Period>('month');
+  // Calendar range instead of This Week / Month / Quarter / Year (Part C);
+  // starts on the last 30 days, the old "This Month" default.
+  const [range, setRange] = useState<CalendarValue>(() => lastNDays(30));
   const [loading, setLoading] = useState(true);
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [fuelLogs, setFuelLogs] = useState<any[]>([]);
@@ -35,14 +38,8 @@ export default function FleetAnalyticsView({ addNotification: _addNotification }
     load();
   }, []);
 
-  const since = useMemo(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - PERIOD_DAYS[period]);
-    return d;
-  }, [period]);
-
-  const fuelInPeriod = useMemo(() => fuelLogs.filter(f => new Date(f.date || f.created_at) >= since), [fuelLogs, since]);
-  const maintInPeriod = useMemo(() => maintenance.filter(m => new Date(m.date || m.created_at) >= since), [maintenance, since]);
+  const fuelInPeriod = useMemo(() => fuelLogs.filter(f => inRange(f.date || f.created_at, range)), [fuelLogs, range]);
+  const maintInPeriod = useMemo(() => maintenance.filter(m => inRange(m.date || m.created_at, range)), [maintenance, range]);
 
   // Per-vehicle distance estimate: max(odometer) - min(odometer) from fuel log readings
   const distanceByVehicle = useMemo(() => {
@@ -126,12 +123,6 @@ export default function FleetAnalyticsView({ addNotification: _addNotification }
     return { vehicleId, distance: Math.round(distance), fuelUsed: Math.round(liters), efficiency: liters > 0 ? Number((distance / liters).toFixed(1)) : 0 };
   });
 
-  const periods: { key: Period; label: string }[] = [
-    { key: 'week', label: 'This Week' },
-    { key: 'month', label: 'This Month' },
-    { key: 'quarter', label: 'This Quarter' },
-    { key: 'year', label: 'This Year' },
-  ];
 
   return (
     <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -140,13 +131,7 @@ export default function FleetAnalyticsView({ addNotification: _addNotification }
           <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Fleet Analytics Dashboard</h1>
           <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: 14 }}>Performance insights across the entire fleet</p>
         </div>
-        <div style={{ display: 'flex', background: 'var(--bg-input)', borderRadius: 12, border: '1px solid var(--border)', padding: 4, gap: 4 }}>
-          {periods.map(p => (
-            <button key={p.key} onClick={() => setPeriod(p.key)} style={{ padding: '7px 14px', borderRadius: 10, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13, background: period === p.key ? 'var(--accent)' : 'transparent', color: period === p.key ? '#fff' : 'var(--text-secondary)' }}>
-              {p.label}
-            </button>
-          ))}
-        </div>
+        <DateRangeField value={range} onChange={setRange} align="right" />
       </div>
 
       {loading ? (

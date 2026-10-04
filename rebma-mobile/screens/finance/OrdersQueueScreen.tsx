@@ -193,17 +193,9 @@ export default function OrdersQueueScreen() {
         notes: payForm.notes || null,
       },
     };
-    let { error: payErr } = await supabase.from('finance_payments').insert([paymentRecord]);
-    if (payErr?.message?.includes('receipt_number')) {
-      const { receipt_number, ...withoutReceiptNumber } = paymentRecord;
-      ({ error: payErr } = await supabase.from('finance_payments').insert([withoutReceiptNumber]));
-    }
-    if (payErr) {
-      setSubmitting(false);
-      Alert.alert('Failed to Save Payment', payErr.message);
-      return;
-    }
-    const approved = await approveOrder(selected);
+    // Saved together with the approval and stock deduction in one database
+    // step, so a payment can't be left behind by a failed approval.
+    const approved = await approveAccountsReview(selected, recordedBy, paymentRecord);
     setSubmitting(false);
     if (!approved) return;
     setSelected(null);
@@ -276,23 +268,23 @@ export default function OrdersQueueScreen() {
               <SheetSection label="Payment Details">
                 {pMode === 'CASH' && (
                   <>
-                    <Field label="Amount Received (GHS)"><Input value={payForm.amountReceived} onChangeText={(v) => setPayForm((f) => ({ ...f, amountReceived: v }))} keyboardType="decimal-pad" /></Field>
+                    <Field label="Amount Received (GHS)"><Input value={payForm.amountReceived} onChangeText={(v) => setPayForm((f) => ({ ...f, amountReceived: v }))} keyboardType="decimal-pad" placeholder="0.00" /></Field>
                     {amountFeedback ? <Text style={{ fontFamily: t.font.medium, fontSize: t.type.meta10.size, color: t.colors.status[amountTone].text, marginTop: -8, marginBottom: 8 }}>{amountFeedback}</Text> : null}
                     <PartPaymentToggle value={isPartPayment} onChange={setIsPartPayment} />
-                    <Field label="Date Received"><Input value={payForm.dateReceived} onChangeText={(v) => setPayForm((f) => ({ ...f, dateReceived: v }))} /></Field>
-                    <Field label="Notes" hint="Optional"><Input value={payForm.notes} onChangeText={(v) => setPayForm((f) => ({ ...f, notes: v }))} /></Field>
+                    <Field label="Date Received"><Input value={payForm.dateReceived} onChangeText={(v) => setPayForm((f) => ({ ...f, dateReceived: v }))} placeholder="YYYY-MM-DD" /></Field>
+                    <Field label="Notes" hint="Optional"><Input value={payForm.notes} onChangeText={(v) => setPayForm((f) => ({ ...f, notes: v }))} placeholder="Any additional context..." /></Field>
                   </>
                 )}
                 {pMode === 'CHEQUE' && (
                   <>
-                    <Field label="Cheque Number *"><Input value={payForm.chequeNumber} onChangeText={(v) => setPayForm((f) => ({ ...f, chequeNumber: v }))} /></Field>
-                    <Field label="Bank Name *"><Input value={payForm.bankName} onChangeText={(v) => setPayForm((f) => ({ ...f, bankName: v }))} /></Field>
-                    <Field label="Account Name *"><Input value={payForm.accountName} onChangeText={(v) => setPayForm((f) => ({ ...f, accountName: v }))} /></Field>
-                    <Field label="Account Number *"><Input value={payForm.accountNumber} onChangeText={(v) => setPayForm((f) => ({ ...f, accountNumber: v }))} /></Field>
-                    <Field label="Branch" hint="Optional"><Input value={payForm.branch} onChangeText={(v) => setPayForm((f) => ({ ...f, branch: v }))} /></Field>
+                    <Field label="Cheque Number *"><Input value={payForm.chequeNumber} onChangeText={(v) => setPayForm((f) => ({ ...f, chequeNumber: v }))} placeholder="e.g. 000123" /></Field>
+                    <Field label="Bank Name *"><Input value={payForm.bankName} onChangeText={(v) => setPayForm((f) => ({ ...f, bankName: v }))} placeholder="e.g. GCB Bank" /></Field>
+                    <Field label="Account Name *"><Input value={payForm.accountName} onChangeText={(v) => setPayForm((f) => ({ ...f, accountName: v }))} placeholder="Name on the account" /></Field>
+                    <Field label="Account Number *"><Input value={payForm.accountNumber} onChangeText={(v) => setPayForm((f) => ({ ...f, accountNumber: v }))} placeholder="e.g. 1234567890" /></Field>
+                    <Field label="Branch" hint="Optional"><Input value={payForm.branch} onChangeText={(v) => setPayForm((f) => ({ ...f, branch: v }))} placeholder="e.g. Osu Branch" /></Field>
                     <Field label="Cheque Date *"><Input value={payForm.chequeDate} onChangeText={(v) => setPayForm((f) => ({ ...f, chequeDate: v }))} placeholder="YYYY-MM-DD" /></Field>
                     <Field label="Expected Clearing" hint="Optional"><Input value={payForm.expectedClearing} onChangeText={(v) => setPayForm((f) => ({ ...f, expectedClearing: v }))} placeholder="YYYY-MM-DD" /></Field>
-                    <Field label="Amount"><Input value={payForm.amountReceived} onChangeText={(v) => setPayForm((f) => ({ ...f, amountReceived: v }))} keyboardType="decimal-pad" /></Field>
+                    <Field label="Amount"><Input value={payForm.amountReceived} onChangeText={(v) => setPayForm((f) => ({ ...f, amountReceived: v }))} keyboardType="decimal-pad" placeholder="0.00" /></Field>
                     {amountFeedback ? <Text style={{ fontFamily: t.font.medium, fontSize: t.type.meta10.size, color: t.colors.status[amountTone].text, marginTop: -8, marginBottom: 8 }}>{amountFeedback}</Text> : null}
                     <PartPaymentToggle value={isPartPayment} onChange={setIsPartPayment} />
                   </>
@@ -300,12 +292,12 @@ export default function OrdersQueueScreen() {
                 {pMode === 'MOBILE_MONEY' && (
                   <>
                     <Field label="Network"><SearchablePicker value={payForm.network} onChange={(v) => setPayForm((f) => ({ ...f, network: v }))} options={[{ value: 'MTN', label: 'MTN' }, { value: 'Vodafone', label: 'Vodafone' }, { value: 'AirtelTigo', label: 'AirtelTigo' }]} /></Field>
-                    <Field label="Amount Received (GHS)"><Input value={payForm.amountReceived} onChangeText={(v) => setPayForm((f) => ({ ...f, amountReceived: v }))} keyboardType="decimal-pad" /></Field>
+                    <Field label="Amount Received (GHS)"><Input value={payForm.amountReceived} onChangeText={(v) => setPayForm((f) => ({ ...f, amountReceived: v }))} keyboardType="decimal-pad" placeholder="0.00" /></Field>
                     {amountFeedback ? <Text style={{ fontFamily: t.font.medium, fontSize: t.type.meta10.size, color: t.colors.status[amountTone].text, marginTop: -8, marginBottom: 8 }}>{amountFeedback}</Text> : null}
                     <PartPaymentToggle value={isPartPayment} onChange={setIsPartPayment} />
-                    <Field label="MoMo Number *"><Input value={payForm.momoNumber} onChangeText={(v) => setPayForm((f) => ({ ...f, momoNumber: v }))} keyboardType="phone-pad" /></Field>
-                    <Field label="Account Name *"><Input value={payForm.momoAccountName} onChangeText={(v) => setPayForm((f) => ({ ...f, momoAccountName: v }))} /></Field>
-                    <Field label="Transaction ID *"><Input value={payForm.transactionId} onChangeText={(v) => setPayForm((f) => ({ ...f, transactionId: v }))} /></Field>
+                    <Field label="MoMo Number *"><Input value={payForm.momoNumber} onChangeText={(v) => setPayForm((f) => ({ ...f, momoNumber: v }))} keyboardType="phone-pad" placeholder="0244000000" /></Field>
+                    <Field label="Account Name *"><Input value={payForm.momoAccountName} onChangeText={(v) => setPayForm((f) => ({ ...f, momoAccountName: v }))} placeholder="Name on the MoMo account" /></Field>
+                    <Field label="Transaction ID *"><Input value={payForm.transactionId} onChangeText={(v) => setPayForm((f) => ({ ...f, transactionId: v }))} placeholder="e.g. MP240915.1234.A56789" /></Field>
                   </>
                 )}
                 {pMode === 'CREDIT' && (
@@ -315,8 +307,8 @@ export default function OrdersQueueScreen() {
                     </View>
                     <Field label="Ghana Card Number" hint="Optional"><Input value={payForm.ghanaCardNumber} onChangeText={(v) => setPayForm((f) => ({ ...f, ghanaCardNumber: v }))} placeholder="GHA-XXXXXXXXX-X" /></Field>
                     <Field label="Due Date *"><Input value={payForm.dueDate} onChangeText={(v) => setPayForm((f) => ({ ...f, dueDate: v }))} placeholder="YYYY-MM-DD" /></Field>
-                    <Field label="Payment Terms"><Input value={payForm.paymentTerms} onChangeText={(v) => setPayForm((f) => ({ ...f, paymentTerms: v }))} /></Field>
-                    <Field label="Credit Amount (GHS)"><Input value={payForm.creditAmount} onChangeText={(v) => setPayForm((f) => ({ ...f, creditAmount: v }))} keyboardType="decimal-pad" /></Field>
+                    <Field label="Payment Terms"><Input value={payForm.paymentTerms} onChangeText={(v) => setPayForm((f) => ({ ...f, paymentTerms: v }))} placeholder="e.g. Net 30" /></Field>
+                    <Field label="Credit Amount (GHS)"><Input value={payForm.creditAmount} onChangeText={(v) => setPayForm((f) => ({ ...f, creditAmount: v }))} keyboardType="decimal-pad" placeholder="0.00" /></Field>
                   </>
                 )}
 

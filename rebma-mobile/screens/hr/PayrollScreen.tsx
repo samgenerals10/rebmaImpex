@@ -259,11 +259,11 @@ export default function PayrollScreen() {
             placeholder="Search staff…"
           />
         </Field>
-        <Field label="Employee Name"><Input value={itemForm.employee_name} onChangeText={(v) => setItemForm((f) => ({ ...f, employee_name: v }))} /></Field>
-        <Field label="Department"><Input value={itemForm.department} onChangeText={(v) => setItemForm((f) => ({ ...f, department: v }))} /></Field>
+        <Field label="Employee Name"><Input value={itemForm.employee_name} onChangeText={(v) => setItemForm((f) => ({ ...f, employee_name: v }))} placeholder="e.g. Kofi Mensah" /></Field>
+        <Field label="Department"><Input value={itemForm.department} onChangeText={(v) => setItemForm((f) => ({ ...f, department: v }))} placeholder="e.g. HR" /></Field>
         <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
-          <View style={{ flex: 1 }}><Field label="Gross (GHS)"><Input value={itemForm.gross_amount} onChangeText={(v) => setItemForm((f) => ({ ...f, gross_amount: v }))} keyboardType="decimal-pad" /></Field></View>
-          <View style={{ flex: 1 }}><Field label="Deductions (GHS)"><Input value={itemForm.deductions} onChangeText={(v) => setItemForm((f) => ({ ...f, deductions: v }))} keyboardType="decimal-pad" /></Field></View>
+          <View style={{ flex: 1 }}><Field label="Gross (GHS)"><Input value={itemForm.gross_amount} onChangeText={(v) => setItemForm((f) => ({ ...f, gross_amount: v }))} keyboardType="decimal-pad" placeholder="0.00" /></Field></View>
+          <View style={{ flex: 1 }}><Field label="Deductions (GHS)"><Input value={itemForm.deductions} onChangeText={(v) => setItemForm((f) => ({ ...f, deductions: v }))} keyboardType="decimal-pad" placeholder="0.00" /></Field></View>
         </View>
       </Sheet>
     </Screen>

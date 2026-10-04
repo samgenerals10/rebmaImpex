@@ -49,6 +49,13 @@ export function isPrivilegedApiConfigured(): boolean {
   return !!BASE_URL;
 }
 
+// The deployed web origin, for showing a full URL to paste somewhere else
+// (e.g. an attendance device's push webhook). Empty string when unset, so
+// callers can show a "not configured" note instead of a broken URL.
+export function getApiBaseUrl(): string {
+  return BASE_URL.replace(/\/+$/, '');
+}
+
 // Phase 10.1 — the two registration endpoints (lookup-invite,
 // register-standard-user) are public: no session exists yet for a
 // brand-new candidate, so they take no auth header at all, unlike

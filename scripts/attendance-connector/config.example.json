@@ -1,0 +1,4 @@
+{
+  "apiBaseUrl": "https://your-deployed-domain.vercel.app",
+  "connectorKey": "paste-the-attendance-connector-key-from-control-center"
+}

@@ -11,8 +11,9 @@ import { exportToCSV } from '../../utils/export';
 import CountUp from '../../components/CountUp';
 import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 
-type Period = '7D' | '30D' | '90D' | '12M';
-const PERIOD_DAYS: Record<Period, number> = { '7D': 7, '30D': 30, '90D': 90, '12M': 365 };
+import DateRangeField from '../../components/ui/DateRangeField';
+import type { CalendarValue } from '../../components/ui/CalendarPicker';
+import { lastNDays, rangeBounds, inRange, rangeLabel, rangeDays, trendBuckets, bucketKeyFor } from '../../utils/dateRange';
 
 const PURPOSE_COLORS = ['#6366f1', '#f59e0b', '#10b981', '#8b5cf6', '#64748b', '#ef4444'];
 
@@ -36,7 +37,10 @@ interface AttendanceRow {
 }
 
 export default function AnalyticsView({ addNotification }: Props) {
-  const [period, setPeriod] = useState<Period>('7D');
+  // Calendar range instead of 7D / 30D / 90D / 12M (Part C); starts on the
+  // last 7 days, the old default.
+  const [range, setRange] = useState<CalendarValue>(() => lastNDays(7));
+  const periodText = rangeLabel(range);
   const [loading, setLoading] = useState(true);
   const [visitors, setVisitors] = useState<VisitorRow[]>([]);
   const [attendance, setAttendance] = useState<AttendanceRow[]>([]);
@@ -44,44 +48,36 @@ export default function AnalyticsView({ addNotification }: Props) {
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      const since = new Date(Date.now() - PERIOD_DAYS['12M'] * 24 * 60 * 60 * 1000).toISOString();
+      // Loads exactly the chosen dates, so any past range can be viewed.
+      const { from, to } = rangeBounds(range);
+      const fromIso = (from || new Date(0)).toISOString();
+      const toIso = (to || new Date()).toISOString();
       const [{ data: v }, { data: a }] = await Promise.all([
-        supabase.from('visitors').select('full_name, purpose, host_name, check_in_time, check_out_time').gte('check_in_time', since).then(r => r, () => ({ data: [] })),
-        supabase.from('attendance').select('department, check_in_time, status').gte('check_in_time', since).then(r => r, () => ({ data: [] })),
+        supabase.from('visitors').select('full_name, purpose, host_name, check_in_time, check_out_time').gte('check_in_time', fromIso).lte('check_in_time', toIso).then(r => r, () => ({ data: [] })),
+        supabase.from('attendance').select('department, check_in_time, status').gte('check_in_time', fromIso).lte('check_in_time', toIso).then(r => r, () => ({ data: [] })),
       ]);
       setVisitors((v || []) as VisitorRow[]);
       setAttendance((a || []) as AttendanceRow[]);
       setLoading(false);
     };
     load();
-  }, []);
+  }, [range]);
 
-  const since = useMemo(() => new Date(Date.now() - PERIOD_DAYS[period] * 24 * 60 * 60 * 1000), [period]);
-  const visitorsInPeriod = useMemo(() => visitors.filter(v => new Date(v.check_in_time) >= since), [visitors, since]);
+  const visitorsInPeriod = useMemo(() => visitors.filter(v => inRange(v.check_in_time, range)), [visitors, range]);
 
+  // One bar per day for short ranges, per month for long ones.
   const trendData = useMemo(() => {
-    const isMonth = period === '12M';
-    const n = period === '7D' ? 7 : period === '30D' ? 30 : period === '90D' ? 12 : 12;
-    const buckets = Array.from({ length: n }, (_, i) => {
-      const d = new Date();
-      if (isMonth) d.setMonth(d.getMonth() - (n - 1 - i)); else d.setDate(d.getDate() - (n - 1 - i));
-      return {
-        label: isMonth ? d.toLocaleDateString('en-GB', { month: 'short' }) : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
-        visitors: 0,
-        _key: isMonth ? `${d.getFullYear()}-${d.getMonth()}` : d.toDateString(),
-      };
-    });
+    const { granularity, buckets } = trendBuckets(range);
+    const counts: Record<string, number> = {};
     for (const v of visitorsInPeriod) {
-      const d = new Date(v.check_in_time);
-      const key = isMonth ? `${d.getFullYear()}-${d.getMonth()}` : d.toDateString();
-      const b = buckets.find(x => x._key === key);
-      if (b) b.visitors += 1;
+      const key = bucketKeyFor(new Date(v.check_in_time), granularity);
+      counts[key] = (counts[key] || 0) + 1;
     }
-    return buckets.map(({ _key, ...rest }) => rest);
-  }, [visitorsInPeriod, period]);
+    return buckets.map(b => ({ label: b.label, visitors: counts[b.key] || 0 }));
+  }, [visitorsInPeriod, range]);
 
   const totalVisitors = visitorsInPeriod.length;
-  const avgDaily = trendData.length > 0 ? Math.round(totalVisitors / trendData.length) : 0;
+  const avgDaily = Math.round(totalVisitors / rangeDays(range));
 
   const purposeData = useMemo(() => {
     const byPurpose: Record<string, number> = {};
@@ -92,12 +88,12 @@ export default function AnalyticsView({ addNotification }: Props) {
   const deptAttendance = useMemo(() => {
     const byDept: Record<string, number> = {};
     for (const a of attendance) {
-      if (new Date(a.check_in_time) < since) continue;
+      if (!inRange(a.check_in_time, range)) continue;
       const d = a.department || 'Other';
       byDept[d] = (byDept[d] || 0) + 1;
     }
     return Object.entries(byDept).map(([dept, count]) => ({ dept, count }));
-  }, [attendance, since]);
+  }, [attendance, range]);
 
   const avgAttendance = attendance.length > 0
     ? Math.round((attendance.filter(a => (a.status || '').toUpperCase() === 'PRESENT').length / attendance.length) * 100)
@@ -177,15 +173,8 @@ export default function AnalyticsView({ addNotification }: Props) {
           <p className="text-xs text-[var(--text-muted)] mt-0.5">Visitor patterns, attendance trends, and peak hour analysis</p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex bg-[var(--bg-input)] border border-[var(--border)] rounded-xl p-0.5">
-            {(['7D','30D','90D','12M'] as Period[]).map(p => (
-              <button key={p} onClick={() => setPeriod(p)}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg cursor-pointer transition-all ${period === p ? 'bg-[var(--accent)] text-white shadow' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
-                {p}
-              </button>
-            ))}
-          </div>
-          <button onClick={() => { exportToCSV(trendData, ['label','visitors'], `reception_analytics_${period}`); addNotification('Analytics exported'); }}
+          <DateRangeField value={range} onChange={setRange} align="right" />
+          <button onClick={() => { exportToCSV(trendData, ['label','visitors'], `reception_analytics_${range.start}_to_${range.end}`); addNotification('Analytics exported'); }}
             className="px-3 py-1.5 bg-[var(--bg-card)] border border-[var(--border)] text-[var(--text-secondary)] text-xs font-semibold rounded-xl cursor-pointer hover:bg-[var(--accent-light)]">
             Export
           </button>
@@ -201,7 +190,7 @@ export default function AnalyticsView({ addNotification }: Props) {
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Total Visitors', value: totalVisitors, suffix: '', sub: `in ${period}`, icon: Users, color: 'var(--accent)' },
+          { label: 'Total Visitors', value: totalVisitors, suffix: '', sub: periodText, icon: Users, color: 'var(--accent)' },
           { label: 'Avg Daily Visitors', value: avgDaily, suffix: '', sub: 'per day', icon: Calendar, color: '#6366f1' },
           { label: 'Avg Attendance Rate', value: avgAttendance, suffix: '%', sub: 'staff present', icon: UserCheck, color: '#10b981' },
           { label: 'Peak Hour', value: peakHour as (string | number), suffix: '', sub: 'busiest time (4wk)', icon: Clock, color: '#f59e0b' },
@@ -222,10 +211,10 @@ export default function AnalyticsView({ addNotification }: Props) {
       {/* Row 2: Visitor Trend + Purpose Pie */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4">
-          <h3 className="font-bold text-[var(--text-primary)] text-sm mb-4">Visitor Trend — {period}</h3>
+          <h3 className="font-bold text-[var(--text-primary)] text-sm mb-4">Visitor trend, {periodText}</h3>
           <div className="h-52">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={trendData} barSize={period === '30D' ? 8 : 18}>
+              <BarChart data={trendData} barSize={trendData.length > 14 ? 8 : 18}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.5} />
                 <XAxis dataKey="label" stroke="var(--text-muted)" fontSize={10} />
                 <YAxis stroke="var(--text-muted)" fontSize={10} />

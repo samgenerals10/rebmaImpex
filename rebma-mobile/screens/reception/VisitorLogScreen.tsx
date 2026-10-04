@@ -7,7 +7,7 @@ import { Alert } from '../../lib/appAlert';
 import { useNavigation } from '@react-navigation/native';
 import { UserCheck, UserPlus, LogOut, Clock, Building2, ShieldCheck } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
-import { enqueue, QUEUE_KEYS } from '../../lib/offlineQueue';
+import { enqueue, isOfflineError, QUEUE_KEYS } from '../../lib/offlineQueue';
 import { useAuthStore } from '../../store/authStore';
 import { useUIStore } from '../../store/uiStore';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -20,6 +20,7 @@ import Input from '../../components/ui/Input';
 import MetricCard from '../../components/ui/MetricCard';
 import Badge from '../../components/ui/Badge';
 import ModuleLauncher from '../../components/chrome/ModuleLauncher';
+import PendingApprovalsAlertCard from '../../components/shared/PendingApprovalsAlertCard';
 import SectionHeader from '../../components/ui/SectionHeader';
 
 interface VisitorRow {
@@ -93,9 +94,12 @@ export default function VisitorLogScreen() {
     };
     const { error } = await supabase.from('visitors').insert(payload);
     setSubmitting(false);
-    if (error) {
+    if (error && isOfflineError(error)) {
       await enqueue(QUEUE_KEYS.receptionVisitors, 'visitors', payload);
       Alert.alert('Saved Offline', "No connection right now, so this visitor will sync automatically once you're back online.");
+    } else if (error) {
+      Alert.alert('Not saved', error.message);
+      return;
     }
     setFullName('');
     setPurpose('');
@@ -123,6 +127,7 @@ export default function VisitorLogScreen() {
   return (
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} onScroll={scrollHandler} scrollEventThrottle={16}>
       <View style={{ gap: t.spacing.xl }}>
+        <PendingApprovalsAlertCard department="RECEPTION" onNavigate={(tab) => navigation.navigate(tab)} />
         {/* Front Desk snapshot — two clickable tiles, not one oversized
             banner (per direct correction: a full-bleed color block that
             does nothing on tap doesn't belong in a mobile app). */}

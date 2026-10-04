@@ -300,7 +300,7 @@ export default function SetPricesScreen() {
       render: (c) => {
         const draft = discountDraft[c.id];
         const current = draft !== undefined ? draft : String(c.discountPercent);
-        return <Input value={current} onChangeText={(v) => setDiscountDraft((prev) => ({ ...prev, [c.id]: v }))} keyboardType="numeric" style={{ width: 70 }} />;
+        return <Input value={current} onChangeText={(v) => setDiscountDraft((prev) => ({ ...prev, [c.id]: v }))} keyboardType="numeric" style={{ width: 70 }} placeholder="0" />;
       },
     },
     {
@@ -418,13 +418,13 @@ export default function SetPricesScreen() {
           {approvedGoods.length > 0 ? (
             <SearchablePicker value={form.productName} onChange={(v) => setForm((f) => ({ ...f, productName: v }))} options={approvedGoods.map((n) => ({ value: n, label: n }))} placeholder="Select or type product name" />
           ) : (
-            <Input value={form.productName} onChangeText={(v) => setForm((f) => ({ ...f, productName: v }))} />
+            <Input value={form.productName} onChangeText={(v) => setForm((f) => ({ ...f, productName: v }))} placeholder="e.g. Sachet Water 500ml" />
           )}
         </Field>
         <Field label="Category"><SearchablePicker value={form.category} onChange={(v) => setForm((f) => ({ ...f, category: v }))} options={CATEGORIES.map((c) => ({ value: c, label: c }))} /></Field>
         <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
-          <View style={{ flex: 1 }}><Field label="Unit Price *"><Input value={form.unitPrice} onChangeText={(v) => setForm((f) => ({ ...f, unitPrice: v }))} keyboardType="decimal-pad" /></Field></View>
-          <View style={{ flex: 1 }}><Field label="Cost Price"><Input value={form.costPrice} onChangeText={(v) => setForm((f) => ({ ...f, costPrice: v }))} keyboardType="decimal-pad" /></Field></View>
+          <View style={{ flex: 1 }}><Field label="Unit Price *"><Input value={form.unitPrice} onChangeText={(v) => setForm((f) => ({ ...f, unitPrice: v }))} keyboardType="decimal-pad" placeholder="0.00" /></Field></View>
+          <View style={{ flex: 1 }}><Field label="Cost Price"><Input value={form.costPrice} onChangeText={(v) => setForm((f) => ({ ...f, costPrice: v }))} keyboardType="decimal-pad" placeholder="0.00" /></Field></View>
         </View>
         <Field label="Currency"><SearchablePicker value={form.currency} onChange={(v) => setForm((f) => ({ ...f, currency: v as 'GHS' | 'USD' }))} options={[{ value: 'GHS', label: 'GHS' }, { value: 'USD', label: 'USD' }]} /></Field>
         <Field label="Product Photo (optional)">

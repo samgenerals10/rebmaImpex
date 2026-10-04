@@ -235,16 +235,16 @@ export default function OutputRecordingScreen() {
         maxHeight={720}
         footer={<Button label={submitting ? 'Saving…' : 'Save Changes'} onPress={saveEdit} loading={submitting} disabled={submitting} fullWidth />}
       >
-        <Field label="Product"><Input value={editForm.product} onChangeText={(v) => setEditForm((f) => ({ ...f, product: v }))} /></Field>
+        <Field label="Product"><Input value={editForm.product} onChangeText={(v) => setEditForm((f) => ({ ...f, product: v }))} placeholder="e.g. Sachet Water 500ml" /></Field>
         <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
           <View style={{ flex: 1 }}><Field label="Date"><Input value={editForm.date} onChangeText={(v) => setEditForm((f) => ({ ...f, date: v }))} placeholder="YYYY-MM-DD" /></Field></View>
-          <View style={{ flex: 1 }}><Field label="Goods Received"><Input value={editForm.received} onChangeText={(v) => setEditForm((f) => ({ ...f, received: v }))} keyboardType="numeric" /></Field></View>
+          <View style={{ flex: 1 }}><Field label="Goods Received"><Input value={editForm.received} onChangeText={(v) => setEditForm((f) => ({ ...f, received: v }))} keyboardType="numeric" placeholder="0" /></Field></View>
         </View>
         <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
           <View style={{ flex: 1 }}><Field label="Unit"><SearchablePicker value={editForm.unit} onChange={(v) => setEditForm((f) => ({ ...f, unit: v }))} options={UNITS.map((u) => ({ value: u, label: u }))} /></Field></View>
-          <View style={{ flex: 1 }}><Field label="Boxes Produced"><Input value={editForm.boxes} onChangeText={(v) => setEditForm((f) => ({ ...f, boxes: v }))} keyboardType="numeric" /></Field></View>
+          <View style={{ flex: 1 }}><Field label="Boxes Produced"><Input value={editForm.boxes} onChangeText={(v) => setEditForm((f) => ({ ...f, boxes: v }))} keyboardType="numeric" placeholder="0" /></Field></View>
         </View>
-        <Field label="Sachets Produced"><Input value={editForm.sachets} onChangeText={(v) => setEditForm((f) => ({ ...f, sachets: v }))} keyboardType="numeric" /></Field>
+        <Field label="Sachets Produced"><Input value={editForm.sachets} onChangeText={(v) => setEditForm((f) => ({ ...f, sachets: v }))} keyboardType="numeric" placeholder="0" /></Field>
         <Field label="Quality Check">
           <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
             {(['Pass', 'Fail'] as const).map((q) => (
@@ -254,7 +254,7 @@ export default function OutputRecordingScreen() {
             ))}
           </View>
         </Field>
-        <Field label="Notes"><Input value={editForm.notes} onChangeText={(v) => setEditForm((f) => ({ ...f, notes: v }))} multiline numberOfLines={2} style={{ minHeight: 56, textAlignVertical: 'top' }} /></Field>
+        <Field label="Notes"><Input value={editForm.notes} onChangeText={(v) => setEditForm((f) => ({ ...f, notes: v }))} multiline numberOfLines={2} style={{ minHeight: 56, textAlignVertical: 'top' }} placeholder="Any additional notes..." /></Field>
       </Sheet>
     </Screen>
   );

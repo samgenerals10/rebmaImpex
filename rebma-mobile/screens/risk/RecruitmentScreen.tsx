@@ -48,12 +48,25 @@ export default function RiskRecruitmentScreen() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Invite | null>(null);
   const [showPhoto, setShowPhoto] = useState(false);
+  // created_by is really the creating HR user's profiles.id (a uuid, not
+  // a display name — confirmed live: StaffScreen.tsx's insert used to
+  // send a display-name string here and the real column rejected it
+  // outright with "invalid input syntax for type uuid"). Resolved to a
+  // readable name here rather than showing the raw id in "Entered By".
+  const [enteredByNames, setEnteredByNames] = useState<Record<string, string>>({});
 
   const load = async () => {
     setLoading(true);
     const { data } = await supabase.from('staff_invites').select('*').order('created_at', { ascending: false });
     setInvites(data || []);
     setLoading(false);
+    const ids = Array.from(new Set((data || []).map((i) => i.created_by).filter(Boolean)));
+    if (ids.length > 0) {
+      const { data: people } = await supabase.from('profiles').select('id, full_name').in('id', ids);
+      const map: Record<string, string> = {};
+      for (const p of people || []) map[p.id] = p.full_name || p.id;
+      setEnteredByNames(map);
+    }
   };
   useEffect(() => { load(); }, []);
 
@@ -102,7 +115,7 @@ export default function RiskRecruitmentScreen() {
             <Card padded>
               {[
                 ['Email', selected.email], ['Phone', selected.phone], ['Address', selected.address],
-                ['Staff Category', selected.staff_category], ['Entered By', selected.created_by],
+                ['Staff Category', selected.staff_category], ['Entered By', selected.created_by ? (enteredByNames[selected.created_by] || selected.created_by) : null],
                 ['Date', new Date(selected.created_at).toLocaleDateString()],
               ].filter(([, v]) => v).map(([k, v]) => (
                 <View key={k} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 }}>

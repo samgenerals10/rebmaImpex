@@ -6,6 +6,7 @@
 // never touch another driver's data.
 import { createClient } from '@supabase/supabase-js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { isRateLimited } from './_shared/rateLimit';
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -68,6 +69,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
+
+  // No login exists on this page at all — a driver's own phone hitting
+  // it legitimately (page load + periodic GPS pings + a few stop
+  // actions) sits nowhere near this ceiling; 120/min is generous for one
+  // real device while still stopping a flood cold.
+  if (await isRateLimited(supabaseAdmin, req, res, 'trip', 120, 60)) return;
 
   if (req.method === 'GET') {
     const token = String(req.query.token || '');

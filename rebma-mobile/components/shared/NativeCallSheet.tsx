@@ -87,6 +87,7 @@ export default function NativeCallSheet({ room, title, kind, otherUserId, onClos
   const roomRef = useRef<RoomChannel | null>(null);
   const pendingCandidates = useRef<any[]>([]);
   const closedRef = useRef(false);
+  const offeredRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -148,11 +149,18 @@ export default function NativeCallSheet({ room, title, kind, otherUserId, onClos
       roomRef.current = openRoomChannel(room, { userId: myId, fullName: myName }, handleSignal);
 
       setStatus('ringing');
-      if (iOffer) {
+      // The offer goes out the moment the other person is actually in the
+      // room. Sending it straight away (as before) lost it whenever the
+      // other person opened the call second, so the call never connected.
+      // Same rule as the web app (WebCallModal.tsx).
+      roomRef.current.onPresence(async (participants) => {
+        if (!iOffer || offeredRef.current || closedRef.current || cancelled) return;
+        if (!participants.some((p) => p.userId === otherUserId)) return;
+        offeredRef.current = true;
         const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: kind === 'video' });
         await pc.setLocalDescription(offer);
-        roomRef.current.send({ type: 'offer', sdp: offer.sdp!, from: myId, to: otherUserId });
-      }
+        roomRef.current?.send({ type: 'offer', sdp: offer.sdp!, from: myId, to: otherUserId });
+      });
     };
 
     setup();
@@ -192,7 +200,7 @@ export default function NativeCallSheet({ room, title, kind, otherUserId, onClos
     connecting: 'Connecting…',
     ringing: 'Calling…',
     connected: 'Connected',
-    failed: "Couldn't connect — check the other person's connection",
+    failed: "Couldn't connect. Check the other person's connection.",
     ended: 'Call ended',
   };
 

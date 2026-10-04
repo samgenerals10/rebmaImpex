@@ -5,9 +5,15 @@ import {
   Database, MessageCircle, Settings, CheckSquare, AlertTriangle, Bell,
   UserPlus, Copy, Check, Trash2, ToggleLeft, ToggleRight, Eye, EyeOff,
   Clock, Lock, Globe, Mail, Phone, Building2, RefreshCw, X, Plus, Search,
-  FileSpreadsheet, Package, ShoppingCart, Camera, Ban, UserX, Key, FileEdit
+  FileSpreadsheet, Package, ShoppingCart, Camera, Ban, UserX, Key, FileEdit, Cake, Crown,
+  LogOut, ShieldCheck
 } from 'lucide-react';
+import PasswordConfirmModal from '../../components/ui/PasswordConfirmModal';
+import { callPrivilegedApi } from '../../utils/privilegedApi';
+import { kickUserOffline } from '../../lib/presence';
+import { API_KEY_DEFS } from '../../utils/apiKeyDefs';
 import { supabase } from '../../lib/supabaseClient';
+import { newSecureToken } from '../../utils/secureToken';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import DocumentTemplatesView from '../management/DocumentTemplatesView';
 import SidePanel from '../../components/ui/SidePanel';
@@ -17,7 +23,7 @@ import { exportToCSV } from '../../utils/export';
 import { CEO_SETTINGS_SCHEMA, getSchemaSection, type SettingFieldSpec } from '../../utils/ceoSettingsSchema';
 
 interface Props {
-  currentUser: { id?: string; fullName: string; department: string; isAdmin?: boolean } | null;
+  currentUser: { id?: string; fullName: string; email?: string; department: string; isAdmin?: boolean } | null;
   addNotification: (msg: string) => void;
 }
 
@@ -253,6 +259,117 @@ function SettingSelect({ label, description, settingKey, options }: {
   );
 }
 
+// ── Text Component (saves when the box loses focus) ──────────────────────────
+function SettingText({ label, description, settingKey, placeholder }: {
+  label: string; description: string; settingKey: string; placeholder?: string;
+}) {
+  const { settings, updateSetting } = useCeoSettings();
+  const stored = typeof settings[settingKey] === 'string' ? settings[settingKey] : '';
+  const [local, setLocal] = useState<string>(stored);
+  useEffect(() => { setLocal(stored); }, [stored]);
+  return (
+    <div className="py-3 border-b border-[var(--border)] last:border-0">
+      <p className="text-sm font-semibold text-[var(--text-primary)]">{label}</p>
+      <p className="text-xs text-[var(--text-muted)] mt-0.5 leading-relaxed">{description}</p>
+      <textarea
+        value={local}
+        onChange={e => setLocal(e.target.value)}
+        onBlur={() => { if (local !== stored) updateSetting(settingKey, local); }}
+        placeholder={placeholder}
+        rows={3}
+        className="mt-2 w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
+      />
+    </div>
+  );
+}
+
+// ── API Keys (direct instruction: every key is entered here) ─────────────────
+// Read and written straight to ceo_settings rather than through the shared
+// settings context, so a secret is only ever loaded on this screen. The
+// server-only secrets are CEO-only under RLS (supabase_secret_settings.sql).
+function ApiKeysSection({ addNotification }: { addNotification: (msg: string) => void }) {
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [revealed, setRevealed] = useState<Record<string, boolean>>({});
+  const [saving, setSaving] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.from('ceo_settings').select('setting_key, setting_value').in('setting_key', API_KEY_DEFS.map(d => d.key))
+      .then(({ data }) => {
+        const map: Record<string, string> = {};
+        for (const row of data || []) {
+          const v = row.setting_value;
+          map[row.setting_key] = typeof v === 'string' ? v : v == null ? '' : String(v);
+        }
+        setValues(map);
+      });
+  }, []);
+
+  const save = async (key: string, value: string) => {
+    setSaving(key);
+    const { error } = await supabase.from('ceo_settings').upsert(
+      { setting_key: key, setting_value: value, updated_at: new Date().toISOString() },
+      { onConflict: 'setting_key' },
+    );
+    setSaving(null);
+    if (error) { addNotification(`Could not save: ${error.message}`); return; }
+    setValues(prev => ({ ...prev, [key]: value }));
+    setDrafts(prev => { const next = { ...prev }; delete next[key]; return next; });
+    addNotification(value ? 'Saved.' : 'Removed.');
+  };
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+        Every key the app uses lives here. Only the database connection stays in Vercel. Changes take effect on the next message or request, with no redeploy.
+      </p>
+      {API_KEY_DEFS.map(def => {
+        const current = values[def.key] || '';
+        const draft = drafts[def.key];
+        const shown = draft ?? current;
+        const dirty = draft !== undefined && draft !== current;
+        return (
+          <div key={def.key} className="py-3 border-b border-[var(--border)] last:border-0">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-semibold text-[var(--text-primary)] flex-1">{def.label}</p>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${current ? 'bg-emerald-500/10 text-emerald-600' : 'bg-[var(--bg-input)] text-[var(--text-muted)]'}`}>
+                {current ? 'SET' : 'NOT SET'}
+              </span>
+            </div>
+            <p className="text-xs text-[var(--text-muted)] mt-0.5 leading-relaxed">{def.description}</p>
+            <div className="mt-2 flex items-center gap-2">
+              <input
+                type={def.plain || revealed[def.key] ? 'text' : 'password'}
+                value={shown}
+                onChange={e => setDrafts(prev => ({ ...prev, [def.key]: e.target.value }))}
+                placeholder={def.placeholder}
+                autoComplete="off"
+                className="flex-1 min-w-0 px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs font-mono text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
+              />
+              {!def.plain && (
+                <button type="button" onClick={() => setRevealed(prev => ({ ...prev, [def.key]: !prev[def.key] }))}
+                  className="p-2 text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer" aria-label={revealed[def.key] ? 'Hide key' : 'Show key'}>
+                  {revealed[def.key] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              )}
+              <button type="button" disabled={!dirty || saving === def.key} onClick={() => save(def.key, (draft || '').trim())}
+                className="px-3 py-2 rounded-xl text-xs font-bold text-white disabled:opacity-40 cursor-pointer" style={{ background: 'var(--accent)' }}>
+                {saving === def.key ? 'Saving…' : 'Save'}
+              </button>
+              {current && (
+                <button type="button" onClick={() => { if (window.confirm(`Remove ${def.label}?`)) save(def.key, ''); }}
+                  className="px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 border border-[var(--border)] hover:bg-rose-500/10 cursor-pointer">
+                  Remove
+                </button>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Generic field renderer, driven by utils/ceoSettingsSchema.ts ──────────────
 // The 4 components above (SettingToggle/SettingToggleWithException/
 // SettingNumber/SettingSelect) are completely untouched — this only
@@ -272,6 +389,8 @@ function SettingField({ field }: { field: SettingFieldSpec }) {
       return <SettingNumber settingKey={field.key} label={field.label} description={field.description} min={field.min} max={field.max} unit={field.unit} />;
     case 'select':
       return <SettingSelect settingKey={field.key} label={field.label} description={field.description} options={field.options} />;
+    case 'text':
+      return <SettingText settingKey={field.key} label={field.label} description={field.description} placeholder={field.placeholder} />;
   }
 }
 
@@ -426,6 +545,8 @@ function DataResetSection({ addNotification }: { addNotification: (m: string) =>
   const [selectedDept, setSelectedDept] = useState('');
   const [showModal, setShowModal]       = useState(false);
   const [confirmText, setConfirmText]   = useState('');
+  const [password, setPassword]         = useState('');
+  const [error, setError]               = useState('');
   const [running, setRunning]           = useState(false);
   const [results, setResults]           = useState<{ table: string; deleted: number; error?: string }[]>([]);
   const [done, setDone]                 = useState(false);
@@ -433,94 +554,37 @@ function DataResetSection({ addNotification }: { addNotification: (m: string) =>
   const open = (dept: string) => {
     setSelectedDept(dept);
     setConfirmText('');
+    setPassword('');
+    setError('');
     setResults([]);
     setDone(false);
     setShowModal(true);
   };
 
-  const close = () => { if (running) return; setShowModal(false); };
+  const close = () => { if (running) return; setShowModal(false); setPassword(''); };
 
+  // Runs on the server now (api/data-reset.ts): CEO only, the password is
+  // checked there, the table list there is the one that counts, and the
+  // stock safeguard (sold quantities put back into stock before the sale
+  // records are deleted) runs there too. The counts shown are real.
   const run = async () => {
     if (confirmText !== 'CONFIRM DELETE') return;
+    if (!password) { setError('Enter your password.'); return; }
     const cfg = DEPT_TABLES[selectedDept];
     if (!cfg) return;
     setRunning(true);
-    setResults([]);
-    const res: typeof results = [];
-    for (const t of cfg.tables) {
-      try {
-        // global_audit_history is shared across every department — scope its
-        // delete to just this department's own rows so it doesn't erase
-        // everyone else's trail too. ALL still clears it in full via its own
-        // dedicated table entry below, matching every other table there.
-        const query = t.name === 'global_audit_history' && selectedDept !== 'ALL'
-          ? (supabase.from(t.name as any).delete() as any).eq('department', selectedDept)
-          // .not('id','is',null) matches every row regardless of id column type (int or uuid)
-          : (supabase.from(t.name as any).delete() as any).not('id', 'is', null);
-        const { error, count } = await query;
-        res.push({ table: t.name, deleted: count ?? 0, error: error?.message });
-      } catch (e: any) {
-        res.push({ table: t.name, deleted: 0, error: e?.message || 'Unknown error' });
-      }
+    setError('');
+    try {
+      const res = await callPrivilegedApi<{ results: { table: string; deleted: number; error?: string }[] }>('/api/data-reset', { department: selectedDept, confirmText, password });
+      setResults(res.results || []);
+      setDone(true);
+      setPassword('');
+      addNotification(`Data reset complete for ${cfg.label}.`);
+    } catch (e: any) {
+      setError(e?.message || 'The reset did not run.');
+    } finally {
+      setRunning(false);
     }
-    // Wiping `orders` leaves behind the stock_ledger rows deductStockForOrder wrote
-    // when those orders were sold — those are the only REMOVE rows that mean "sold"
-    // (see MgmtOverviewView/CeoDashboard/marketing OverviewView), so orphaning them
-    // makes "Sold" figures lie about stock that was never actually deducted for a
-    // real, currently-existing order. stock_ledger itself isn't in every dept's own
-    // table list (e.g. MARKETING resets orders but not stock_ledger), so this has to
-    // run as an explicit extra step whenever `orders` was part of this reset.
-    //
-    // Deleting those rows alone (as this used to do) left the Ledger Statement
-    // unreconciled: "Received" stayed at its real historical total, "Released"
-    // dropped by whatever got deleted here, but `stock.quantity` was never
-    // touched — the physical deduction those orders caused is real and should
-    // stay real. So before deleting each orphaned row, its quantity is added
-    // back to `stock` first, making this a genuine reversal ("as if that sale
-    // never happened") rather than just erasing the audit trail of one. Skipped
-    // when this reset already wipes `stock_ledger`/`stock` directly (OPERATIONS
-    // or ALL) — those already end up fully consistent on their own.
-    if (cfg.tables.some(t => t.name === 'orders') && !cfg.tables.some(t => t.name === 'stock_ledger')) {
-      try {
-        const { data: orphaned, error: fetchErr } = await supabase
-          .from('stock_ledger')
-          .select('id, product_name, quantity')
-          .ilike('reference', '%Order Approved%');
-        if (fetchErr) throw fetchErr;
-
-        const reversalByProduct = new Map<string, number>();
-        for (const row of orphaned || []) {
-          const key = String(row.product_name || '').trim().toLowerCase();
-          if (!key) continue;
-          reversalByProduct.set(key, (reversalByProduct.get(key) || 0) + (Number(row.quantity) || 0));
-        }
-        for (const [productKey, qty] of reversalByProduct) {
-          if (qty <= 0) continue;
-          const { data: stockRow } = await supabase.from('stock').select('id, quantity').ilike('product_name', productKey).limit(1);
-          if (stockRow && stockRow[0]) {
-            await supabase.from('stock').update({ quantity: (Number(stockRow[0].quantity) || 0) + qty, last_updated: new Date().toISOString() }).eq('id', stockRow[0].id);
-          }
-        }
-
-        const { error, count } = await (supabase.from('stock_ledger').delete() as any).ilike('reference', '%Order Approved%');
-        res.push({ table: 'stock_ledger (orphaned sale entries, reversed into stock)', deleted: count ?? 0, error: error?.message });
-      } catch (e: any) {
-        res.push({ table: 'stock_ledger (orphaned sale entries)', deleted: 0, error: e?.message || 'Unknown error' });
-      }
-    }
-    // Log to audit history (best-effort)
-    supabase.from('global_audit_history').insert([{
-      action: 'DATA_RESET',
-      department: selectedDept,
-      performed_by: 'CEO',
-      details: `Cleared: ${cfg.tables.map(t => t.label || t.name).join(', ')}`,
-      timestamp: new Date().toISOString(),
-    }]).then(() => {}, () => {});
-
-    setResults(res);
-    setRunning(false);
-    setDone(true);
-    addNotification(`Data reset complete for ${cfg.label}.`);
   };
 
   const depts = Object.keys(DEPT_TABLES);
@@ -564,7 +628,7 @@ function DataResetSection({ addNotification }: { addNotification: (m: string) =>
       {/* Confirmation Modal */}
       {showModal && (() => {
         const cfg = DEPT_TABLES[selectedDept];
-        const ready = confirmText === 'CONFIRM DELETE';
+        const ready = confirmText === 'CONFIRM DELETE' && !!password;
         return (
           <SidePanel
             open
@@ -613,6 +677,19 @@ function DataResetSection({ addNotification }: { addNotification: (m: string) =>
                         className="w-full px-3 py-2 rounded-xl border border-[var(--border)] bg-[var(--bg)] text-sm font-mono text-[var(--text-primary)] focus:outline-none focus:border-rose-400"
                       />
                     </div>
+
+                    <div className="space-y-2">
+                      <p className="text-xs text-[var(--text-secondary)]">Your password, checked on the server to confirm it is you:</p>
+                      <input
+                        type="password"
+                        value={password}
+                        onChange={e => { setPassword(e.target.value); setError(''); }}
+                        autoComplete="current-password"
+                        placeholder="Type your sign-in password"
+                        className="w-full px-3 py-2 rounded-xl border border-[var(--border)] bg-[var(--bg)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-rose-400"
+                      />
+                      {error && <p className="text-xs font-semibold text-rose-600">{error}</p>}
+                    </div>
                   </>
                 ) : (
                   <div className="space-y-2">
@@ -623,7 +700,7 @@ function DataResetSection({ addNotification }: { addNotification: (m: string) =>
                         <div key={r.table} className={`flex items-center justify-between px-4 py-2.5 rounded-xl text-xs font-semibold ${r.error ? 'bg-rose-50 border border-rose-200' : 'bg-emerald-50 border border-emerald-200'}`}>
                           <span className={`font-mono ${r.error ? 'text-rose-600' : 'text-emerald-700'}`}>{displayLabel}</span>
                           <span className={r.error ? 'text-rose-500' : 'text-emerald-600'}>
-                            {r.error ? `Error: ${r.error}` : `✓ Cleared`}
+                            {r.error ? `Error: ${r.error}` : `${r.deleted} deleted`}
                           </span>
                         </div>
                       );
@@ -655,10 +732,13 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
   const [showDelegateForm, setShowDelegateForm] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
   const [inviteForm, setInviteForm] = useState({
-    fullName: '', email: '', department: 'MARKETING', role: 'staff',
+    fullName: '', email: '', phone: '', department: 'MARKETING', role: 'staff',
     expiry: '24h', autoApprove: false,
   });
   const [generatedLink, setGeneratedLink] = useState('');
+  // What happened when the link was sent by email / SMS, so the CEO is
+  // never told it went out when it didn't.
+  const [inviteDelivery, setInviteDelivery] = useState('');
   const [linkCopied, setLinkCopied] = useState(false);
   const [delegateForm, setDelegateForm] = useState({
     searchEmail: '', name: '', permissions: [] as string[], expiresAt: '',
@@ -707,7 +787,7 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
       .then(({ data }) => { if (data) setDelegates(data); }, () => {});
 
     // Staff
-    supabase.from('profiles').select('id, full_name, email, role, status, department, created_at').order('created_at', { ascending: false })
+    supabase.from('profiles').select('id, full_name, email, role, status, department, created_at, is_admin').neq('status', 'TERMINATED').order('created_at', { ascending: false })
       .then(({ data }) => { if (data) setStaffList(data); }, () => {});
 
     // Security log (last 10 ceo_settings changes)
@@ -751,24 +831,45 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
     if (submitting) return;
     setSubmitting(true);
     try {
-      const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
+      const token = await newSecureToken();
       const expiryHours: Record<string, number> = { '24h': 24, '48h': 48, '7d': 168 };
       const hours = expiryHours[inviteForm.expiry] ?? 24;
       const expiresAt = new Date(Date.now() + hours * 3600000).toISOString();
 
-      await supabase.from('staff_invites').insert([{
+      const email = inviteForm.email.trim();
+      const phone = inviteForm.phone.trim();
+      const { data: created, error } = await supabase.from('staff_invites').insert([{
         token,
-        email: inviteForm.email || null,
-        full_name: inviteForm.fullName || null,
+        email: email || null,
+        phone: phone || null,
+        full_name: inviteForm.fullName.trim() || null,
         department: inviteForm.department,
         role: inviteForm.role,
         auto_approve: inviteForm.autoApprove,
         expires_at: expiresAt,
         status: 'pending',
-      }]);
+      }]).select('id').single();
+      if (error || !created) throw new Error(error?.message || 'The invite was not saved.');
       const link = `${window.location.origin}/register?token=${token}`;
       setGeneratedLink(link);
-      addNotification(`Invite link generated for ${inviteForm.department}.`);
+      setInviteDelivery('');
+
+      // Send the link to the person by email and SMS, whichever details
+      // were given. The link stays on screen to copy either way.
+      const channels = [email ? 'email' : null, phone ? 'sms' : null].filter(Boolean) as string[];
+      if (channels.length) {
+        try {
+          const res = await callPrivilegedApi<{ message: string }>('/api/send-staff-invite-email', { inviteId: created.id, channels });
+          setInviteDelivery(res.message);
+          addNotification(`Invite for ${inviteForm.department}: ${res.message}`);
+        } catch (sendErr: any) {
+          setInviteDelivery(`The link was created but not sent: ${sendErr.message}`);
+          addNotification(`Invite created, but sending failed: ${sendErr.message}`);
+        }
+      } else {
+        setInviteDelivery('No email or phone was given, so nothing was sent. Copy the link below and share it yourself.');
+        addNotification(`Invite link generated for ${inviteForm.department}.`);
+      }
       loadData();
     } catch (err: any) {
       addNotification(`Failed to generate invite: ${err.message}`);
@@ -825,56 +926,178 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
     }
   };
 
-  const suspendUser = async (userId: string, name: string) => {
+  // Suspend / Reactivate / Block / Unblock go through the server
+  // (api/set-user-status.ts), which checks the password, locks or unlocks
+  // sign-in, ends open sessions and logs it. The database itself now
+  // refuses a status change made straight from the browser.
+  const changeStatus = (userId: string, name: string, action: StatusAction) => {
     if (submitting) return;
+    setPasswordAction({ kind: 'status', userId, name, action });
+  };
+
+  const kickUser = async (userId: string, name: string) => {
+    if (submitting) return;
+    if (!await window.confirm(`Sign ${name} out of every device now? They can sign in again unless you also suspend or block them.`)) return;
     setSubmitting(true);
     try {
-      await supabase.from('profiles').update({ status: 'SUSPENDED' }).eq('id', userId);
-      addNotification(`User ${name} suspended.`);
-      loadData();
+      const res = await callPrivilegedApi('/api/kick-user', { userId });
+      kickUserOffline(userId);
+      addNotification(res.message || `${name} has been signed out.`);
     } catch (err: any) {
-      addNotification(`Failed to suspend user: ${err.message}`);
+      addNotification(`Could not sign ${name} out: ${err.message}`);
     } finally {
       setSubmitting(false);
     }
   };
 
-  const reactivateUser = async (userId: string, name: string) => {
-    if (submitting) return;
-    setSubmitting(true);
+  // High-risk actions (approved rule): the CEO types his password, checked
+  // on the server. Errors are thrown back to PasswordConfirmModal, which
+  // shows them and stays open so a wrong password can be retried.
+  type StatusAction = 'suspend' | 'reactivate' | 'block' | 'unblock';
+  type RemovalRequest = { id: string; target_id: string; target_name: string | null; requested_by: string; requested_by_name: string | null; reason: string | null; created_at: string };
+  type PasswordAction =
+    | { kind: 'terminate'; userId: string; name: string }
+    | { kind: 'changeEmail'; newEmail: string }
+    | { kind: 'coCeo'; fullName: string; email: string; phone: string }
+    | { kind: 'status'; userId: string; name: string; action: StatusAction }
+    | { kind: 'removeRequest'; targetId: string; name: string; reason: string }
+    | { kind: 'removalDecision'; request: RemovalRequest; decision: 'approve' | 'reject' };
+  const [passwordAction, setPasswordAction] = useState<PasswordAction | null>(null);
+
+  // Removing a CEO needs two CEOs: one asks, a different one decides.
+  const [removalRequests, setRemovalRequests] = useState<RemovalRequest[]>([]);
+  const [removeTarget, setRemoveTarget] = useState<{ id: string; name: string } | null>(null);
+  const [removeReason, setRemoveReason] = useState('');
+  const loadRemovalRequests = async () => {
+    const { data } = await (supabase.from('ceo_removal_requests' as any) as any)
+      .select('id, target_id, target_name, requested_by, requested_by_name, reason, created_at')
+      .eq('status', 'pending').order('created_at', { ascending: false });
+    setRemovalRequests((data as any) || []);
+  };
+  useEffect(() => { loadRemovalRequests(); }, []);
+
+  const cancelRemoval = async (request: RemovalRequest) => {
+    if (!await window.confirm(`Withdraw your request to remove ${request.target_name || 'this CEO'}?`)) return;
     try {
-      await supabase.from('profiles').update({ status: 'ACTIVE' }).eq('id', userId);
-      addNotification(`User ${name} reactivated.`);
-      loadData();
+      const res = await callPrivilegedApi('/api/ceo-removal', { action: 'cancel', requestId: request.id });
+      addNotification(res.message || 'Request cancelled.');
+      loadRemovalRequests();
     } catch (err: any) {
-      addNotification(`Failed to reactivate user: ${err.message}`);
-    } finally {
-      setSubmitting(false);
+      addNotification(`Could not cancel it: ${err.message}`);
     }
   };
 
-  const terminateUser = async (userId: string, name: string) => {
-    if (submitting) return;
-    if (!await window.confirm(`Terminate ${name}? This revokes their login immediately.`)) return;
-    setSubmitting(true);
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData.session?.access_token;
-      if (!accessToken) throw new Error('Not authenticated.');
-      const res = await fetch('/api/terminate-user', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ userId }),
-      });
-      const body = await res.json();
-      if (!res.ok) throw new Error(body.error || 'Failed to terminate user.');
-      addNotification(body.message || `User ${name} terminated.`);
-      loadData();
-    } catch (err: any) {
-      addNotification(`Failed to terminate user: ${err.message}`);
-    } finally {
-      setSubmitting(false);
+  const STATUS_WORDING: Record<StatusAction, { title: string; verb: string; effect: string }> = {
+    suspend: { title: 'Confirm Suspension', verb: 'Suspend', effect: 'They are signed out everywhere and cannot sign in until reactivated.' },
+    reactivate: { title: 'Confirm Reactivation', verb: 'Reactivate', effect: 'They can sign in again.' },
+    block: { title: 'Confirm Block', verb: 'Block', effect: 'They are signed out everywhere and cannot sign in until unblocked.' },
+    unblock: { title: 'Confirm Unblock', verb: 'Unblock', effect: 'They can sign in again.' },
+  };
+  const passwordTitle = (a: PasswordAction | null): string => {
+    if (!a) return '';
+    switch (a.kind) {
+      case 'terminate': return 'Confirm Termination';
+      case 'changeEmail': return 'Confirm Email Change';
+      case 'coCeo': return 'Confirm Co-CEO Invite';
+      case 'status': return STATUS_WORDING[a.action].title;
+      case 'removeRequest': return 'Confirm Removal Request';
+      case 'removalDecision': return a.decision === 'approve' ? 'Confirm CEO Removal' : 'Confirm Rejection';
     }
+  };
+  const passwordDescription = (a: PasswordAction | null): string => {
+    if (!a) return '';
+    const tail = ' Type your password to confirm it is you.';
+    switch (a.kind) {
+      case 'terminate': return `Terminate ${a.name}? They can no longer sign in. Nothing is deleted: all their work stays in the system.${tail}`;
+      case 'changeEmail': return `Change your sign-in email to ${a.newEmail}?${tail}`;
+      case 'coCeo': return `Invite ${a.fullName} (${a.email}) as a co-CEO?${tail}`;
+      case 'status': return `${STATUS_WORDING[a.action].verb} ${a.name}? ${STATUS_WORDING[a.action].effect}${tail}`;
+      case 'removeRequest': return `Ask to remove ${a.name} as CEO? A different CEO must approve it.${tail}`;
+      case 'removalDecision': return a.decision === 'approve'
+        ? `Remove ${a.request.target_name || 'this CEO'} as CEO? Their sign-in is deleted and they lose all access.${tail}`
+        : `Reject the request to remove ${a.request.target_name || 'this CEO'}? They stay CEO.${tail}`;
+    }
+  };
+  const passwordConfirmLabel = (a: PasswordAction | null): string => {
+    if (!a) return 'Confirm';
+    switch (a.kind) {
+      case 'terminate': return 'Terminate';
+      case 'changeEmail': return 'Send confirmation link';
+      case 'coCeo': return 'Send invite';
+      case 'status': return STATUS_WORDING[a.action].verb;
+      case 'removeRequest': return 'Send request';
+      case 'removalDecision': return a.decision === 'approve' ? 'Remove CEO' : 'Reject';
+    }
+  };
+  const isDangerAction = (a: PasswordAction | null): boolean => !!a && (
+    a.kind === 'terminate'
+    || a.kind === 'removeRequest'
+    || (a.kind === 'removalDecision' && a.decision === 'approve')
+    || (a.kind === 'status' && (a.action === 'suspend' || a.action === 'block'))
+  );
+  const [changeEmailOpen, setChangeEmailOpen] = useState(false);
+  const [newCeoEmail, setNewCeoEmail] = useState('');
+  const [coCeoOpen, setCoCeoOpen] = useState(false);
+  const [coCeoForm, setCoCeoForm] = useState({ fullName: '', email: '', phone: '' });
+  const [coCeoResult, setCoCeoResult] = useState<{ message: string; link: string } | null>(null);
+  const [ceoInvites, setCeoInvites] = useState<{ id: string; full_name: string | null; email: string | null; expires_at: string }[]>([]);
+
+  const loadCeoInvites = async () => {
+    const { data } = await supabase.from('staff_invites').select('id, full_name, email, expires_at').eq('department', 'CEO').eq('status', 'pending').order('created_at', { ascending: false });
+    setCeoInvites((data as any) || []);
+  };
+  useEffect(() => { loadCeoInvites(); }, []);
+
+  const callApi = callPrivilegedApi;
+
+  const runPasswordAction = async (password: string) => {
+    const action = passwordAction;
+    if (!action) return;
+    if (action.kind === 'terminate') {
+      const res = await callApi('/api/terminate-user', { userId: action.userId, password });
+      setPasswordAction(null);
+      addNotification(res.message || `User ${action.name} terminated.`);
+      loadData();
+    } else if (action.kind === 'changeEmail') {
+      const res = await callApi('/api/ceo-change-email', { newEmail: action.newEmail, password });
+      setPasswordAction(null);
+      setChangeEmailOpen(false);
+      setNewCeoEmail('');
+      addNotification(res.message || 'A confirmation link was sent to the new address.');
+    } else if (action.kind === 'coCeo') {
+      const res = await callApi('/api/ceo-invite-co-ceo', { fullName: action.fullName, email: action.email, phone: action.phone, password });
+      setPasswordAction(null);
+      setCoCeoOpen(false);
+      setCoCeoForm({ fullName: '', email: '', phone: '' });
+      setCoCeoResult({ message: res.message || 'Invite sent.', link: res.link || '' });
+      loadCeoInvites();
+    } else if (action.kind === 'status') {
+      const res = await callApi('/api/set-user-status', { userId: action.userId, action: action.action, password });
+      setPasswordAction(null);
+      // Suspend and Block also close any screen they still have open.
+      if (action.action === 'suspend' || action.action === 'block') kickUserOffline(action.userId);
+      addNotification(res.message || 'Status updated.');
+      loadData();
+    } else if (action.kind === 'removeRequest') {
+      const res = await callApi('/api/ceo-removal', { action: 'request', targetId: action.targetId, reason: action.reason, password });
+      setPasswordAction(null);
+      setRemoveReason('');
+      addNotification(res.message || 'Removal request sent. Another CEO must approve it.');
+      loadRemovalRequests();
+    } else {
+      const res = await callApi('/api/ceo-removal', { action: action.decision, requestId: action.request.id, password });
+      setPasswordAction(null);
+      addNotification(res.message || 'Done.');
+      loadRemovalRequests();
+      loadData();
+    }
+  };
+
+  // Terminate takes effect at once and deletes nothing: all their work
+  // stays in the system (api/terminate-user.ts).
+  const terminateUser = (userId: string, name: string) => {
+    if (submitting) return;
+    setPasswordAction({ kind: 'terminate', userId, name });
   };
 
   const resetUserPassword = async (userId: string, name: string) => {
@@ -923,7 +1146,10 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
   ];
   const permissionLabel = (key: string) => PERMISSION_SECTIONS.find(s => s.key === key)?.label || key;
 
-  const filteredStaff = staffList.filter(s =>
+  // CEO accounts are never acted on from the staff list (no CEO acts on
+  // himself or another CEO); they're shown under CEO Account instead.
+  const ceoAccounts = staffList.filter((s: any) => s.is_admin);
+  const filteredStaff = staffList.filter((s: any) => !s.is_admin).filter(s =>
     !staffSearch || s.full_name?.toLowerCase().includes(staffSearch.toLowerCase()) ||
     s.email?.toLowerCase().includes(staffSearch.toLowerCase())
   );
@@ -1049,6 +1275,154 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
       </Section>
 
       {/* ── SECTION 1: ACCESS CONTROL ──────────────────────────────────── */}
+      <Section title="CEO Account" icon={Crown}>
+        <div className="space-y-4 py-2">
+          <div className="p-4 rounded-2xl bg-[var(--bg-input)] border border-[var(--border)]">
+            <p className="text-xs font-semibold text-[var(--text-muted)]">Your sign-in email (the CEO email)</p>
+            <p className="text-sm font-bold text-[var(--text-primary)] mt-0.5 select-all">{currentUser?.email || ''}</p>
+            <p className="text-xs text-[var(--text-muted)] mt-1">To change it you type your password, then confirm from a link sent to the new address.</p>
+            <button onClick={() => { setNewCeoEmail(''); setChangeEmailOpen(true); }}
+              className="mt-2 px-3 py-1.5 rounded-xl text-xs font-semibold border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--bg)] cursor-pointer">
+              Change email
+            </button>
+          </div>
+          <div className="p-4 rounded-2xl bg-[var(--bg-input)] border border-[var(--border)]">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <p className="text-sm font-bold text-[var(--text-primary)]">CEOs</p>
+              <button onClick={() => { setCoCeoForm({ fullName: '', email: '', phone: '' }); setCoCeoOpen(true); }}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold text-white cursor-pointer" style={{ background: 'var(--accent)' }}>
+                <Plus className="w-3.5 h-3.5" /> Add Co-CEO
+              </button>
+            </div>
+            <div className="divide-y divide-[var(--border)]">
+              {ceoAccounts.map((c: any) => (
+                <div key={c.id} className="flex items-center gap-3 py-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-[var(--text-primary)]">{c.full_name}{c.id === currentUser?.id ? ' (you)' : ''}</p>
+                    <p className="text-xs text-[var(--text-muted)] truncate">{c.email}</p>
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600">{c.status}</span>
+                  {c.id !== currentUser?.id && c.status === 'ACTIVE' && !removalRequests.some(r => r.target_id === c.id) && (
+                    <button onClick={() => { setRemoveReason(''); setRemoveTarget({ id: c.id, name: c.full_name }); }} title="Request removal"
+                      className="p-1.5 hover:bg-rose-500/10 rounded-lg text-rose-500 cursor-pointer">
+                      <UserX className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              ))}
+              {ceoInvites.map(inv => (
+                <div key={inv.id} className="flex items-center gap-3 py-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-[var(--text-primary)]">{inv.full_name || inv.email}</p>
+                    <p className="text-xs text-[var(--text-muted)]">Invited, not registered yet. Link expires {new Date(inv.expires_at).toLocaleDateString()}.</p>
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600">INVITED</span>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-[var(--text-muted)] mt-2">A co-CEO registers in the app with the link they receive, then you approve them in Approvals (with your password). Until then they have no access.</p>
+          </div>
+          <div className="p-4 rounded-2xl bg-[var(--bg-input)] border border-[var(--border)]">
+            <p className="text-sm font-bold text-[var(--text-primary)]">CEO removal requests</p>
+            <p className="text-xs text-[var(--text-muted)] mt-0.5 mb-2">Removing a CEO needs two CEOs. One asks, and a different CEO approves or rejects it. Every step is logged by name.</p>
+            {removalRequests.length === 0 ? (
+              <p className="text-xs text-[var(--text-muted)]">No requests waiting.</p>
+            ) : (
+              <div className="divide-y divide-[var(--border)]">
+                {removalRequests.map(r => {
+                  const mine = r.requested_by === currentUser?.id;
+                  return (
+                    <div key={r.id} className="py-2 space-y-1.5">
+                      <p className="text-sm font-semibold text-[var(--text-primary)]">Remove {r.target_name || 'a CEO'}</p>
+                      <p className="text-xs text-[var(--text-muted)]">
+                        Asked by {mine ? 'you' : (r.requested_by_name || 'another CEO')} on {new Date(r.created_at).toLocaleDateString()}.{r.reason ? ` Reason: ${r.reason}` : ''}
+                      </p>
+                      <div className="flex gap-2">
+                        {mine ? (
+                          <button onClick={() => cancelRemoval(r)} className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--bg)] cursor-pointer">Withdraw</button>
+                        ) : (
+                          <>
+                            <button onClick={() => setPasswordAction({ kind: 'removalDecision', request: r, decision: 'approve' })} className="px-3 py-1.5 rounded-xl text-xs font-bold text-white bg-rose-500 hover:bg-rose-600 cursor-pointer">Approve</button>
+                            <button onClick={() => setPasswordAction({ kind: 'removalDecision', request: r, decision: 'reject' })} className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--bg)] cursor-pointer">Reject</button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </Section>
+
+      <SidePanel open={!!removeTarget} onClose={() => setRemoveTarget(null)} title="Request CEO Removal"
+        footer={<button onClick={() => {
+          const target = removeTarget;
+          if (!target) return;
+          setRemoveTarget(null);
+          setPasswordAction({ kind: 'removeRequest', targetId: target.id, name: target.name, reason: removeReason.trim() });
+        }} className="w-full py-2.5 rounded-xl text-sm font-semibold text-white bg-rose-500 hover:bg-rose-600 cursor-pointer">Continue</button>}>
+        <p className="text-sm text-[var(--text-secondary)] mb-3">{removeTarget?.name} stays CEO until a different CEO approves this request.</p>
+        <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Reason (optional)</label>
+        <textarea value={removeReason} onChange={e => setRemoveReason(e.target.value)} rows={3} placeholder="e.g. Left the company"
+          className="w-full px-3 py-2 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
+        <p className="text-xs text-[var(--text-muted)] mt-2">Shown to the CEO who decides, and kept in the log.</p>
+      </SidePanel>
+
+      <SidePanel open={changeEmailOpen} onClose={() => setChangeEmailOpen(false)} title="Change CEO Email"
+        footer={<button onClick={() => {
+          const v = newCeoEmail.trim().toLowerCase();
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) { addNotification('Enter a valid new email address.'); return; }
+          setChangeEmailOpen(false);
+          setPasswordAction({ kind: 'changeEmail', newEmail: v });
+        }} className="erp-btn erp-btn-primary w-full">Continue</button>}>
+        <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">New email</label>
+        <input type="email" value={newCeoEmail} onChange={e => setNewCeoEmail(e.target.value)} placeholder="e.g. ceo@yourcompany.com"
+          className="w-full px-3 py-2 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
+        <p className="text-xs text-[var(--text-muted)] mt-2">A confirmation link goes to this address. Nothing changes until it is opened.</p>
+      </SidePanel>
+
+      <SidePanel open={coCeoOpen} onClose={() => setCoCeoOpen(false)} title="Add Co-CEO"
+        footer={<button onClick={() => {
+          const email = coCeoForm.email.trim().toLowerCase();
+          if (!coCeoForm.fullName.trim()) { addNotification('Enter their full name.'); return; }
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { addNotification('Enter a valid email address.'); return; }
+          setCoCeoOpen(false);
+          setPasswordAction({ kind: 'coCeo', fullName: coCeoForm.fullName.trim(), email, phone: coCeoForm.phone.trim() });
+        }} className="erp-btn erp-btn-primary w-full">Continue</button>}>
+        <div className="space-y-3">
+          {[
+            { key: 'fullName', label: 'Full name', type: 'text', placeholder: 'e.g. Ama Mensah' },
+            { key: 'email', label: 'Email', type: 'email', placeholder: 'e.g. ama@yourcompany.com' },
+            { key: 'phone', label: 'Phone (optional, the invite also goes by SMS)', type: 'tel', placeholder: 'e.g. 0244123456' },
+          ].map(f => (
+            <div key={f.key}>
+              <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">{f.label}</label>
+              <input type={f.type} value={(coCeoForm as any)[f.key]} onChange={e => setCoCeoForm(prev => ({ ...prev, [f.key]: e.target.value }))} placeholder={f.placeholder}
+                className="w-full px-3 py-2 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
+            </div>
+          ))}
+        </div>
+      </SidePanel>
+
+      <SidePanel open={!!coCeoResult} onClose={() => setCoCeoResult(null)} title="Co-CEO Invited"
+        footer={<button onClick={() => setCoCeoResult(null)} className="erp-btn erp-btn-ghost w-full">Done</button>}>
+        {coCeoResult && (
+          <div className="space-y-3">
+            <p className="text-sm text-[var(--text-secondary)]">{coCeoResult.message}</p>
+            {coCeoResult.link && (
+              <div className="bg-[var(--bg)] rounded-xl p-3 border border-[var(--border)] flex items-center justify-between gap-2">
+                <p className="text-xs text-[var(--text-primary)] break-all select-all">{coCeoResult.link}</p>
+                <button onClick={() => { navigator.clipboard.writeText(coCeoResult.link); addNotification('Link copied'); }}
+                  className="shrink-0 px-2.5 py-1.5 text-[10px] font-semibold bg-[var(--accent-light)] text-[var(--accent)] rounded-lg cursor-pointer hover:opacity-90">Copy</button>
+              </div>
+            )}
+          </div>
+        )}
+      </SidePanel>
+
+
       <Section title="Section 1 — Access Control" icon={Shield}>
         {getSchemaSection('access')!.fields.slice(0, 5).map(f => <SettingField key={f.key} field={f} />)}
 
@@ -1074,17 +1448,23 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
                       placeholder="Full name" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1">Email (optional)</label>
+                    <label className="block text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1">Email (the link is sent here)</label>
                     <input type="email" value={inviteForm.email} onChange={e => setInviteForm(p => ({ ...p, email: e.target.value }))}
                       className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
                       placeholder="email@example.com" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1">Phone (the link is texted here)</label>
+                    <input type="tel" value={inviteForm.phone} onChange={e => setInviteForm(p => ({ ...p, phone: e.target.value }))}
+                      className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
+                      placeholder="e.g. 024 123 4567" />
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1">Department</label>
                     <SearchableDropdown
                       value={inviteForm.department}
                       onChange={v => setInviteForm(p => ({ ...p, department: v }))}
-                      options={[...['MARKETING','FINANCE','HR','PRODUCTION','RECEPTION','MANAGEMENT'].map(d => ({ value: d, label: d })), { value: 'admin_warehouse', label: 'ADMIN & WAREHOUSE' }]}
+                      options={[...['MARKETING','FINANCE','HR','PRODUCTION','RECEPTION','MANAGEMENT','RISK'].map(d => ({ value: d, label: d })), { value: 'admin_warehouse', label: 'ADMIN & WAREHOUSE' }]}
                     />
                   </div>
                   <div>
@@ -1117,11 +1497,12 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
                     ? 'Staff will be automatically approved on registration without HR review.'
                     : 'Staff will require HR review after registering.'}
                 </p>
-                <button onClick={generateInviteLink} className="px-4 py-2 bg-[var(--accent)] text-white text-xs font-bold rounded-xl hover:opacity-90 cursor-pointer">Generate Link</button>
+                <button onClick={generateInviteLink} disabled={submitting} className="px-4 py-2 bg-[var(--accent)] text-white text-xs font-bold rounded-xl hover:opacity-90 cursor-pointer disabled:opacity-50">{submitting ? 'Sending…' : 'Generate and Send Link'}</button>
 
                 {generatedLink && (
                   <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl space-y-2">
                     <p className="text-xs font-semibold text-[var(--text-primary)]">Invite Link Generated:</p>
+                    {inviteDelivery && <p className="text-[11px] text-[var(--text-secondary)]">{inviteDelivery}</p>}
                     <div className="flex items-center gap-2">
                       <code className="text-[10px] font-mono text-[var(--text-muted)] break-all flex-1">{generatedLink}</code>
                       <button onClick={copyLink} className="shrink-0 p-1.5 bg-[var(--accent)] text-white rounded-lg cursor-pointer hover:opacity-90">
@@ -1173,7 +1554,7 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
               <Eye className="w-3.5 h-3.5" /> Manage Users
             </button>
           </div>
-          <p className="text-xs text-[var(--text-muted)]">View all users across all departments. Suspend or reactivate access instantly.</p>
+          <p className="text-xs text-[var(--text-muted)]">View all users across all departments. Suspend, block, reactivate or sign someone out. Each change asks for your password.</p>
         </div>
 
         {/* Delegate Control */}
@@ -1371,6 +1752,14 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
         {getSchemaSection('risk')!.fields.map(f => <SettingField key={f.key} field={f} />)}
       </Section>
 
+      <Section title="Section 11 — Birthday Wishes" icon={Cake} defaultOpen={false}>
+        {getSchemaSection('birthdays')!.fields.map(f => <SettingField key={f.key} field={f} />)}
+      </Section>
+
+      <Section title="API Keys" icon={Key} defaultOpen={false}>
+        <ApiKeysSection addNotification={addNotification} />
+      </Section>
+
       {/* ── SECTION 11: DATA RESET CENTER ────────────────────────────── */}
       <Section title="Section 10 — Data Reset Center" icon={Trash2} defaultOpen={false}>
         <DataResetSection addNotification={addNotification} />
@@ -1415,27 +1804,59 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
                 emptyTitle="No staff found"
                 renderActions={s => (
                   <>
-                    {s.status === 'SUSPENDED' ? (
-                      <button onClick={() => reactivateUser(s.id, s.full_name)} title="Reactivate" className="p-1.5 hover:bg-emerald-500/10 rounded-lg text-emerald-500 cursor-pointer">
+                    {s.status === 'ACTIVE' && (
+                      <button onClick={() => changeStatus(s.id, s.full_name, 'suspend')} title="Suspend" className="p-1.5 hover:bg-amber-500/10 rounded-lg text-amber-500 cursor-pointer">
+                        <Clock className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    {s.status === 'SUSPENDED' && (
+                      <button onClick={() => changeStatus(s.id, s.full_name, 'reactivate')} title="Reactivate" className="p-1.5 hover:bg-emerald-500/10 rounded-lg text-emerald-500 cursor-pointer">
                         <RefreshCw className="w-3.5 h-3.5" />
                       </button>
-                    ) : (
-                      <button onClick={() => suspendUser(s.id, s.full_name)} title="Suspend" className="p-1.5 hover:bg-amber-500/10 rounded-lg text-amber-500 cursor-pointer">
+                    )}
+                    {(s.status === 'ACTIVE' || s.status === 'SUSPENDED') && (
+                      <button onClick={() => changeStatus(s.id, s.full_name, 'block')} title="Block" className="p-1.5 hover:bg-rose-500/10 rounded-lg text-rose-500 cursor-pointer">
                         <Ban className="w-3.5 h-3.5" />
                       </button>
                     )}
-                    <button onClick={() => resetUserPassword(s.id, s.full_name)} title="Reset Password" className="p-1.5 hover:bg-[var(--accent-light)] rounded-lg text-[var(--accent)] cursor-pointer">
-                      <Key className="w-3.5 h-3.5" />
-                    </button>
-                    <button onClick={() => terminateUser(s.id, s.full_name)} title="Terminate" className="p-1.5 hover:bg-rose-500/10 rounded-lg text-rose-500 cursor-pointer">
-                      <UserX className="w-3.5 h-3.5" />
-                    </button>
+                    {s.status === 'BLOCKED' && (
+                      <button onClick={() => changeStatus(s.id, s.full_name, 'unblock')} title="Unblock" className="p-1.5 hover:bg-emerald-500/10 rounded-lg text-emerald-500 cursor-pointer">
+                        <ShieldCheck className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    {s.status === 'ACTIVE' && (
+                      <button onClick={() => kickUser(s.id, s.full_name)} title="Kick offline" className="p-1.5 hover:bg-[var(--bg)] rounded-lg text-[var(--text-muted)] cursor-pointer">
+                        <LogOut className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    {s.status !== 'TERMINATED' && (
+                      <>
+                        <button onClick={() => resetUserPassword(s.id, s.full_name)} title="Reset Password" className="p-1.5 hover:bg-[var(--accent-light)] rounded-lg text-[var(--accent)] cursor-pointer">
+                          <Key className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => terminateUser(s.id, s.full_name)} title="Terminate" className="p-1.5 hover:bg-rose-500/10 rounded-lg text-rose-500 cursor-pointer">
+                          <UserX className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    )}
                   </>
                 )}
               />
             </div>
         </div>
       </SidePanel>
+
+      {/* Last in the page so it opens on top of User Management and every
+          other panel (they all share one layer, so page order decides). */}
+      <PasswordConfirmModal
+        open={!!passwordAction}
+        onClose={() => setPasswordAction(null)}
+        title={passwordTitle(passwordAction)}
+        description={passwordDescription(passwordAction)}
+        confirmLabel={passwordConfirmLabel(passwordAction)}
+        danger={isDangerAction(passwordAction)}
+        onConfirm={runPasswordAction}
+      />
     </div>
   );
 }

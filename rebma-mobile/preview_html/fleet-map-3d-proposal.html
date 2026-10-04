@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rebma Mobile — 3D Isometric Fleet & Tracking Map Proposal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --accent: #5B4DFF;
+      --accent-pressed: #4F46E5;
+      --accent-soft: #EDE9FE;
+      --bg-page: #F8F7FD;
+      --bg-card: #FFFFFF;
+      --text-primary: #1E1B4B;
+      --text-secondary: #475569;
+      --text-muted: #94A3B8;
+      --border: #EDE9FE;
+      
+      /* Semantic Neon Glows & Accents */
+      --glow-blue: #3B82F6;
+      --glow-green: #10B981;
+      --glow-amber: #F59E0B;
+      --glow-rose: #F43F5E;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg-page);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--text-primary);
+      -webkit-font-smoothing: antialiased;
+      padding-bottom: 80px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 40px 24px;
+    }
+
+    /* Top Proposal Header */
+    .proposal-banner {
+      background: #FFFFFF;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 24px 32px;
+      margin-bottom: 36px;
+      box-shadow: 0 10px 30px rgba(91, 77, 255, 0.05);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+    .proposal-meta h1 {
+      font-size: 24px;
+      font-weight: 900;
+      color: var(--text-primary);
+      letter-spacing: -0.02em;
+      margin-bottom: 6px;
+    }
+    .proposal-meta p {
+      font-size: 14px;
+      color: var(--text-secondary);
+      max-width: 650px;
+      line-height: 1.5;
+    }
+    .view-switcher {
+      display: flex;
+      background: var(--bg-page);
+      padding: 4px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+    }
+    .view-btn {
+      padding: 8px 18px;
+      border-radius: 999px;
+      border: none;
+      background: transparent;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .view-btn.active {
+      background: var(--accent);
+      color: #FFFFFF;
+      box-shadow: 0 4px 12px rgba(91, 77, 255, 0.3);
+    }
+
+    /* Section Label */
+    .section-title {
+      font-size: 14px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* Device Preview Grid */
+    .device-grid {
+      display: flex;
+      gap: 32px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+
+    /* Phone Mockup Frame */
+    .mockup-wrapper {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .mockup-label {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .mockup-label span {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .phone-chassis {
+      width: 390px;
+      background: #000000;
+      border-radius: 48px;
+      padding: 10px;
+      box-shadow: 0 25px 60px rgba(30, 27, 75, 0.18), 0 0 0 1px rgba(255, 255, 255, 0.1);
+      position: relative;
+    }
+
+    .phone-screen {
+      background: #F1F5F9;
+      border-radius: 40px;
+      overflow: hidden;
+      position: relative;
+      height: 800px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Status Bar */
+    .status-bar {
+      height: 44px;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 700;
+      color: #0F172A;
+      z-index: 50;
+      background: transparent;
+    }
+
+    /* Hero Typography Header inside the view */
+    .map-header-block {
+      padding: 12px 24px 18px;
+      background: transparent;
+      z-index: 20;
+    }
+    .map-headline {
+      font-size: 32px;
+      line-height: 1.1;
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      color: #0F172A;
+    }
+    .map-headline .highlight {
+      color: #2563EB;
+      display: block;
+    }
+    .map-subdeck {
+      font-size: 13px;
+      line-height: 1.45;
+      color: #475569;
+      font-weight: 500;
+      margin-top: 8px;
+      max-width: 310px;
+    }
+
+    /* 3D Map Perspective Stage */
+    .map-viewport {
+      flex: 1;
+      position: relative;
+      margin: 0 12px 14px;
+      border-radius: 30px;
+      overflow: hidden;
+      background: #CBD5E1;
+      box-shadow: 0 16px 36px rgba(15, 23, 42, 0.12);
+    }
+
+    .map-bg-image {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+      transform: scale(1.04);
+      transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .map-viewport:hover .map-bg-image {
+      transform: scale(1.08);
+    }
+
+    /* Overlaid Perspective HUD Bounding Box */
+    .hud-boundary-frame {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      right: 14px;
+      bottom: 14px;
+      border-radius: 26px;
+      border: 2px solid rgba(255, 255, 255, 0.85);
+      box-shadow: 
+        0 0 20px rgba(255, 255, 255, 0.4),
+        inset 0 0 25px rgba(255, 255, 255, 0.25);
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    /* Ground Neon Glowing Footprints */
+    .ground-halo {
+      position: absolute;
+      border-radius: 18px;
+      pointer-events: none;
+      transition: all 0.3s ease;
+      z-index: 5;
+    }
+    
+    /* Center Hub Halo (Blue) */
+    .halo-blue {
+      top: 41%;
+      left: 28%;
+      width: 44%;
+      height: 22%;
+      border: 2.5px solid #3B82F6;
+      background: rgba(59, 130, 246, 0.14);
+      box-shadow: 0 0 20px #3B82F6, inset 0 0 15px rgba(59, 130, 246, 0.4);
+      transform: perspective(600px) rotateX(40deg) rotateZ(-12deg);
+      animation: pulseGlow 2.5s infinite ease-in-out;
+    }
+
+    /* Port Halo (Green) */
+    .halo-green {
+      top: 24%;
+      left: 8%;
+      width: 28%;
+      height: 16%;
+      border: 2.5px solid #10B981;
+      background: rgba(16, 185, 129, 0.12);
+      box-shadow: 0 0 18px #10B981, inset 0 0 12px rgba(16, 185, 129, 0.35);
+      transform: perspective(600px) rotateX(40deg) rotateZ(-12deg);
+    }
+
+    /* Transit Halo (Amber) */
+    .halo-amber {
+      top: 36%;
+      right: 8%;
+      width: 26%;
+      height: 15%;
+      border: 2.5px solid #F59E0B;
+      background: rgba(245, 158, 11, 0.12);
+      box-shadow: 0 0 18px #F59E0B, inset 0 0 12px rgba(245, 158, 11, 0.35);
+      transform: perspective(600px) rotateX(40deg) rotateZ(-12deg);
+    }
+
+    /* Client Dropoff Halo (Rose) */
+    .halo-rose {
+      bottom: 12%;
+      right: 12%;
+      width: 28%;
+      height: 17%;
+      border: 2.5px solid #F43F5E;
+      background: rgba(244, 63, 94, 0.14);
+      box-shadow: 0 0 20px #F43F5E, inset 0 0 14px rgba(244, 63, 94, 0.35);
+      transform: perspective(600px) rotateX(40deg) rotateZ(-12deg);
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 0.85; filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.8)); }
+      50% { opacity: 1; filter: drop-shadow(0 0 16px rgba(59, 130, 246, 1)); }
+    }
+
+    /* Teardrop Pins pointing to sites */
+    .teardrop-pin {
+      position: absolute;
+      width: 26px;
+      height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 15;
+      filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.3));
+      transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .teardrop-pin:hover {
+      transform: scale(1.2) translateY(-4px);
+    }
+    .pin-blue { top: 44%; left: 47%; }
+    .pin-green { top: 29%; left: 19%; }
+    .pin-amber { top: 40%; right: 19%; }
+    .pin-rose { bottom: 20%; right: 23%; }
+
+    /* Floating Location Cards (Aczone Glass Style) */
+    .floating-card {
+      position: absolute;
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-radius: 18px;
+      padding: 10px 14px;
+      box-shadow: 0 14px 28px rgba(15, 23, 42, 0.16), 0 0 0 1px rgba(255, 255, 255, 0.8);
+      z-index: 25;
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .floating-card:hover {
+      transform: translateY(-3px) scale(1.02);
+      box-shadow: 0 18px 36px rgba(15, 23, 42, 0.22);
+    }
+
+    /* Colored Circular Icon Badges */
+    .card-icon-circle {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .card-icon-circle svg {
+      width: 18px;
+      height: 18px;
+    }
+    .card-icon-circle.green { background: #10B981; color: #FFFFFF; }
+    .card-icon-circle.amber { background: #F59E0B; color: #FFFFFF; }
+    .card-icon-circle.rose  { background: #F43F5E; color: #FFFFFF; }
+    .card-icon-circle.blue  { background: #2563EB; color: #FFFFFF; }
+
+    .card-text {
+      display: flex;
+      flex-direction: column;
+    }
+    .card-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: #0F172A;
+      line-height: 1.2;
+    }
+    .card-desc {
+      font-size: 10.5px;
+      color: #64748B;
+      font-weight: 500;
+      margin-top: 2px;
+      max-width: 110px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Positions for Secondary Floating Cards */
+    .card-pos-green {
+      top: 19%;
+      left: 10%;
+    }
+    .card-pos-amber {
+      top: 31%;
+      right: 12%;
+    }
+    .card-pos-rose {
+      bottom: 24%;
+      right: 14%;
+    }
+
+    /* Primary Active Card (Center Stage - "First-Time Buyer" / "Central Depot") */
+    .primary-hub-card {
+      position: absolute;
+      top: 24%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 250px;
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-radius: 22px;
+      padding: 16px 18px;
+      box-shadow: 0 20px 45px rgba(15, 23, 42, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.9);
+      z-index: 30;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .primary-hub-card .card-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .hub-square-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      background: #2563EB;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #FFFFFF;
+      flex-shrink: 0;
+    }
+    .primary-hub-card .hub-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: #0F172A;
+    }
+    .hub-sublabel {
+      font-size: 11px;
+      font-weight: 600;
+      color: #64748B;
+    }
+    .hub-progress-bars {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      margin: 2px 0;
+    }
+    .bar-line-1 {
+      height: 7px;
+      width: 80%;
+      background: #E2E8F0;
+      border-radius: 4px;
+    }
+    .bar-line-2 {
+      height: 7px;
+      width: 50%;
+      background: #CBD5E1;
+      border-radius: 4px;
+    }
+    .hub-action-btn {
+      margin-top: 4px;
+      width: 100%;
+      background: #0B2A63;
+      color: #FFFFFF;
+      border: none;
+      border-radius: 999px;
+      padding: 10px 16px;
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+    .hub-action-btn:hover {
+      background: #1D4ED8;
+    }
+
+    /* Driver Profile Avatar Chip (Bottom Right) */
+    .driver-avatar-chip {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: #F8FAFC;
+      border: 3px solid #FFFFFF;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+      overflow: hidden;
+      cursor: pointer;
+      z-index: 35;
+      transition: transform 0.2s ease;
+    }
+    .driver-avatar-chip:hover {
+      transform: scale(1.1);
+    }
+    .driver-avatar-chip img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* Tablet & Expanded Screens */
+    .tablet-chassis {
+      width: 720px;
+      background: #000000;
+      border-radius: 44px;
+      padding: 14px;
+      box-shadow: 0 30px 70px rgba(30, 27, 75, 0.2);
+    }
+    .tablet-screen {
+      background: #F1F5F9;
+      border-radius: 32px;
+      overflow: hidden;
+      height: 780px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Comparison Spec Box */
+    .spec-table-box {
+      margin-top: 50px;
+      background: #FFFFFF;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 28px 32px;
+      box-shadow: 0 10px 30px rgba(91, 77, 255, 0.05);
+    }
+    .spec-table-box h3 {
+      font-size: 18px;
+      font-weight: 800;
+      margin-bottom: 16px;
+      color: var(--text-primary);
+    }
+    .spec-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13.5px;
+    }
+    .spec-table th {
+      text-align: left;
+      padding: 12px 16px;
+      background: var(--bg-page);
+      color: var(--text-secondary);
+      font-weight: 700;
+      border-bottom: 2px solid var(--border);
+    }
+    .spec-table td {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-primary);
+    }
+    .badge-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .badge-blue { background: #EFF6FF; color: #2563EB; }
+    .badge-green { background: #ECFDF5; color: #059669; }
+    .badge-amber { background: #FFFBEB; color: #D97706; }
+    .badge-rose { background: #FFF1F2; color: #E11D48; }
+
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    
+    <!-- Proposal Header -->
+    <div class="proposal-banner">
+      <div class="proposal-meta">
+        <h1>🗺️ Rebma 3D Isometric Map Design System</h1>
+        <p>
+          High-fidelity redesign matching the 3D perspective, floating Aczone glass cards, 
+          glowing ground halo boundaries, and vibrant color-coded operational hubs.
+        </p>
+      </div>
+      <div class="view-switcher">
+        <button class="view-btn active" onclick="switchTheme('day')">☀️ Day View</button>
+        <button class="view-btn" onclick="switchTheme('night')">🌙 Night Glow</button>
+      </div>
+    </div>
+
+    <div class="section-title">Device Previews (Verified Scale & Responsiveness)</div>
+
+    <div class="device-grid">
+
+      <!-- 1. Mobile Phone (390px) -->
+      <div class="mockup-wrapper">
+        <div class="mockup-label">
+          📱 Mobile View <span>(390 × 800px)</span>
+        </div>
+        <div class="phone-chassis">
+          <div class="phone-screen" id="mobileScreen">
+            
+            <!-- Status Bar -->
+            <div class="status-bar">
+              <span>9:41</span>
+              <span>●●● 5G 100%</span>
+            </div>
+
+            <!-- Hero Header Typography -->
+            <div class="map-header-block">
+              <div class="map-headline">
+                Track Fleet Live.
+                <span class="highlight">Deliver With Confidence.</span>
+              </div>
+              <div class="map-subdeck">
+                A clear logistics journey that monitors active routes, port intake, and customer delivery clearance.
+              </div>
+            </div>
+
+            <!-- 3D Interactive Map Viewport -->
+            <div class="map-viewport">
+              
+              <!-- 3D Isometric Landscape Background -->
+              <img src="../assets/fleet_map_3d_bg.jpg" class="map-bg-image" alt="3D Logistics Landscape" />
+
+              <!-- Futuristic White HUD Rounded Bounding Frame -->
+              <div class="hud-boundary-frame"></div>
+
+              <!-- Glowing Ground Neon Halos -->
+              <div class="ground-halo halo-blue" id="haloCenter"></div>
+              <div class="ground-halo halo-green" id="haloPort"></div>
+              <div class="ground-halo halo-amber" id="haloTransit"></div>
+              <div class="ground-halo halo-rose" id="haloClient"></div>
+
+              <!-- Pinned Teardrop Location Markers -->
+              <!-- Center Hub (Blue) -->
+              <svg class="teardrop-pin pin-blue" viewBox="0 0 24 32" fill="none" onclick="selectNode('center')">
+                <path d="M12 0C5.37 0 0 5.37 0 12C0 21 12 32 12 32C12 32 24 21 24 12C24 5.37 18.63 0 12 0Z" fill="#2563EB"/>
+                <circle cx="12" cy="12" r="5" fill="#FFFFFF"/>
+              </svg>
+
+              <!-- Port (Green) -->
+              <svg class="teardrop-pin pin-green" viewBox="0 0 24 32" fill="none" onclick="selectNode('port')">
+                <path d="M12 0C5.37 0 0 5.37 0 12C0 21 12 32 12 32C12 32 24 21 24 12C24 5.37 18.63 0 12 0Z" fill="#10B981"/>
+                <circle cx="12" cy="12" r="5" fill="#FFFFFF"/>
+              </svg>
+
+              <!-- Transit (Amber) -->
+              <svg class="teardrop-pin pin-amber" viewBox="0 0 24 32" fill="none" onclick="selectNode('transit')">
+                <path d="M12 0C5.37 0 0 5.37 0 12C0 21 12 32 12 32C12 32 24 21 24 12C24 5.37 18.63 0 12 0Z" fill="#F59E0B"/>
+                <circle cx="12" cy="12" r="5" fill="#FFFFFF"/>
+              </svg>
+
+              <!-- Client Dropoff (Rose) -->
+              <svg class="teardrop-pin pin-rose" viewBox="0 0 24 32" fill="none" onclick="selectNode('client')">
+                <path d="M12 0C5.37 0 0 5.37 0 12C0 21 12 32 12 32C12 32 24 21 24 12C24 5.37 18.63 0 12 0Z" fill="#F43F5E"/>
+                <circle cx="12" cy="12" r="5" fill="#FFFFFF"/>
+              </svg>
+
+              <!-- Primary Active Floating Card (Center Hub) -->
+              <div class="primary-hub-card" id="primaryCard">
+                <div class="card-head">
+                  <div class="hub-square-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                      <polyline points="9 22 9 12 15 12 15 22"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <div class="hub-title" id="cardHubTitle">Central Depot</div>
+                    <div class="hub-sublabel" id="cardHubSub">Pick & Staging Terminal</div>
+                  </div>
+                </div>
+                <div class="hub-progress-bars">
+                  <div class="bar-line-1"></div>
+                  <div class="bar-line-2"></div>
+                </div>
+                <button class="hub-action-btn" onclick="alert('Viewing full dispatch queue for Central Depot')">
+                  <span id="cardHubBtn">Inspect Staging →</span>
+                </button>
+              </div>
+
+              <!-- Secondary Floating Card: Port Intake (Green) -->
+              <div class="floating-card card-pos-green" onclick="selectNode('port')">
+                <div class="card-icon-circle green">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                  </svg>
+                </div>
+                <div class="card-text">
+                  <span class="card-title">Port Intake</span>
+                  <span class="card-desc">Cargo arrivals</span>
+                </div>
+              </div>
+
+              <!-- Secondary Floating Card: Fleet Transit (Amber) -->
+              <div class="floating-card card-pos-amber" onclick="selectNode('transit')">
+                <div class="card-icon-circle amber">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <polyline points="23 4 23 10 17 10"/>
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                  </svg>
+                </div>
+                <div class="card-text">
+                  <span class="card-title">En Route</span>
+                  <span class="card-desc">52 km/h active</span>
+                </div>
+              </div>
+
+              <!-- Secondary Floating Card: Client Dropoff (Rose) -->
+              <div class="floating-card card-pos-rose" onclick="selectNode('client')">
+                <div class="card-icon-circle rose">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <rect x="1" y="3" width="15" height="13"/>
+                    <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
+                    <circle cx="5.5" cy="18.5" r="2.5"/>
+                    <circle cx="18.5" cy="18.5" r="2.5"/>
+                  </svg>
+                </div>
+                <div class="card-text">
+                  <span class="card-title">Client Dropoff</span>
+                  <span class="card-desc">Waybill cleared</span>
+                </div>
+              </div>
+
+              <!-- Driver Avatar Chip (Bottom Right) -->
+              <div class="driver-avatar-chip" title="Driver: Kofi Boateng (Active)" onclick="alert('Driver Contact: Kofi Boateng\nVehicle: DAF Truck #GT-4021\nPhone: +233 24 000 0000')">
+                <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80" alt="Driver" />
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Tablet Preview (720px) -->
+      <div class="mockup-wrapper">
+        <div class="mockup-label">
+          💻 Tablet & iPad View <span>(720 × 780px)</span>
+        </div>
+        <div class="tablet-chassis">
+          <div class="tablet-screen">
+            
+            <div class="status-bar" style="padding: 0 32px; height: 50px;">
+              <span>10:24 AM · Central Logistics Dashboard</span>
+              <span>Online · GPS Sync Active (15s)</span>
+            </div>
+
+            <div class="map-header-block" style="padding: 10px 32px 16px;">
+              <div class="map-headline" style="font-size: 34px;">
+                Fleet Operations Command.
+                <span class="highlight">Real-Time Waypoint Intelligence.</span>
+              </div>
+              <div class="map-subdeck" style="max-width: 580px;">
+                End-to-end operational visibility: Port cargo ingestion, live driver telemetry, and risk clearance checkpoints.
+              </div>
+            </div>
+
+            <!-- Expanded Tablet Map Viewport -->
+            <div class="map-viewport" style="margin: 0 20px 20px;">
+              <img src="../assets/fleet_map_3d_bg.jpg" class="map-bg-image" style="object-position: center;" alt="3D Tablet Map" />
+              
+              <div class="hud-boundary-frame"></div>
+
+              <!-- Ground Halos scaled for Tablet -->
+              <div class="ground-halo halo-blue" style="top: 42%; left: 32%; width: 36%; height: 24%;"></div>
+              <div class="ground-halo halo-green" style="top: 26%; left: 12%; width: 22%; height: 18%;"></div>
+              <div class="ground-halo halo-amber" style="top: 38%; right: 14%; width: 20%; height: 16%;"></div>
+              <div class="ground-halo halo-rose" style="bottom: 14%; right: 18%; width: 22%; height: 18%;"></div>
+
+              <!-- Pinned Teardrop Pins -->
+              <svg class="teardrop-pin" style="top: 45%; left: 49%;" viewBox="0 0 24 32" fill="none">
+                <path d="M12 0C5.37 0 0 5.37 0 12C0 21 12 32 12 32C12 32 24 21 24 12C24 5.37 18.63 0 12 0Z" fill="#2563EB"/>
+                <circle cx="12" cy="12" r="5" fill="#FFFFFF"/>
+              </svg>
+
+              <!-- Central Primary Card -->
+              <div class="primary-hub-card" style="top: 22%; left: 50%; width: 280px;">
+                <div class="card-head">
+                  <div class="hub-square-icon" style="width: 44px; height: 44px;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                      <polyline points="9 22 9 12 15 12 15 22"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <div class="hub-title" style="font-size: 18px;">Central Depot Hub</div>
+                    <div class="hub-sublabel">Accra Staging & Quality Inspection</div>
+                  </div>
+                </div>
+                <div class="hub-progress-bars">
+                  <div class="bar-line-1"></div>
+                  <div class="bar-line-2"></div>
+                </div>
+                <button class="hub-action-btn" style="padding: 12px 18px; font-size: 14px;">
+                  Open Terminal Control →
+                </button>
+              </div>
+
+              <!-- Floating Waypoints -->
+              <div class="floating-card" style="top: 22%; left: 12%;">
+                <div class="card-icon-circle green">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                  </svg>
+                </div>
+                <div class="card-text">
+                  <span class="card-title">Tema Port Wharf</span>
+                  <span class="card-desc">1,200 bags flour</span>
+                </div>
+              </div>
+
+              <div class="floating-card" style="top: 34%; right: 14%;">
+                <div class="card-icon-circle amber">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <polyline points="23 4 23 10 17 10"/>
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                  </svg>
+                </div>
+                <div class="card-text">
+                  <span class="card-title">Fleet Convoys</span>
+                  <span class="card-desc">3 trucks en route</span>
+                </div>
+              </div>
+
+              <div class="floating-card" style="bottom: 22%; right: 16%;">
+                <div class="card-icon-circle rose">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <rect x="1" y="3" width="15" height="13"/>
+                    <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
+                    <circle cx="5.5" cy="18.5" r="2.5"/>
+                    <circle cx="18.5" cy="18.5" r="2.5"/>
+                  </svg>
+                </div>
+                <div class="card-text">
+                  <span class="card-title">Client Delivery Sites</span>
+                  <span class="card-desc">Accra & Kumasi</span>
+                </div>
+              </div>
+
+              <!-- Driver Chip -->
+              <div class="driver-avatar-chip" style="bottom: 24px; right: 24px; width: 60px; height: 60px;">
+                <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80" alt="Driver" />
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Mapping Spec & Business Integration Table -->
+    <div class="spec-table-box">
+      <h3>🧩 Feature & Architecture Mapping (Reference vs. Rebma Implementation)</h3>
+      <table class="spec-table">
+        <thead>
+          <tr>
+            <th>Element in Reference Image</th>
+            <th>Visual Treatment</th>
+            <th>Rebma ERP Data Source</th>
+            <th>Interactive Behavior</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Center Highlight Card ("First-Time Buyer")</strong></td>
+            <td><span class="badge-pill badge-blue">Blue Card + Dark Navy CTA</span></td>
+            <td><code>orders</code> & <code>staging_warehouse</code></td>
+            <td>Pops up the active hub/delivery details with one-tap drill down to inspect dispatch waybill.</td>
+          </tr>
+          <tr>
+            <td><strong>Green Circle Badge ("Buy a Home")</strong></td>
+            <td><span class="badge-pill badge-green">Emerald Green Circle Icon</span></td>
+            <td><code>cargo_intake</code> & Tema Port log</td>
+            <td>Tapping shows pending port ingestion shipments awaiting Management pricing.</td>
+          </tr>
+          <tr>
+            <td><strong>Amber Circle Badge ("Refinance")</strong></td>
+            <td><span class="badge-pill badge-amber">Amber Gold Circle Icon</span></td>
+            <td><code>driver_locations</code> (Live GPS)</td>
+            <td>Shows live vehicle speed (km/h), heading, and route trail (OSRM).</td>
+          </tr>
+          <tr>
+            <td><strong>Pink Circle Badge ("Move Home")</strong></td>
+            <td><span class="badge-pill badge-rose">Rose Coral Circle Icon</span></td>
+            <td><code>delivery_logs</code> & Waybills</td>
+            <td>Displays destination dropoff site, recipient name, and POD verification state.</td>
+          </tr>
+          <tr>
+            <td><strong>Glowing Ground Footprints</strong></td>
+            <td><span class="badge-pill badge-blue">Neon SVG/CSS 3D Halos</span></td>
+            <td>Geofenced depot & delivery radii</td>
+            <td>Rotates in perspective (rotateX 40deg) and pulses around active pins.</td>
+          </tr>
+          <tr>
+            <td><strong>Perspective HUD Frame</strong></td>
+            <td><span class="badge-pill badge-blue">Rounded White Glowing Border</span></td>
+            <td>Hardware Accelerated Layer</td>
+            <td>Frames the interactive 3D map environment within mobile & tablet viewports.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <script>
+    const nodeData = {
+      center: {
+        title: 'Central Depot Hub',
+        sub: 'Pick & Staging Terminal',
+        btn: 'Inspect Staging →'
+      },
+      port: {
+        title: 'Tema Port Intake',
+        sub: 'Incoming Ingestion (1,200 bags)',
+        btn: 'View Port Manifest →'
+      },
+      transit: {
+        title: 'Fleet En Route',
+        sub: 'Live Speed: 52 km/h · On Schedule',
+        btn: 'Track GPS Telemetry →'
+      },
+      client: {
+        title: 'Client Dropoff Site',
+        sub: 'ZZTEST CHAIN TWO (Waybill Cleared)',
+        btn: 'View Proof of Delivery →'
+      }
+    };
+
+    function selectNode(key) {
+      const data = nodeData[key];
+      if (!data) return;
+      document.getElementById('cardHubTitle').innerText = data.title;
+      document.getElementById('cardHubSub').innerText = data.sub;
+      document.getElementById('cardHubBtn').innerText = data.btn;
+      
+      // Animation pulse
+      const card = document.getElementById('primaryCard');
+      card.style.transform = 'translateX(-50%) scale(1.04)';
+      setTimeout(() => {
+        card.style.transform = 'translateX(-50%) scale(1)';
+      }, 200);
+    }
+
+    function switchTheme(theme) {
+      const btns = document.querySelectorAll('.view-btn');
+      btns.forEach(b => b.classList.remove('active'));
+      if (theme === 'day') {
+        btns[0].classList.add('active');
+        document.body.style.background = '#F8F7FD';
+        document.getElementById('mobileScreen').style.background = '#F1F5F9';
+      } else {
+        btns[1].classList.add('active');
+        document.body.style.background = '#0F172A';
+        document.getElementById('mobileScreen').style.background = '#090D16';
+      }
+    }
+  </script>
+
+</body>
+</html>

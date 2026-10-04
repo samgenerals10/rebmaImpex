@@ -22,8 +22,9 @@ const heatColor = (v: number) =>
   v > 0   ? 'bg-rose-400/50 text-rose-800' :
   'bg-[var(--bg)] text-[var(--text-muted)]';
 
-const PERIODS = ['7D', '30D', '90D', '12M'] as const;
-type Period = typeof PERIODS[number];
+import DateRangeField from '../../components/ui/DateRangeField';
+import type { CalendarValue } from '../../components/ui/CalendarPicker';
+import { lastNDays, rangeBounds, trendBuckets, bucketKeyFor } from '../../utils/dateRange';
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
@@ -42,7 +43,11 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 interface Decision { date: string; type: string; description: string; decision: string; outcome: string; ref: string; }
 
 export default function MgmtAnalyticsView({ addNotification }: Props) {
-  const [period, setPeriod] = useState<Period>('30D');
+  // Calendar range instead of 7D / 30D / 90D / 12M (Part C). The old
+  // buttons changed nothing on the page; this range really filters the
+  // cargo, approval-activity, revenue and decisions figures. Year on Year
+  // and the 4-week heatmap keep their own fixed windows by design.
+  const [range, setRange] = useState<CalendarValue>(() => lastNDays(30));
   const [loading, setLoading] = useState(true);
 
   // KPI
@@ -62,14 +67,17 @@ export default function MgmtAnalyticsView({ addNotification }: Props) {
 
   const fetchAll = async () => {
     setLoading(true);
+    const { from, to } = rangeBounds(range);
+    const fromIso = (from || new Date(0)).toISOString();
+    const toIso = (to || new Date()).toISOString();
 
     // ── Approval Status from cargo_intake ──────────────────────────────────
     try {
       const [appRes, rejRes, pendRes, revRes] = await Promise.all([
-        supabase.from('cargo_intake').select('id', { count: 'exact', head: true }).eq('status', 'APPROVED'),
-        supabase.from('cargo_intake').select('id', { count: 'exact', head: true }).eq('status', 'REJECTED'),
-        supabase.from('cargo_intake').select('id', { count: 'exact', head: true }).eq('status', 'PENDING'),
-        supabase.from('cargo_intake').select('id', { count: 'exact', head: true }).eq('status', 'IN_REVIEW'),
+        supabase.from('cargo_intake').select('id', { count: 'exact', head: true }).eq('status', 'APPROVED').gte('created_at', fromIso).lte('created_at', toIso),
+        supabase.from('cargo_intake').select('id', { count: 'exact', head: true }).eq('status', 'REJECTED').gte('created_at', fromIso).lte('created_at', toIso),
+        supabase.from('cargo_intake').select('id', { count: 'exact', head: true }).eq('status', 'PENDING').gte('created_at', fromIso).lte('created_at', toIso),
+        supabase.from('cargo_intake').select('id', { count: 'exact', head: true }).eq('status', 'IN_REVIEW').gte('created_at', fromIso).lte('created_at', toIso),
       ]);
       const approved = appRes.count ?? 0;
       const rejected = rejRes.count ?? 0;
@@ -92,38 +100,37 @@ export default function MgmtAnalyticsView({ addNotification }: Props) {
       const { data: auditData } = await supabase
         .from('global_audit_history')
         .select('action, timestamp')
+        .gte('timestamp', fromIso)
+        .lte('timestamp', toIso)
         .order('timestamp', { ascending: true });
-      if (auditData && auditData.length > 0) {
-        const byMonth: Record<string, { cargo: number; credit: number; staff: number }> = {};
-        MONTHS.forEach(m => { byMonth[m] = { cargo: 0, credit: 0, staff: 0 }; });
-        auditData.forEach((r: any) => {
-          if (!r.timestamp) return;
-          const m = MONTHS[new Date(r.timestamp).getMonth()];
-          const action = (r.action || '').toUpperCase();
-          if (action.includes('CARGO') || action.includes('INTAKE') || action.includes('PORT')) byMonth[m].cargo++;
-          else if (action.includes('CREDIT') || action.includes('PAYMENT') || action.includes('ORDER')) byMonth[m].credit++;
-          else if (action.includes('STAFF') || action.includes('HR') || action.includes('PAYROLL') || action.includes('LEAVE')) byMonth[m].staff++;
-          else byMonth[m].credit++;
-        });
-        const thisMonth = new Date().getMonth();
-        const activity = MONTHS.slice(0, thisMonth + 1).map(m => ({ month: m, ...byMonth[m] }))
-          .filter(d => d.cargo + d.credit + d.staff > 0);
-        setApprovalActivity(activity.length > 0 ? activity : MONTHS.slice(0, thisMonth + 1).map(m => ({ month: m, cargo: 0, credit: 0, staff: 0 })));
-      } else {
-        setApprovalActivity(MONTHS.slice(0, new Date().getMonth() + 1).map(m => ({ month: m, cargo: 0, credit: 0, staff: 0 })));
-      }
+      // One bar per day for short ranges, per month for long ones.
+      const { granularity, buckets } = trendBuckets(range);
+      const byBucket: Record<string, { cargo: number; credit: number; staff: number }> = {};
+      buckets.forEach(b => { byBucket[b.key] = { cargo: 0, credit: 0, staff: 0 }; });
+      (auditData || []).forEach((r: any) => {
+        if (!r.timestamp) return;
+        const slot = byBucket[bucketKeyFor(new Date(r.timestamp), granularity)];
+        if (!slot) return;
+        const action = (r.action || '').toUpperCase();
+        if (action.includes('CARGO') || action.includes('INTAKE') || action.includes('PORT')) slot.cargo++;
+        else if (action.includes('STAFF') || action.includes('HR') || action.includes('PAYROLL') || action.includes('LEAVE')) slot.staff++;
+        else slot.credit++;
+      });
+      setApprovalActivity(buckets.map(b => ({ month: b.label, ...byBucket[b.key] })));
     } catch {}
 
     // ── Department Revenue from orders (marketing) + payments (finance) ────
     try {
       const [ordersRes, paymentsRes, purchasesRes] = await Promise.all([
-        supabase.from('orders').select('total').neq('status', 'CANCELLED'),
-        supabase.from('finance_payments').select('amount'),
-        supabase.from('general_purchases').select('total_cost'),
+        // Column names fixed: orders.total_amount and general_purchases.cost
+        // (the old 'total' / 'total_cost' don't exist, so both always read 0).
+        supabase.from('orders').select('total_amount').neq('status', 'CANCELLED').gte('created_at', fromIso).lte('created_at', toIso),
+        supabase.from('finance_payments').select('amount').gte('created_at', fromIso).lte('created_at', toIso),
+        supabase.from('general_purchases').select('cost').gte('created_at', fromIso).lte('created_at', toIso),
       ]);
-      const marketingRev = (ordersRes.data ?? []).reduce((s: number, r: any) => s + (Number(r.total) || 0), 0);
+      const marketingRev = (ordersRes.data ?? []).reduce((s: number, r: any) => s + (Number(r.total_amount) || 0), 0);
       const financeRev   = (paymentsRes.data ?? []).reduce((s: number, r: any) => s + (Number(r.amount) || 0), 0);
-      const opsRev       = (purchasesRes.data ?? []).reduce((s: number, r: any) => s + (Number(r.total_cost) || 0), 0);
+      const opsRev       = (purchasesRes.data ?? []).reduce((s: number, r: any) => s + (Number(r.cost) || 0), 0);
       const depts = [
         { dept: 'Marketing',  revenue: marketingRev },
         { dept: 'Finance',    revenue: financeRev },
@@ -194,6 +201,8 @@ export default function MgmtAnalyticsView({ addNotification }: Props) {
         .from('global_audit_history')
         .select('*')
         .eq('department', 'MANAGEMENT')
+        .gte('timestamp', fromIso)
+        .lte('timestamp', toIso)
         .order('timestamp', { ascending: false })
         .limit(10);
       if (data && data.length > 0) {
@@ -215,7 +224,7 @@ export default function MgmtAnalyticsView({ addNotification }: Props) {
     setLoading(false);
   };
 
-  useEffect(() => { fetchAll(); }, []);
+  useEffect(() => { fetchAll(); }, [range]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleExport = () => {
     exportToCSV(recentDecisions, ['date','type','description','decision','outcome','ref'], 'management_analytics');
@@ -238,11 +247,7 @@ export default function MgmtAnalyticsView({ addNotification }: Props) {
           <p className="text-xs text-[var(--text-muted)] mt-1">Approval trends, revenue performance & department insights</p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex gap-1 p-1 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl">
-            {PERIODS.map(p => (
-              <button key={p} onClick={() => setPeriod(p)} className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${period === p ? 'bg-[var(--accent)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>{p}</button>
-            ))}
-          </div>
+          <DateRangeField value={range} onChange={setRange} align="right" />
           <button onClick={fetchAll} className="p-2 rounded-xl bg-[var(--bg-card)] border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--accent)] cursor-pointer">
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>

@@ -95,27 +95,23 @@ export default function StockManagementScreen() {
     const newQty = Number(correctionForm.quantity) || 0;
     const delta = newQty - oldQty;
     const performedBy = profile?.fullName || 'Management';
-    const { data: sessionData } = await supabase.auth.getSession();
-    const performerId = sessionData.session?.user?.id || null;
-
     setSavingCorrection(true);
     try {
-      await supabase.from('cargo_intake').update({
-        quantity: newQty, weight: Number(correctionForm.weight) || 0, discrepancies: correctionForm.discrepancies || 'None',
-        unit_price: correctionForm.unitPrice ? Number(correctionForm.unitPrice) : null,
-      }).eq('id', correctionTarget.id);
-
-      if (delta !== 0) {
-        const productName = correctionTarget.product_name;
-        const { data: stockRow } = await supabase.from('stock').select('id, quantity').eq('product_name', productName).maybeSingle();
-        if (stockRow) {
-          await supabase.from('stock').update({ quantity: Math.max(0, Number(stockRow.quantity || 0) + delta), last_updated: new Date().toISOString(), updated_by: performerId }).eq('id', stockRow.id);
-        }
-        await supabase.from('stock_ledger').insert({
-          product_name: productName, movement_type: 'CORRECTION', quantity: delta, reference: correctionTarget.goods_code || correctionTarget.id,
-          notes: `Correction by ${performedBy}: qty ${oldQty} → ${newQty}. Reason: ${correctionForm.note.trim()}`, performed_by: performerId, created_at: new Date().toISOString(),
-        });
-      }
+      // One database step (correct_cargo_intake): reads the quantity on
+      // record at that moment, saves the correction and moves stock by
+      // exactly the difference. Same as web.
+      const { error: corrErr } = await supabase.rpc('correct_cargo_intake', {
+        p_cargo_id: String(correctionTarget.id),
+        p_new_quantity: newQty,
+        p_fields: {
+          weight: correctionForm.weight || '',
+          discrepancies: correctionForm.discrepancies || '',
+          unit_price: correctionForm.unitPrice || '',
+        },
+        p_reason: correctionForm.note.trim(),
+        p_performed_by: performedBy,
+      });
+      if (corrErr) throw corrErr;
 
       await supabase.from('global_audit_history').insert({
         action: `CORRECT_CARGO: ${correctionTarget.goods_code || correctionTarget.id}, ${correctionTarget.product_name}`,
@@ -297,12 +293,12 @@ export default function StockManagementScreen() {
         footer={<Button label={savingCorrection ? 'Saving…' : 'Save Correction'} onPress={saveCorrection} loading={savingCorrection} disabled={savingCorrection} fullWidth />}
       >
         <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
-          <View style={{ flex: 1 }}><Field label="Quantity"><Input value={correctionForm.quantity} onChangeText={(v) => setCorrectionForm((f) => ({ ...f, quantity: v }))} keyboardType="numeric" /></Field></View>
-          <View style={{ flex: 1 }}><Field label="Weight"><Input value={correctionForm.weight} onChangeText={(v) => setCorrectionForm((f) => ({ ...f, weight: v }))} keyboardType="decimal-pad" /></Field></View>
+          <View style={{ flex: 1 }}><Field label="Quantity"><Input value={correctionForm.quantity} onChangeText={(v) => setCorrectionForm((f) => ({ ...f, quantity: v }))} keyboardType="numeric" placeholder="0" /></Field></View>
+          <View style={{ flex: 1 }}><Field label="Weight"><Input value={correctionForm.weight} onChangeText={(v) => setCorrectionForm((f) => ({ ...f, weight: v }))} keyboardType="decimal-pad" placeholder="0.00" /></Field></View>
         </View>
-        <Field label="Unit Price"><Input value={correctionForm.unitPrice} onChangeText={(v) => setCorrectionForm((f) => ({ ...f, unitPrice: v }))} keyboardType="decimal-pad" /></Field>
-        <Field label="Discrepancies"><Input value={correctionForm.discrepancies} onChangeText={(v) => setCorrectionForm((f) => ({ ...f, discrepancies: v }))} /></Field>
-        <Field label="Reason for Correction *"><Input value={correctionForm.note} onChangeText={(v) => setCorrectionForm((f) => ({ ...f, note: v }))} multiline numberOfLines={2} style={{ minHeight: 56, textAlignVertical: 'top' }} /></Field>
+        <Field label="Unit Price"><Input value={correctionForm.unitPrice} onChangeText={(v) => setCorrectionForm((f) => ({ ...f, unitPrice: v }))} keyboardType="decimal-pad" placeholder="0.00" /></Field>
+        <Field label="Discrepancies"><Input value={correctionForm.discrepancies} onChangeText={(v) => setCorrectionForm((f) => ({ ...f, discrepancies: v }))} placeholder="e.g. 3 units water-damaged" /></Field>
+        <Field label="Reason for Correction *"><Input value={correctionForm.note} onChangeText={(v) => setCorrectionForm((f) => ({ ...f, note: v }))} multiline numberOfLines={2} style={{ minHeight: 56, textAlignVertical: 'top' }} placeholder="Why is this being corrected?" /></Field>
       </Sheet>
 
       <Sheet
@@ -325,8 +321,8 @@ export default function StockManagementScreen() {
               </View>
             </Card>
           )}
-          <Field label="Reason for Deletion *"><Input value={deleteReason} onChangeText={setDeleteReason} multiline numberOfLines={2} style={{ minHeight: 56, textAlignVertical: 'top' }} /></Field>
-          <Field label={`Type "${deleteConfirmExpected}" to confirm`}><Input value={deleteConfirmText} onChangeText={setDeleteConfirmText} autoCapitalize="characters" /></Field>
+          <Field label="Reason for Deletion *"><Input value={deleteReason} onChangeText={setDeleteReason} multiline numberOfLines={2} style={{ minHeight: 56, textAlignVertical: 'top' }} placeholder="Why is this stock being deleted?" /></Field>
+          <Field label={`Type "${deleteConfirmExpected}" to confirm`}><Input value={deleteConfirmText} onChangeText={setDeleteConfirmText} autoCapitalize="characters" placeholder={deleteConfirmExpected} /></Field>
         </View>
       </Sheet>
     </Screen>

@@ -10,6 +10,7 @@ import { View, Text, Linking } from 'react-native';
 import { Alert } from '../../lib/appAlert';
 import { Camera as CameraIcon, FileText } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
+import { findCustomerDuplicate } from '../../lib/customerDuplicates';
 import { pickOrCaptureImageAsset } from '../../lib/media';
 import { uploadToPrivateBucket, getSignedUrl } from '../../lib/storage';
 import { computeCustomerRating, ordersForCustomerRow, outstandingCreditFor, type OrderLike } from '../../utils/customerRating';
@@ -172,6 +173,20 @@ export default function CustomersScreen() {
   const save = async () => {
     if (!form.name.trim() || !form.phone.trim()) {
       Alert.alert('Missing Info', 'Full name and phone are required.');
+      return;
+    }
+    // Blocks a second customer with the same phone or Ghana Card and offers
+    // to open the one already on file. Same as web.
+    const match = await findCustomerDuplicate(form.phone, form.ghanaCard, editTarget?.id);
+    if (match) {
+      const what = match.matchedOn === 'card' ? 'Ghana Card number' : 'phone number';
+      Alert.alert('Already registered', `This ${what} already belongs to ${match.name}. It can't be registered twice.`, [
+        { text: 'Close', style: 'cancel' },
+        { text: `Open ${match.name}`, onPress: async () => {
+          const { data } = await supabase.from('customers').select('*').eq('id', match.id).maybeSingle();
+          if (data) { closeForm(); setTimeout(() => openDetail(data as CustomerRow), 350); }
+        } },
+      ]);
       return;
     }
     setSubmitting(true);

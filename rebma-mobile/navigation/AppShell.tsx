@@ -35,6 +35,10 @@ import DesignSystemScreen from '../screens/DesignSystemScreen';
 import SearchScreen from '../screens/SearchScreen';
 import FeedbackScreen from '../screens/FeedbackScreen';
 import PayslipsScreen from '../screens/PayslipsScreen';
+import NotesScreen from '../screens/NotesScreen';
+import TasksScreen from '../screens/TasksScreen';
+import EmailsScreen from '../screens/EmailsScreen';
+import HelpDeskScreen from '../screens/HelpDeskScreen';
 import SubScreenHeader from '../components/chrome/SubScreenHeader';
 import DepartmentSwitcherSheet from '../components/chrome/DepartmentSwitcherSheet';
 import QuickActionsSheet from '../components/chrome/QuickActionsSheet';
@@ -92,6 +96,10 @@ function ProfileStackScreen() {
             onOpenSettings={() => { useUIStore.getState().setActiveDepartment('SETTINGS'); navigation.getParent()?.navigate('HomeTab'); }}
             onOpenFeedback={() => navigation.navigate('Feedback')}
             onOpenPayslips={() => navigation.navigate('Payslips')}
+            onOpenNotes={() => navigation.navigate('Notes')}
+            onOpenTasks={() => navigation.navigate('Tasks')}
+            onOpenEmails={() => navigation.navigate('Emails')}
+            onOpenHelp={() => navigation.navigate('HelpDesk')}
           />
         )}
       </ProfileStackNav.Screen>
@@ -110,6 +118,10 @@ function ProfileStackScreen() {
         component={PayslipsScreen}
         options={{ headerShown: true, headerTitle: 'My Payslips', header: (props) => <SubScreenHeader {...props} /> }}
       />
+      <ProfileStackNav.Screen name="Notes" component={NotesScreen} options={{ headerShown: true, headerTitle: 'My Notes', header: (props) => <SubScreenHeader {...props} /> }} />
+      <ProfileStackNav.Screen name="Tasks" component={TasksScreen} options={{ headerShown: true, headerTitle: 'Tasks', header: (props) => <SubScreenHeader {...props} /> }} />
+      <ProfileStackNav.Screen name="Emails" component={EmailsScreen} options={{ headerShown: true, headerTitle: 'Emails', header: (props) => <SubScreenHeader {...props} /> }} />
+      <ProfileStackNav.Screen name="HelpDesk" component={HelpDeskScreen} options={{ headerShown: true, headerTitle: 'Help & News', header: (props) => <SubScreenHeader {...props} /> }} />
     </ProfileStackNav.Navigator>
   );
 }

@@ -12,7 +12,8 @@
 // real) is not ported.
 import { useCallback, useEffect, useState } from 'react';
 import { View, Text, Pressable, Linking } from 'react-native';
-import { Bell, CheckCheck, Trash2, ExternalLink } from 'lucide-react-native';
+import { useNavigation } from '@react-navigation/native';
+import { Bell, CheckCheck, Trash2, ExternalLink, ChevronLeft } from 'lucide-react-native';
 import { supabase } from '../lib/supabaseClient';
 import { navigationRef } from '../navigation/navigationRef';
 import { useAuthStore } from '../store/authStore';
@@ -43,6 +44,7 @@ const TYPE_BG: Record<string, string> = { success: '#10b98120', warning: '#f59e0
 
 export default function NotificationsScreen() {
   const t = useTheme();
+  const navigation = useNavigation<any>();
   const profile = useAuthStore((s) => s.profile);
   const refreshUnreadCount = useNotificationsStore((s) => s.refreshUnreadCount);
   const [notifs, setNotifs] = useState<DbNotification[]>([]);
@@ -111,8 +113,20 @@ export default function NotificationsScreen() {
 
   return (
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: t.spacing.lg }}>
-        <PageTitle title={unreadCount > 0 ? `Notifications (${unreadCount})` : 'Notifications'} />
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, marginBottom: t.spacing.lg }}>
+        {/* Alerts is a bottom-tab root, not a pushed screen, so there's no
+            native back stack to rely on — falls back to Home the same
+            way AuthBackButton does for the login/register flow. */}
+        <Pressable
+          onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('HomeTab'))}
+          hitSlop={8}
+          style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: t.colors.accentSoft, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <ChevronLeft size={19} color={t.colors.accent} />
+        </Pressable>
+        <View style={{ flex: 1 }}>
+          <PageTitle title={unreadCount > 0 ? `Notifications (${unreadCount})` : 'Notifications'} />
+        </View>
       </View>
       {(unreadCount > 0 || notifs.length > 0) && (
         <View style={{ flexDirection: 'row', gap: t.spacing.sm, marginBottom: t.spacing.lg }}>

@@ -77,6 +77,8 @@ function stepsForField(sectionTitle: string, f: SettingField): string[] {
       return [...openSteps, `Find "${f.label}" and type in the new number.`];
     case 'select':
       return [...openSteps, `Find "${f.label}" and pick the option you want from the list.`];
+    case 'text':
+      return [...openSteps, `Find "${f.label}", type the new wording, and tap outside the box to save it.`];
   }
 }
 

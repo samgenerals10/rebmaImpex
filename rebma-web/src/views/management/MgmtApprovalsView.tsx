@@ -356,7 +356,6 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
 
     try {
       if (selectedItem.type === 'Cargo Intake' && selectedItem.raw) {
-        const newDbStatus = action === 'approve' ? 'APPROVED' : 'REJECTED';
         const rawId = String(selectedItem.raw.id);
         const cargoRow = selectedItem.raw as Record<string, any>;
         const incomingQty = Number(cargoRow.quantity || cargoRow.qty_received || 0);
@@ -378,51 +377,25 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
           finalDiscrepancyNotes = JSON.stringify(discrepancyJson);
         }
 
-        await supabase.from('cargo_intake').update({
-          status: newDbStatus,
-          quantity: action === 'approve' ? finalQtyToAdd : incomingQty,
-          discrepancies: finalDiscrepancyNotes,
-          unit_price: costPerUnit,
-          is_fault_or_damaged: confirmedDamages > 0,
-          rejection_reason: action === 'approve' ? null : (modalNote || null),
-        }).eq('id', rawId);
+        // One database step (review_cargo_intake): checks the cargo is
+        // still waiting, records the decision, adds the good units to
+        // stock, books any damage as an expense and sets the selling
+        // price, all at once or not at all.
+        const { error: cargoErr } = await supabase.rpc('review_cargo_intake', {
+          p_cargo_id: rawId,
+          p_stage: 'management',
+          p_action: action,
+          p_note: modalNote || null,
+          p_damaged: confirmedDamages,
+          p_unit_cost: costPerUnit,
+          p_selling_price: sellingPriceVal > 0 ? sellingPriceVal : null,
+          p_discrepancies: finalDiscrepancyNotes,
+          p_reference: selectedItem.requestId,
+          p_description: selectedItem.description,
+        });
+        if (cargoErr) throw cargoErr;
 
         if (action === 'approve') {
-          // Auto-populate stock table from approved cargo
-          const productName = String(cargoRow.product_name || 'Unknown Product');
-          const productCode = String(cargoRow.goods_code || rawId.slice(0, 8).toUpperCase());
-          const unit = String(cargoRow.goods_type || cargoRow.unit || 'units');
-          const now = new Date().toISOString();
-
-          const { data: existingStock } = await supabase.from('stock').select('id, quantity').eq('product_name', productName).maybeSingle().then(r => r, () => ({ data: null, error: null }));
-          if (existingStock) {
-            await supabase.from('stock').update({ quantity: (Number(existingStock.quantity) || 0) + finalQtyToAdd, last_updated: now }).eq('id', existingStock.id);
-          } else {
-            const { error: stockErr } = await supabase.from('stock').upsert([{ product_name: productName, product_code: productCode, category: 'INCOMING_GOODS', quantity: finalQtyToAdd, maximum_level: finalQtyToAdd * 2 || 1000, minimum_level: Math.round(finalQtyToAdd * 0.1) || 50, unit, last_updated: now }], { onConflict: 'product_name' });
-            if (stockErr) addNotification?.(`Stock table update failed: ${stockErr.message}. Please run the SQL migrations in supabase_schema.sql.`);
-          }
-          
-          await supabase.from('stock_ledger').insert({ 
-            product_name: productName, 
-            movement_type: 'ADD', 
-            quantity: finalQtyToAdd, 
-            reference: `Cargo approved: ${selectedItem.requestId}`, 
-            notes: `${selectedItem.description}${confirmedDamages > 0 ? ` (${confirmedDamages} units damaged/lost)` : ''}`, 
-            created_at: now 
-          });
-
-          if (discrepancyCost > 0) {
-            await supabase.from('finance_expenses').insert([{
-              category: 'Damaged Goods',
-              description: `Loss from damaged goods in Cargo Intake ${selectedItem.requestId} (${productName}: ${confirmedDamages} units)`,
-              amount: discrepancyCost,
-              date: now.slice(0, 10),
-              status: 'Approved',
-              submitted_by: 'Management (Auto-generated)',
-              notes: `Auto-generated from Cargo Intake approval. Discrepancy details: ${selectedItem.description}`
-            }]);
-          }
-
           if (notifyOps) {
             await supabase.from('supplier_order_notifications').insert([{ message: `Cargo intake APPROVED by Management: ${selectedItem.description}`, notified_department: 'OPERATIONS', read: false }]);
           }
@@ -432,9 +405,6 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
           const forceCeoAlert = confirmedDamages > 0 && getSetting('discrepancy_auto_alert_ceo', true);
           if (notifyCeo || forceCeoAlert) {
             await supabase.from('supplier_order_notifications').insert([{ message: `Cargo intake APPROVED by Management: ${selectedItem.description}`, notified_department: 'CEO', read: false }]);
-          }
-          if (sellingPrice) {
-            await supabase.from('goods_prices').upsert([{ product_name: productName, unit_price: parseFloat(sellingPrice) }], { onConflict: 'product_name' });
           }
           await supabase.from('supplier_order_notifications').insert([{ message: `Cargo intake APPROVED by Management: ${selectedItem.description}`, notified_department: 'FINANCE', read: false }]);
           await supabase.from('supplier_order_notifications').insert([{ message: `New stock approved: ${selectedItem.description}. Update pricing in Marketing.`, notified_department: 'MARKETING', read: false }]);
@@ -497,55 +467,37 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
           // and add the repackaged/produced quantity to stock, mirroring the
           // in-house-production stock ADD used for approved cargo intake.
           const req: any = selectedItem.raw;
-          const productName: string = req.product_name || req.productName || '';
           const requestedQty = Number(req.quantity) || 0;
           // Management's adjusted figure wins — falls back to what was requested
           // if the field was somehow left blank.
           const qty = approvedQty !== '' ? Math.max(0, Number(approvedQty) || 0) : requestedQty;
-          const now = new Date().toISOString();
-
-          await supabase.from('production_requests').update({ status: 'TICKETS_ISSUED', quantity: qty }).eq('id', selectedItem.id);
-
-          await supabase.from('fulfillment_tickets').insert({
-            production_request_id: selectedItem.id,
-            type: 'PRODUCTION_RELEASE',
-            details: { productName, quantity: qty, requestedQuantity: requestedQty, unit: req.unit, purpose: req.purpose },
-            status: 'PENDING',
-            created_at: now,
-            updated_at: now,
+          // One database step (review_production_request): checks it's
+          // still waiting, issues the ticket and adds the stock together.
+          const { error: prodErr } = await supabase.rpc('review_production_request', {
+            p_request_id: String(selectedItem.id), p_action: 'approve', p_note: modalNote || null,
+            p_approved_qty: qty, p_reference: selectedItem.requestId,
           });
-
-          if (productName && qty > 0) {
-            const { data: existingStock } = await supabase.from('stock').select('id, quantity').ilike('product_name', productName).limit(1);
-            if (existingStock && existingStock.length > 0) {
-              await supabase.from('stock').update({ quantity: (existingStock[0].quantity || 0) + qty, last_updated: now }).eq('id', existingStock[0].id);
-            } else {
-              await supabase.from('stock').insert({ product_name: productName, quantity: qty, unit: req.unit || 'units', last_updated: now });
-            }
-            await supabase.from('stock_ledger').insert({
-              product_name: productName, movement_type: 'ADD', quantity: qty,
-              reference: `Production Request Approved: ${selectedItem.requestId}`,
-              notes: qty !== requestedQty ? `Management adjusted requested qty ${requestedQty} → ${qty}` : undefined,
-              created_at: now,
-            });
-          }
+          if (prodErr) throw prodErr;
 
           await supabase.from('supplier_order_notifications').insert([{ message: `Production request APPROVED by Management and ready for pickup/repackaging: ${selectedItem.description}`, notified_department: 'PRODUCTION', read: false }]);
           await supabase.from('supplier_order_notifications').insert([{ message: `Production release ready for warehouse handling: ${selectedItem.description}`, notified_department: 'OPERATIONS', read: false }]);
         } else {
-          await supabase.from('production_requests').update({ status: 'REJECTED', rejection_reason: modalNote || null }).eq('id', selectedItem.id);
+          const { error: prodErr } = await supabase.rpc('review_production_request', {
+            p_request_id: String(selectedItem.id), p_action: 'reject', p_note: modalNote || null,
+          });
+          if (prodErr) throw prodErr;
           // Production reject previously sent no notification at all.
           await supabase.from('supplier_order_notifications').insert([{ message: `Production request REJECTED by Management: ${selectedItem.description}${modalNote ? ` — ${modalNote}` : ''}`, notified_department: 'PRODUCTION', read: false }]);
         }
       }
 
       if (selectedItem.type === 'General Purchase' && selectedItem.raw) {
-        const newDbStatus = action === 'approve' ? 'APPROVED' : 'REJECTED';
         const requestingDept = String(selectedItem.raw.department || 'OPERATIONS');
-        await supabase.from('general_purchases').update({
-          status: newDbStatus,
-          rejection_reason: action === 'approve' ? null : (modalNote || null),
-        }).eq('id', selectedItem.id);
+        // Checks it's still waiting before deciding (review_general_purchase).
+        const { error: gpErr } = await supabase.rpc('review_general_purchase', {
+          p_purchase_id: String(selectedItem.id), p_action: action === 'approve' ? 'approve' : 'reject', p_note: modalNote || null,
+        });
+        if (gpErr) throw gpErr;
 
         if (action === 'approve') {
           await supabase.from('supplier_order_notifications').insert([{ message: `General purchase APPROVED by Management: ${selectedItem.description}`, notified_department: requestingDept, read: false }]);
@@ -558,31 +510,24 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
 
       if (selectedItem.type === 'Float Request' && selectedItem.raw) {
         const req: any = selectedItem.raw;
-        const now = new Date().toISOString();
 
         if (action === 'approve') {
-          await supabase.from('float_requests').update({ status: 'APPROVED', approved_by: currentUser?.fullName || 'Management', updated_at: now }).eq('id', selectedItem.id);
-
-          // Same automated-pipeline principle used elsewhere: the float
-          // actually lands the moment Management approves it, not on a
-          // separate manual Finance step.
-          const { data: latestEntry } = await supabase.from('finance_petty_cash').select('balance_after').order('created_at', { ascending: false }).limit(1);
-          const currentBalance = Number(latestEntry?.[0]?.balance_after) || 0;
-          const amount = Number(req.amount) || 0;
-          await supabase.from('finance_petty_cash').insert({
-            date: now.slice(0, 10),
-            description: `Replenishment approved by Management: ${req.reason || 'Float top-up'}`,
-            amount,
-            disbursed_to: 'Petty Cash Float',
-            category: 'Replenishment',
-            type: 'replenishment',
-            balance_after: currentBalance + amount,
-            created_at: now,
+          // One database step (review_float_request): checks it's still
+          // waiting and tops up petty cash under the petty cash lock, so a
+          // float can never be paid in twice.
+          const { error: floatErr } = await supabase.rpc('review_float_request', {
+            p_float_id: String(selectedItem.id), p_action: 'approve', p_note: modalNote || null,
+            p_approved_by: currentUser?.fullName || 'Management',
           });
+          if (floatErr) throw floatErr;
+          const amount = Number(req.amount) || 0;
 
           await supabase.from('supplier_order_notifications').insert([{ message: `Float replenishment APPROVED by Management: GHS ${amount.toLocaleString()} added to petty cash.`, notified_department: 'FINANCE', read: false }]);
         } else {
-          await supabase.from('float_requests').update({ status: 'REJECTED', rejection_reason: modalNote || null, updated_at: now }).eq('id', selectedItem.id);
+          const { error: floatErr } = await supabase.rpc('review_float_request', {
+            p_float_id: String(selectedItem.id), p_action: 'reject', p_note: modalNote || null,
+          });
+          if (floatErr) throw floatErr;
           await supabase.from('supplier_order_notifications').insert([{ message: `Float replenishment REJECTED by Management: ${selectedItem.description}${modalNote ? ` — ${modalNote}` : ''}`, notified_department: 'FINANCE', read: false }]);
         }
       }
@@ -596,9 +541,9 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
       }]);
 
       addNotification?.(`${selectedItem.requestId} ${action === 'approve' ? 'Approved' : action === 'return' ? 'Returned for correction' : 'Rejected'}${modalNote ? ` — "${modalNote}"` : ''}`);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      addNotification?.('Action execution failed.');
+      addNotification?.(`Not done: ${e?.message || 'the action failed.'}`);
     } finally {
       setSubmitting(false);
     }

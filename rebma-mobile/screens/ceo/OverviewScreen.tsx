@@ -25,6 +25,7 @@ import Badge from '../../components/ui/Badge';
 import ModuleLauncher from '../../components/chrome/ModuleLauncher';
 import SectionHeader from '../../components/ui/SectionHeader';
 import TrackedSection from '../../components/ui/TrackedSection';
+import PendingApprovalsAlertCard from '../../components/shared/PendingApprovalsAlertCard';
 
 interface RecentOrder { id: string; ticket_number: string | null; client_name: string | null; total_amount: number; status: string; created_at: string }
 
@@ -67,6 +68,8 @@ export default function OverviewScreen() {
   return (
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} onScroll={scrollHandler} scrollEventThrottle={16}>
       <View style={{ gap: t.spacing.xl }}>
+
+        <PendingApprovalsAlertCard department="CEO" onNavigate={(tab) => navigation.navigate(tab)} />
 
         {/* Executive Financial Snapshot — two clickable tiles, not one
             oversized banner (per direct correction: a full-bleed color

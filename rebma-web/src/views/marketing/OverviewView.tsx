@@ -16,6 +16,9 @@ import ProductCatalogCard from '../../components/ProductCatalogCard';
 import PendingApprovalsAlert from '../../components/global/PendingApprovalsAlert';
 import CountUp from '../../components/CountUp';
 
+import DateRangeField from '../../components/ui/DateRangeField';
+import type { CalendarValue } from '../../components/ui/CalendarPicker';
+import { lastNDays, trendBuckets, bucketKeyFor } from '../../utils/dateRange';
 interface Props {
   addNotification?: (msg: string) => void;
   setActiveSubTab?: (tab: string) => void;
@@ -76,8 +79,11 @@ const Tt = ({ active, payload, label }: { active?: boolean; payload?: { value: n
 
 export default function MarketingOverviewView({ addNotification, setActiveSubTab, currentUser }: Props) {
   const firstName = currentUser?.fullName?.split(' ')[0] || 'Marketing';
-  const [salesPeriod, setSalesPeriod] = useState('This Week');
-  const [revPeriod, setRevPeriod] = useState('This Month');
+  // Calendar ranges instead of This Week / This Month dropdowns (Part C).
+  // The old dropdowns changed nothing (the charts were fixed at 7 days and
+  // 4 weeks); these ranges drive the charts. Defaults match the old charts.
+  const [salesRange, setSalesRange] = useState<CalendarValue>(() => lastNDays(7));
+  const [revRange, setRevRange] = useState<CalendarValue>(() => lastNDays(28));
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
 
   const [orders, setOrders] = useState<Order[]>([]);
@@ -188,50 +194,19 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
   const pendingChange = pendingNow - pendingLastWeek;
   const pendingUp = pendingChange <= 0;
 
-  // SALES_DATA: sales of the last 7 days grouped by day
-  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const last7Days = Array.from({ length: 7 }).map((_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (6 - i));
-    return {
-      dateStr: d.toDateString(),
-      dayName: dayNames[d.getDay()],
-      value: 0
-    };
-  });
-  orders.forEach(o => {
-    const oDate = new Date(o.createdAt);
-    const dateStr = oDate.toDateString();
-    const dayItem = last7Days.find(item => item.dateStr === dateStr);
-    if (dayItem) {
-      dayItem.value += o.totalAmount;
-    }
-  });
-  const salesData = last7Days.map(item => ({ d: item.dayName, value: item.value }));
-
-  // REVENUE_DATA: last 4 weeks revenue
-  const weeks = [
-    { week: 'W1', revenue: 0 },
-    { week: 'W2', revenue: 0 },
-    { week: 'W3', revenue: 0 },
-    { week: 'W4', revenue: 0 },
-  ];
-  const now = Date.now();
-  orders.forEach(o => {
-    const diffDays = (now - new Date(o.createdAt).getTime()) / oneDay;
-    if (diffDays >= 0 && diffDays < 28) {
-      if (diffDays < 7) {
-        weeks[3].revenue += o.totalAmount;
-      } else if (diffDays < 14) {
-        weeks[2].revenue += o.totalAmount;
-      } else if (diffDays < 21) {
-        weeks[1].revenue += o.totalAmount;
-      } else {
-        weeks[0].revenue += o.totalAmount;
-      }
-    }
-  });
-  const revenueData = weeks;
+  // Chart data for any chosen dates: one point per day for short ranges,
+  // per month for long ones.
+  const sumByBucket = (range: CalendarValue) => {
+    const { granularity, buckets } = trendBuckets(range);
+    const totals: Record<string, number> = {};
+    orders.forEach(o => {
+      const k = bucketKeyFor(new Date(o.createdAt), granularity);
+      totals[k] = (totals[k] || 0) + o.totalAmount;
+    });
+    return buckets.map(b => ({ label: b.label, value: totals[b.key] || 0 }));
+  };
+  const salesData = sumByBucket(salesRange).map(b => ({ d: b.label, value: b.value }));
+  const revenueData = sumByBucket(revRange).map(b => ({ week: b.label, revenue: b.value }));
 
   // PRODUCT_PIE
   const productCounts: Record<string, number> = {};
@@ -467,11 +442,11 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
               <h3 className="font-bold text-sm text-[var(--text-primary)]">Sales Overview</h3>
               <p className="text-2xl font-bold text-[var(--text-primary)] mt-1">GHS <CountUp value={revenue} /> <span className="text-sm font-normal text-green-500">+14.2%</span></p>
             </div>
-            <SearchableDropdown value={salesPeriod} onChange={setSalesPeriod} options={['This Week', 'This Month', '6 Months', 'Year'].map(p => ({ value: p, label: p }))} className="w-32" />
+            <DateRangeField value={salesRange} onChange={setSalesRange} align="right" />
           </div>
           <div className="h-44">
             {salesData.length === 0 || salesData.every(s => s.value === 0) ? (
-              <div className="h-full flex items-center justify-center text-[var(--text-muted)] text-xs">No sales data for this week</div>
+              <div className="h-full flex items-center justify-center text-[var(--text-muted)] text-xs">No sales on these dates</div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={salesData}>
@@ -605,7 +580,7 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
             <h3 className="font-bold text-sm text-[var(--text-primary)]">Revenue Overview</h3>
             <p className="text-2xl font-bold text-[var(--text-primary)] mt-1">GHS <CountUp value={revenue} /> <span className="text-sm font-normal text-green-500">+8.2%</span></p>
           </div>
-          <SearchableDropdown value={revPeriod} onChange={setRevPeriod} options={['This Month', 'This Quarter', 'This Year'].map(p => ({ value: p, label: p }))} className="w-32" />
+          <DateRangeField value={revRange} onChange={setRevRange} align="right" />
         </div>
         <div className="h-44">
           {revenueData.every(w => w.revenue === 0) ? (

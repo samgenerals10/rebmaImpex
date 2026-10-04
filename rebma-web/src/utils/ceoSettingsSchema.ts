@@ -33,7 +33,8 @@ export type SettingFieldSpec =
   | { kind: 'toggle'; key: string; label: string; description: string; warning?: string }
   | { kind: 'toggleWithException'; key: string; label: string; description: string }
   | { kind: 'number'; key: string; label: string; description: string; min?: number; max?: number; unit?: string }
-  | { kind: 'select'; key: string; label: string; description: string; options: { value: string; label: string }[] };
+  | { kind: 'select'; key: string; label: string; description: string; options: { value: string; label: string }[] }
+  | { kind: 'text'; key: string; label: string; description: string; placeholder?: string };
 
 export interface SettingSection {
   id: string;
@@ -133,6 +134,9 @@ export const CEO_SETTINGS_SCHEMA: SettingSection[] = [
       { kind: 'toggle', key: 'whatsapp_enabled', label: 'WhatsApp Enabled', description: 'Allow sending WhatsApp messages to suppliers and customers.' },
       { kind: 'toggle', key: 'payment_reminders_enabled', label: 'Payment Reminders Enabled', description: 'Allow Finance to send payment reminder messages to customers with outstanding credit.' },
       { kind: 'toggle', key: 'announcements_ceo_only', label: 'CEO Only Announcements', description: 'When ON only CEO can post company-wide announcements. When OFF Management can also post announcements.' },
+      // These two were only on the phone's Control Center until now.
+      { kind: 'toggle', key: 'meeting_recording_allowed', label: 'Meeting Recording Allowed', description: 'When OFF, hosts cannot start a recording in Boardroom, Meetings or chat calls, on web or the phone.' },
+      { kind: 'toggle', key: 'chat_suspension_allowed', label: 'Chat Suspension Allowed', description: 'When OFF, nobody can suspend a direct chat, and existing suspensions stop having any effect.' },
     ],
   },
   {
@@ -174,6 +178,12 @@ export const CEO_SETTINGS_SCHEMA: SettingSection[] = [
     fields: [
       { kind: 'toggle', key: 'risk_customer_verification_required', label: 'Customer Verification Required', description: 'Customer verification is non-blocking by design, so a pending customer can still be ordered for. This only controls whether Risk treats verification as mandatory, not any order transition.' },
       { kind: 'toggle', key: 'risk_credit_hold_notify_marketing', label: 'Notify Marketing on Credit Hold', description: 'When ON, Marketing is notified whenever Risk puts a customer on credit hold.' },
+    ],
+  },
+  {
+    id: 'birthdays', title: 'Section 11 — Birthday Wishes', icon: 'Cake',
+    fields: [
+      { kind: 'toggle', key: 'birthday_wishes_enabled', label: 'Birthday Wishes Allowed', description: 'Master switch. When off, no birthday wishes go out at all, automatic or by hand. HR writes the messages and runs the sending under HR → Birthdays.' },
     ],
   },
 ];

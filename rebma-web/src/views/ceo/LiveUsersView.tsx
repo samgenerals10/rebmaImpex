@@ -6,18 +6,14 @@
 // means the websocket connection is actually live right now.
 //
 // Actions:
-//  - Suspend / Reactivate: same profiles.status flip HR's own Suspend
-//    button uses (StaffView.tsx) — the mechanism already exists, this is
-//    just a second place to trigger it.
-//  - Block / Unblock: same mechanism, new status value ('BLOCKED') — "make
-//    the user inactive like blacklisting the user", enforced by the login
-//    gate's explicit BLOCKED message (apiClient.ts / mobile authStore.ts).
-//  - Kick Offline: a real-time broadcast telling that one connected
-//    session to sign itself out right now (lib/presence.ts's
-//    kickUserOffline) — NOT account deletion. There's no way to force a
-//    sign-out by user ID alone (Supabase's admin.signOut() needs the
-//    target's own JWT), so this is the only honest mechanism for
-//    "kicking them offline right now."
+//  - Suspend / Reactivate / Block / Unblock: through api/set-user-status.ts
+//    with the CEO's password. The server locks or unlocks sign-in, ends
+//    open sessions and logs it; the database refuses a status change made
+//    straight from the browser.
+//  - Kick Offline: api/kick-user.ts ends every session, then the broadcast
+//    (lib/presence.ts's kickUserOffline) closes the person's open screen
+//    right away. NOT account deletion.
+//  - None of these are offered on a CEO account: no CEO acts on another.
 //  - Send Message: opens the existing Messenger straight into a DM with
 //    that person.
 import { useEffect, useState } from 'react';
@@ -25,6 +21,8 @@ import { Radio, MessageSquare, LogOut, Ban, ShieldOff, ShieldCheck, UserCheck } 
 import { subscribeToLiveUsers, kickUserOffline, type PresencePayload } from '../../lib/presence';
 import { supabase } from '../../lib/supabaseClient';
 import type { CurrentUser } from '../../types/erp';
+import { callPrivilegedApi } from '../../utils/privilegedApi';
+import PasswordConfirmModal from '../../components/ui/PasswordConfirmModal';
 
 interface Props {
   currentUser?: CurrentUser | null;
@@ -42,6 +40,15 @@ function formatDuration(ms: number): string {
   return `${s}s`;
 }
 
+type StatusAction = 'suspend' | 'reactivate' | 'block' | 'unblock';
+
+const STATUS_WORDING: Record<StatusAction, { title: string; verb: string; effect: string }> = {
+  suspend: { title: 'Confirm Suspension', verb: 'Suspend', effect: 'They are signed out everywhere and cannot sign in until reactivated.' },
+  reactivate: { title: 'Confirm Reactivation', verb: 'Reactivate', effect: 'They can sign in again.' },
+  block: { title: 'Confirm Block', verb: 'Block', effect: 'They are signed out everywhere and cannot sign in until unblocked.' },
+  unblock: { title: 'Confirm Unblock', verb: 'Unblock', effect: 'They can sign in again.' },
+};
+
 function initials(name: string) {
   return (name || '').split(' ').filter(Boolean).map((n) => n[0]).join('').toUpperCase().slice(0, 2);
 }
@@ -51,6 +58,8 @@ export default function LiveUsersView({ currentUser, addNotification, onMessageU
   const [now, setNow] = useState(Date.now());
   const [statusByUser, setStatusByUser] = useState<Record<string, string>>({});
   const [busyUserId, setBusyUserId] = useState<string | null>(null);
+  const [ceoIds, setCeoIds] = useState<Set<string>>(new Set());
+  const [pendingStatus, setPendingStatus] = useState<{ userId: string; name: string; action: StatusAction } | null>(null);
 
   // Reads the shared presence channel App.tsx already opened at login —
   // never opens a second channel of its own (that was the bug: Supabase
@@ -73,27 +82,29 @@ export default function LiveUsersView({ currentUser, addNotification, onMessageU
   useEffect(() => {
     const ids = users.map((u) => u.userId);
     if (ids.length === 0) return;
-    supabase.from('profiles').select('id, status').in('id', ids).then(({ data }) => {
+    supabase.from('profiles').select('id, status, is_admin').in('id', ids).then(({ data }) => {
       const next: Record<string, string> = {};
-      (data || []).forEach((row: any) => { next[row.id] = row.status; });
+      const ceos = new Set<string>();
+      (data || []).forEach((row: any) => {
+        next[row.id] = String(row.status || 'ACTIVE').toUpperCase();
+        if (row.is_admin) ceos.add(row.id);
+      });
       setStatusByUser((prev) => ({ ...prev, ...next }));
+      setCeoIds(ceos);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [users.map((u) => u.userId).join(',')]);
 
-  const setStatus = async (userId: string, name: string, status: 'ACTIVE' | 'SUSPENDED' | 'BLOCKED', verb: string) => {
-    if (busyUserId) return;
-    setBusyUserId(userId);
-    try {
-      const { error } = await supabase.from('profiles').update({ status }).eq('id', userId);
-      if (error) throw error;
-      setStatusByUser((prev) => ({ ...prev, [userId]: status }));
-      addNotification(`${name} ${verb}.`);
-    } catch (err: any) {
-      addNotification(`Failed to update ${name}: ${err.message}`);
-    } finally {
-      setBusyUserId(null);
-    }
+  // Runs after the CEO types their password. A thrown error keeps the
+  // password panel open with the server's message.
+  const runStatusChange = async (password: string) => {
+    const pending = pendingStatus;
+    if (!pending) return;
+    const res = await callPrivilegedApi<{ status?: string; message?: string }>('/api/set-user-status', { userId: pending.userId, action: pending.action, password });
+    if (pending.action === 'suspend' || pending.action === 'block') kickUserOffline(pending.userId);
+    setStatusByUser((prev) => ({ ...prev, [pending.userId]: res.status || prev[pending.userId] }));
+    setPendingStatus(null);
+    addNotification(res.message || 'Status updated.');
   };
 
   // Routed through api/kick-user.ts, which does a real server-side
@@ -109,16 +120,7 @@ export default function LiveUsersView({ currentUser, addNotification, onMessageU
     if (busyUserId) return;
     setBusyUserId(userId);
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData.session?.access_token;
-      if (!accessToken) throw new Error('Not authenticated.');
-      const res = await fetch('/api/kick-user', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ userId }),
-      });
-      const body = await res.json();
-      if (!res.ok) throw new Error(body.error || 'Failed to kick user offline.');
+      const body = await callPrivilegedApi<{ message?: string }>('/api/kick-user', { userId });
       kickUserOffline(userId);
       addNotification(body.message || `${name} has been kicked offline.`);
     } catch (err: any) {
@@ -159,6 +161,8 @@ export default function LiveUsersView({ currentUser, addNotification, onMessageU
                 const status = statusByUser[u.userId] || 'ACTIVE';
                 const isSelf = currentUser?.id === u.userId;
                 const isBusy = busyUserId === u.userId;
+                const isCeo = ceoIds.has(u.userId);
+                const canAct = !isSelf && !isCeo;
                 return (
                   <tr key={u.userId} style={{ borderTop: '1px solid var(--border)' }}>
                     <td style={{ padding: '10px 12px' }}>
@@ -178,7 +182,7 @@ export default function LiveUsersView({ currentUser, addNotification, onMessageU
                         <div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <span style={{ width: 7, height: 7, borderRadius: 4, background: '#10b981', flexShrink: 0 }} />
-                            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{u.fullName}{isSelf ? ' (you)' : ''}</span>
+                            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{u.fullName}{isSelf ? ' (you)' : isCeo ? ' (CEO)' : ''}</span>
                           </div>
                           {u.role && <div style={{ color: 'var(--text-muted)', fontSize: 11 }}>{u.role}</div>}
                         </div>
@@ -198,34 +202,35 @@ export default function LiveUsersView({ currentUser, addNotification, onMessageU
                     </td>
                     <td style={{ padding: '10px 12px' }}>
                       <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                        {!isSelf && (
-                          <>
-                            <button
-                              disabled={isBusy}
-                              onClick={() => setStatus(u.userId, u.fullName, status === 'SUSPENDED' ? 'ACTIVE' : 'SUSPENDED', status === 'SUSPENDED' ? 'reactivated' : 'suspended')}
-                              title={status === 'SUSPENDED' ? 'Reactivate' : 'Suspend'}
-                              style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', cursor: 'pointer', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: 4, fontSize: 11 }}
-                            >
-                              {status === 'SUSPENDED' ? <UserCheck size={13} /> : <ShieldOff size={13} />}
-                              {status === 'SUSPENDED' ? 'Reactivate' : 'Suspend'}
-                            </button>
-                            <button
-                              disabled={isBusy}
-                              onClick={() => setStatus(u.userId, u.fullName, status === 'BLOCKED' ? 'ACTIVE' : 'BLOCKED', status === 'BLOCKED' ? 'unblocked' : 'blocked')}
-                              title={status === 'BLOCKED' ? 'Unblock' : 'Block'}
-                              style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', cursor: 'pointer', color: '#ef4444', display: 'flex', alignItems: 'center', gap: 4, fontSize: 11 }}
-                            >
-                              {status === 'BLOCKED' ? <ShieldCheck size={13} /> : <Ban size={13} />}
-                              {status === 'BLOCKED' ? 'Unblock' : 'Block'}
-                            </button>
-                            <button
-                              onClick={() => handleKick(u.userId, u.fullName)}
-                              title="Kick offline right now"
-                              style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4, fontSize: 11 }}
-                            >
-                              <LogOut size={13} /> Kick
-                            </button>
-                          </>
+                        {canAct && status === 'ACTIVE' && (
+                          <button disabled={isBusy} onClick={() => setPendingStatus({ userId: u.userId, name: u.fullName, action: 'suspend' })} title="Suspend"
+                            style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', cursor: 'pointer', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: 4, fontSize: 11 }}>
+                            <ShieldOff size={13} /> Suspend
+                          </button>
+                        )}
+                        {canAct && status === 'SUSPENDED' && (
+                          <button disabled={isBusy} onClick={() => setPendingStatus({ userId: u.userId, name: u.fullName, action: 'reactivate' })} title="Reactivate"
+                            style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', cursor: 'pointer', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: 4, fontSize: 11 }}>
+                            <UserCheck size={13} /> Reactivate
+                          </button>
+                        )}
+                        {canAct && (status === 'ACTIVE' || status === 'SUSPENDED') && (
+                          <button disabled={isBusy} onClick={() => setPendingStatus({ userId: u.userId, name: u.fullName, action: 'block' })} title="Block"
+                            style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', cursor: 'pointer', color: '#ef4444', display: 'flex', alignItems: 'center', gap: 4, fontSize: 11 }}>
+                            <Ban size={13} /> Block
+                          </button>
+                        )}
+                        {canAct && status === 'BLOCKED' && (
+                          <button disabled={isBusy} onClick={() => setPendingStatus({ userId: u.userId, name: u.fullName, action: 'unblock' })} title="Unblock"
+                            style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', cursor: 'pointer', color: '#ef4444', display: 'flex', alignItems: 'center', gap: 4, fontSize: 11 }}>
+                            <ShieldCheck size={13} /> Unblock
+                          </button>
+                        )}
+                        {canAct && (
+                          <button disabled={isBusy} onClick={() => handleKick(u.userId, u.fullName)} title="Kick offline right now"
+                            style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4, fontSize: 11 }}>
+                            <LogOut size={13} /> Kick
+                          </button>
                         )}
                         <button
                           onClick={() => onMessageUser(u.userId)}
@@ -243,6 +248,15 @@ export default function LiveUsersView({ currentUser, addNotification, onMessageU
           </table>
         </div>
       )}
+      <PasswordConfirmModal
+        open={!!pendingStatus}
+        onClose={() => setPendingStatus(null)}
+        title={pendingStatus ? STATUS_WORDING[pendingStatus.action].title : ''}
+        description={pendingStatus ? `${STATUS_WORDING[pendingStatus.action].verb} ${pendingStatus.name}? ${STATUS_WORDING[pendingStatus.action].effect} Type your password to confirm it is you.` : ''}
+        confirmLabel={pendingStatus ? STATUS_WORDING[pendingStatus.action].verb : 'Confirm'}
+        danger={pendingStatus?.action === 'suspend' || pendingStatus?.action === 'block'}
+        onConfirm={runStatusChange}
+      />
     </div>
   );
 }

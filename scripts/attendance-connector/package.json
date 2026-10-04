@@ -1,0 +1,13 @@
+{
+  "name": "rebma-attendance-connector",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Bridges attendance devices on the office network to the REBMA backend. Live scans for SDK devices, timed reads for API Pull devices. Runs on a PC at the office, not deployed with the app.",
+  "main": "connector.js",
+  "scripts": {
+    "start": "node connector.js"
+  },
+  "dependencies": {
+    "node-zklib": "^0.2.13"
+  }
+}

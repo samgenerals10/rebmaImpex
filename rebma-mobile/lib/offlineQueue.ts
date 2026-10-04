@@ -84,6 +84,19 @@ export async function getPendingCount(queueKey: string): Promise<number> {
   return (await readQueue(queueKey)).length;
 }
 
+/**
+ * True only when a save failed because there was no connection. A refusal
+ * from the database (a rule said no, e.g. "Already checked in today") has
+ * a database error code; retrying it later would only fail again, so it
+ * must be shown to the person instead of being queued.
+ */
+export function isOfflineError(error: { message?: string; code?: string } | null | undefined): boolean {
+  if (!error) return false;
+  if (error.code && /^[0-9A-Z]{5}$/.test(error.code)) return false;
+  if (error.code && /^PGRST/.test(error.code)) return false;
+  return /network|fetch|timed? ?out|offline|connection/i.test(error.message || '') || !error.code;
+}
+
 export async function getPending(queueKey: string): Promise<QueuedWrite[]> {
   return readQueue(queueKey);
 }
@@ -101,7 +114,7 @@ export async function flush(queueKey: string): Promise<number> {
   const remaining: QueuedWrite[] = [];
   let flushed = 0;
   for (const item of items) {
-    let error: { message: string } | null = null;
+    let error: { message: string; code?: string } | null = null;
     if (item.op === 'update' && item.match) {
       let q = supabase.from(item.table).update(item.payload);
       for (const [col, val] of Object.entries(item.match)) q = q.eq(col, val as any);
@@ -109,8 +122,12 @@ export async function flush(queueKey: string): Promise<number> {
     } else {
       ({ error } = await supabase.from(item.table).insert(item.payload));
     }
-    if (error) {
+    if (error && isOfflineError(error)) {
       remaining.push(item);
+    } else if (error) {
+      // Refused by the database: retrying would only fail again, so it is
+      // dropped from the queue instead of retrying forever.
+      console.warn(`Queued ${item.table} save was refused and removed: ${error.message}`);
     } else {
       flushed++;
     }

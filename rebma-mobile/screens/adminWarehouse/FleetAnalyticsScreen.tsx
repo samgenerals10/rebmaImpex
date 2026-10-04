@@ -23,18 +23,17 @@ import BarChart from '../../components/ui/BarChart';
 import DataList, { type DataColumn } from '../../components/ui/DataList';
 import Button from '../../components/ui/Button';
 
-type Period = 'week' | 'month' | 'quarter' | 'year';
-const PERIOD_DAYS: Record<Period, number> = { week: 7, month: 30, quarter: 90, year: 365 };
-const PERIODS: { key: Period; label: string }[] = [
-  { key: 'week', label: 'Week' }, { key: 'month', label: 'Month' },
-  { key: 'quarter', label: 'Quarter' }, { key: 'year', label: 'Year' },
-];
+import DateRangeField from '../../components/ui/DateRangeField';
+import type { CalendarValue } from '../../components/ui/CalendarPicker';
+import { lastNDays, inRange } from '../../lib/dateRange';
 
 interface EfficiencyRow { vehicleId: string; distance: number; fuelUsed: number; efficiency: number; }
 
 export default function FleetAnalyticsScreen() {
   const t = useTheme();
-  const [period, setPeriod] = useState<Period>('month');
+  // Calendar range instead of Week / Month / Quarter / Year (Part C).
+  // Starts on the last 30 days, the old "Month" default.
+  const [range, setRange] = useState<CalendarValue>(() => lastNDays(30));
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [fuelLogs, setFuelLogs] = useState<any[]>([]);
   const [maintenance, setMaintenance] = useState<any[]>([]);
@@ -59,9 +58,8 @@ export default function FleetAnalyticsScreen() {
     load();
   }, [load]);
 
-  const since = useMemo(() => { const d = new Date(); d.setDate(d.getDate() - PERIOD_DAYS[period]); return d; }, [period]);
-  const fuelInPeriod = useMemo(() => fuelLogs.filter((f) => new Date(f.date || f.created_at) >= since), [fuelLogs, since]);
-  const maintInPeriod = useMemo(() => maintenance.filter((m) => new Date(m.date || m.created_at) >= since), [maintenance, since]);
+  const fuelInPeriod = useMemo(() => fuelLogs.filter((f) => inRange(f.date || f.created_at, range)), [fuelLogs, range]);
+  const maintInPeriod = useMemo(() => maintenance.filter((m) => inRange(m.date || m.created_at, range)), [maintenance, range]);
 
   const distanceByVehicle = useMemo(() => {
     const byVehicle: Record<string, number[]> = {};
@@ -144,11 +142,7 @@ export default function FleetAnalyticsScreen() {
   return (
     <Screen refreshing={false}>
       <View style={{ gap: t.spacing.xl }}>
-        <View style={{ flexDirection: 'row', gap: t.spacing.xs }}>
-          {PERIODS.map((p) => (
-            <Button key={p.key} label={p.label} size="sm" variant={period === p.key ? 'primary' : 'ghost'} onPress={() => setPeriod(p.key)} />
-          ))}
-        </View>
+        <DateRangeField value={range} onChange={setRange} title="Fleet figures for" />
 
         <View style={{ gap: t.spacing.sm }}>
           <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Fleet Size" value={loading ? '—' : totalVehicles} sublabel={`${operationalCount} operational`} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Fleet Utilization" value={loading ? '—' : `${utilizationRate}%`} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Cost per Delivery" value={loading ? '—' : (costPerDelivery > 0 ? `GHS ${costPerDelivery}` : '—')} tone="warning" /></View></View>

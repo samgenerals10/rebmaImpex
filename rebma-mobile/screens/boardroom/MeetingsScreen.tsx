@@ -35,6 +35,7 @@ import Sheet, { SheetSection } from '../../components/ui/Sheet';
 import EmptyState from '../../components/ui/EmptyState';
 import Tabs from '../../components/ui/Tabs';
 import GroupCallSheet from '../../components/shared/GroupCallSheet';
+import CalendarPicker, { toKey, type CalendarValue } from '../../components/ui/CalendarPicker';
 
 function slugRoom(prefix: string) {
   return `Rebma-${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -66,7 +67,10 @@ export default function MeetingsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeCall, setActiveCall] = useState<{ room: string; title: string; meetingId: string } | null>(null);
-  const [tab, setTab] = useState<'today' | 'scheduled'>('today');
+  // A calendar instead of Today / Scheduled tabs (Part C): days with a
+  // meeting are marked; tap one to see its meetings, past or upcoming.
+  const [calMonth, setCalMonth] = useState(new Date());
+  const [selectedDay, setSelectedDay] = useState<CalendarValue>(() => ({ start: toKey(new Date()), end: toKey(new Date()) }));
 
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState('');
@@ -202,7 +206,9 @@ export default function MeetingsScreen() {
     await loadMeetings();
   };
 
-  const visibleMeetings = meetings.filter((m) => (tab === 'today' ? isToday(m.scheduled_at) : !isToday(m.scheduled_at)));
+  const meetingDay = (iso: string) => (iso ? toKey(new Date(iso)) : '');
+  const visibleMeetings = meetings.filter((m) => meetingDay(m.scheduled_at) === selectedDay.start);
+  const meetingMarks = Object.fromEntries(meetings.filter((m) => m.scheduled_at).map((m) => [meetingDay(m.scheduled_at), { color: t.colors.accent }]));
 
   return (
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}>
@@ -230,16 +236,13 @@ export default function MeetingsScreen() {
 
         <Button label="Schedule a Meeting" variant="ghost" icon={<Calendar size={14} color={t.colors.accent} />} onPress={() => setShowForm(true)} />
 
-        <Tabs
-          variant="segmented"
-          value={tab}
-          onChange={(v) => setTab(v as 'today' | 'scheduled')}
-          options={[{ value: 'today', label: 'Today' }, { value: 'scheduled', label: 'Scheduled' }]}
-        />
+        <Card>
+          <CalendarPicker month={calMonth} onMonthChange={setCalMonth} value={selectedDay} onChange={setSelectedDay} marks={meetingMarks} />
+        </Card>
 
         <View>
           {!loading && visibleMeetings.length === 0 ? (
-            <EmptyState icon={<Calendar size={20} color={t.colors.textMuted} />} title={tab === 'today' ? 'Nothing today' : 'No meetings scheduled'} description="Nothing on the board calendar yet." />
+            <EmptyState icon={<Calendar size={20} color={t.colors.textMuted} />} title="No meetings on this day" description="Days with a dot on the calendar have meetings." />
           ) : (
             <View style={{ gap: t.spacing.sm }}>
               {visibleMeetings.map((mtg) => (
@@ -313,7 +316,7 @@ export default function MeetingsScreen() {
           <View style={{ flex: 1 }}><Field label="Date *"><Input value={date} onChangeText={setDate} placeholder="YYYY-MM-DD" /></Field></View>
           <View style={{ flex: 1 }}><Field label="Time *"><Input value={time} onChangeText={setTime} placeholder="HH:MM" /></Field></View>
         </View>
-        <Field label="Duration (minutes)"><Input value={duration} onChangeText={setDuration} keyboardType="numeric" /></Field>
+        <Field label="Duration (minutes)"><Input value={duration} onChangeText={setDuration} keyboardType="numeric" placeholder="30" /></Field>
 
         <SheetSection label="Invite Attendees">
           {attendeeProfiles.map((p) => {

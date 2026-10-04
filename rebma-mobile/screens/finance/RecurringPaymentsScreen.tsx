@@ -148,12 +148,12 @@ export default function RecurringPaymentsScreen() {
         side="bottom"
         footer={<Button label={submitting ? 'Saving…' : 'Save'} onPress={save} loading={submitting} disabled={submitting} fullWidth />}
       >
-        <Field label="Name *"><Input value={form.name} onChangeText={(v) => setForm((f) => ({ ...f, name: v }))} /></Field>
-        <Field label="Amount (GHS) *"><Input value={form.amount} onChangeText={(v) => setForm((f) => ({ ...f, amount: v }))} keyboardType="decimal-pad" /></Field>
+        <Field label="Name *"><Input value={form.name} onChangeText={(v) => setForm((f) => ({ ...f, name: v }))} placeholder="e.g. Office Rent" /></Field>
+        <Field label="Amount (GHS) *"><Input value={form.amount} onChangeText={(v) => setForm((f) => ({ ...f, amount: v }))} keyboardType="decimal-pad" placeholder="0.00" /></Field>
         <Field label="Frequency"><SearchablePicker value={form.frequency} onChange={(v) => setForm((f) => ({ ...f, frequency: v }))} options={FREQ_OPTIONS} /></Field>
         <Field label="Next Due Date"><Input value={form.nextDate} onChangeText={(v) => setForm((f) => ({ ...f, nextDate: v }))} placeholder="YYYY-MM-DD" /></Field>
-        <Field label="Account"><Input value={form.account} onChangeText={(v) => setForm((f) => ({ ...f, account: v }))} /></Field>
-        <Field label="Category"><Input value={form.category} onChangeText={(v) => setForm((f) => ({ ...f, category: v }))} /></Field>
+        <Field label="Account"><Input value={form.account} onChangeText={(v) => setForm((f) => ({ ...f, account: v }))} placeholder="e.g. GCB Operating Account" /></Field>
+        <Field label="Category"><Input value={form.category} onChangeText={(v) => setForm((f) => ({ ...f, category: v }))} placeholder="e.g. Rent" /></Field>
       </Sheet>
     </Screen>
   );

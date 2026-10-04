@@ -10,6 +10,7 @@ import CountUp from '../../components/CountUp';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import SidePanel from '../../components/ui/SidePanel';
 import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
+import DateRangeField from '../../components/ui/DateRangeField';
 
 interface VisitorToday {
   id: string;
@@ -253,8 +254,10 @@ export default function DailyReportsView({ addNotification }: Props) {
           <p className="text-xs text-[var(--text-muted)]">Auto-generated daily summary</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <input type="date" value={selectedDate} onChange={e => { setSelectedDate(e.target.value); setViewingPast(null); }}
-            className="px-3 py-1.5 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] outline-none" />
+          {/* Calendar instead of a typed date (Part C). */}
+          <DateRangeField mode="single" align="right"
+            value={{ start: selectedDate, end: selectedDate }}
+            onChange={v => { if (v.start) { setSelectedDate(v.start); setViewingPast(null); } }} />
           <button onClick={handleOpenEmailModal}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-secondary)] text-xs font-semibold rounded-xl cursor-pointer hover:bg-[var(--accent-light)]">
             <Mail className="w-3.5 h-3.5" /> Email

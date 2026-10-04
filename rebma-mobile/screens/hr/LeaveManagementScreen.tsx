@@ -198,19 +198,19 @@ export default function LeaveManagementScreen() {
 
       <Sheet open={showReject} onClose={() => setShowReject(false)} title="Reject Leave Request" side="bottom" maxHeight={320}
         footer={<Button label="Confirm Reject" variant="danger" onPress={reject} loading={submitting} disabled={submitting} fullWidth />}>
-        <Field label="Reason"><Input value={rejectReason} onChangeText={setRejectReason} multiline numberOfLines={3} style={{ minHeight: 72, textAlignVertical: 'top' }} /></Field>
+        <Field label="Reason"><Input value={rejectReason} onChangeText={setRejectReason} multiline numberOfLines={3} style={{ minHeight: 72, textAlignVertical: 'top' }} placeholder="Why is this leave request being rejected?" /></Field>
       </Sheet>
 
       <Sheet open={!!showForm} onClose={() => setShowForm(null)} title={showForm === 'add' ? 'Submit Leave Request' : 'Edit Leave Request'} side="bottom" maxHeight={560}
         footer={<Button label={submitting ? 'Saving…' : 'Save'} onPress={saveForm} loading={submitting} disabled={submitting} fullWidth />}>
-        <Field label="Employee Name"><Input value={form.employeeName} onChangeText={(v) => setForm((f) => ({ ...f, employeeName: v }))} /></Field>
-        <Field label="Department"><Input value={form.department} onChangeText={(v) => setForm((f) => ({ ...f, department: v }))} /></Field>
+        <Field label="Employee Name"><Input value={form.employeeName} onChangeText={(v) => setForm((f) => ({ ...f, employeeName: v }))} placeholder="e.g. Kofi Mensah" /></Field>
+        <Field label="Department"><Input value={form.department} onChangeText={(v) => setForm((f) => ({ ...f, department: v }))} placeholder="e.g. HR" /></Field>
         <Field label="Leave Type"><SearchablePicker value={form.leaveType} onChange={(v) => setForm((f) => ({ ...f, leaveType: v }))} options={LEAVE_TYPES.map((l) => ({ value: l, label: l }))} /></Field>
         <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
           <View style={{ flex: 1 }}><Field label="Start Date"><Input value={form.startDate} onChangeText={(v) => setForm((f) => ({ ...f, startDate: v }))} placeholder="YYYY-MM-DD" /></Field></View>
           <View style={{ flex: 1 }}><Field label="End Date"><Input value={form.endDate} onChangeText={(v) => setForm((f) => ({ ...f, endDate: v }))} placeholder="YYYY-MM-DD" /></Field></View>
         </View>
-        <Field label="Reason"><Input value={form.reason} onChangeText={(v) => setForm((f) => ({ ...f, reason: v }))} multiline numberOfLines={3} style={{ minHeight: 72, textAlignVertical: 'top' }} /></Field>
+        <Field label="Reason"><Input value={form.reason} onChangeText={(v) => setForm((f) => ({ ...f, reason: v }))} multiline numberOfLines={3} style={{ minHeight: 72, textAlignVertical: 'top' }} placeholder="Reason for this leave request..." /></Field>
       </Sheet>
     </Screen>
   );

@@ -23,6 +23,8 @@
 // real enforcement, not the enforcement itself.
 import { createClient } from '@supabase/supabase-js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { isRateLimited } from './_shared/rateLimit';
+import { endAllSessions } from './_shared/accountControl';
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -36,6 +38,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
+  if (await isRateLimited(supabaseAdmin, req, res, 'kick-user', 30, 60)) return;
+
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Authentication required.' });
@@ -48,12 +52,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const { data: callerProfiles } = await supabaseAdmin
     .from('profiles')
-    .select('full_name, is_admin')
+    .select('full_name, is_admin, status')
     .eq('id', callerData.user.id)
     .limit(1);
 
   const callerProfile = callerProfiles?.[0];
-  if (!callerProfile?.is_admin) {
+  if (!callerProfile?.is_admin || String(callerProfile.status || '').toUpperCase() !== 'ACTIVE') {
     return res.status(403).json({ error: 'Only the CEO can kick a user offline.' });
   }
 
@@ -67,7 +71,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const { data: targetProfiles } = await supabaseAdmin
     .from('profiles')
-    .select('id, full_name')
+    .select('id, full_name, role, is_admin')
     .eq('id', userId)
     .limit(1);
   const targetProfile = targetProfiles?.[0];
@@ -75,9 +79,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(404).json({ error: 'User profile not found.' });
   }
 
-  const { error: signOutError } = await supabaseAdmin.auth.admin.signOut(userId, 'global');
-  if (signOutError) {
-    return res.status(500).json({ error: `Failed to end session: ${signOutError.message}` });
+  // No CEO can act on another CEO.
+  if (targetProfile.is_admin || String(targetProfile.role || '').toUpperCase() === 'CEO') {
+    return res.status(403).json({ error: 'A CEO cannot be kicked offline.' });
+  }
+
+  // Ends every session the person has. (auth.admin.signOut needs a session
+  // token, not a user ID, so the old call here failed every time.)
+  const ended = await endAllSessions(supabaseAdmin, userId);
+  if (!ended.ok) {
+    return res.status(500).json({ error: `Failed to end session: ${ended.error}` });
   }
 
   try {
@@ -86,6 +97,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       department: 'CEO',
       performed_by: callerProfile.full_name || 'CEO',
       user_id: callerData.user.id,
+      reference_id: userId,
       details: `${targetProfile.full_name || userId}'s session was forcibly ended.`,
       timestamp: new Date().toISOString(),
     });

@@ -20,6 +20,19 @@ export const FOREST = '#0c5c34';
  * don't need a rename in this same pass. */
 export const GREEN = FOREST;
 
+/** Fixed, non-theme text/fill colors for the whole auth flow (Login,
+ * Register, Forgot Password — all built on this same shared header/
+ * button/back-button set). This screen group always renders on a
+ * hardcoded white background regardless of the app's dark mode setting,
+ * so its text must NOT come from theme tokens — t.colors.textPrimary/
+ * textMuted flip to light, dark-mode-appropriate colors once dark mode
+ * is on, which on this fixed white background produced near-invisible
+ * text. Fixed here instead, and deliberately high-contrast/bold per
+ * direct correction. */
+export const INK = '#111827';
+export const MUTED = '#6b7280';
+export const FIELD_FILL = '#f3f4f6';
+
 interface Props {
   label: string;
   onPress: () => void;
@@ -55,9 +68,15 @@ export default function AuthGradientButton({ label, onPress, disabled, variant =
   );
 }
 
+// FIELD_HEIGHT is the one shared height for this button AND every
+// auth-screen input box (LoginScreen.tsx/RegisterScreen.tsx's inputBox
+// style) — per direct correction, they must all line up exactly, not
+// just look close.
+export const FIELD_HEIGHT = 52;
+
 const styles = StyleSheet.create({
-  button: { borderRadius: 999, paddingVertical: 13, alignItems: 'center', justifyContent: 'center' },
+  button: { height: FIELD_HEIGHT, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
   label: { fontSize: 14, color: '#ffffff' },
-  outline: { borderRadius: 999, paddingVertical: 11.5, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5 },
+  outline: { height: FIELD_HEIGHT, borderRadius: 999, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5 },
   outlineLabel: { fontSize: 14 },
 });

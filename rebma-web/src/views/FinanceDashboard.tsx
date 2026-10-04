@@ -1,6 +1,6 @@
 // rebma-web/src/views/FinanceDashboard.tsx
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   FileSpreadsheet, FileText, DollarSign, Clipboard, ShieldCheck, Activity, ExternalLink, ChevronRight, MoreVertical, TrendingUp, TrendingDown
 } from 'lucide-react';
@@ -16,6 +16,7 @@ import { useRealtimeChannel } from '../hooks/useRealtimeChannel';
 import ActivityFeed from '../components/global/ActivityFeed';
 import FinanceOverviewView from './finance/OverviewView';
 import { approveAccountsReview } from './finance/OrdersQueueView';
+import { newRequestKey } from '../utils/requestKey';
 import CountUp from '../components/CountUp';
 import SidePanel from '../components/ui/SidePanel';
 import SearchableDropdown from '../components/ui/SearchableDropdown';
@@ -96,6 +97,10 @@ export default function FinanceDashboard({
 
   // Local state copies to support inline dynamic table additions, updates and deletes
   const [localPayments, setLocalPayments] = useState<FinancePayment[]>(paymentsList);
+  // Stops a double-click from saving the same payment twice.
+  const [recordingPayment, setRecordingPayment] = useState(false);
+  // One key per payment being entered; replaced after it saves.
+  const paymentKeyRef = useRef(newRequestKey());
   const [localRequisitions, setLocalRequisitions] = useState<ProductionRequest[]>(productionRequests);
   const [totalCapitalAssets, setTotalCapitalAssets] = useState(0);
 
@@ -278,6 +283,12 @@ export default function FinanceDashboard({
 
   const handleRecordPaymentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (recordingPayment) return;
+    setRecordingPayment(true);
+    try { await recordPayment(); } finally { setRecordingPayment(false); }
+  };
+
+  const recordPayment = async () => {
     if (!getSetting('forms_control', true)) { alert('Form submissions are currently disabled by the CEO.'); return; }
     const now = new Date().toISOString();
     if (payType === 'DIRECT') {
@@ -291,8 +302,10 @@ export default function FinanceDashboard({
         payment_mode: payMode,
         payment_type: 'DIRECT',
         created_at: now,
+        client_request_id: paymentKeyRef.current,
       }).select().single();
       if (error) { addNotification(`Payment save failed: ${error.message}`); return; }
+      paymentKeyRef.current = newRequestKey();
       const newPayment: FinancePayment = {
         id: inserted?.id || `PAY-${Date.now().toString().slice(-4)}`,
         clientName,
@@ -315,25 +328,20 @@ export default function FinanceDashboard({
       const order = effectiveOrders.find(o => o.id === selectedOrderId);
       if (!order) return;
       const paidAmount = amount && parseFloat(amount) > 0 ? parseFloat(amount) : order.totalAmount;
-      const { data: inserted, error } = await supabase.from('finance_payments').insert({
+      // The payment is saved together with the approval and the stock
+      // deduction in one database step (accounts_approve_order), so it can
+      // never be left behind by a failed or duplicate approval.
+      const ok = await approveAccountsReview(order, null, addNotification, {
         client_name: order.clientName,
         amount: paidAmount,
         payment_mode: payMode,
         payment_type: 'CREDIT_SETTLEMENT',
         order_id: selectedOrderId,
         created_at: now,
-      }).select().single();
-      if (error) { addNotification(`Payment save failed: ${error.message}`); return; }
-      // Reconciled onto the same accounts_review_order() path
-      // OrdersQueueView's own Approve button uses — this used to be a bare
-      // status write with no stock-shortage check, no stock deduction, no
-      // notifications, and no audit log, a real gap found during the
-      // workflow audit. Settling a credit order now goes through the exact
-      // same guarded logic.
-      const ok = await approveAccountsReview(order, null, addNotification);
+      });
       if (!ok) return;
       const newPayment: FinancePayment = {
-        id: inserted?.id || `PAY-${Date.now().toString().slice(-4)}`,
+        id: `PAY-${Date.now().toString().slice(-4)}`,
         clientName: order.clientName,
         amount: paidAmount,
         paymentMode: payMode,
@@ -344,8 +352,9 @@ export default function FinanceDashboard({
       const updated = [newPayment, ...localPayments];
       setLocalPayments(updated);
       setPaymentsList(updated);
-      setOrdersList(prev => prev.map(o => o.id === selectedOrderId ? { ...o, status: 'APPROVED' } : o));
-      addNotification(`Credit settlement recorded for ${order.clientName} (Order ${selectedOrderId}). Status set to APPROVED.`);
+      // It now waits for Risk's final release, like every approved order.
+      setOrdersList(prev => prev.map(o => o.id === selectedOrderId ? { ...o, status: 'PENDING_RISK_RELEASE' } : o));
+      addNotification(`Credit settlement recorded for ${order.clientName} (Order ${selectedOrderId}) and sent to Risk for final release.`);
       setSelectedOrderId('');
       setAmount('');
     }
@@ -1088,8 +1097,8 @@ export default function FinanceDashboard({
                   />
                 </div>
 
-                <button type="submit" title="Saves the payment to finance_payments and, for direct payments, generates the operations dispatch ticket" className="w-full py-2.5 bg-[var(--accent)] hover:opacity-90 text-white rounded-xl text-xs font-bold cursor-pointer transition-all shadow">
-                  Record Payment & Generate Ticket
+                <button type="submit" disabled={recordingPayment} title="Saves the payment to finance_payments and, for direct payments, generates the operations dispatch ticket" className="w-full py-2.5 bg-[var(--accent)] hover:opacity-90 text-white rounded-xl text-xs font-bold cursor-pointer transition-all shadow disabled:opacity-50">
+                  {recordingPayment ? 'Saving…' : 'Record Payment & Generate Ticket'}
                 </button>
               </form>
             </div>

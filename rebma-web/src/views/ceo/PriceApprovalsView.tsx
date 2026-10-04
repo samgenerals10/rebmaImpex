@@ -57,7 +57,7 @@ export default function PriceApprovalsView({ currentUser, addNotification }: Pro
     setDecidingId(req.id);
     try {
       if (approve) {
-        await supabase.from('goods_prices').upsert([{
+        const { error: upsertErr } = await supabase.from('goods_prices').upsert([{
           product_name: req.product_name,
           unit_price: req.unit_price,
           cost_price: req.cost_price,
@@ -68,31 +68,41 @@ export default function PriceApprovalsView({ currentUser, addNotification }: Pro
           updated_at: new Date().toISOString(),
           status: 'active',
         }], { onConflict: 'product_name' });
+        if (upsertErr) throw upsertErr;
       }
-      await supabase.from('goods_price_change_requests').update({
+      // FIX: decided_by is a `uuid references profiles(id)` column, but
+      // this was passing the CEO's full NAME — Postgres rejects that
+      // outright, and since none of these calls checked `error` below,
+      // the update silently failed on every decision while the code
+      // carried on as if it had succeeded (the item would reappear on
+      // the very next refresh). Pass the real user id.
+      const { error: decideErr } = await supabase.from('goods_price_change_requests').update({
         status: approve ? 'APPROVED' : 'REJECTED',
         decided_at: new Date().toISOString(),
-        decided_by: currentUser?.fullName || 'CEO',
+        decided_by: currentUser?.id || null,
         rejection_reason: approve ? null : (note || null),
       }).eq('id', req.id);
+      if (decideErr) throw decideErr;
 
       const details = `${req.product_name} → ${req.currency} ${Number(req.unit_price).toLocaleString()}${note ? `: ${note}` : ''}`;
-      await supabase.from('global_audit_history').insert({
+      const { error: auditErr } = await supabase.from('global_audit_history').insert({
         action: `${approve ? 'Approved' : 'Rejected'} price request`,
         department: 'MANAGEMENT',
         performed_by: currentUser?.fullName || 'CEO',
         reference_id: req.id,
         details,
       });
+      if (auditErr) throw auditErr;
 
       // Management raised this request and previously got told nothing
       // either way — only Marketing/Finance ever saw the resulting price
       // change (or didn't, on reject) with no explanation.
-      await supabase.from('supplier_order_notifications').insert([{
+      const { error: notifErr } = await supabase.from('supplier_order_notifications').insert([{
         message: `Price change ${approve ? 'APPROVED' : 'REJECTED'} by CEO: ${req.product_name} → ${req.currency} ${Number(req.unit_price).toLocaleString()}${note ? `: ${note}` : ''}`,
         notified_department: 'MANAGEMENT',
         read: false,
       }]);
+      if (notifErr) throw notifErr;
 
       addNotification(`${approve ? 'Approved' : 'Rejected'} price change for ${req.product_name}.`);
       setPending(prev => prev.filter(r => r.id !== req.id));

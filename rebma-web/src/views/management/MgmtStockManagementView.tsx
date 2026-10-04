@@ -94,40 +94,27 @@ export default function MgmtStockManagementView({ addNotification, currentUser }
     // documented elsewhere in this file) — they need the actual auth user id, not
     // a display name. The name still goes in notes/global_audit_history, which
     // are genuinely TEXT.
-    const { data: sessionData } = await supabase.auth.getSession();
-    const performerId = sessionData.session?.user?.id || null;
-
     setSavingCorrection(true);
     try {
-      const { error: cargoErr } = await supabase.from('cargo_intake').update({
-        country: correctionForm.country || null,
-        company: correctionForm.company || null,
-        quantity: newQty,
-        weight: Number(correctionForm.weight) || 0,
-        destination: correctionForm.destination || null,
-        discrepancies: correctionForm.discrepancies || 'None',
-        unit_price: correctionForm.unitPrice ? Number(correctionForm.unitPrice) : null,
-      }).eq('id', correctionTarget.id);
-      if (cargoErr) throw cargoErr;
-
-      if (delta !== 0) {
-        const productName = correctionTarget.product_name;
-        const { data: stockRow } = await supabase.from('stock').select('id, quantity').eq('product_name', productName).maybeSingle();
-        if (stockRow) {
-          const { error: stockErr } = await supabase.from('stock').update({ quantity: Math.max(0, Number(stockRow.quantity || 0) + delta), last_updated: new Date().toISOString(), updated_by: performerId }).eq('id', stockRow.id);
-          if (stockErr) throw stockErr;
-        }
-        const { error: ledgerErr } = await supabase.from('stock_ledger').insert({
-          product_name: productName,
-          movement_type: 'CORRECTION',
-          quantity: delta,
-          reference: correctionTarget.goods_code || correctionTarget.id,
-          notes: `Correction by ${performedBy}: qty ${oldQty} → ${newQty}. Reason: ${correctionForm.note.trim()}`,
-          performed_by: performerId,
-          created_at: new Date().toISOString(),
-        });
-        if (ledgerErr) throw ledgerErr;
-      }
+      // One database step (correct_cargo_intake): reads the quantity on
+      // record at that moment, saves the correction and moves stock by
+      // exactly the difference. Two people correcting at once can no
+      // longer double or lose a stock change.
+      const { error: corrErr } = await supabase.rpc('correct_cargo_intake', {
+        p_cargo_id: String(correctionTarget.id),
+        p_new_quantity: newQty,
+        p_fields: {
+          country: correctionForm.country || '',
+          company: correctionForm.company || '',
+          weight: correctionForm.weight || '',
+          destination: correctionForm.destination || '',
+          discrepancies: correctionForm.discrepancies || '',
+          unit_price: correctionForm.unitPrice || '',
+        },
+        p_reason: correctionForm.note.trim(),
+        p_performed_by: performedBy,
+      });
+      if (corrErr) throw corrErr;
 
       await supabase.from('global_audit_history').insert({
         action: `CORRECT_CARGO: ${correctionTarget.goods_code || correctionTarget.id} — ${correctionTarget.product_name}`,

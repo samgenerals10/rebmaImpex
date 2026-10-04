@@ -6,11 +6,13 @@ import { exportToCSV, exportToPDF } from '../utils/export';
 import { supabase } from '../lib/supabaseClient';
 import { meetingsApi } from '../services/apiClient';
 import { useRealtimeChannel } from '../hooks/useRealtimeChannel';
-import JitsiCallModal from '../components/collaborative/JitsiCallModal';
+import WebGroupCallModal from '../components/collaborative/WebGroupCallModal';
 import CountUp from '../components/CountUp';
-import { useFullscreenToggle, FullscreenButton } from '../components/global/FullscreenToggle';
 import { useCeoSettings } from '../contexts/CeoSettingsContext';
 import type { ChatMessage, BoardroomMeeting, CurrentUser } from '../types/erp';
+
+// Must match rebma-mobile/screens/boardroom/VideoConfScreen.tsx's ROOM_ID.
+const BOARDROOM_ROOM = 'RembaImpexGhanaExecutiveBoardroom_101';
 
 interface BoardroomViewProps {
   boardroomMinutes: string;
@@ -44,7 +46,6 @@ export default function BoardroomView({
 
   // Lets the video call card take over the full screen height — a fixed
   // ~480px max is cramped for an actual meeting.
-  const videoFullscreen = useFullscreenToggle();
 
   // Community chat message input
   const [announcementText, setAnnouncementText] = useState('');
@@ -68,7 +69,10 @@ export default function BoardroomView({
   // Real meetings backed by Supabase (meetings / meeting_attendees / user_notifications)
   const [realMeetings, setRealMeetings] = useState<RealMeeting[]>([]);
   const [attendeeProfiles, setAttendeeProfiles] = useState<AttendeeProfile[]>([]);
-  const [activeCall, setActiveCall] = useState<{ room: string; title: string } | null>(null);
+  // The company Boardroom room and scheduled meetings use the same
+  // WebRTC group call as the phone app (WebGroupCallModal), so web and
+  // phone users meet in the same room. The room name matches the phone's.
+  const [activeCall, setActiveCall] = useState<{ room: string; title: string; meetingId?: string; isHost?: boolean } | null>(null);
 
   const myId = currentUser?.id || '';
 
@@ -123,7 +127,7 @@ export default function BoardroomView({
 
   const handleJoinMeeting = async (mtg: RealMeeting) => {
     await meetingsApi.markJoined(mtg.id, myId);
-    setActiveCall({ room: mtg.jitsi_room, title: mtg.title });
+    setActiveCall({ room: mtg.jitsi_room, title: mtg.title, meetingId: mtg.id, isHost: mtg.organizer_id === myId });
   };
 
   const handleRsvp = async (meetingId: string, status: 'ACCEPTED' | 'DECLINED') => {
@@ -245,9 +249,9 @@ export default function BoardroomView({
                       <p className="text-[9px] text-text-muted font-mono">{mtg.date} at {mtg.time}</p>
                     </div>
                   </div>
-                  <a href="https://meet.jit.si/RembaImpexGhanaExecutiveBoardroom_101" target="_blank" rel="noreferrer" className="px-2 py-1 bg-emerald-50 text-emerald-700 rounded text-[10px] font-bold">
-                    Join Stream
-                  </a>
+                  <button onClick={() => setActiveCall({ room: BOARDROOM_ROOM, title: 'Executive Boardroom' })} className="px-2 py-1 bg-emerald-50 text-emerald-700 rounded text-[10px] font-bold cursor-pointer">
+                    Join Boardroom
+                  </button>
                 </div>
               </div>
             ))}
@@ -322,21 +326,19 @@ export default function BoardroomView({
           <div className="border-t border-[var(--border)] pt-6">
             {activeSubTab === 'VideoConf' && (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Live Jitsi Video Frame */}
-                <div className={`lg:col-span-2 p-4 md:p-6 bg-[var(--bg-card)] shadow-[var(--box-shadow)] border border-[var(--border)] space-y-4 ${videoFullscreen.expanded ? videoFullscreen.fullscreenClass : 'rounded-2xl'}`}>
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <div className="flex items-center gap-2">
-                      <Video className="w-5 h-5 text-[var(--accent)]" />
-                      <h3 className="text-base md:text-lg font-bold text-[var(--text-primary)]">Secure Jitsi Video Stream</h3>
-                    </div>
-                    <FullscreenButton expanded={videoFullscreen.expanded} onClick={videoFullscreen.toggle} />
+                {/* Company Boardroom call, the same room phone users join */}
+                <div className="lg:col-span-2 p-4 md:p-6 bg-[var(--bg-card)] shadow-[var(--box-shadow)] border border-[var(--border)] rounded-2xl space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Video className="w-5 h-5 text-[var(--accent)]" />
+                    <h3 className="text-base md:text-lg font-bold text-[var(--text-primary)]">Executive Boardroom</h3>
                   </div>
-                  <div className={`bg-black rounded-2xl overflow-hidden border border-[var(--border)] relative ${videoFullscreen.expanded ? 'h-[calc(100vh-140px)]' : 'h-60 sm:h-80 md:h-[400px] lg:h-[480px]'}`}>
-                    <iframe
-                      src="https://meet.jit.si/RembaImpexGhanaExecutiveBoardroom_101"
-                      style={{ border: 0, width: '100%', height: '100%' }}
-                      allow="camera; microphone; fullscreen; display-capture; autoplay"
-                    ></iframe>
+                  <div className="bg-[#0b0b0f] rounded-2xl border border-[var(--border)] h-60 sm:h-80 md:h-[400px] flex flex-col items-center justify-center gap-4 text-center p-6">
+                    <Video className="w-12 h-12 text-white/40" />
+                    <p className="text-sm font-semibold text-white">Company wide video room</p>
+                    <p className="text-xs text-white/60 max-w-xs">Staff on the web and on the phone app join the same call.</p>
+                    <button onClick={() => setActiveCall({ room: BOARDROOM_ROOM, title: 'Executive Boardroom' })} className="px-5 py-2.5 rounded-full bg-[var(--accent)] text-white text-sm font-bold cursor-pointer hover:opacity-90">
+                      Join Boardroom
+                    </button>
                   </div>
                 </div>
 
@@ -664,7 +666,10 @@ export default function BoardroomView({
       </div>
 
       {activeCall && (
-        <JitsiCallModal room={activeCall.room} title={activeCall.title} kind="video" onClose={() => setActiveCall(null)} />
+        <WebGroupCallModal
+          room={activeCall.room} title={activeCall.title} myId={myId} myName={currentUser?.fullName || 'Me'}
+          meetingId={activeCall.meetingId} isHost={activeCall.isHost} onClose={() => setActiveCall(null)}
+        />
       )}
     </>
   );

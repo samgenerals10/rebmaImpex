@@ -10,8 +10,10 @@ import DestinationLocator, { type Coords } from '../../components/dispatch/Desti
 import type { Order, OrderLineItem } from '../../types/erp';
 import SidePanel, { SidePanelSection } from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
+import { newRequestKey } from '../../utils/requestKey';
 import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 import RequestTimelinePanel from '../../components/global/RequestTimelinePanel';
+import DateRangeField from '../../components/ui/DateRangeField';
 
 
 const STATUS_STYLES: Record<Order['status'], string> = {
@@ -144,6 +146,9 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
   const [lineItems, setLineItems] = useState<{ productName: string; quantity: number }[]>([{ productName: '', quantity: 1 }]);
   const [availableProducts, setAvailableProducts] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  // One key per new order: a second press or a retry after a dropped
+  // connection is refused by the database instead of saved twice.
+  const orderKeyRef = useRef(newRequestKey());
   const tableFullscreen = useFullscreenToggle();
 
   const mapOrder = (r: any): Order => ({
@@ -219,6 +224,8 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
 
     setSubmitting(true);
     try {
+      // The database replaces this with the real running number
+      // (TKT-2026-000123); this value is only a fallback.
       const ticketNumber = `TKT-${Math.floor(10000 + Math.random() * 90000)}`;
       const now = new Date().toISOString();
 
@@ -279,7 +286,7 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
         p_payment_mode: form.paymentMode,
         p_total_amount: orderTotal,
         p_status: 'PENDING_RISK',
-        p_metadata: { items: itemsWithPricing, discountPercent: discountPct },
+        p_metadata: { items: itemsWithPricing, discountPercent: discountPct, clientRequestId: orderKeyRef.current },
         p_customer_id: resolvedCustomer?.id || null,
         p_destination_lat: destinationCoords?.lat ?? null,
         p_destination_lng: destinationCoords?.lng ?? null,
@@ -310,6 +317,7 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
         destination: form.destination, payment_mode: form.paymentMode,
         total_amount: orderTotal, status: 'PENDING_RISK', created_at: now,
       });
+      orderKeyRef.current = newRequestKey();
       onCreateOrder(newOrder);
       setOrders(prev => [newOrder, ...prev]);
       setShowNewModal(false);
@@ -398,10 +406,10 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
             ]}
             className="w-48"
           />
-          <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-            className="px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
-          <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-            className="px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
+          {/* Calendar instead of two typed date boxes (Part C). */}
+          <DateRangeField allowClear
+            value={{ start: dateFrom || null, end: dateTo || dateFrom || null }}
+            onChange={v => { setDateFrom(v.start || ''); setDateTo(v.end || ''); }} />
         </div>
 
         <div className="p-3">

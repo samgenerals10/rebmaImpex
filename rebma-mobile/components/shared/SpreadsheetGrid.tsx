@@ -272,6 +272,7 @@ function TableEditor({ table, onBack }: { table: { id: string; label: string }; 
                         onChangeText={(v) => setDraft((d) => ({ ...d, [c]: v }))}
                         editable={!readOnly}
                         style={readOnly ? { backgroundColor: t.colors.bgInput, opacity: 0.6 } : undefined}
+                        placeholder={readOnly ? undefined : `Enter ${c}`}
                       />
                     </View>
                     {!readOnly && (
@@ -309,13 +310,13 @@ function FreeSheetPicker({ department, refreshKey, onOpen }: { department: strin
   const load = useCallback(async () => {
     if (!profile?.id) return;
     setLoading(true);
-    const { data } = await supabase
-      .from('spreadsheets')
-      .select('id, title, created_by_name, updated_at')
-      .eq('department', department)
-      .eq('mode', 'FREE')
-      .eq('created_by_id', profile.id)
-      .order('updated_at', { ascending: false });
+    // Your own sheets, plus sheets a terminated colleague made in this
+    // department (shared_with_department), so their work isn't stuck.
+    // Falls back to your own sheets if the database update isn't run yet.
+    const base = () => supabase.from('spreadsheets').select('id, title, created_by_name, updated_at')
+      .eq('department', department).eq('mode', 'FREE').order('updated_at', { ascending: false });
+    let { data, error } = await (base() as any).or(`created_by_id.eq.${profile.id},shared_with_department.eq.true`);
+    if (error) ({ data } = await (base() as any).eq('created_by_id', profile.id));
     setSheets((data as any) || []);
     setLoading(false);
   }, [department, profile?.id]);

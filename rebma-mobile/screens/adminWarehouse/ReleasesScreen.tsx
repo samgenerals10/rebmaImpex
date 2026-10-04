@@ -100,33 +100,12 @@ export default function ReleasesScreen() {
 
   const releaseRawMaterials = async (ticket: TicketRow) => {
     setBusyId(ticket.id);
-    const now = new Date().toISOString();
-    const items = Array.isArray(ticket.details?.items) ? ticket.details.items : [];
     try {
-      for (const item of items) {
-        if (!item.materialName) continue;
-        const qty = Number(item.quantity) || 0;
-        if (qty <= 0) continue;
-
-        await supabase.from('stock_ledger').insert({
-          product_name: item.materialName,
-          movement_type: 'REMOVE',
-          quantity: qty,
-          reference: `Raw material released to Production (ticket ${ticket.id})`,
-          created_at: now,
-        });
-
-        const { data: existing } = await supabase.from('stock').select('id, quantity').ilike('product_name', item.materialName).limit(1);
-        if (existing && existing.length > 0) {
-          const newQty = Math.max(0, (existing[0].quantity || 0) - qty);
-          await supabase.from('stock').update({ quantity: newQty, last_updated: now }).eq('id', existing[0].id);
-        }
-      }
-
-      await supabase.from('fulfillment_tickets').update({ status: 'COMPLETED', updated_at: now }).eq('id', ticket.id);
-      if (ticket.details?.requisitionId) {
-        await supabase.from('material_requisitions').update({ status: 'FULFILLED', updated_at: now }).eq('id', ticket.details.requisitionId);
-      }
+      // One database step (release_raw_materials): checks the ticket is
+      // still waiting, takes the materials out of stock and closes the
+      // ticket and requisition together, so it can't be released twice.
+      const { error: releaseErr } = await supabase.rpc('release_raw_materials', { p_ticket_id: String(ticket.id) });
+      if (releaseErr) throw releaseErr;
       setRawMaterialTickets((prev) => prev.filter((x) => x.id !== ticket.id));
     } catch (e: any) {
       Alert.alert('Release Failed', e.message || 'Could not release these materials.');

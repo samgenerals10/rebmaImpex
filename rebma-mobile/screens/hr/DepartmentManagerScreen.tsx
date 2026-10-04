@@ -171,7 +171,7 @@ export default function DepartmentManagerScreen() {
         {showForm === 'edit' && (
           <>
             <Field label="Code *"><Input value={form.code} onChangeText={(v) => setForm((f) => ({ ...f, code: v.toUpperCase() }))} placeholder="e.g. FIN" autoCapitalize="characters" /></Field>
-            <Field label="Description"><Input value={form.description} onChangeText={(v) => setForm((f) => ({ ...f, description: v }))} multiline numberOfLines={2} style={{ minHeight: 56, textAlignVertical: 'top' }} /></Field>
+            <Field label="Description"><Input value={form.description} onChangeText={(v) => setForm((f) => ({ ...f, description: v }))} multiline numberOfLines={2} style={{ minHeight: 56, textAlignVertical: 'top' }} placeholder="What does this department do?" /></Field>
             <SheetSection label="Navigation Items">
               <View style={{ flexDirection: 'row', gap: t.spacing.sm, marginBottom: t.spacing.sm }}>
                 <View style={{ flex: 1 }}><Input value={newNav} onChangeText={setNewNav} placeholder="Add nav item…" /></View>

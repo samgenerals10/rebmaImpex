@@ -16,30 +16,31 @@ import Card from '../../components/ui/Card';
 import MetricCard from '../../components/ui/MetricCard';
 import BarChart from '../../components/ui/BarChart';
 
-type Period = '7D' | '30D' | '90D' | '12M';
-const PERIOD_DAYS: Record<Period, number> = { '7D': 7, '30D': 30, '90D': 90, '12M': 365 };
+import DateRangeField from '../../components/ui/DateRangeField';
+import type { CalendarValue } from '../../components/ui/CalendarPicker';
+import { lastNDays, rangeBounds, rangeDays } from '../../lib/dateRange';
 
 export default function AnalyticsScreen() {
   const t = useTheme();
-  const [period, setPeriod] = useState<Period>('7D');
+  // Calendar range instead of 7D / 30D / 90D / 12M (Part C); starts on the
+  // last 7 days, the old default.
+  const [range, setRange] = useState<CalendarValue>(() => lastNDays(7));
   const [loading, setLoading] = useState(true);
   const [visitors, setVisitors] = useState<any[]>([]);
   const [attendance, setAttendance] = useState<any[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const since = new Date();
-    since.setDate(since.getDate() - PERIOD_DAYS[period]);
-    const sinceIso = since.toISOString();
-
-    const [v, a] = await Promise.all([
-      supabase.from('visitors').select('full_name, host_name, check_in_time').gte('check_in_time', sinceIso),
-      supabase.from('attendance').select('date').gte('date', sinceIso.slice(0, 10)),
-    ]);
+    const { from, to } = rangeBounds(range);
+    let vq = supabase.from('visitors').select('full_name, host_name, check_in_time');
+    let aq = supabase.from('attendance').select('date');
+    if (from) { vq = vq.gte('check_in_time', from.toISOString()); aq = aq.gte('date', range.start!); }
+    if (to) { vq = vq.lte('check_in_time', to.toISOString()); aq = aq.lte('date', range.end!); }
+    const [v, a] = await Promise.all([vq, aq]);
     setVisitors(v.data || []);
     setAttendance(a.data || []);
     setLoading(false);
-  }, [period]);
+  }, [range]);
 
   useEffect(() => {
     load();
@@ -47,7 +48,7 @@ export default function AnalyticsScreen() {
 
   const totalVisitors = visitors.length;
   const totalCheckins = attendance.length;
-  const avgPerDay = PERIOD_DAYS[period] > 0 ? (totalVisitors / PERIOD_DAYS[period]).toFixed(1) : '0';
+  const avgPerDay = (totalVisitors / rangeDays(range)).toFixed(1);
 
   const dayBuckets: Record<string, number> = {};
   for (const v of visitors) {
@@ -68,13 +69,7 @@ export default function AnalyticsScreen() {
   return (
     <Screen>
       <View style={{ gap: t.spacing.xl }}>
-        <View style={{ flexDirection: 'row', backgroundColor: t.colors.bgCard, borderRadius: t.radius.md, borderWidth: 1, borderColor: t.colors.border, padding: 3 }}>
-          {(['7D', '30D', '90D', '12M'] as Period[]).map((p) => (
-            <Pressable key={p} onPress={() => setPeriod(p)} style={{ flex: 1, paddingVertical: t.spacing.sm, borderRadius: t.radius.sm, backgroundColor: period === p ? t.colors.accent : 'transparent', alignItems: 'center' }}>
-              <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta11.size, color: period === p ? t.colors.onAccent : t.colors.textSecondary }}>{p}</Text>
-            </Pressable>
-          ))}
-        </View>
+        <DateRangeField value={range} onChange={setRange} title="Visitor figures for" />
 
         <View style={{ gap: t.spacing.sm }}>
           <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Visitors" value={loading ? '—' : totalVisitors} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Check-Ins" value={loading ? '—' : totalCheckins} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Avg Visitors / Day" value={loading ? '—' : avgPerDay} /></View></View>

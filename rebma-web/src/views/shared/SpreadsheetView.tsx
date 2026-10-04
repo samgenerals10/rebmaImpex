@@ -614,12 +614,14 @@ export default function SpreadsheetView({ currentUser, department, addNotificati
   // Load saved sheets for this user + dept
   const loadSheets = useCallback(async () => {
     setLoadingSheets(true);
-    const { data } = await supabase
-      .from('spreadsheets')
+    // Your own sheets, plus sheets a terminated colleague made in this
+    // department (shared_with_department), so their work isn't stuck.
+    // Falls back to your own sheets if the database update isn't run yet.
+    const base = () => (supabase as any).from('spreadsheets')
       .select('id, title, mode, department, data_table, created_by_name, created_at, updated_at')
-      .eq('department', department)
-      .eq('created_by_id', currentUser?.id || '')
-      .order('updated_at', { ascending: false });
+      .eq('department', department).order('updated_at', { ascending: false });
+    let { data, error } = await base().or(`created_by_id.eq.${currentUser?.id || ''},shared_with_department.eq.true`);
+    if (error) ({ data } = await base().eq('created_by_id', currentUser?.id || ''));
     setSheets((data as SheetRecord[]) || []);
     setLoadingSheets(false);
   }, [department, currentUser?.id]);

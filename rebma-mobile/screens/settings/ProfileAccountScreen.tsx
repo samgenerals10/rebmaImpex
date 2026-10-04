@@ -24,6 +24,7 @@ import Card from '../../components/ui/Card';
 import Avatar from '../../components/ui/Avatar';
 import Input, { Field } from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
+import DepartmentChangeCard from '../../components/shared/DepartmentChangeCard';
 
 export default function ProfileAccountScreen() {
   const t = useTheme();
@@ -77,6 +78,11 @@ export default function ProfileAccountScreen() {
           <Button label={saving ? 'Saving…' : 'Save Changes'} onPress={save} loading={saving} disabled={saving} fullWidth />
         </View>
       </Card>
+      {!profile.isAdmin && (
+        <View style={{ marginTop: t.spacing.lg }}>
+          <DepartmentChangeCard userId={profile.id} currentDepartment={dept.label} />
+        </View>
+      )}
     </Screen>
   );
 }

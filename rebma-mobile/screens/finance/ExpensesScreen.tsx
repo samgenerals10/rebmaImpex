@@ -213,10 +213,10 @@ export default function ExpensesScreen() {
         footer={<Button label={submitting ? 'Saving…' : 'Save Expense'} onPress={logExpense} loading={submitting} disabled={submitting} fullWidth />}
       >
         <Field label="Category"><SearchablePicker value={form.category} onChange={(v) => setForm((f) => ({ ...f, category: v }))} options={CATEGORIES.map((c) => ({ value: c, label: c }))} /></Field>
-        <Field label="Description *"><Input value={form.description} onChangeText={(v) => setForm((f) => ({ ...f, description: v }))} /></Field>
-        <Field label="Amount (GHS) *"><Input value={form.amount} onChangeText={(v) => setForm((f) => ({ ...f, amount: v }))} keyboardType="decimal-pad" /></Field>
+        <Field label="Description *"><Input value={form.description} onChangeText={(v) => setForm((f) => ({ ...f, description: v }))} placeholder="What is this expense for?" /></Field>
+        <Field label="Amount (GHS) *"><Input value={form.amount} onChangeText={(v) => setForm((f) => ({ ...f, amount: v }))} keyboardType="decimal-pad" placeholder="0.00" /></Field>
         <Field label="Date"><Input value={form.date} onChangeText={(v) => setForm((f) => ({ ...f, date: v }))} placeholder="YYYY-MM-DD" /></Field>
-        <Field label="Notes" hint="Optional"><Input value={form.notes} onChangeText={(v) => setForm((f) => ({ ...f, notes: v }))} /></Field>
+        <Field label="Notes" hint="Optional"><Input value={form.notes} onChangeText={(v) => setForm((f) => ({ ...f, notes: v }))} placeholder="Any additional context..." /></Field>
       </Sheet>
 
       <Sheet
@@ -227,8 +227,8 @@ export default function ExpensesScreen() {
         footer={<Button label={savingEdit ? 'Saving…' : 'Save Changes'} onPress={saveEdit} loading={savingEdit} disabled={savingEdit} fullWidth />}
       >
         <Field label="Category"><SearchablePicker value={editForm.category} onChange={(v) => setEditForm((f) => ({ ...f, category: v }))} options={CATEGORIES.map((c) => ({ value: c, label: c }))} /></Field>
-        <Field label="Description *"><Input value={editForm.description} onChangeText={(v) => setEditForm((f) => ({ ...f, description: v }))} /></Field>
-        <Field label="Amount (GHS) *"><Input value={editForm.amount} onChangeText={(v) => setEditForm((f) => ({ ...f, amount: v }))} keyboardType="decimal-pad" /></Field>
+        <Field label="Description *"><Input value={editForm.description} onChangeText={(v) => setEditForm((f) => ({ ...f, description: v }))} placeholder="What is this expense for?" /></Field>
+        <Field label="Amount (GHS) *"><Input value={editForm.amount} onChangeText={(v) => setEditForm((f) => ({ ...f, amount: v }))} keyboardType="decimal-pad" placeholder="0.00" /></Field>
         <Field label="Date"><Input value={editForm.date} onChangeText={(v) => setEditForm((f) => ({ ...f, date: v }))} placeholder="YYYY-MM-DD" /></Field>
       </Sheet>
 

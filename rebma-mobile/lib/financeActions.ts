@@ -82,7 +82,10 @@ export function generateReceiptNumber(): string {
 // and the Risk/Marketing notifications plus the audit log entry, in one
 // place, so neither Orders Queue nor Record Payment can drift into a bare
 // status write again.
-export async function approveAccountsReview(order: any, performedBy: string): Promise<boolean> {
+// Approval, stock deduction and (when given) the payment now happen in ONE
+// database step, accounts_approve_order() (supabase_atomic_approvals.sql):
+// all of it or none of it. Same as web.
+export async function approveAccountsReview(order: any, performedBy: string, payment?: Record<string, unknown> | null): Promise<boolean> {
   const shortages = await checkStockAvailability(order);
   if (shortages.length > 0) {
     Alert.alert('Insufficient Stock', shortageMessage(shortages));
@@ -93,14 +96,11 @@ export async function approveAccountsReview(order: any, performedBy: string): Pr
   const performedByEmail = sessionData?.session?.user?.email || null;
   const now = new Date().toISOString();
 
-  const { error: rpcErr } = await supabase.rpc('accounts_review_order', {
-    p_order_id: order.id, p_action: 'approve', p_note: null,
-    p_approved_by: performedBy, p_approved_by_email: performedByEmail,
+  const { error: rpcErr } = await supabase.rpc('accounts_approve_order', {
+    p_order_id: order.id, p_approved_by: performedBy, p_approved_by_email: performedByEmail,
+    p_payment: payment ?? null,
   });
-  if (rpcErr) { Alert.alert('Approval Failed', rpcErr.message); return false; }
-
-  const ticketRef = order.ticket_number || `ORD-${String(order.id).slice(0, 6).toUpperCase()}`;
-  await deductStockForOrder(order, `Order Approved: ${ticketRef}`);
+  if (rpcErr) { Alert.alert('Not approved', rpcErr.message); return false; }
   await supabase.from('supplier_order_notifications').insert([
     { message: `Accounts cleared order ${order.ticket_number || order.id} for ${order.client_name} and it's awaiting Risk's final release check.`, notified_department: 'RISK', read: false },
     { message: `Your order ${order.ticket_number || order.id} has cleared Accounts and is awaiting Risk's final release check.`, notified_department: 'MARKETING', read: false },

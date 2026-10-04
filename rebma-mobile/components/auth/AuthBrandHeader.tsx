@@ -7,6 +7,7 @@
 // second line, Register keeps its own subtitle.
 import { View, Text, Image, StyleSheet } from 'react-native';
 import { useTheme } from '../../theme/ThemeProvider';
+import { INK, MUTED } from './AuthGradientButton';
 
 const LOGO_ASPECT = 398 / 237;
 const LOGO_HEIGHT = 34;
@@ -14,18 +15,28 @@ const LOGO_HEIGHT = 34;
 interface Props {
   title: string;
   subtitle?: string;
+  /** Extra gap between the logo/wordmark (untouched, stays right under
+   * the back button) and the title below it — per direct correction,
+   * Login pushes "Sign in" down without moving the logo, so this is an
+   * opt-in addition on top of the shared brandName gap, not a change to
+   * it. Undefined/0 for every other caller (Register), which keeps its
+   * original spacing exactly as it was. */
+  titleMarginTop?: number;
 }
 
-export default function AuthBrandHeader({ title, subtitle }: Props) {
+export default function AuthBrandHeader({ title, subtitle, titleMarginTop }: Props) {
   const t = useTheme();
 
   return (
     <View style={styles.wrap}>
       <Image source={require('../../assets/logo-mark.png')} style={styles.logo} resizeMode="contain" />
-      <Text style={[styles.brandName, { fontFamily: t.font.extrabold, color: t.colors.textPrimary }]}>REBMA IMPEX</Text>
-      <Text style={[styles.title, { fontFamily: t.font.extrabold, color: t.colors.textPrimary }]}>{title}</Text>
+      {/* Fixed INK/MUTED, not theme tokens — see AuthGradientButton.tsx's
+          comment: this header always sits on a hardcoded white
+          background, so its text must never follow dark mode. */}
+      <Text style={[styles.brandName, { fontFamily: t.font.extrabold, color: INK }]}>REBMA IMPEX</Text>
+      <Text style={[styles.title, { fontFamily: t.font.extrabold, color: INK, marginTop: titleMarginTop || 0 }]}>{title}</Text>
       {subtitle ? (
-        <Text style={[styles.subtitle, { fontFamily: t.font.regular, color: t.colors.textMuted }]}>{subtitle}</Text>
+        <Text style={[styles.subtitle, { fontFamily: t.font.semibold, color: MUTED }]}>{subtitle}</Text>
       ) : null}
     </View>
   );

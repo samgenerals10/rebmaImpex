@@ -5,6 +5,7 @@
 // Control Center's "Password Reset Authority" setting actually gates.
 import { createClient } from '@supabase/supabase-js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { isRateLimited } from './_shared/rateLimit';
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -18,6 +19,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
+  if (await isRateLimited(supabaseAdmin, req, res, 'reset-user-password', 30, 60)) return;
+
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Authentication required.' });
@@ -30,11 +33,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const { data: callerProfiles } = await supabaseAdmin
     .from('profiles')
-    .select('full_name, role, is_admin')
+    .select('full_name, role, is_admin, status')
     .eq('id', callerData.user.id)
     .limit(1);
   const callerProfile = callerProfiles?.[0];
   if (!callerProfile) return res.status(403).json({ error: 'Caller profile not found.' });
+  if (String(callerProfile.status || '').toUpperCase() !== 'ACTIVE') return res.status(403).json({ error: 'Your account is not active.' });
 
   // password_reset_authority (Control Center, System Controls): ceo_only /
   // hr_and_ceo / specific_user. 'specific_user' has no configured target to
@@ -58,11 +62,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const { data: targetProfiles } = await supabaseAdmin
     .from('profiles')
-    .select('id, full_name, email')
+    .select('id, full_name, email, role, is_admin')
     .eq('id', userId)
     .limit(1);
   const targetProfile = targetProfiles?.[0];
   if (!targetProfile?.email) return res.status(404).json({ error: 'User profile or email not found.' });
+  // No one resets a CEO's password from here; a CEO changes his own.
+  if (targetProfile.is_admin || String(targetProfile.role || '').toUpperCase() === 'CEO') {
+    return res.status(403).json({ error: "A CEO's password can't be reset from here." });
+  }
 
   const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(targetProfile.email);
   if (resetError) {

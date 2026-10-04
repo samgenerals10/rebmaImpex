@@ -342,7 +342,7 @@ export default function FinovaShell({ activeDepartment, currentUser, children }:
           }
         } else {
           // Default fallback to general profiles
-          const { count: staffCount } = await supabase.from('profiles').select('id', { count: 'exact', head: true });
+          const { count: staffCount } = await supabase.from('profiles').select('id', { count: 'exact', head: true }).neq('status', 'TERMINATED');
           const { data: recProfiles } = await supabase
             .from('profiles_directory')
             .select('full_name, role, status, created_at')

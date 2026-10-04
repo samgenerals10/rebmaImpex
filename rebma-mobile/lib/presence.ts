@@ -13,6 +13,7 @@
 // calls subscribeToLiveUsers(), neither ever opens a second channel.
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from './supabaseClient';
+import { unregisterPushNotifications } from './pushNotifications';
 
 export const LIVE_USERS_CHANNEL = 'live-users';
 
@@ -52,7 +53,8 @@ function getSharedChannel(): RealtimeChannel {
   });
   channel.on('broadcast', { event: FORCE_SIGNOUT_EVENT }, ({ payload }: { payload: { targetUserId: string } }) => {
     if (myUserId && payload.targetUserId === myUserId) {
-      supabase.auth.signOut();
+      // Remove this phone's alert address first (needs the live session).
+      unregisterPushNotifications(myUserId).finally(() => supabase.auth.signOut());
     }
   });
   channel.subscribe(async (status) => {

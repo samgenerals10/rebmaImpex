@@ -8,7 +8,8 @@
 // D24), a client-side credit pre-check mirroring the Phase 6
 // create_order_with_stock_check() RPC's own server-side enforcement, and
 // submission via that exact RPC (not a plain insert).
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { newRequestKey } from '../../lib/requestKey';
 import { View, Text, Pressable } from 'react-native';
 import { Alert } from '../../lib/appAlert';
 import { Plus, Trash2 } from 'lucide-react-native';
@@ -45,6 +46,8 @@ const PAYMENT_MODES = [
   { value: 'CREDIT', label: 'Credit' },
 ];
 
+// Only a fallback: the database replaces it with the real running number
+// (TKT-2026-000123).
 function ticketNumber() {
   return `TKT-${Math.floor(10000 + Math.random() * 90000)}`;
 }
@@ -73,6 +76,9 @@ export default function CreateOrderScreen() {
   const [destination, setDestination] = useState<LocationValue | null>(null);
   const [lineItems, setLineItems] = useState<LineItem[]>([{ productName: '', quantity: '1' }]);
   const [submitting, setSubmitting] = useState(false);
+  // One key per new order: a second tap or a retry after a dropped
+  // connection is refused by the database instead of saved twice.
+  const orderKeyRef = useRef(newRequestKey());
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -178,7 +184,7 @@ export default function CreateOrderScreen() {
       p_payment_mode: paymentMode,
       p_total_amount: orderTotal,
       p_status: 'PENDING_RISK',
-      p_metadata: { items: itemsWithPricing, discountPercent: discountPct },
+      p_metadata: { items: itemsWithPricing, discountPercent: discountPct, clientRequestId: orderKeyRef.current },
       p_customer_id: resolvedCustomer?.id || null,
       p_destination_lat: destination?.lat ?? null,
       p_destination_lng: destination?.lng ?? null,
@@ -232,6 +238,7 @@ export default function CreateOrderScreen() {
         created_at: new Date().toISOString(),
       }]);
     } catch {}
+    orderKeyRef.current = newRequestKey();
     Alert.alert('Order Created', `Ticket ${inserted?.ticket_number || ''} sent to Risk for approval.`);
     setClientName('');
     setPhone('');

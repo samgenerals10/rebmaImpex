@@ -62,7 +62,7 @@ const defaults: Record<string, any> = {
   ceo_cosign_order_threshold: 50000,
   ceo_must_approve_payroll: false,
   ceo_must_approve_departments: false,
-  ceo_must_approve_registrations: false,
+  ceo_must_approve_registrations: true,
   ceo_activity_visible_to_others: false,
 };
 

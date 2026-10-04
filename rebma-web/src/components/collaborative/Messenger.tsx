@@ -8,14 +8,20 @@ import {
   MessageSquare, Search, Users, X, Send, Paperclip, Smile, Reply,
   Phone, Video, Check, CheckCheck, Plus, FileText,
   Pin, Star, Pencil, Trash2, Forward, Copy, MoreVertical, BellOff, Bell, EyeOff,
-  Images, Mic, Square, Download, Clock, Archive,
+  Images, Mic, Square, Download, Clock, Archive, Ban, PauseCircle, UserPlus,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../../lib/supabaseClient';
 import { messenger } from '../../services/apiClient';
 import { subscribeToLiveUsers, type PresencePayload } from '../../lib/presence';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
-import JitsiCallModal from './JitsiCallModal';
+import WebCallModal from './WebCallModal';
+import WebGroupCallModal from './WebGroupCallModal';
+import {
+  checkChatGate, sendChatInvite, respondToInvite, fetchPendingInvitesToMe,
+  blockState, blockUser, unblockUser, suspensionState, suspendChannel, unsuspendChannel,
+  type IncomingInvite,
+} from '../../utils/chatAccess';
 import type { CurrentUser } from '../../types/erp';
 
 interface Props {
@@ -135,6 +141,7 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
   const directMessagesEnabled = getSetting('direct_messages_enabled', true);
   const callsEnabled = getSetting('messenger_calls_enabled', true);
   const attachmentsEnabled = getSetting('messenger_attachments_enabled', true);
+  const suspensionEnabled = getSetting('chat_suspension_allowed', true);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [channels, setChannels] = useState<Channel[]>([]);
   const [dmChannelByUser, setDmChannelByUser] = useState<Record<string, Channel>>({});
@@ -150,7 +157,10 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
   const [showNewChannel, setShowNewChannel] = useState(false);
   const [newChannelName, setNewChannelName] = useState('');
   const [newChannelMembers, setNewChannelMembers] = useState<string[]>([]);
-  const [activeCall, setActiveCall] = useState<{ room: string; title: string; kind: 'voice' | 'video'; channelId: string; callMessageId?: string; memberIds: string[] } | null>(null);
+  // A direct chat's call is 1:1 (WebCallModal); any other chat's call is a
+  // group call (WebGroupCallModal). Both speak the same protocol as the
+  // phone app, so web and phone users can be in the same call.
+  const [activeCall, setActiveCall] = useState<{ room: string; title: string; kind: 'voice' | 'video'; channelId: string; callMessageId?: string; memberIds: string[]; isGroup: boolean; otherUserId: string; isHost: boolean; meetingId?: string } | null>(null);
   const [attachmentUrls, setAttachmentUrls] = useState<Record<string, string>>({});
   // Phase 11.0 gap fixes — per-user access gate + unread badges.
   const [messagingAllowed, setMessagingAllowed] = useState(true);
@@ -196,6 +206,15 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
   const [savingGroupInfo, setSavingGroupInfo] = useState(false);
   const [addingGroupMembers, setAddingGroupMembers] = useState(false);
   const [newGroupMemberIds, setNewGroupMemberIds] = useState<string[]>([]);
+  // Chat invites, blocks and suspensions (utils/chatAccess.ts). The
+  // database refuses a direct message that breaks these rules; this state
+  // only shows the person why and what they can do about it.
+  const [inviteGate, setInviteGate] = useState<{ otherId: string; name: string; department: string; status: 'invite_required' | 'invite_pending' | 'invite_denied' } | null>(null);
+  const [pendingInvites, setPendingInvites] = useState<IncomingInvite[]>([]);
+  const [showInvites, setShowInvites] = useState(false);
+  const [dmBlock, setDmBlock] = useState({ byMe: false, byThem: false });
+  const [dmSuspension, setDmSuspension] = useState({ byMe: false, byOther: false });
+  const [sendError, setSendError] = useState('');
   const groupPhotoInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const multiImageInputRef = useRef<HTMLInputElement>(null);
@@ -389,6 +408,15 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
   const openDm = async (otherId: string) => {
     let ch = dmChannelByUser[otherId];
     if (!ch) {
+      // Starting a new direct chat: check the rules first.
+      const gate = await checkChatGate(otherId);
+      if (gate === 'blocked_by_them') { alert("You can't message this person. They are not accepting messages from you."); return; }
+      if (gate === 'blocked_by_me') { alert("You've blocked this person. Unblock them first to message them."); return; }
+      if (gate !== 'allowed') {
+        const pr = profiles.find(x => x.id === otherId);
+        setInviteGate({ otherId, name: pr?.fullName || 'This person', department: pr?.department || '', status: gate });
+        return;
+      }
       ch = await messenger.getOrCreateDmChannel(myId, otherId);
       setDmChannelByUser(prev => ({ ...prev, [otherId]: ch }));
       setChannels(prev => prev.some(c => c.id === ch.id) ? prev : [...prev, ch]);
@@ -413,6 +441,80 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
     const ch = channels.find(c => c.id === targetChannelId);
     if (ch) setActiveChannel(ch);
   }, [isOpen, targetChannelId, channels]);
+
+  const loadPendingInvites = useCallback(() => {
+    if (!myId) return;
+    fetchPendingInvitesToMe(myId).then(setPendingInvites).catch(() => setPendingInvites([]));
+  }, [myId]);
+  useEffect(() => { if (isOpen) loadPendingInvites(); }, [isOpen, loadPendingInvites]);
+
+  const sendInvite = async () => {
+    if (!inviteGate) return;
+    try {
+      await sendChatInvite(myId, inviteGate.otherId);
+      messenger.notifyUsers([inviteGate.otherId], 'chat_invite', 'New chat invite', `${myName} wants to start a chat with you.`).catch(() => {});
+      alert(`Invite sent. ${inviteGate.name} needs to accept it before you can chat.`);
+    } catch (e: any) {
+      alert(`Could not send the invite: ${e.message}`);
+    } finally {
+      setInviteGate(null);
+    }
+  };
+
+  const answerInvite = async (invite: IncomingInvite, accept: boolean) => {
+    try {
+      await respondToInvite(invite.id, accept);
+      setPendingInvites(prev => prev.filter(i => i.id !== invite.id));
+      if (accept) {
+        const ch = await messenger.getOrCreateDmChannel(myId, invite.fromUserId);
+        setDmChannelByUser(prev => ({ ...prev, [invite.fromUserId]: ch }));
+        setChannels(prev => prev.some(c => c.id === ch.id) ? prev : [...prev, ch]);
+      }
+    } catch (e: any) {
+      alert(`That did not work: ${e.message}`);
+    }
+  };
+
+  // The other person in the open direct chat, if it is one.
+  const activeDmOtherId = useMemo(() => {
+    if (!activeChannel || activeChannel.type !== 'dm') return '';
+    return Object.entries(dmChannelByUser).find(([, c]) => c.id === activeChannel.id)?.[0] || '';
+  }, [activeChannel, dmChannelByUser]);
+
+  useEffect(() => {
+    setSendError('');
+    setDmBlock({ byMe: false, byThem: false });
+    setDmSuspension({ byMe: false, byOther: false });
+    if (!activeChannel || activeChannel.type !== 'dm' || !activeDmOtherId || !myId) return;
+    blockState(myId, activeDmOtherId).then(setDmBlock).catch(() => {});
+    suspensionState(activeChannel.id, myId).then(setDmSuspension).catch(() => {});
+  }, [activeChannel, activeDmOtherId, myId]);
+
+  const toggleBlock = async () => {
+    if (!activeDmOtherId) return;
+    try {
+      if (dmBlock.byMe) { await unblockUser(myId, activeDmOtherId); setDmBlock(b => ({ ...b, byMe: false })); }
+      else {
+        if (!window.confirm('Block this person? Neither of you will be able to send direct messages to the other until you unblock them.')) return;
+        await blockUser(myId, activeDmOtherId); setDmBlock(b => ({ ...b, byMe: true }));
+      }
+    } catch (e: any) { alert(`That did not work: ${e.message}`); }
+  };
+
+  const toggleSuspend = async () => {
+    if (!activeChannel) return;
+    try {
+      if (dmSuspension.byMe) { await unsuspendChannel(activeChannel.id, myId); setDmSuspension(x => ({ ...x, byMe: false })); }
+      else { await suspendChannel(activeChannel.id, myId); setDmSuspension(x => ({ ...x, byMe: true })); }
+    } catch (e: any) { alert(`That did not work: ${e.message}`); }
+  };
+
+  const dmSuspended = suspensionEnabled && (dmSuspension.byMe || dmSuspension.byOther);
+  const dmLocked = activeChannel?.type === 'dm' && (dmBlock.byMe || dmBlock.byThem || dmSuspended);
+  const dmLockMessage = dmBlock.byMe ? "You've blocked this person. Unblock them to send messages again."
+    : dmBlock.byThem ? 'This person is not accepting messages from you.'
+    : dmSuspension.byMe ? 'You suspended this chat. Resume it to send messages again.'
+    : 'The other person suspended this chat. Only they can resume it.';
 
   // Who's online right now — reuses the exact same shared presence
   // channel every session already tracks itself on for Live Users
@@ -590,15 +692,21 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
     if (activeChannel.type === 'everyone' && !globalChatEnabled) return;
     if (activeChannel.type === 'group' && !departmentChatEnabled) return;
     if (activeChannel.type === 'dm' && !directMessagesEnabled) return;
+    if (dmLocked) return;
     const text = composer;
     setComposer('');
     setReplyTo(null);
     setMentionQuery(null);
+    setSendError('');
     try {
       await messenger.sendMessage(activeChannel.id, myId, myName, text, replyTo ? { replyToId: replyTo.id } : undefined);
       notifyOthersOfMessage(text);
       notifyMentions(text);
-    } catch (e) { console.error('Send failed:', e); }
+    } catch (e: any) {
+      // Put the text back so it isn't lost, and say why it didn't go.
+      setComposer(text);
+      setSendError(e?.message || 'Your message was not sent.');
+    }
   };
 
   // Detects a trailing "@partial" token as the user types, to drive the
@@ -785,6 +893,14 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
 
   const handleCreateChannel = async () => {
     if (!newChannelName.trim() || newChannelMembers.length === 0) return;
+    // A group with just one other person counts as a direct chat for
+    // invites and blocks (the database enforces it), so say so up front.
+    const others = newChannelMembers.filter(id => id !== myId);
+    if (others.length === 1) {
+      const gate = await checkChatGate(others[0]);
+      if (gate === 'blocked_by_them' || gate === 'blocked_by_me') { alert("You can't start a chat with this person while one of you has blocked the other."); return; }
+      if (gate !== 'allowed') { alert('A group with just one other person works like a direct chat. This person is in another department, so send them a chat invite first, or add more people to the group.'); return; }
+    }
     const ch = await messenger.createGroupChannel(newChannelName.trim(), newChannelMembers, myId);
     setChannels(prev => [...prev, ch]);
     setActiveChannel(ch);
@@ -798,8 +914,38 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
     const memberIds = activeChannelMemberIds.current.length > 0 ? activeChannelMemberIds.current : [myId];
     try {
       const meeting = await messenger.startCall(activeChannel.id, memberIds, myId, myName, kind);
-      setActiveCall({ room: meeting.jitsi_room, title: meeting.title, kind, channelId: activeChannel.id, callMessageId: meeting.callMessageId, memberIds });
-    } catch (e) { console.error('Failed to start call:', e); }
+      setActiveCall({
+        room: meeting.jitsi_room, title: meeting.title, kind, channelId: activeChannel.id, callMessageId: meeting.callMessageId, memberIds,
+        isGroup: activeChannel.type !== 'dm', otherUserId: memberIds.find(id => id !== myId) || '', isHost: true, meetingId: meeting.id,
+      });
+    } catch (e: any) { alert(`The call could not be started: ${e?.message || 'unknown error'}`); }
+  };
+
+  // Joining a call someone posted in a chat (from the message or from
+  // Call History). Not the organizer's own "end call" moment, so no
+  // missed-call check fires on close (no callMessageId).
+  const joinPostedCall = async (meetingRowId: string | null | undefined, channelId: string) => {
+    if (!meetingRowId) return;
+    const { data } = await supabase.from('meetings').select('*').eq('id', meetingRowId).limit(1);
+    const row = data && data[0];
+    if (!row) { alert('This call is no longer available.'); return; }
+    let channelType = channels.find(c => c.id === channelId)?.type;
+    if (!channelType) {
+      const { data: chRow } = await supabase.from('channels').select('type').eq('id', channelId).maybeSingle();
+      channelType = chRow?.type;
+    }
+    let otherUserId = '';
+    if (channelType === 'dm') {
+      otherUserId = Object.entries(dmChannelByUser).find(([, c]) => c.id === channelId)?.[0] || '';
+      if (!otherUserId) {
+        const { data: members } = await supabase.from('channel_members').select('user_id').eq('channel_id', channelId);
+        otherUserId = (members || []).map((m: any) => m.user_id as string).find(id => id !== myId) || '';
+      }
+    }
+    setActiveCall({
+      room: row.jitsi_room, title: row.title, kind: String(row.title).toLowerCase().includes('video') ? 'video' : 'voice',
+      channelId, memberIds: [], isGroup: !otherUserId, otherUserId, isHost: row.organizer_id === myId, meetingId: row.id,
+    });
   };
 
   // Phase 11.5 — fires once, when the call screen actually closes, for
@@ -844,9 +990,17 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
                 <h3 className="font-bold text-sm text-[var(--text-primary)] flex items-center gap-2">
                   <MessageSquare className="w-4 h-4 text-[var(--accent)]" /> Messenger
                 </h3>
-                <button onClick={() => setShowNewChannel(true)} className="p-1.5 rounded-lg hover:bg-[var(--accent-light)] text-[var(--accent)] cursor-pointer" title="New group channel">
-                  <Plus size={16} />
-                </button>
+                <div className="flex items-center gap-1">
+                  <button onClick={() => setShowInvites(true)} className="relative p-1.5 rounded-lg hover:bg-[var(--accent-light)] text-[var(--accent)] cursor-pointer" title="Chat invites">
+                    <UserPlus size={16} />
+                    {pendingInvites.length > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] px-0.5 rounded-full bg-rose-500 text-white text-[8px] font-bold flex items-center justify-center">{pendingInvites.length}</span>
+                    )}
+                  </button>
+                  <button onClick={() => setShowNewChannel(true)} className="p-1.5 rounded-lg hover:bg-[var(--accent-light)] text-[var(--accent)] cursor-pointer" title="New group channel">
+                    <Plus size={16} />
+                  </button>
+                </div>
               </div>
               <div className="px-3 pt-3 pb-2">
                 <div className="relative flex items-center gap-1">
@@ -997,7 +1151,19 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
                           <Clock size={16} />
                         </button>
                       )}
-                      {callsEnabled && (
+                      {activeChannel.type === 'dm' && activeDmOtherId && (
+                        <>
+                          {suspensionEnabled && (
+                            <button onClick={toggleSuspend} className={`p-2 rounded-lg hover:bg-[var(--accent-light)] cursor-pointer ${dmSuspension.byMe ? 'text-amber-500' : 'text-[var(--text-muted)]'}`} title={dmSuspension.byMe ? 'Resume chat' : 'Suspend chat'}>
+                              <PauseCircle size={16} />
+                            </button>
+                          )}
+                          <button onClick={toggleBlock} className={`p-2 rounded-lg hover:bg-[var(--accent-light)] cursor-pointer ${dmBlock.byMe ? 'text-rose-500' : 'text-[var(--text-muted)]'}`} title={dmBlock.byMe ? 'Unblock' : 'Block'}>
+                            <Ban size={16} />
+                          </button>
+                        </>
+                      )}
+                      {callsEnabled && !dmLocked && (
                         <>
                           <button onClick={() => startCall('voice')} className="p-2 rounded-lg hover:bg-[var(--accent-light)] text-[var(--accent)] cursor-pointer" title="Voice call"><Phone size={16} /></button>
                           <button onClick={() => startCall('video')} className="p-2 rounded-lg hover:bg-[var(--accent-light)] text-[var(--accent)] cursor-pointer" title="Video call"><Video size={16} /></button>
@@ -1052,13 +1218,7 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
                           {isDeleted ? (
                             <p className={`text-xs italic ${mine ? 'text-white/70' : 'text-[var(--text-muted)]'}`}>This message was deleted</p>
                           ) : isCall ? (
-                            <button onClick={async () => {
-                              const { data } = await supabase.from('meetings').select('*').eq('id', msg.attachment_url).limit(1);
-                              // Rejoining someone else's call — not the
-                              // organizer's own "end call" moment, so no
-                              // missed-call check fires on close (no callMessageId).
-                              if (data && data[0]) setActiveCall({ room: data[0].jitsi_room, title: data[0].title, kind: data[0].title.includes('Video') ? 'video' : 'voice', channelId: msg.channel_id, memberIds: [] });
-                            }} className={`flex items-center gap-2 text-xs font-bold cursor-pointer underline ${mine ? 'text-white' : 'text-[var(--accent)]'}`}>
+                            <button onClick={() => joinPostedCall(msg.attachment_url, msg.channel_id)} className={`flex items-center gap-2 text-xs font-bold cursor-pointer underline ${mine ? 'text-white' : 'text-[var(--accent)]'}`}>
                               {msg.content}
                             </button>
                           ) : msg.attachment_type === 'image' && msg.attachment_urls && msg.attachment_urls.length > 1 ? (
@@ -1174,7 +1334,20 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
                 </div>
               )}
 
-              {activeChannel && (
+              {sendError && (
+                <div className="mx-4 mb-1 px-3 py-1.5 rounded-lg bg-rose-500/10 flex items-center justify-between gap-2">
+                  <p className="text-[11px] text-rose-600">{sendError}</p>
+                  <button onClick={() => setSendError('')} className="p-0.5 cursor-pointer text-rose-600"><X size={12} /></button>
+                </div>
+              )}
+
+              {activeChannel && dmLocked && !editingMessage && (
+                <div className="p-3 border-t border-[var(--border)] shrink-0">
+                  <p className="px-3 py-2 rounded-xl bg-amber-500/10 text-xs font-semibold text-amber-600 text-center">{dmLockMessage}</p>
+                </div>
+              )}
+
+              {activeChannel && !(dmLocked && !editingMessage) && (
                 <div className="flex items-center gap-2 p-3 border-t border-[var(--border)] shrink-0">
                   {editingMessage ? (
                     <>
@@ -1233,6 +1406,55 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
         </motion.div>
       )}
     </AnimatePresence>
+
+    {/* Chat invite needed before a new cross-department direct chat */}
+    {inviteGate && (
+      <div className="fixed inset-0 z-[1600] bg-black/50 flex items-center justify-center p-4" onClick={() => setInviteGate(null)}>
+        <div className="bg-[var(--bg-card)] rounded-2xl shadow-2xl w-full max-w-sm p-5 space-y-3 text-center" onClick={e => e.stopPropagation()}>
+          <p className="font-bold text-sm text-[var(--text-primary)]">{inviteGate.name}</p>
+          {inviteGate.department && <p className="text-xs text-[var(--text-muted)]">{inviteGate.department}</p>}
+          <p className="text-xs text-[var(--text-secondary)]">
+            {inviteGate.status === 'invite_pending'
+              ? 'You already sent an invite. It is waiting for them to accept.'
+              : inviteGate.status === 'invite_denied'
+                ? 'Your last invite was declined. You can send another one.'
+                : 'This person is in another department. Send a chat invite, and you can message them once they accept it.'}
+          </p>
+          <div className="flex justify-center gap-2 pt-1">
+            <button onClick={() => setInviteGate(null)} className="px-4 py-2 text-xs font-semibold rounded-xl border border-[var(--border)] text-[var(--text-secondary)] cursor-pointer">Close</button>
+            {inviteGate.status !== 'invite_pending' && (
+              <button onClick={sendInvite} className="px-4 py-2 text-xs font-bold text-white rounded-xl cursor-pointer" style={{ background: 'var(--accent)' }}>Send Invite</button>
+            )}
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Chat invites sent to me */}
+    {showInvites && (
+      <div className="fixed inset-0 z-[1600] bg-black/50 flex items-center justify-center p-4" onClick={() => setShowInvites(false)}>
+        <div className="bg-[var(--bg-card)] rounded-2xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+          <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border)]">
+            <h3 className="font-bold text-sm text-[var(--text-primary)] flex items-center gap-2"><UserPlus size={14} /> Chat Invites</h3>
+            <button onClick={() => setShowInvites(false)} className="p-1 cursor-pointer"><X size={16} /></button>
+          </div>
+          <div className="p-3 max-h-[60vh] overflow-y-auto">
+            {pendingInvites.length === 0 ? (
+              <p className="text-xs text-center text-[var(--text-muted)] py-8">No pending invites.</p>
+            ) : pendingInvites.map(inv => (
+              <div key={inv.id} className="flex items-center gap-3 px-2 py-2.5 border-b border-[var(--border)] last:border-0">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-[var(--text-primary)] truncate">{inv.fromName}</p>
+                  <p className="text-[10px] text-[var(--text-muted)]">{inv.fromDepartment}{inv.fromDepartment ? ' · ' : ''}{new Date(inv.createdAt).toLocaleDateString()}</p>
+                </div>
+                <button onClick={() => answerInvite(inv, false)} className="px-3 py-1.5 text-[11px] font-semibold rounded-xl border border-[var(--border)] text-[var(--text-secondary)] cursor-pointer">Decline</button>
+                <button onClick={() => answerInvite(inv, true)} className="px-3 py-1.5 text-[11px] font-bold text-white rounded-xl cursor-pointer" style={{ background: 'var(--accent)' }}>Accept</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )}
 
     {/* New Channel modal */}
     {showNewChannel && (
@@ -1445,10 +1667,7 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
             {messages.filter(m => m.attachment_type === 'call').reverse().map(m => (
               <button
                 key={m.id}
-                onClick={async () => {
-                  const { data } = await supabase.from('meetings').select('*').eq('id', m.attachment_url).limit(1);
-                  if (data && data[0]) { setActiveCall({ room: data[0].jitsi_room, title: data[0].title, kind: data[0].title.includes('Video') ? 'video' : 'voice', channelId: m.channel_id, memberIds: [] }); setShowCallHistory(false); }
-                }}
+                onClick={async () => { setShowCallHistory(false); await joinPostedCall(m.attachment_url, m.channel_id); }}
                 className="w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl hover:bg-[var(--accent-light)] cursor-pointer text-left"
               >
                 <div className="w-8 h-8 rounded-full bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center shrink-0">
@@ -1507,7 +1726,18 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
     )}
 
     {activeCall && (
-      <JitsiCallModal room={activeCall.room} title={activeCall.title} kind={activeCall.kind} onClose={endActiveCall} />
+      activeCall.isGroup ? (
+        <WebGroupCallModal
+          room={activeCall.room} title={activeCall.title} myId={myId} myName={myName}
+          meetingId={activeCall.meetingId} isHost={activeCall.isHost} startWithCamera={activeCall.kind === 'video'}
+          onClose={endActiveCall}
+        />
+      ) : (
+        <WebCallModal
+          room={activeCall.room} title={activeCall.title} kind={activeCall.kind}
+          myId={myId} myName={myName} otherUserId={activeCall.otherUserId} onClose={endActiveCall}
+        />
+      )
     )}
     </>
   );

@@ -17,6 +17,9 @@ import {
   XAxis, YAxis, Tooltip, PieChart, Pie, Cell
 } from 'recharts';
 
+import DateRangeField from '../../components/ui/DateRangeField';
+import type { CalendarValue } from '../../components/ui/CalendarPicker';
+import { dayKey, trendBuckets, bucketKeyFor } from '../../utils/dateRange';
 interface Props {
   addNotification?: (msg: string) => void;
   setActiveSubTab?: (tab: string) => void;
@@ -45,7 +48,14 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
   const [financeExpenses, setFinanceExpenses] = useState<any[]>([]);
 
   const [cashflowTab, setCashflowTab] = useState<'income' | 'expense' | 'savings'>('income');
-  const [earnPeriod, setEarnPeriod] = useState('6M');
+  // Calendar range instead of 3 / 6 / 12 Months (Part C). The old
+  // dropdown changed nothing (the charts were fixed at 6 months); this
+  // range drives the Earning, Spending and Cash Flow charts. Starts on the
+  // last 6 months, the old default.
+  const [earnRange, setEarnRange] = useState<CalendarValue>(() => {
+    const now = new Date();
+    return { start: dayKey(new Date(now.getFullYear(), now.getMonth() - 5, 1)), end: dayKey(now) };
+  });
   const [activities, setActivities] = useState<any[]>([]);
   const [goodsPrices, setGoodsPrices] = useState<any[]>([]);
   const [soldLedger, setSoldLedger] = useState<any[]>([]);
@@ -259,19 +269,13 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
     : null;
 
   // Earning Overview
-  const last6Months = Array.from({ length: 6 }).map((_, i) => {
-    const d = new Date();
-    d.setMonth(d.getMonth() - (5 - i));
-    return {
-      monthKey: `${d.getFullYear()}-${d.getMonth()}`,
-      monthName: MONTHS[d.getMonth()],
-      value: 0
-    };
-  });
+  // One bucket per day for short ranges, per month for long ones.
+  const { granularity: earnGranularity, buckets: earnBuckets } = trendBuckets(earnRange);
+  const bucketOf = (dateLike: string) => bucketKeyFor(new Date(dateLike), earnGranularity);
+  const last6Months = earnBuckets.map(b => ({ monthKey: b.key, monthName: b.label, value: 0 }));
   orders.forEach(o => {
     if (['APPROVED', 'PROCESSING', 'DELIVERED', 'OUT_FOR_DELIVERY'].includes(o.status)) {
-      const oDate = new Date(o.created_at);
-      const key = `${oDate.getFullYear()}-${oDate.getMonth()}`;
+      const key = bucketOf(o.created_at);
       const item = last6Months.find(m => m.monthKey === key);
       if (item) {
         item.value += Number(o.total_amount);
@@ -282,10 +286,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
 
   // Spending Breakdown
   const spendingData = last6Months.map(item => {
-    const monthTxns = transactions.filter(t => {
-      const d = new Date(t.date);
-      return `${d.getFullYear()}-${d.getMonth()}` === item.monthKey && t.type === 'out';
-    });
+    const monthTxns = transactions.filter(t => bucketOf(t.date) === item.monthKey && t.type === 'out');
     const logistics = monthTxns.filter(t => t.department === 'LOGISTICS').reduce((sum, t) => sum + Number(t.amount), 0);
     const operations = monthTxns.filter(t => t.department === 'OPERATIONS').reduce((sum, t) => sum + Number(t.amount), 0);
     const payroll = monthTxns.filter(t => ['HR', 'PAYROLL'].includes(t.department)).reduce((sum, t) => sum + Number(t.amount), 0);
@@ -299,10 +300,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
 
   // Cash Flow
   const cashflowData = last6Months.map(item => {
-    const monthTxns = transactions.filter(t => {
-      const d = new Date(t.date);
-      return `${d.getFullYear()}-${d.getMonth()}` === item.monthKey;
-    });
+    const monthTxns = transactions.filter(t => bucketOf(t.date) === item.monthKey);
     const income = monthTxns.filter(t => t.type === 'in').reduce((sum, t) => sum + Number(t.amount), 0);
     const expense = monthTxns.filter(t => t.type === 'out').reduce((sum, t) => sum + Number(t.amount), 0);
     return {
@@ -795,12 +793,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
               <h3 className="font-bold text-sm text-[var(--text-primary)]">Earning Overview</h3>
               <p className="text-xs text-[var(--text-muted)]">Total revenue trend</p>
             </div>
-            <SearchableDropdown
-              value={earnPeriod}
-              onChange={setEarnPeriod}
-              options={[{ value: '3M', label: '3 Months' }, { value: '6M', label: '6 Months' }, { value: '12M', label: '12 Months' }]}
-              className="w-32"
-            />
+            <DateRangeField value={earnRange} onChange={setEarnRange} align="right" />
           </div>
           <div className="h-44">
             {earningData.every(e => e.value === 0) ? (

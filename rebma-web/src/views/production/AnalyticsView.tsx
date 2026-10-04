@@ -9,105 +9,47 @@ import { exportToCSV } from '../../utils/export';
 import CountUp from '../../components/CountUp';
 import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 
-type Period = '7D' | '30D' | '90D' | '12M';
+import DateRangeField from '../../components/ui/DateRangeField';
+import type { CalendarValue } from '../../components/ui/CalendarPicker';
+import { lastNDays, inRange, rangeLabel, trendBuckets, bucketKeyFor } from '../../utils/dateRange';
 
 interface OutputRecord { date: string; product: string; boxes: number; sachets: number; quality: string; received: number; }
 
-const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-const ORDERED_DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-function periodCutoff(period: Period): Date {
-  const d = new Date();
-  if (period === '7D') d.setDate(d.getDate() - 7);
-  else if (period === '30D') d.setDate(d.getDate() - 30);
-  else if (period === '90D') d.setDate(d.getDate() - 90);
-  else d.setFullYear(d.getFullYear() - 1);
-  return d;
-}
+// production_logs.date is a plain 'YYYY-MM-DD'; read it at midday so it
+// never slips to the previous day in any time zone.
+const asDate = (d: string) => new Date(d.length === 10 ? `${d}T12:00:00` : d);
 
-function buildOutputTrend(records: OutputRecord[], period: Period) {
-  const cutoff = periodCutoff(period);
-  const filtered = records.filter(r => new Date(r.date) >= cutoff);
-
-  if (period === '7D') {
-    const byDay: Record<string, { boxes: number; sachets: number }> = {};
-    ORDERED_DAYS.forEach(d => { byDay[d] = { boxes: 0, sachets: 0 }; });
-    filtered.forEach(r => {
-      const name = DAY_NAMES[new Date(r.date).getDay()];
-      if (byDay[name]) { byDay[name].boxes += r.boxes; byDay[name].sachets += r.sachets; }
-    });
-    return ORDERED_DAYS.map(d => ({ label: d, ...byDay[d] }));
-  }
-
-  if (period === '30D') {
-    const now = Date.now();
-    const buckets = ['W1','W2','W3','W4'];
-    const byWeek: Record<string, { boxes: number; sachets: number }> = {};
-    buckets.forEach(w => { byWeek[w] = { boxes: 0, sachets: 0 }; });
-    filtered.forEach(r => {
-      const diff = Math.floor((now - new Date(r.date).getTime()) / 86400000);
-      const w = diff <= 7 ? 'W4' : diff <= 14 ? 'W3' : diff <= 21 ? 'W2' : 'W1';
-      byWeek[w].boxes += r.boxes; byWeek[w].sachets += r.sachets;
-    });
-    return buckets.map(w => ({ label: w, ...byWeek[w] }));
-  }
-
-  // 90D + 12M — group by month
-  const byMonth: Record<string, { boxes: number; sachets: number }> = {};
-  filtered.forEach(r => {
-    const d = new Date(r.date);
-    const key = MONTH_NAMES[d.getMonth()];
-    if (!byMonth[key]) byMonth[key] = { boxes: 0, sachets: 0 };
-    byMonth[key].boxes += r.boxes; byMonth[key].sachets += r.sachets;
+// Calendar range (Part C): one bar per day for short ranges, per month for
+// long ones.
+function buildOutputTrend(records: OutputRecord[], range: CalendarValue) {
+  const { granularity, buckets } = trendBuckets(range);
+  const totals: Record<string, { boxes: number; sachets: number }> = {};
+  records.filter(r => inRange(r.date, range)).forEach(r => {
+    const k = bucketKeyFor(asDate(r.date), granularity);
+    if (!totals[k]) totals[k] = { boxes: 0, sachets: 0 };
+    totals[k].boxes += r.boxes; totals[k].sachets += r.sachets;
   });
-  // return in chronological order
-  const months = period === '90D' ? MONTH_NAMES.slice(-3) : MONTH_NAMES;
-  return months.filter(m => byMonth[m]).map(m => ({ label: m, ...byMonth[m] }));
+  return buckets.map(b => ({ label: b.label, boxes: totals[b.key]?.boxes || 0, sachets: totals[b.key]?.sachets || 0 }));
 }
 
 // Input (goods_received) and output (boxes_produced) both come from the
 // same production_logs row — this ties them to the actual production run
 // instead of a company-wide stock_ledger tally that has no guaranteed
 // relationship to what a specific batch consumed.
-function buildEfficiency(output: OutputRecord[], period: Period) {
-  const cutoff = periodCutoff(period);
-
-  if (period === '7D') {
-    const outByDay: Record<string, number> = {};
-    const inByDay: Record<string, number> = {};
-    ORDERED_DAYS.forEach(d => { outByDay[d] = 0; inByDay[d] = 0; });
-    output.filter(r => new Date(r.date) >= cutoff).forEach(r => {
-      const n = DAY_NAMES[new Date(r.date).getDay()];
-      if (n in outByDay) { outByDay[n] += r.boxes; inByDay[n] += r.received; }
-    });
-    return ORDERED_DAYS.map(d => ({
-      label: d, input: inByDay[d], output: outByDay[d],
-      efficiency: inByDay[d] > 0 ? +((outByDay[d] / inByDay[d]) * 100).toFixed(1) : 0,
-    }));
-  }
-
-  if (period === '30D') {
-    const now = Date.now();
-    const buckets = ['W1','W2','W3','W4'];
-    const outByWeek: Record<string, number> = {}; const inByWeek: Record<string, number> = {};
-    buckets.forEach(w => { outByWeek[w] = 0; inByWeek[w] = 0; });
-    const week = (ts: number) => { const d = Math.floor((now - ts) / 86400000); return d <= 7 ? 'W4' : d <= 14 ? 'W3' : d <= 21 ? 'W2' : 'W1'; };
-    output.filter(r => new Date(r.date) >= cutoff).forEach(r => { const w = week(new Date(r.date).getTime()); outByWeek[w] += r.boxes; inByWeek[w] += r.received; });
-    return buckets.map(w => ({ label: w, input: inByWeek[w], output: outByWeek[w], efficiency: inByWeek[w] > 0 ? +((outByWeek[w] / inByWeek[w]) * 100).toFixed(1) : 0 }));
-  }
-
-  // 90D + 12M
-  const outByMonth: Record<string, number> = {}; const inByMonth: Record<string, number> = {};
-  output.filter(r => new Date(r.date) >= cutoff).forEach(r => {
-    const k = MONTH_NAMES[new Date(r.date).getMonth()];
-    outByMonth[k] = (outByMonth[k] || 0) + r.boxes;
-    inByMonth[k] = (inByMonth[k] || 0) + r.received;
+function buildEfficiency(output: OutputRecord[], range: CalendarValue) {
+  const { granularity, buckets } = trendBuckets(range);
+  const outBy: Record<string, number> = {};
+  const inBy: Record<string, number> = {};
+  output.filter(r => inRange(r.date, range)).forEach(r => {
+    const k = bucketKeyFor(asDate(r.date), granularity);
+    outBy[k] = (outBy[k] || 0) + r.boxes;
+    inBy[k] = (inBy[k] || 0) + r.received;
   });
-  const months = period === '90D' ? MONTH_NAMES.slice(-3) : MONTH_NAMES;
-  return months.filter(m => outByMonth[m] || inByMonth[m]).map(m => ({
-    label: m, input: inByMonth[m] || 0, output: outByMonth[m] || 0,
-    efficiency: (inByMonth[m] || 0) > 0 ? +(((outByMonth[m] || 0) / inByMonth[m]) * 100).toFixed(1) : 0,
+  return buckets.map(b => ({
+    label: b.label, input: inBy[b.key] || 0, output: outBy[b.key] || 0,
+    efficiency: (inBy[b.key] || 0) > 0 ? +(((outBy[b.key] || 0) / inBy[b.key]) * 100).toFixed(1) : 0,
   }));
 }
 
@@ -173,24 +115,21 @@ function buildSummaryTable(records: OutputRecord[]) {
 interface Props { addNotification: (msg: string) => void; }
 
 export default function ProductionAnalyticsView({ addNotification }: Props) {
-  const [period, setPeriod] = useState<Period>('7D');
+  // Calendar range instead of 7D / 30D / 90D / 12M (Part C); starts on the
+  // last 7 days, the old default.
+  const [range, setRange] = useState<CalendarValue>(() => lastNDays(7));
   const [outputRecords, setOutputRecords] = useState<OutputRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Bounded to exactly the window the selected period needs, not a flat
-  // row cap — a flat cap silently drops older rows once daily volume push
-  // past it (was 2000 rows regardless of period, so a busy production line
-  // on the 12M view could already be missing months of history with no
-  // indication anything was cut off).
-  const PERIOD_DAYS: Record<Period, number> = { '7D': 7, '30D': 30, '90D': 90, '12M': 365 };
-
+  // Bounded to exactly the chosen dates, not a flat row cap, so a busy
+  // production line never has rows silently cut off.
   const fetchData = () => {
     setLoading(true);
-    const since = new Date();
-    since.setDate(since.getDate() - PERIOD_DAYS[period]);
-    supabase.from('production_logs')
-      .select('date, product_name, boxes_produced, total_sachets, quality_result, goods_received')
-      .gte('date', since.toISOString().slice(0, 10))
+    let q = supabase.from('production_logs')
+      .select('date, product_name, boxes_produced, total_sachets, quality_result, goods_received');
+    if (range.start) q = q.gte('date', range.start);
+    if (range.end) q = q.lte('date', range.end);
+    q
       .order('date', { ascending: false })
       .limit(5000)
       .then(({ data }) => {
@@ -208,10 +147,10 @@ export default function ProductionAnalyticsView({ addNotification }: Props) {
       }, () => { setLoading(false); });
   };
 
-  useEffect(() => { fetchData(); }, [period]);
+  useEffect(() => { fetchData(); }, [range]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const trend = buildOutputTrend(outputRecords, period);
-  const eff = buildEfficiency(outputRecords, period);
+  const trend = buildOutputTrend(outputRecords, range);
+  const eff = buildEfficiency(outputRecords, range);
   const qualityData = buildQualityData(outputRecords);
   const productData = buildProductData(outputRecords);
   const monthlyOutput = buildMonthlyOutput(outputRecords);
@@ -224,8 +163,8 @@ export default function ProductionAnalyticsView({ addNotification }: Props) {
   const qualityPassRow = qualityData.find(d => d.name === 'Passed');
 
   const kpis = [
-    { label: 'Boxes Produced', value: totalBoxes, suffix: '', decimals: 0, trend: 'neutral', sub: `${period} period` },
-    { label: 'Sachets Produced', value: totalSachets, suffix: '', decimals: 0, trend: 'neutral', sub: `${period} period` },
+    { label: 'Boxes Produced', value: totalBoxes, suffix: '', decimals: 0, trend: 'neutral', sub: rangeLabel(range) },
+    { label: 'Sachets Produced', value: totalSachets, suffix: '', decimals: 0, trend: 'neutral', sub: rangeLabel(range) },
     { label: 'Quality Pass Rate', value: qualityPassRow ? qualityPassRow.value : null, suffix: '%', decimals: 0, trend: 'neutral', sub: 'pass / partial / fail' },
     { label: 'Avg Efficiency', value: avgEff > 0 ? avgEff : null, suffix: '%', decimals: 1, trend: 'neutral', sub: 'input to output ratio' },
   ];
@@ -240,16 +179,11 @@ export default function ProductionAnalyticsView({ addNotification }: Props) {
           <p className="text-sm text-[var(--text-muted)] mt-0.5">Track output, quality, efficiency and targets</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {(['7D', '30D', '90D', '12M'] as Period[]).map(p => (
-            <button key={p} onClick={() => setPeriod(p)}
-              className={`px-3 py-1.5 text-xs font-bold rounded-xl border cursor-pointer transition-all ${period === p ? 'bg-[var(--accent)] text-white border-[var(--accent)]' : 'bg-[var(--bg-card)] border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--accent-light)]'}`}>
-              {p}
-            </button>
-          ))}
+          <DateRangeField value={range} onChange={setRange} align="right" />
           <button onClick={fetchData} className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 bg-[var(--bg-card)] border border-[var(--border)] text-[var(--text-secondary)] rounded-xl cursor-pointer hover:bg-[var(--accent-light)] transition-colors">
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
           </button>
-          <button onClick={() => exportToCSV(trend, ['label','boxes','sachets'], `production_analytics_${period}`)}
+          <button onClick={() => exportToCSV(trend, ['label','boxes','sachets'], `production_analytics_${range.start}_to_${range.end}`)}
             className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 bg-[var(--bg-card)] border border-[var(--border)] text-[var(--text-secondary)] rounded-xl cursor-pointer hover:bg-[var(--accent-light)] transition-colors">
             <Download className="w-3.5 h-3.5" /> Export
           </button>

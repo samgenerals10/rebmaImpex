@@ -14,6 +14,9 @@ import CountUp from '../../components/CountUp';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import type { ProductionRequest, CurrentUser } from '../../types/erp';
 
+import DateRangeField from '../../components/ui/DateRangeField';
+import type { CalendarValue } from '../../components/ui/CalendarPicker';
+import { lastNDays, inRange, trendBuckets, bucketKeyFor } from '../../utils/dateRange';
 interface OutputRecord {
   id: string; date: string; product: string;
   received: number; boxes: number; sachets: number;
@@ -30,7 +33,6 @@ interface Props {
 }
 
 
-const ORDERED_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 function MiniLine({ data }: { data: number[] }) {
   const max = Math.max(...data, 1);
@@ -104,11 +106,13 @@ export default function ProductionOverviewView({ currentUser, productionRequests
   const [output, setOutput] = useState<OutputRecord[]>([]);
   const [wip, setWip] = useState<WipItem[]>([]);
   const [goodsReceived, setGoodsReceived] = useState(0);
-  const [receivedByDay, setReceivedByDay] = useState<Record<string, number>>({});
   const [orderMenu, setOrderMenu] = useState<string | null>(null);
   const [kpiMenu, setKpiMenu] = useState<number | null>(null);
   const [outputTab, setOutputTab] = useState<'boxes' | 'sachets' | 'both'>('both');
-  const [outputPeriod, setOutputPeriod] = useState('Week');
+  // Calendar range instead of Today / Week / Month / Quarter (Part C). The
+  // old dropdown changed nothing, and the chart summed every record ever
+  // into Mon..Sun; now it shows the chosen days. Starts on the last 7 days.
+  const [outputRange, setOutputRange] = useState<CalendarValue>(() => lastNDays(7));
 
   useEffect(() => {
     supabase.from('production_logs').select('*').order('date', { ascending: false }).then(({ data }) => {
@@ -147,16 +151,6 @@ export default function ProductionOverviewView({ currentUser, productionRequests
   // has no guaranteed relationship to what a specific batch consumed.
   useEffect(() => {
     setGoodsReceived(output.reduce((s, r) => s + r.received, 0));
-    const byDay: Record<string, number> = {};
-    ORDERED_DAYS.forEach(d => { byDay[d] = 0; });
-    output.forEach(r => {
-      const d = new Date(r.date);
-      if (!isNaN(d.getTime())) {
-        const dayName = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()];
-        if (dayName in byDay) byDay[dayName] += r.received;
-      }
-    });
-    setReceivedByDay(byDay);
   }, [output]);
 
   const today = new Date().toISOString().slice(0, 10);
@@ -166,21 +160,20 @@ export default function ProductionOverviewView({ currentUser, productionRequests
   const passRate = output.length ? Math.round((output.filter(r => r.quality === 'Pass').length / output.length) * 100) : 0;
   const ordersToday = productionRequests.filter(r => r.createdAt?.startsWith(today)).length;
 
-  // Build output chart data from last 7 records in production_output
-  const outputChartData = (() => {
-    const byDay: Record<string, { boxes: number; sachets: number }> = {};
-    ORDERED_DAYS.forEach(d => { byDay[d] = { boxes: 0, sachets: 0 }; });
-    output.forEach(r => {
-      const d = new Date(r.date);
-      if (!isNaN(d.getTime())) {
-        const dayName = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()];
-        if (byDay[dayName]) {
-          byDay[dayName].boxes += r.boxes;
-          byDay[dayName].sachets += r.sachets;
-        }
-      }
+  // Output (and goods received) for the chosen dates: one bar per day for
+  // short ranges, per month for long ones.
+  const { outputChartData, receivedByBucket } = (() => {
+    const { granularity, buckets } = trendBuckets(outputRange);
+    const totals: Record<string, { boxes: number; sachets: number; received: number }> = {};
+    output.filter(r => inRange(r.date, outputRange)).forEach(r => {
+      const k = bucketKeyFor(new Date(r.date.length === 10 ? `${r.date}T12:00:00` : r.date), granularity);
+      if (!totals[k]) totals[k] = { boxes: 0, sachets: 0, received: 0 };
+      totals[k].boxes += r.boxes; totals[k].sachets += r.sachets; totals[k].received += r.received;
     });
-    return ORDERED_DAYS.map(d => ({ day: d, boxes: byDay[d].boxes, sachets: byDay[d].sachets }));
+    return {
+      outputChartData: buckets.map(b => ({ day: b.label, boxes: totals[b.key]?.boxes || 0, sachets: totals[b.key]?.sachets || 0 })),
+      receivedByBucket: Object.fromEntries(buckets.map(b => [b.label, totals[b.key]?.received || 0])) as Record<string, number>,
+    };
   })();
 
   // Derive quality data from production_output quality field
@@ -201,7 +194,7 @@ export default function ProductionOverviewView({ currentUser, productionRequests
   // Input vs output by day of week — received from real stock_ledger ADD movements
   const inputOutputData = outputChartData.map(d => ({
     day: d.day,
-    received: receivedByDay[d.day] ?? 0,
+    received: receivedByBucket[d.day] ?? 0,
     produced: d.boxes,
   })).filter(d => d.produced > 0 || d.received > 0).slice(0, 6);
 
@@ -303,12 +296,7 @@ export default function ProductionOverviewView({ currentUser, productionRequests
               <p className="text-xs text-[var(--text-muted)]">Daily production volumes</p>
             </div>
             <div className="flex items-center gap-2">
-              <SearchableDropdown
-                value={outputPeriod}
-                onChange={setOutputPeriod}
-                className="min-w-[110px] text-[10px]"
-                options={['Today', 'Week', 'Month', 'Quarter'].map(p => ({ value: p, label: p }))}
-              />
+              <DateRangeField value={outputRange} onChange={setOutputRange} align="right" />
               <div className="flex bg-[var(--bg-input)] rounded-lg border border-[var(--border)] p-0.5">
                 {(['boxes', 'sachets', 'both'] as const).map(tab => (
                   <button key={tab} onClick={() => setOutputTab(tab)}

@@ -22,7 +22,7 @@
 // Also the SETTINGS department's own "home" screen — includes the
 // ModuleLauncher into the other 5 sub-tabs, with ControlCenter hidden for
 // non-admins (matching web's own nav-level admin gate).
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Check, ChevronLeft, Palette } from 'lucide-react-native';
@@ -39,6 +39,7 @@ import ModuleLauncher from '../../components/chrome/ModuleLauncher';
 import Sheet from '../../components/ui/Sheet';
 import ColorPicker from '../../components/ui/ColorPicker';
 import NotificationSoundPicker from '../../components/settings/NotificationSoundPicker';
+import { getDeviceAlertsEnabled, setDeviceAlertsEnabled, registerForPushNotifications, unregisterPushNotifications } from '../../lib/pushNotifications';
 
 const OPTIONS: { value: FontSizePreference; label: string }[] = [
   { value: 'small', label: 'Small' },
@@ -56,6 +57,30 @@ export default function AppearanceScreen() {
   const [bgPickerOpen, setBgPickerOpen] = useState(false);
   const [draftAccent, setDraftAccent] = useState(t.colors.accent);
   const [draftBg, setDraftBg] = useState(t.colors.bgPage);
+  const [alertsOn, setAlertsOn] = useState(true);
+  const [alertsBusy, setAlertsBusy] = useState(false);
+  const [alertsNote, setAlertsNote] = useState('');
+
+  useEffect(() => {
+    getDeviceAlertsEnabled().then(setAlertsOn);
+  }, []);
+
+  // Per phone. Off removes this phone's alert address, so nothing buzzes
+  // here; the bell still keeps every alert.
+  const setAlerts = async (on: boolean) => {
+    if (!profile || alertsBusy || on === alertsOn) return;
+    setAlertsBusy(true);
+    setAlertsNote('');
+    await setDeviceAlertsEnabled(on);
+    setAlertsOn(on);
+    if (on) {
+      const res = await registerForPushNotifications(profile.id);
+      if (!res.token) setAlertsNote('Alerts are on, but this phone cannot receive them yet. Allow notifications for Rebma in the phone settings, and use the installed app rather than a test app.');
+    } else {
+      await unregisterPushNotifications(profile.id);
+    }
+    setAlertsBusy(false);
+  };
 
   // Settings is reached by a one-way `setActiveDepartment('SETTINGS')` call
   // (the department switcher's Settings row, or the header menu) — that
@@ -316,6 +341,22 @@ export default function AppearanceScreen() {
               <Button label="Dark Mode" size="sm" variant={t.darkMode ? 'primary' : 'ghost'} onPress={() => !t.darkMode && t.toggleDarkMode()} />
             </View>
           </View>
+        </Card>
+
+        {/* Alerts on this device */}
+        <Card>
+          <SectionHeader title="Alerts on this device" subtitle="Show alerts on this phone's lock screen. Turning this off only affects this phone, and the bell still keeps every alert." />
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+            <View style={{ flex: 1 }}>
+              <Button label="On" size="sm" variant={alertsOn ? 'primary' : 'ghost'} onPress={() => setAlerts(true)} disabled={alertsBusy} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Button label="Off" size="sm" variant={!alertsOn ? 'primary' : 'ghost'} onPress={() => setAlerts(false)} disabled={alertsBusy} />
+            </View>
+          </View>
+          {alertsNote ? (
+            <Text style={{ marginTop: t.spacing.sm, fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textMuted }}>{alertsNote}</Text>
+          ) : null}
         </Card>
 
         {/* Notification Sound Picker */}

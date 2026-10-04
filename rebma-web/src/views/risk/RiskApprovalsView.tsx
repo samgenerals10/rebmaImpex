@@ -336,46 +336,28 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
         // per unit, no selling price. Those are Management's job.
         // Approving adds the cargo exactly as submitted; nothing about the
         // record itself changes except its status. Confirmed 2026-09-16.
-        const newDbStatus = action === 'approve' ? 'APPROVED' : action === 'return' ? 'RETURNED_FOR_CORRECTION' : 'REJECTED';
         const rawId = String(selectedItem.raw.id);
         const cargoRow = selectedItem.raw as Record<string, any>;
-        const incomingQty = Number(cargoRow.quantity || cargoRow.qty_received || 0);
 
-        await supabase.from('cargo_intake').update({
-          status: newDbStatus,
-          rejection_reason: action === 'approve' ? null : modalNote,
-        }).eq('id', rawId);
-
-        if (action === 'approve') {
-          const productName = String(cargoRow.product_name || 'Unknown Product');
-          const productCode = String(cargoRow.goods_code || rawId.slice(0, 8).toUpperCase());
-          const unit = String(cargoRow.goods_type || cargoRow.unit || 'units');
-          const now = new Date().toISOString();
-
-          const { data: existingStock } = await supabase.from('stock').select('id, quantity').eq('product_name', productName).maybeSingle().then(r => r, () => ({ data: null, error: null }));
-          if (existingStock) {
-            await supabase.from('stock').update({ quantity: (Number(existingStock.quantity) || 0) + incomingQty, last_updated: now }).eq('id', existingStock.id);
-          } else {
-            const { error: stockErr } = await supabase.from('stock').upsert([{ product_name: productName, product_code: productCode, category: 'INCOMING_GOODS', quantity: incomingQty, maximum_level: incomingQty * 2 || 1000, minimum_level: Math.round(incomingQty * 0.1) || 50, unit, last_updated: now }], { onConflict: 'product_name' });
-            if (stockErr) addNotification?.(`Stock table update failed: ${stockErr.message}.`);
-          }
-
-          await supabase.from('stock_ledger').insert({
-            product_name: productName,
-            movement_type: 'ADD',
-            quantity: incomingQty,
-            reference: `Cargo approved: ${selectedItem.requestId}`,
-            notes: selectedItem.description,
-            created_at: now
-          });
-        }
+        // One database step (review_cargo_intake): checks the cargo is
+        // still waiting, records the decision and adds the stock, all at
+        // once. Two people approving together can no longer add it twice.
+        const { error: cargoErr } = await supabase.rpc('review_cargo_intake', {
+          p_cargo_id: rawId,
+          p_stage: 'risk',
+          p_action: action,
+          p_note: modalNote,
+          p_reference: selectedItem.requestId,
+          p_description: selectedItem.description,
+        });
+        if (cargoErr) throw cargoErr;
 
         const verbLabel = action === 'approve' ? 'APPROVED' : action === 'return' ? 'RETURNED FOR CORRECTION' : 'REJECTED';
         await notifyDecision({
           title: `Cargo Intake ${verbLabel}`,
           message: `Cargo intake ${verbLabel} by Risk: ${selectedItem.description} — ${modalNote}`,
           department: 'ADMIN_WAREHOUSE',
-          personId: cargoRow.logged_by_id || null,
+          personId: cargoRow.handled_by_id || cargoRow.logged_by_id || null,
         });
       }
 
@@ -404,7 +386,7 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
           title: `Sales Order ${verbLabel}`,
           message: `Order ${verbLabel} by Risk: ${selectedItem.description} — ${modalNote}`,
           department: 'MARKETING',
-          personId: orderRow.created_by || null,
+          personId: orderRow.handled_by_id || orderRow.created_by || null,
         });
       }
 
@@ -434,7 +416,7 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
           title: `Order Final Release ${verbLabel}`,
           message: `Order ${verbLabel} by Risk at final release: ${selectedItem.description} — ${modalNote}`,
           department: 'MARKETING',
-          personId: (selectedItem.raw as any).created_by || null,
+          personId: (selectedItem.raw as any).handled_by_id || (selectedItem.raw as any).created_by || null,
         });
       }
 
@@ -448,7 +430,7 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
           title: `Customer Verification ${verbLabel}`,
           message: `Customer ${verbLabel} by Risk: ${selectedItem.description} — ${modalNote}`,
           department: 'MARKETING',
-          personId: (selectedItem.raw as any).registered_by_id || null,
+          personId: (selectedItem.raw as any).handled_by_id || (selectedItem.raw as any).registered_by_id || null,
         });
       }
 
@@ -487,9 +469,9 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
 
       const verbPastTense = action === 'approve' ? 'Approved' : action === 'reject' ? 'Rejected' : 'Returned for correction';
       addNotification?.(`${selectedItem.requestId} ${verbPastTense}${modalNote ? ` ("${modalNote}")` : ''}`);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      addNotification?.('Action execution failed.');
+      addNotification?.(`Not done: ${e?.message || 'the action failed.'}`);
     } finally {
       setSubmitting(false);
     }

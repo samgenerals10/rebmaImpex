@@ -15,12 +15,14 @@ import { Alert } from '../../lib/appAlert';
 import { MapPin } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../theme/ThemeProvider';
+import { getFleetSpeedLimitKmh, DEFAULT_FLEET_SPEED_LIMIT_KMH } from '../../lib/fleetSpeedLimit';
 import Screen from '../../components/ui/Screen';
 import DataList, { type DataColumn } from '../../components/ui/DataList';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
 import Tabs from '../../components/ui/Tabs';
 import FleetMap from '../../components/shared/FleetMap';
+import SpeedGauge from '../../components/shared/SpeedGauge';
 
 interface DriverRow {
   id: string;
@@ -56,29 +58,52 @@ export default function TrackingScreen() {
   const [drivers, setDrivers] = useState<Combined[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  // Per direct correction — the speed gauge needed to be visible without
+  // having to tap a driver first, so it now lives here too, above both
+  // tabs, fed live by FleetMap's own onSelectedChange callback.
+  const [tracked, setTracked] = useState<{ name: string; speedKmh: number | null } | null>(null);
+  const [fleetLimit, setFleetLimit] = useState(DEFAULT_FLEET_SPEED_LIMIT_KMH);
+  const handleSelectedChange = useCallback((info: { name: string; speedKmh: number | null } | null) => {
+    setTracked(info);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const poll = async () => {
+      const limit = await getFleetSpeedLimitKmh();
+      if (!cancelled) setFleetLimit(limit);
+    };
+    poll();
+    const interval = setInterval(poll, 15000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, []);
 
   const load = useCallback(async () => {
-    const { data: driverRows } = await supabase.from('drivers').select('id, full_name, status, vehicle_id').order('full_name');
-    const driverIds = (driverRows || []).map((d: any) => d.id);
+    // Same direct correction as FleetMap.tsx: driver_locations.driver_id
+    // references drivers.driver_id (the short business id), not this
+    // row's own `id` UUID — querying by `id` can never match, which is
+    // why this list has never actually shown a real last-ping time.
+    const { data: driverRows } = await supabase.from('drivers').select('id, driver_id, full_name, status, vehicle_id').order('full_name');
+    const businessIds = (driverRows || []).map((d: any) => d.driver_id).filter(Boolean);
     let locations: LocationRow[] = [];
-    if (driverIds.length > 0) {
+    if (businessIds.length > 0) {
       const { data: locRows } = await supabase
         .from('driver_locations')
         .select('driver_id, latitude, longitude, recorded_at')
-        .in('driver_id', driverIds)
+        .in('driver_id', businessIds)
         .order('recorded_at', { ascending: false })
         .limit(200);
       locations = (locRows as any) || [];
     }
-    const latestByDriver: Record<string, LocationRow> = {};
+    const latestByBusinessId: Record<string, LocationRow> = {};
     for (const l of locations) {
-      if (!latestByDriver[l.driver_id]) latestByDriver[l.driver_id] = l;
+      if (!latestByBusinessId[l.driver_id]) latestByBusinessId[l.driver_id] = l;
     }
     const combined: Combined[] = (driverRows || []).map((d: any) => ({
       ...d,
-      latitude: latestByDriver[d.id]?.latitude ?? null,
-      longitude: latestByDriver[d.id]?.longitude ?? null,
-      recordedAt: latestByDriver[d.id]?.recorded_at ?? null,
+      latitude: latestByBusinessId[d.driver_id]?.latitude ?? null,
+      longitude: latestByBusinessId[d.driver_id]?.longitude ?? null,
+      recordedAt: latestByBusinessId[d.driver_id]?.recorded_at ?? null,
     }));
     setDrivers(combined);
     setLoading(false);
@@ -117,18 +142,48 @@ export default function TrackingScreen() {
   ];
 
   return (
-    <Screen refreshing={view === 'list' ? refreshing : false} onRefresh={view === 'list' ? () => { setRefreshing(true); load(); } : undefined} scroll={view === 'list'}>
-      <View style={{ marginBottom: t.spacing.lg }}>
-        <Tabs
-          variant="segmented"
-          value={view}
-          onChange={(v) => setView(v as 'map' | 'list')}
-          options={[{ value: 'map', label: 'Live Map' }, { value: 'list', label: 'Driver List' }]}
-        />
-      </View>
+    <Screen
+      refreshing={view === 'list' ? refreshing : false}
+      onRefresh={view === 'list' ? () => { setRefreshing(true); load(); } : undefined}
+      scroll={view === 'list'}
+      padded={false}
+      edges={['left', 'right']}
+    >
+      <View style={{ paddingHorizontal: t.spacing.lg, paddingTop: t.spacing.xs, paddingBottom: view === 'list' ? t.spacing.lg : 0, flex: view === 'map' ? 1 : undefined }}>
+        {/* Always visible, whichever tab is active — per direct
+            correction, the speed gauge shouldn't only exist inside the
+            map's own tap-to-open panel. Shows a dash until a driver is
+            actually tapped on the map; this bar itself doesn't pick a
+            driver on its own. */}
+        <View
+          style={{
+            flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm,
+            backgroundColor: t.colors.bgCard, borderRadius: t.radius.lg,
+            padding: t.spacing.sm, marginBottom: t.spacing.sm, ...t.shadow('card'),
+          }}
+        >
+          <SpeedGauge speedKmh={tracked?.speedKmh ?? null} limitKmh={fleetLimit} size={52} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary }} numberOfLines={1}>
+              {tracked ? tracked.name : 'No driver selected'}
+            </Text>
+            <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted }} numberOfLines={1}>
+              {tracked ? `Live speed vs. the ${fleetLimit} km/h fleet limit` : `Tap a driver on the map to see their live speed`}
+            </Text>
+          </View>
+        </View>
+
+        <View style={{ marginBottom: t.spacing.sm }}>
+          <Tabs
+            variant="segmented"
+            value={view}
+            onChange={(v) => setView(v as 'map' | 'list')}
+            options={[{ value: 'map', label: 'Live Map' }, { value: 'list', label: 'Driver List' }]}
+          />
+        </View>
 
       {view === 'map' ? (
-        <FleetMap />
+        <FleetMap onSelectedChange={handleSelectedChange} />
       ) : (
         <DataList
           collapsible
@@ -145,6 +200,7 @@ export default function TrackingScreen() {
           )}
         />
       )}
+      </View>
     </Screen>
   );
 }

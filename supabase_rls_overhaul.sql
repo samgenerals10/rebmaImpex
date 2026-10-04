@@ -190,25 +190,35 @@ create policy "profiles_hr_admin_delete" on public.profiles
 create policy "orders_select_broad" on public.orders
   for select to authenticated using (true);
 
+-- FIX (post rls_overhaul.sql regression): this policy's role list predated
+-- both the Admin & Warehouse merge (role renamed to 'admin_warehouse') and
+-- the Dispatch-into-Risk move ('risk' now owns dispatch), so a real
+-- admin_warehouse/risk account had no orders access at all under the
+-- version this migration originally shipped. Added here, additive only —
+-- nothing removed. The 5 order-chain transitions (risk_initial_review,
+-- management_review_order, accounts_review_order, risk_final_release,
+-- risk_review_pod) are SECURITY DEFINER and bypass this policy entirely,
+-- so this fix is defense-in-depth for any direct order write, not the
+-- thing that made the chain itself work.
 create policy "orders_staff_write" on public.orders
   for all to authenticated
   using (
-    (public.current_role() in ('marketing','finance','management','dispatch','logistics') and not public.is_driver())
+    (public.current_role() in ('marketing','finance','management','dispatch','logistics','admin_warehouse','risk') and not public.is_driver())
     or public.is_admin()
   )
   with check (
     (
-      (public.current_role() in ('marketing','finance','management','dispatch','logistics') and not public.is_driver())
+      (public.current_role() in ('marketing','finance','management','dispatch','logistics','admin_warehouse','risk') and not public.is_driver())
       or public.is_admin()
     )
     and (
       status not in ('PENDING_FINANCE','APPROVED','REJECTED')
-      or public.current_role() in ('finance','management')
+      or public.current_role() in ('finance','management','risk')
       or public.is_admin()
     )
     and (
       status not in ('OUT_FOR_DELIVERY','DELIVERED')
-      or public.current_role() in ('dispatch','logistics','management')
+      or public.current_role() in ('dispatch','logistics','management','admin_warehouse','risk')
       or public.is_admin()
     )
   );
@@ -279,10 +289,13 @@ create policy "float_requests_write" on public.float_requests
 create policy "material_requisitions_select_broad" on public.material_requisitions
   for select to authenticated using (true);
 
+-- FIX (post rls_overhaul.sql regression): 'dispatch','logistics',
+-- 'admin_warehouse' + the not-driver guard were established by
+-- supabase_admin_warehouse_merge.sql and silently dropped here. Restored.
 create policy "material_requisitions_write" on public.material_requisitions
   for all to authenticated
-  using (public.current_role() in ('production','operations','finance') or public.is_admin())
-  with check (public.current_role() in ('production','operations','finance') or public.is_admin());
+  using ((public.current_role() in ('production','operations','finance','dispatch','logistics','admin_warehouse') and not public.is_driver()) or public.is_admin())
+  with check ((public.current_role() in ('production','operations','finance','dispatch','logistics','admin_warehouse') and not public.is_driver()) or public.is_admin());
 
 -- ============================================================
 -- 5. HR
@@ -353,10 +366,16 @@ create policy "customers_select_broad" on public.customers
 -- command are OR'd together and there'd be nothing narrowing it back down.
 create policy "customers_insert" on public.customers
   for insert to authenticated with check (public.current_role() = 'marketing' or public.is_admin());
+-- FIX (post rls_overhaul.sql regression): 'risk' silently dropped here —
+-- supabase_customer_verification.sql (Phase 2) had already correctly
+-- included it (Risk's Customer Verification lane and Customer Credit
+-- screen both write here via a plain .update(), not an RPC), and
+-- supabase_marketing_credit_polish.sql (Phase 6) explicitly documented
+-- relying on it already being present. Restored.
 create policy "customers_update" on public.customers
   for update to authenticated
-  using (public.current_role() = 'marketing' or public.is_admin())
-  with check (public.current_role() = 'marketing' or public.is_admin());
+  using (public.current_role() in ('marketing','risk') or public.is_admin())
+  with check (public.current_role() in ('marketing','risk') or public.is_admin());
 -- Hard-delete is CEO-only.
 create policy "customers_delete_admin_only" on public.customers
   for delete to authenticated using (public.is_admin());
@@ -398,31 +417,41 @@ create policy "wip_stock_write" on public.wip_stock
 
 create policy "stock_select_broad" on public.stock
   for select to authenticated using (true);
+-- FIX (post rls_overhaul.sql regression): 'admin_warehouse' and 'risk'
+-- missing. Risk's cargo-approval stock bump (RiskApprovalsScreen.tsx) is
+-- a plain .update()/.upsert(), not an RPC, so it genuinely needs this.
+-- Additive only.
 create policy "stock_write" on public.stock
   for all to authenticated
-  using (public.current_role() in ('operations','production','management') or public.is_admin())
-  with check (public.current_role() in ('operations','production','management') or public.is_admin());
+  using (public.current_role() in ('operations','admin_warehouse','production','management','risk') or public.is_admin())
+  with check (public.current_role() in ('operations','admin_warehouse','production','management','risk') or public.is_admin());
 
 create policy "stock_ledger_select_broad" on public.stock_ledger
   for select to authenticated using (true);
 create policy "stock_ledger_write" on public.stock_ledger
   for all to authenticated
-  using (public.current_role() in ('operations','production','management') or public.is_admin())
-  with check (public.current_role() in ('operations','production','management') or public.is_admin());
+  using (public.current_role() in ('operations','admin_warehouse','production','management','risk') or public.is_admin())
+  with check (public.current_role() in ('operations','admin_warehouse','production','management','risk') or public.is_admin());
 
 create policy "categories_select_broad" on public.categories
   for select to authenticated using (true);
+-- FIX (post rls_overhaul.sql regression): 'dispatch','logistics',
+-- 'admin_warehouse' + the not-driver guard, established by
+-- supabase_admin_warehouse_merge.sql, silently dropped here. Restored.
 create policy "categories_write" on public.categories
   for all to authenticated
-  using (public.current_role() in ('operations','production') or public.is_admin())
-  with check (public.current_role() in ('operations','production') or public.is_admin());
+  using ((public.current_role() in ('operations','production','dispatch','logistics','admin_warehouse') and not public.is_driver()) or public.is_admin())
+  with check ((public.current_role() in ('operations','production','dispatch','logistics','admin_warehouse') and not public.is_driver()) or public.is_admin());
 
 create policy "fulfillment_tickets_select_broad" on public.fulfillment_tickets
   for select to authenticated using (true);
+-- FIX (post rls_overhaul.sql regression): 'dispatch','logistics',
+-- 'admin_warehouse' + the not-driver guard, established by
+-- supabase_admin_warehouse_merge.sql, silently dropped here. Restored.
 create policy "fulfillment_tickets_write" on public.fulfillment_tickets
   for all to authenticated
-  using (public.current_role() in ('production','operations','management') or public.is_admin())
-  with check (public.current_role() in ('production','operations','management') or public.is_admin());
+  using ((public.current_role() in ('production','operations','management','dispatch','logistics','admin_warehouse') and not public.is_driver()) or public.is_admin())
+  with check ((public.current_role() in ('production','operations','management','dispatch','logistics','admin_warehouse') and not public.is_driver()) or public.is_admin());
 
 -- ============================================================
 -- 7. MANAGEMENT / LOGISTICS / DISPATCH
@@ -430,21 +459,30 @@ create policy "fulfillment_tickets_write" on public.fulfillment_tickets
 
 create policy "cargo_intake_select_broad" on public.cargo_intake
   for select to authenticated using (true);
+-- FIX (post rls_overhaul.sql regression): 'admin_warehouse' (logs intake)
+-- and 'risk' (sole cargo approver since the Phase 1/9 reform — approve/
+-- reject/return is a plain .update() in RiskApprovalsScreen.tsx, not an
+-- RPC, so it genuinely needs this policy, not just a bypass) were both
+-- missing. Additive only.
 create policy "cargo_intake_write" on public.cargo_intake
   for all to authenticated
-  using (public.current_role() in ('operations','management') or public.is_admin())
+  using (public.current_role() in ('operations','admin_warehouse','management','risk') or public.is_admin())
   with check (
-    (public.current_role() in ('operations','management') or public.is_admin())
-    and (status not in ('APPROVED','REJECTED') or public.current_role() = 'management' or public.is_admin())
+    (public.current_role() in ('operations','admin_warehouse','management','risk') or public.is_admin())
+    and (status not in ('APPROVED','REJECTED','RETURNED_FOR_CORRECTION') or public.current_role() in ('management','risk') or public.is_admin())
   );
 
 create policy "general_purchases_select_broad" on public.general_purchases
   for select to authenticated using (true);
+-- FIX (post rls_overhaul.sql regression): 'dispatch','logistics',
+-- 'admin_warehouse' + the not-driver guard, established by
+-- supabase_admin_warehouse_merge.sql, silently dropped here. Restored;
+-- the approval sub-clause stays management-only, unchanged.
 create policy "general_purchases_write" on public.general_purchases
   for all to authenticated
-  using (public.current_role() in ('operations','management') or public.is_admin())
+  using ((public.current_role() in ('operations','management','dispatch','logistics','admin_warehouse') and not public.is_driver()) or public.is_admin())
   with check (
-    (public.current_role() in ('operations','management') or public.is_admin())
+    ((public.current_role() in ('operations','management','dispatch','logistics','admin_warehouse') and not public.is_driver()) or public.is_admin())
     and (status not in ('APPROVED','REJECTED') or public.current_role() = 'management' or public.is_admin())
   );
 
@@ -460,17 +498,73 @@ create policy "goods_prices_write" on public.goods_prices
 -- excluded here or it would inherit full roster-management rights.
 create policy "drivers_select_broad" on public.drivers
   for select to authenticated using (true);
+-- FIX (post rls_overhaul.sql regression): 'risk' missing — driver
+-- management moved entirely into Risk's own Drivers screen post Phase 9.
+-- Additive only ('dispatch'/'logistics' kept for any legacy account still
+-- carrying those role strings).
 create policy "drivers_staff_write" on public.drivers
   for all to authenticated
-  using ((public.current_role() in ('dispatch','logistics','management') and not public.is_driver()) or public.is_admin())
-  with check ((public.current_role() in ('dispatch','logistics','management') and not public.is_driver()) or public.is_admin());
+  using ((public.current_role() in ('dispatch','logistics','management','risk') and not public.is_driver()) or public.is_admin())
+  with check ((public.current_role() in ('dispatch','logistics','management','risk') and not public.is_driver()) or public.is_admin());
 
 -- delivery_logs: staff manage the whole board; a driver may see/update only
 -- their own assigned rows.
+--
+-- CORRECTION to my own earlier edit in this same file: I first widened
+-- this one "_staff_all" policy directly to include admin_warehouse/risk.
+-- That's wrong — the real, most-recent-before-rls_overhaul design
+-- (supabase_order_risk_workflow_rls.sql, Sep 6) deliberately keeps this
+-- policy NARROW (dispatch/logistics/management only) plus a DELIVERED
+-- write-guard, and does the actual admin_warehouse/risk grants through
+-- four separate granular policies below instead — insert/delete
+-- deliberately exclude 'risk' (preserved from
+-- supabase_delivery_logs_operations_write.sql), and update carries an
+-- extra ASSIGNED/dispatch_needs_management guard my simpler fix had
+-- silently dropped. Restored to the precise version; the DELIVERED guard
+-- below was also missing from rls_overhaul.sql's original (a real gap,
+-- not just a role-list one — DELIVERED must only be reachable via
+-- risk_review_pod()).
 create policy "delivery_logs_staff_all" on public.delivery_logs
   for all to authenticated
   using ((public.current_role() in ('dispatch','logistics','management') and not public.is_driver()) or public.is_admin())
-  with check ((public.current_role() in ('dispatch','logistics','management') and not public.is_driver()) or public.is_admin());
+  with check (
+    ((public.current_role() in ('dispatch','logistics','management') and not public.is_driver()) or public.is_admin())
+    and (status <> 'DELIVERED' or public.is_admin())
+  );
+
+create policy "delivery_logs_staff_select" on public.delivery_logs
+  for select to authenticated
+  using ((public.current_role() in ('dispatch','logistics','management','operations','admin_warehouse','risk') and not public.is_driver()) or public.is_admin());
+
+create policy "delivery_logs_staff_insert" on public.delivery_logs
+  for insert to authenticated
+  with check (
+    ((public.current_role() in ('dispatch','logistics','management','operations','admin_warehouse') and not public.is_driver()) or public.is_admin())
+    and (
+      status is distinct from 'ASSIGNED'
+      or not public.ceo_setting_bool('dispatch_needs_management')
+      or public.current_role() = 'management'
+      or public.is_admin()
+    )
+  );
+
+create policy "delivery_logs_staff_update" on public.delivery_logs
+  for update to authenticated
+  using ((public.current_role() in ('dispatch','logistics','management','operations','admin_warehouse','risk') and not public.is_driver()) or public.is_admin())
+  with check (
+    ((public.current_role() in ('dispatch','logistics','management','operations','admin_warehouse','risk') and not public.is_driver()) or public.is_admin())
+    and (
+      status is distinct from 'ASSIGNED'
+      or not public.ceo_setting_bool('dispatch_needs_management')
+      or public.current_role() = 'management'
+      or public.is_admin()
+    )
+    and (status <> 'DELIVERED' or public.is_admin())
+  );
+
+create policy "delivery_logs_staff_delete" on public.delivery_logs
+  for delete to authenticated
+  using ((public.current_role() in ('dispatch','logistics','management','operations','admin_warehouse') and not public.is_driver()) or public.is_admin());
 
 create policy "delivery_logs_driver_own_select" on public.delivery_logs
   for select to authenticated
@@ -483,9 +577,13 @@ create policy "delivery_logs_driver_own_update" on public.delivery_logs
 
 -- driver_locations: a driver may insert only their own pings; staff read
 -- everything for the live tracking map.
+-- FIX (post rls_overhaul.sql regression): 'operations','admin_warehouse',
+-- 'risk' were established by supabase_dispatch_to_risk.sql (Phase 9, one
+-- day earlier — Risk's own GPS Tracking screen needs this) and silently
+-- dropped here. Restored.
 create policy "driver_locations_select_staff" on public.driver_locations
   for select to authenticated
-  using ((public.current_role() in ('dispatch','logistics','management') and not public.is_driver()) or public.is_admin());
+  using ((public.current_role() in ('dispatch','logistics','management','operations','admin_warehouse','risk') and not public.is_driver()) or public.is_admin());
 
 create policy "driver_locations_driver_own_select" on public.driver_locations
   for select to authenticated
@@ -497,21 +595,33 @@ create policy "driver_locations_driver_insert" on public.driver_locations
 
 create policy "driver_locations_staff_write" on public.driver_locations
   for all to authenticated
-  using ((public.current_role() in ('dispatch','logistics','management') and not public.is_driver()) or public.is_admin())
-  with check ((public.current_role() in ('dispatch','logistics','management') and not public.is_driver()) or public.is_admin());
+  using ((public.current_role() in ('dispatch','logistics','management','operations','admin_warehouse','risk') and not public.is_driver()) or public.is_admin())
+  with check ((public.current_role() in ('dispatch','logistics','management','operations','admin_warehouse','risk') and not public.is_driver()) or public.is_admin());
 
 -- fuel_logs/maintenance_schedule/fleet_vehicles are defined in
 -- supabase_schema.sql but may not actually exist in every environment
 -- (confirmed absent from this project's live database) — guarded so the
 -- migration skips them cleanly instead of erroring if they're missing.
+-- FIX (regression): this block originally narrowed write access to
+-- current_role() = 'logistics' ONLY — dropping 'operations', 'dispatch',
+-- and 'admin_warehouse' (the real role post-merger accounts actually
+-- carry) that supabase_admin_warehouse_merge.sql had already correctly
+-- established 12 days earlier. Restored to that same role list, plus the
+-- not-driver guard that version also had. Additive/corrective, not a
+-- narrowing — SELECT stays broad (using true), unaffected either way.
 do $$
 declare
   t text;
 begin
   foreach t in array array['fuel_logs','maintenance_schedule','fleet_vehicles'] loop
     if exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = t) then
+      execute format('drop policy if exists %I on public.%I', t || '_select_broad', t);
       execute format('create policy %I on public.%I for select to authenticated using (true)', t || '_select_broad', t);
-      execute format('create policy %I on public.%I for all to authenticated using (public.current_role() = ''logistics'' or public.is_admin()) with check (public.current_role() = ''logistics'' or public.is_admin())', t || '_write_logistics', t);
+      execute format('drop policy if exists %I on public.%I', t || '_write_logistics', t);
+      execute format(
+        'create policy %I on public.%I for all to authenticated using ((public.current_role() in (''logistics'',''operations'',''dispatch'',''admin_warehouse'') and not public.is_driver()) or public.is_admin()) with check ((public.current_role() in (''logistics'',''operations'',''dispatch'',''admin_warehouse'') and not public.is_driver()) or public.is_admin())',
+        t || '_write_logistics', t
+      );
     end if;
   end loop;
 end $$;
@@ -565,6 +675,18 @@ create policy "staff_invites_hr_admin_only" on public.staff_invites
   for all to authenticated
   using (public.current_role() = 'hr' or public.is_admin())
   with check (public.current_role() = 'hr' or public.is_admin());
+
+-- FIX (post rls_overhaul.sql regression): supabase_recruitment_invites.sql
+-- (Phase 8, one day earlier) added this as a SEPARATE, additive,
+-- read-only policy so Risk can see the full candidate record (résumé,
+-- photo, guarantor info) the moment HR saves it, not just a notification.
+-- This file's blanket "drop every policy on every target table" loop
+-- deletes ALL named policies on staff_invites, including this one, but
+-- only ever recreates staff_invites_hr_admin_only above — silently
+-- wiping Risk's access. Restored, additive only.
+create policy "staff_invites_select_risk" on public.staff_invites
+  for select to authenticated
+  using (public.current_role() = 'risk');
 
 create policy "suppliers_select" on public.suppliers
   for select to authenticated using (public.current_role() = 'management' or public.is_admin());

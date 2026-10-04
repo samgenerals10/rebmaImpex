@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import CountUp from '../../components/CountUp';
 import PendingApprovalsAlert from '../../components/global/PendingApprovalsAlert';
+import TodaysBirthdaysCard from '../../components/global/TodaysBirthdaysCard';
 import {
   Users, UserCheck, UserPlus, TrendingUp, Calendar, AlertTriangle,
   BarChart2, ChevronRight, Clock, CheckCircle, XCircle, Bell, Building2,
@@ -20,7 +21,7 @@ interface Props {
   staffList: StaffMember[];
   pendingRegistrations: PendingRegistration[];
   attendanceList: Attendance[];
-  onApprove: (reg: PendingRegistration, pw: string, token: string) => void;
+  onApprove: (reg: PendingRegistration, pw: string, token: string) => unknown;
   onDeny: (reg: PendingRegistration) => void;
 }
 
@@ -267,6 +268,7 @@ export default function HrOverviewView({ currentUser, addNotification, setActive
 
       {/* Pending approvals alert */}
       <PendingApprovalsAlert department="HR" onNavigate={setActiveSubTab} addNotification={addNotification} />
+      <TodaysBirthdaysCard onOpen={() => setActiveSubTab('Birthdays')} />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

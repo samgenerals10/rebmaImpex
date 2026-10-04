@@ -1,10 +1,11 @@
 // src/components/global/EmailsPanel.tsx
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Inbox, Send, Star, Trash2, Plus, Search, ChevronLeft, X, Check, Reply } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import type { CurrentUser } from '../../types/erp';
 import SidePanel from '../ui/SidePanel';
+import { newRequestKey } from '../../utils/requestKey';
 
 interface Email {
   id: string;
@@ -13,8 +14,12 @@ interface Email {
   subject: string;
   body: string;
   read: boolean;
-  starred: boolean;
-  deleted: boolean;
+  // Each person's own copy (supabase_private_data_security.sql): starring,
+  // trashing or deleting an email only changes it for whoever did it.
+  sender_starred?: boolean;
+  recipient_starred?: boolean;
+  sender_deleted?: boolean;
+  recipient_deleted?: boolean;
   reply_to_id: string | null;
   created_at: string;
   from_profile?: { full_name: string; department: string };
@@ -30,6 +35,11 @@ interface EmailsPanelProps {
 }
 
 const blankCompose = { to: '', subject: '', body: '', replyToId: null as string | null };
+
+// Which side of the email the signed-in person is on.
+const sideOf = (e: Email, me: string): 'sender' | 'recipient' => (e.from_user_id === me ? 'sender' : 'recipient');
+const isStarred = (e: Email, me: string) => !!(sideOf(e, me) === 'sender' ? e.sender_starred : e.recipient_starred);
+const isDeleted = (e: Email, me: string) => !!(sideOf(e, me) === 'sender' ? e.sender_deleted : e.recipient_deleted);
 
 export default function EmailsPanel({ currentUser, addNotification, onUnreadCountChange }: EmailsPanelProps) {
   const { getSetting } = useCeoSettings();
@@ -55,7 +65,7 @@ export default function EmailsPanel({ currentUser, addNotification, onUnreadCoun
         .select('*')
         .or(`from_user_id.eq.${currentUser.id},to_user_id.eq.${currentUser.id}`)
         .order('created_at', { ascending: false });
-      const { data: profs } = await supabase.from('profiles_directory').select('id, full_name, department').neq('id', currentUser.id);
+      const { data: profs } = await supabase.from('profiles_directory').select('id, full_name, department').eq('status', 'ACTIVE').neq('id', currentUser.id);
       if (profs) setProfiles(profs);
       if (data) {
         const byId = new Map((profs || []).map((p: any) => [p.id, p]));
@@ -66,7 +76,7 @@ export default function EmailsPanel({ currentUser, addNotification, onUnreadCoun
           to_profile: byId.get(e.to_user_id) ? { full_name: byId.get(e.to_user_id).full_name, department: byId.get(e.to_user_id).department } : undefined,
         }));
         setEmails(withNames);
-        const unread = withNames.filter(e => e.to_user_id === currentUser.id && !e.read && !e.deleted).length;
+        const unread = withNames.filter(e => e.to_user_id === currentUser.id && !e.read && !e.recipient_deleted).length;
         onUnreadCountChange?.(unread);
       }
     } catch { /* table may not exist yet */ }
@@ -81,10 +91,11 @@ export default function EmailsPanel({ currentUser, addNotification, onUnreadCoun
     const outboundFrom = e.from_user_id === currentUser.id;
     const matchSearch = e.subject.toLowerCase().includes(search.toLowerCase()) || e.body.toLowerCase().includes(search.toLowerCase());
     if (!matchSearch) return false;
-    if (folder === 'inbox')   return inboundFrom && !e.deleted;
-    if (folder === 'sent')    return outboundFrom && !e.deleted;
-    if (folder === 'starred') return (inboundFrom || outboundFrom) && e.starred && !e.deleted;
-    if (folder === 'trash')   return (inboundFrom || outboundFrom) && e.deleted;
+    const mine = currentUser.id;
+    if (folder === 'inbox')   return inboundFrom && !e.recipient_deleted;
+    if (folder === 'sent')    return outboundFrom && !e.sender_deleted;
+    if (folder === 'starred') return (inboundFrom || outboundFrom) && isStarred(e, mine) && !isDeleted(e, mine);
+    if (folder === 'trash')   return (inboundFrom || outboundFrom) && isDeleted(e, mine);
     return false;
   });
 
@@ -98,23 +109,39 @@ export default function EmailsPanel({ currentUser, addNotification, onUnreadCoun
 
   const toggleStar = async (e: Email, ev: React.MouseEvent) => {
     ev.stopPropagation();
-    await supabase.from('internal_emails').update({ starred: !e.starred }).eq('id', e.id);
+    if (!currentUser) return;
+    const side = sideOf(e, currentUser.id);
+    const { error } = await supabase.from('internal_emails').update({ [`${side}_starred`]: !isStarred(e, currentUser.id) }).eq('id', e.id);
+    if (error) addNotification(`Could not update the email: ${error.message}`);
     load();
   };
 
+  // Trash and delete-for-good only affect your own copy; the other person
+  // keeps theirs. The email is removed for real once both have deleted it.
   const moveToTrash = async (id: string) => {
-    await supabase.from('internal_emails').update({ deleted: true }).eq('id', id);
+    const e = emails.find(x => x.id === id);
+    if (!e || !currentUser) return;
+    const { error } = await supabase.from('internal_emails').update({ [`${sideOf(e, currentUser.id)}_deleted`]: true }).eq('id', id);
+    if (error) { addNotification(`Could not move to trash: ${error.message}`); return; }
     if (selected?.id === id) setSelected(null);
     load(); addNotification('Moved to trash.');
   };
 
   const permanentDelete = async (id: string) => {
-    await supabase.from('internal_emails').delete().eq('id', id);
+    const e = emails.find(x => x.id === id);
+    if (!e || !currentUser) return;
+    const { error } = await supabase.from('internal_emails').update({ [`${sideOf(e, currentUser.id)}_purged`]: true }).eq('id', id);
+    if (error) { addNotification(`Could not delete: ${error.message}`); return; }
     if (selected?.id === id) setSelected(null);
     load(); addNotification('Email deleted.');
   };
 
+  // One key per message being written: pressing Send twice, or retrying
+  // after a dropped connection, can't send it twice.
+  const emailKeyRef = useRef(newRequestKey());
+
   const openCompose = (replyTo?: Email) => {
+    emailKeyRef.current = newRequestKey();
     if (replyTo) {
       setCompose({ open: true, to: replyTo.from_user_id, subject: `Re: ${replyTo.subject}`, body: '', replyToId: replyTo.id });
     } else {
@@ -128,15 +155,18 @@ export default function EmailsPanel({ currentUser, addNotification, onUnreadCoun
     if (!getSetting('external_email_enabled', true)) { addNotification('Internal email is currently disabled by the CEO.'); return; }
     setSaving(true);
     try {
-      await supabase.from('internal_emails').insert({
+      const { error } = await supabase.from('internal_emails').insert({
         from_user_id: currentUser.id, to_user_id: compose.to,
         subject: compose.subject, body: compose.body,
         reply_to_id: compose.replyToId,
+        client_request_id: emailKeyRef.current,
       });
+      // Before, a refused send still said "Email sent."
+      if (error) throw error;
       addNotification('Email sent.');
       setCompose({ ...blankCompose, open: false });
       load();
-    } catch { addNotification('Could not send email.'); }
+    } catch (err: any) { addNotification(`Could not send email: ${err?.message || 'unknown error'}`); }
     setSaving(false);
   };
 
@@ -147,7 +177,7 @@ export default function EmailsPanel({ currentUser, addNotification, onUnreadCoun
   const selectedTo = profiles.find(p => p.id === compose.to);
 
   const FOLDERS = [
-    { id: 'inbox',   label: 'Inbox',   Icon: Inbox,  count: emails.filter(e => e.to_user_id === currentUser?.id && !e.read && !e.deleted).length },
+    { id: 'inbox',   label: 'Inbox',   Icon: Inbox,  count: emails.filter(e => e.to_user_id === currentUser?.id && !e.read && !e.recipient_deleted).length },
     { id: 'sent',    label: 'Sent',    Icon: Send,   count: 0 },
     { id: 'starred', label: 'Starred', Icon: Star,   count: 0 },
     { id: 'trash',   label: 'Trash',   Icon: Trash2, count: 0 },
@@ -210,7 +240,7 @@ export default function EmailsPanel({ currentUser, addNotification, onUnreadCoun
                     <div className="flex flex-col items-end gap-1 flex-shrink-0">
                       <span className="text-[9px] text-[var(--text-muted)] whitespace-nowrap">{new Date(e.created_at).toLocaleDateString('en-GB', { day:'numeric', month:'short' })}</span>
                       <button onClick={ev => toggleStar(e, ev)} className="cursor-pointer">
-                        <Star className={`w-3 h-3 ${e.starred ? 'fill-amber-400 text-amber-400' : 'text-[var(--text-muted)]'}`} />
+                        <Star className={`w-3 h-3 ${currentUser && isStarred(e, currentUser.id) ? 'fill-amber-400 text-amber-400' : 'text-[var(--text-muted)]'}`} />
                       </button>
                       {isUnread && <span className="w-2 h-2 rounded-full bg-[var(--accent)]" />}
                     </div>

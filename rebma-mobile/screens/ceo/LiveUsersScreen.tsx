@@ -4,11 +4,13 @@
 // session (web or mobile) tracks itself on — no table, no polling.
 //
 // Actions mirror web's LiveUsersView.tsx exactly:
-//  - Suspend/Reactivate, Block/Unblock: profiles.status flip, same
-//    mechanism as web's Suspend button and CEO Control Center.
-//  - Kick Offline: presence.ts's kickUserOffline — a real-time broadcast
-//    telling that one connected session to sign itself out right now.
-//    NOT account deletion.
+//  - Suspend/Reactivate, Block/Unblock: through api/set-user-status.ts
+//    with the CEO's password. The server locks or unlocks sign-in, ends
+//    open sessions and logs it; the database refuses a status change made
+//    straight from the app.
+//  - Kick Offline: api/kick-user.ts ends every session, then the broadcast
+//    closes the person's open screen right away. NOT account deletion.
+//  - None of these are offered on a CEO account: no CEO acts on another.
 //  - Send Message: opens the real mobile Messenger (Phase 11.0) straight
 //    into a DM with that person — the same channels/chat_messages tables
 //    web's Messenger.tsx uses, not a one-off composer anymore.
@@ -19,7 +21,7 @@ import { Radio, MessageSquare, LogOut, Ban, ShieldOff, ShieldCheck, UserCheck } 
 import { subscribeToLiveUsers, kickUserOffline, type PresencePayload } from '../../lib/presence';
 import { supabase } from '../../lib/supabaseClient';
 import { messenger } from '../../lib/messenger';
-import { callPrivilegedApi } from '../../lib/apiBase';
+import { callPrivilegedApi, ApiNotConfiguredError } from '../../lib/apiBase';
 import { navigationRef } from '../../navigation/navigationRef';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -30,6 +32,7 @@ import Avatar from '../../components/ui/Avatar';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
 import Sheet from '../../components/ui/Sheet';
+import PasswordConfirmSheet from '../../components/shared/PasswordConfirmSheet';
 import EmptyState from '../../components/ui/EmptyState';
 
 function formatDuration(ms: number): string {
@@ -41,6 +44,15 @@ function formatDuration(ms: number): string {
   if (m > 0) return `${m}m ${s}s`;
   return `${s}s`;
 }
+
+type StatusAction = 'suspend' | 'reactivate' | 'block' | 'unblock';
+
+const STATUS_WORDING: Record<StatusAction, { title: string; verb: string; effect: string }> = {
+  suspend: { title: 'Confirm Suspension', verb: 'Suspend', effect: 'They are signed out everywhere and cannot sign in until reactivated.' },
+  reactivate: { title: 'Confirm Reactivation', verb: 'Reactivate', effect: 'They can sign in again.' },
+  block: { title: 'Confirm Block', verb: 'Block', effect: 'They are signed out everywhere and cannot sign in until unblocked.' },
+  unblock: { title: 'Confirm Unblock', verb: 'Unblock', effect: 'They can sign in again.' },
+};
 
 function statusTone(status: string): 'success' | 'warning' | 'danger' {
   if (status === 'BLOCKED') return 'danger';
@@ -55,6 +67,8 @@ export default function LiveUsersScreen() {
   const [users, setUsers] = useState<PresencePayload[]>([]);
   const [now, setNow] = useState(Date.now());
   const [statusByUser, setStatusByUser] = useState<Record<string, string>>({});
+  const [ceoIds, setCeoIds] = useState<Set<string>>(new Set());
+  const [pendingStatus, setPendingStatus] = useState<{ userId: string; name: string; action: StatusAction } | null>(null);
   const [busyUserId, setBusyUserId] = useState<string | null>(null);
   const [openingMessageFor, setOpeningMessageFor] = useState<string | null>(null);
   const [photoPreview, setPhotoPreview] = useState<{ uri: string; name: string } | null>(null);
@@ -71,25 +85,32 @@ export default function LiveUsersScreen() {
   useEffect(() => {
     const ids = users.map((u) => u.userId);
     if (ids.length === 0) return;
-    supabase.from('profiles').select('id, status').in('id', ids).then(({ data }) => {
+    supabase.from('profiles').select('id, status, is_admin').in('id', ids).then(({ data }) => {
       const next: Record<string, string> = {};
-      (data || []).forEach((row: any) => { next[row.id] = row.status; });
+      const ceos = new Set<string>();
+      (data || []).forEach((row: any) => {
+        next[row.id] = String(row.status || 'ACTIVE').toUpperCase();
+        if (row.is_admin) ceos.add(row.id);
+      });
       setStatusByUser((prev) => ({ ...prev, ...next }));
+      setCeoIds(ceos);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [users.map((u) => u.userId).join(',')]);
 
-  const setStatus = async (userId: string, name: string, status: 'ACTIVE' | 'SUSPENDED' | 'BLOCKED', verb: string) => {
-    if (busyUserId) return;
-    setBusyUserId(userId);
+  // Runs after the CEO types their password. A thrown error keeps the
+  // password sheet open with the server's message.
+  const runStatusChange = async (password: string) => {
+    const pending = pendingStatus;
+    if (!pending) return;
     try {
-      const { error } = await supabase.from('profiles').update({ status }).eq('id', userId);
-      if (error) throw error;
-      setStatusByUser((prev) => ({ ...prev, [userId]: status }));
-    } catch (err: any) {
-      Alert.alert('Failed', `Could not update ${name}: ${err.message}`);
-    } finally {
-      setBusyUserId(null);
+      const res: any = await callPrivilegedApi('/api/set-user-status', { userId: pending.userId, action: pending.action, password });
+      if (pending.action === 'suspend' || pending.action === 'block') kickUserOffline(pending.userId);
+      setStatusByUser((prev) => ({ ...prev, [pending.userId]: res?.status || prev[pending.userId] }));
+      setPendingStatus(null);
+      Alert.alert('Done', res?.message || 'Status updated.');
+    } catch (e: any) {
+      throw new Error(e instanceof ApiNotConfiguredError ? e.message : (e?.message || 'That did not work.'));
     }
   };
 
@@ -154,6 +175,8 @@ export default function LiveUsersScreen() {
             const status = statusByUser[u.userId] || 'ACTIVE';
             const isSelf = me?.id === u.userId;
             const isBusy = busyUserId === u.userId;
+            const isCeo = ceoIds.has(u.userId);
+            const canAct = !isSelf && !isCeo;
             return (
               <Card key={u.userId} padded>
                 <View style={{ flexDirection: 'row', gap: t.spacing.md }}>
@@ -164,7 +187,7 @@ export default function LiveUsersScreen() {
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                       <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: t.colors.status.success.text }} />
                       <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body14.size, color: t.colors.textPrimary }}>
-                        {u.fullName}{isSelf ? ' (you)' : ''}
+                        {u.fullName}{isSelf ? ' (you)' : isCeo ? ' (CEO)' : ''}
                       </Text>
                     </View>
                     <Text style={{ ...p.meta, marginTop: 2 }}>{u.department}{u.role ? ` · ${u.role}` : ''}</Text>
@@ -177,32 +200,25 @@ export default function LiveUsersScreen() {
                 </View>
 
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: t.spacing.md, paddingTop: t.spacing.sm, borderTopWidth: 1, borderTopColor: t.colors.border }}>
-                  {!isSelf && (
-                    <>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        label={status === 'SUSPENDED' ? 'Reactivate' : 'Suspend'}
-                        icon={status === 'SUSPENDED' ? <UserCheck size={13} color={t.colors.status.warning.text} /> : <ShieldOff size={13} color={t.colors.status.warning.text} />}
-                        disabled={isBusy}
-                        onPress={() => setStatus(u.userId, u.fullName, status === 'SUSPENDED' ? 'ACTIVE' : 'SUSPENDED', status === 'SUSPENDED' ? 'reactivated' : 'suspended')}
-                      />
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        label={status === 'BLOCKED' ? 'Unblock' : 'Block'}
-                        icon={status === 'BLOCKED' ? <ShieldCheck size={13} color={t.colors.status.danger.text} /> : <Ban size={13} color={t.colors.status.danger.text} />}
-                        disabled={isBusy}
-                        onPress={() => setStatus(u.userId, u.fullName, status === 'BLOCKED' ? 'ACTIVE' : 'BLOCKED', status === 'BLOCKED' ? 'unblocked' : 'blocked')}
-                      />
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        label="Kick"
-                        icon={<LogOut size={13} color={t.colors.textMuted} />}
-                        onPress={() => handleKick(u.userId, u.fullName)}
-                      />
-                    </>
+                  {canAct && status === 'ACTIVE' && (
+                    <Button size="sm" variant="ghost" label="Suspend" icon={<ShieldOff size={13} color={t.colors.status.warning.text} />} disabled={isBusy}
+                      onPress={() => setPendingStatus({ userId: u.userId, name: u.fullName, action: 'suspend' })} />
+                  )}
+                  {canAct && status === 'SUSPENDED' && (
+                    <Button size="sm" variant="ghost" label="Reactivate" icon={<UserCheck size={13} color={t.colors.status.warning.text} />} disabled={isBusy}
+                      onPress={() => setPendingStatus({ userId: u.userId, name: u.fullName, action: 'reactivate' })} />
+                  )}
+                  {canAct && (status === 'ACTIVE' || status === 'SUSPENDED') && (
+                    <Button size="sm" variant="ghost" label="Block" icon={<Ban size={13} color={t.colors.status.danger.text} />} disabled={isBusy}
+                      onPress={() => setPendingStatus({ userId: u.userId, name: u.fullName, action: 'block' })} />
+                  )}
+                  {canAct && status === 'BLOCKED' && (
+                    <Button size="sm" variant="ghost" label="Unblock" icon={<ShieldCheck size={13} color={t.colors.status.danger.text} />} disabled={isBusy}
+                      onPress={() => setPendingStatus({ userId: u.userId, name: u.fullName, action: 'unblock' })} />
+                  )}
+                  {canAct && (
+                    <Button size="sm" variant="ghost" label="Kick" icon={<LogOut size={13} color={t.colors.textMuted} />} disabled={isBusy}
+                      onPress={() => handleKick(u.userId, u.fullName)} />
                   )}
                   <Button
                     size="sm"
@@ -218,6 +234,16 @@ export default function LiveUsersScreen() {
           })}
         </View>
       )}
+
+      <PasswordConfirmSheet
+        open={!!pendingStatus}
+        onClose={() => setPendingStatus(null)}
+        title={pendingStatus ? STATUS_WORDING[pendingStatus.action].title : ''}
+        description={pendingStatus ? `${STATUS_WORDING[pendingStatus.action].verb} ${pendingStatus.name}? ${STATUS_WORDING[pendingStatus.action].effect} Type your password to confirm it is you.` : ''}
+        confirmLabel={pendingStatus ? STATUS_WORDING[pendingStatus.action].verb : 'Confirm'}
+        danger={pendingStatus?.action === 'suspend' || pendingStatus?.action === 'block'}
+        onConfirm={runStatusChange}
+      />
 
       <Sheet
         open={!!photoPreview}

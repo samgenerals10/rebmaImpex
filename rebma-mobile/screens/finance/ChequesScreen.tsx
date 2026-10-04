@@ -227,14 +227,14 @@ export default function ChequesScreen() {
       <Sheet open={showAdd || !!editTarget} onClose={closeForm} title={editTarget ? 'Edit Cheque' : 'Add Cheque'} side="bottom" maxHeight={640}
         footer={<Button label={submitting ? 'Saving…' : 'Save Cheque'} onPress={save} loading={submitting} disabled={submitting} fullWidth />}
       >
-        <Field label="Cheque Number *"><Input value={form.chequeNumber} onChangeText={(v) => setForm((f) => ({ ...f, chequeNumber: v }))} /></Field>
-        <Field label="Bank Name"><Input value={form.bankName} onChangeText={(v) => setForm((f) => ({ ...f, bankName: v }))} /></Field>
-        <Field label="Account Name"><Input value={form.accountName} onChangeText={(v) => setForm((f) => ({ ...f, accountName: v }))} /></Field>
-        <Field label="Account Number" hint="Optional"><Input value={form.accountNumber} onChangeText={(v) => setForm((f) => ({ ...f, accountNumber: v }))} /></Field>
-        <Field label="Amount (GHS) *"><Input value={form.amount} onChangeText={(v) => setForm((f) => ({ ...f, amount: v }))} keyboardType="decimal-pad" /></Field>
+        <Field label="Cheque Number *"><Input value={form.chequeNumber} onChangeText={(v) => setForm((f) => ({ ...f, chequeNumber: v }))} placeholder="e.g. 000123" /></Field>
+        <Field label="Bank Name"><Input value={form.bankName} onChangeText={(v) => setForm((f) => ({ ...f, bankName: v }))} placeholder="e.g. GCB Bank" /></Field>
+        <Field label="Account Name"><Input value={form.accountName} onChangeText={(v) => setForm((f) => ({ ...f, accountName: v }))} placeholder="Name on the account" /></Field>
+        <Field label="Account Number" hint="Optional"><Input value={form.accountNumber} onChangeText={(v) => setForm((f) => ({ ...f, accountNumber: v }))} placeholder="e.g. 1234567890" /></Field>
+        <Field label="Amount (GHS) *"><Input value={form.amount} onChangeText={(v) => setForm((f) => ({ ...f, amount: v }))} keyboardType="decimal-pad" placeholder="0.00" /></Field>
         <Field label="Cheque Date"><Input value={form.chequeDate} onChangeText={(v) => setForm((f) => ({ ...f, chequeDate: v }))} placeholder="YYYY-MM-DD" /></Field>
         <Field label="Expected Clearing" hint="Optional"><Input value={form.expectedClearing} onChangeText={(v) => setForm((f) => ({ ...f, expectedClearing: v }))} placeholder="YYYY-MM-DD" /></Field>
-        <Field label="Order Reference" hint="Optional"><Input value={form.orderRef} onChangeText={(v) => setForm((f) => ({ ...f, orderRef: v }))} /></Field>
+        <Field label="Order Reference" hint="Optional"><Input value={form.orderRef} onChangeText={(v) => setForm((f) => ({ ...f, orderRef: v }))} placeholder="e.g. ORD-00042" /></Field>
       </Sheet>
 
       <ExportSheet

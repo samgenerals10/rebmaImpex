@@ -15,7 +15,7 @@ import { generateReceiptNumber, printReceipt } from './ReceiptsView';
 import SidePanel from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
 import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
-import { documentTemplates, checkStockAvailability, shortageMessage, deductStockForOrder } from '../../services/apiClient';
+import { documentTemplates, checkStockAvailability, shortageMessage } from '../../services/apiClient';
 
 interface Props {
   addNotification?: (msg: string) => void;
@@ -109,7 +109,12 @@ function mapRow(r: any): Order {
 // second time. Returns false (without throwing) on a stock shortage, so
 // callers can bail out cleanly the same way this screen's own button
 // already did.
-export async function approveAccountsReview(order: Order, currentUser?: { fullName: string } | null, addNotification?: (msg: string) => void) {
+// Approval, the stock deduction and (when given) the payment now happen in
+// ONE database step, accounts_approve_order() in supabase_atomic_approvals.sql:
+// all of it or none of it. Before, the payment was saved first, so a
+// failed or duplicate approval left a payment behind (revenue counted
+// twice), and stock was deducted in a separate call that could be missed.
+export async function approveAccountsReview(order: Order, currentUser?: { fullName: string } | null, addNotification?: (msg: string) => void, payment?: Record<string, unknown> | null) {
   const shortages = await checkStockAvailability(order);
   if (shortages.length > 0) {
     addNotification?.(shortageMessage(shortages));
@@ -121,18 +126,16 @@ export async function approveAccountsReview(order: Order, currentUser?: { fullNa
   const performedByEmail = sessionData?.session?.user?.email || null;
   const now = new Date().toISOString();
 
-  const { error: rpcError } = await supabase.rpc('accounts_review_order', {
+  const { error: rpcError } = await supabase.rpc('accounts_approve_order', {
     p_order_id: order.id,
-    p_action: 'approve',
-    p_note: null,
     p_approved_by: performedBy,
     p_approved_by_email: performedByEmail,
+    p_payment: payment ?? null,
   });
-  if (rpcError) throw rpcError;
-
-  // Deduct sold stock the moment the sale is confirmed.
-  const ticketRef = order.ticketNumber || `ORD-${String(order.id).slice(0, 6).toUpperCase()}`;
-  await deductStockForOrder(order, `Order Approved: ${ticketRef}`);
+  if (rpcError) {
+    addNotification?.(`Not approved: ${rpcError.message}`);
+    return false;
+  }
 
   // No delivery_logs row here — that handoff still only happens when
   // Admin & Warehouse clicks Dispatch/Fulfillment in ApprovedGoodsView,
@@ -342,21 +345,26 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
           notes: payForm.notes || null,
         },
       };
-      let { error: payErr } = await supabase.from('finance_payments').insert([paymentRecord]);
-      if (payErr?.message?.includes('receipt_number')) {
-        // Column not migrated onto the live DB yet — don't let that block
-        // recording the payment, just save without a distinct receipt number
-        // (the receipt view falls back to invoice_number in that case).
-        const { receipt_number, ...withoutReceiptNumber } = paymentRecord;
-        ({ error: payErr } = await supabase.from('finance_payments').insert([withoutReceiptNumber]));
-      }
-      if (payErr) { addNotification?.(`Failed to save payment: ${payErr.message}`); throw payErr; }
-      // Note: approveOrder sets submitting to false upon completion
-      setSubmitting(false);
-      await approveOrder(order);
+      // Saved together with the approval in one database step, so the
+      // payment can't exist without the approval (or the other way round).
+      // Before, the payment was saved first and the approval was then
+      // silently skipped, because the button was still marked busy.
+      const ok = await approveAccountsReview(order, currentUser, addNotification, paymentRecord);
+      if (!ok) return;
+      const updateLocal = (prev: Order[]) => prev.map(o => o.id === order.id ? { ...o, status: 'PENDING_RISK_RELEASE' as const } : o);
+      setAllOrders(updateLocal);
+      setOrdersList?.(prev => prev.map(o => o.id === order.id ? { ...o, status: 'PENDING_RISK_RELEASE' as const } : o));
+      addNotification?.(`Payment recorded and order ${order.ticketNumber || order.id} sent to Risk for final release.`);
+      setSelected(null);
 
       const wantsReceipt = await window.confirm(`Payment recorded for ${order.clientName}. Generate a receipt now?`);
       if (wantsReceipt) {
+        // The receipt number is given by the database (RCP-2026-000123),
+        // so print the one it actually saved.
+        const { data: saved } = await supabase.from('finance_payments')
+          .select('receipt_number').eq('order_id', order.id)
+          .order('created_at', { ascending: false }).limit(1).maybeSingle();
+        const printedReceiptNumber = saved?.receipt_number || receiptNumber;
         const template = await documentTemplates.get('RECEIPT');
         printReceipt({
           id: order.id,
@@ -366,7 +374,7 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
           paymentType,
           orderId: order.id,
           ticketNumber: invoiceNumber,
-          receiptNumber,
+          receiptNumber: printedReceiptNumber,
           recordedBy,
           status: 'CONFIRMED',
           createdAt,
@@ -375,6 +383,7 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
       }
     } catch (e) {
       console.error(e);
+    } finally {
       setSubmitting(false);
     }
   }

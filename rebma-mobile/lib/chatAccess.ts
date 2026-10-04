@@ -50,10 +50,21 @@ export type ChatGate =
   | { allowed: false; reason: 'blocked_by_them' }
   | { allowed: false; reason: 'blocked_by_me' };
 
-// Checked before opening/creating a DM, and again before sending the
-// first message in one — covers both "never talked before" and "they
-// denied/haven't responded yet."
+// Checked before opening/creating a DM. Asks the database first
+// (chat_gate() in supabase_chat_access_enforcement.sql), which is the same
+// rule that now blocks the message itself, so the app and the database
+// never disagree. The older client-side check below only runs if that
+// SQL file hasn't been run yet.
 export async function checkChatGate(myId: string, myDepartment: string, otherId: string): Promise<ChatGate> {
+  const { data: verdict, error: gateError } = await supabase.rpc('chat_gate', { p_other: otherId });
+  if (!gateError && typeof verdict === 'string') {
+    if (verdict === 'allowed') return { allowed: true };
+    if (verdict === 'blocked_by_them' || verdict === 'blocked_by_me') return { allowed: false, reason: verdict };
+    if (verdict === 'invite_pending') return { allowed: false, reason: 'invite_required', existingInviteStatus: 'pending' };
+    if (verdict === 'invite_denied') return { allowed: false, reason: 'invite_required', existingInviteStatus: 'denied' };
+    return { allowed: false, reason: 'invite_required' };
+  }
+
   const [{ data: blockedByThem }, { data: blockedByMe }] = await Promise.all([
     supabase.from('chat_blocks').select('blocker_id').eq('blocker_id', otherId).eq('blocked_id', myId).maybeSingle(),
     supabase.from('chat_blocks').select('blocker_id').eq('blocker_id', myId).eq('blocked_id', otherId).maybeSingle(),
@@ -78,19 +89,21 @@ export async function checkChatGate(myId: string, myDepartment: string, otherId:
   return { allowed: false, reason: 'invite_required', existingInviteStatus: invite?.status as 'pending' | 'denied' | undefined };
 }
 
+// A new invite always starts as pending. Only the person invited can
+// answer it, so the sender can't overwrite an old one: a declined invite
+// is cleared first, and an invite that's still waiting is left as it is.
 export async function sendChatInvite(fromUserId: string, toUserId: string): Promise<void> {
-  const { error } = await supabase.from('chat_invites').upsert(
-    { from_user_id: fromUserId, to_user_id: toUserId, status: 'pending', responded_at: null },
-    { onConflict: 'from_user_id,to_user_id' }
-  );
-  if (error) throw error;
+  await supabase.from('chat_invites').delete().eq('from_user_id', fromUserId).eq('to_user_id', toUserId).eq('status', 'denied');
+  const { error } = await supabase.from('chat_invites').insert({ from_user_id: fromUserId, to_user_id: toUserId, status: 'pending' });
+  if (error && error.code !== '23505') throw error;
 }
 
 export async function respondToInvite(inviteId: string, accept: boolean): Promise<void> {
   const { error } = await supabase
     .from('chat_invites')
     .update({ status: accept ? 'accepted' : 'denied', responded_at: new Date().toISOString() })
-    .eq('id', inviteId);
+    .eq('id', inviteId)
+    .eq('status', 'pending');
   if (error) throw error;
 }
 
@@ -130,6 +143,15 @@ export async function blockUser(myId: string, otherId: string): Promise<void> {
 
 export async function unblockUser(myId: string, otherId: string): Promise<void> {
   await supabase.from('chat_blocks').delete().eq('blocker_id', myId).eq('blocked_id', otherId);
+}
+
+export async function blockState(myId: string, otherId: string): Promise<{ byMe: boolean; byThem: boolean }> {
+  const { data } = await supabase
+    .from('chat_blocks')
+    .select('blocker_id')
+    .or(`and(blocker_id.eq.${myId},blocked_id.eq.${otherId}),and(blocker_id.eq.${otherId},blocked_id.eq.${myId})`);
+  const rows = data || [];
+  return { byMe: rows.some((r: any) => r.blocker_id === myId), byThem: rows.some((r: any) => r.blocker_id === otherId) };
 }
 
 export async function isBlockedEitherWay(myId: string, otherId: string): Promise<boolean> {

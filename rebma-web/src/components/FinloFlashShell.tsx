@@ -219,7 +219,7 @@ export default function FinloFlashShell({ activeDepartment, currentUser, childre
           }
         } else {
           // Default fallbacks
-          const { count: staffCount } = await supabase.from('profiles').select('id', { count: 'exact', head: true });
+          const { count: staffCount } = await supabase.from('profiles').select('id', { count: 'exact', head: true }).neq('status', 'TERMINATED');
           const { data: recProfiles } = await supabase
             .from('profiles_directory')
             .select('full_name, role, status, created_at')

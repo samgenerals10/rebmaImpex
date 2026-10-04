@@ -16,6 +16,7 @@ import {
   Smartphone, PiggyBank, ClipboardList, UserPlus, Calendar, FileChartColumn, Factory, Video,
   MessagesSquare, Clipboard, Building2, Wallet, Ship, Ticket, Flag, PackagePlus, CircleCheckBig,
   GitMerge, SquareCheckBig, Send, Palette, Settings, Radio, Bot,
+  Cake,
 } from 'lucide-react-native';
 import VisitorLogScreen from '../screens/reception/VisitorLogScreen';
 import VisitorsScreen from '../screens/reception/VisitorsScreen';
@@ -97,6 +98,8 @@ import HrPayrollScreen from '../screens/hr/PayrollScreen';
 import HrDepartmentManagerScreen from '../screens/hr/DepartmentManagerScreen';
 import HrPerformanceAlertsScreen from '../screens/hr/PerformanceAlertsScreen';
 import HrQueriesScreen from '../screens/hr/HrQueriesScreen';
+import HrBirthdaysScreen from '../screens/hr/BirthdaysScreen';
+import HrBirthdayTemplatesScreen from '../screens/hr/BirthdayTemplatesScreen';
 import HrSpreadsheetsScreen from '../screens/hr/SpreadsheetsScreen';
 import ProductionOverviewScreen from '../screens/production/OverviewScreen';
 import InternalOrdersScreen from '../screens/production/InternalOrdersScreen';
@@ -453,11 +456,14 @@ export const DEPARTMENT_REGISTRY: Record<string, DepartmentEntry> = {
       { id: 'DepartmentManager', label: 'Department Manager', icon: Building2 },
       { id: 'PerformanceAlerts', label: 'Performance Alerts', icon: TriangleAlert },
       { id: 'HrQueries', label: 'HR Queries', icon: MessagesSquare },
+      { id: 'Birthdays', label: 'Birthdays', icon: Cake },
+      { id: 'BirthdayTemplates', label: 'Birthday Templates', icon: FileText },
       { id: 'Spreadsheets', label: 'Spreadsheets', icon: FileSpreadsheet },
     ],
     sections: [
       { title: 'Workforce & Talent', tabIds: ['Employees', 'Staff', 'Attendance', 'Registrations', 'LeaveManagement'] },
       { title: 'Payroll & Operations', tabIds: ['Payroll', 'DepartmentManager', 'PerformanceAlerts', 'HrQueries', 'Spreadsheets'] },
+      { title: 'Birthdays', tabIds: ['Birthdays', 'BirthdayTemplates'] },
     ],
     quickActions: [
       { label: 'Add New Staff', actionColor: 'emerald', icon: UserPlus, subTab: 'Staff' },
@@ -476,6 +482,8 @@ export const DEPARTMENT_REGISTRY: Record<string, DepartmentEntry> = {
       DepartmentManager: HrDepartmentManagerScreen,
       PerformanceAlerts: HrPerformanceAlertsScreen,
       HrQueries: HrQueriesScreen,
+      Birthdays: HrBirthdaysScreen,
+      BirthdayTemplates: HrBirthdayTemplatesScreen,
       Spreadsheets: HrSpreadsheetsScreen,
     },
   },
@@ -520,6 +528,9 @@ export const DEPARTMENT_REGISTRY: Record<string, DepartmentEntry> = {
     defaultSubTab: 'Overview',
     subTabs: [
       { id: 'Overview', label: 'Dashboard', icon: LayoutDashboard },
+      // The CEO's own Staff page (same as HR's, with Add Staff): how the
+      // CEO onboards the first HR, and the next HR after a termination.
+      { id: 'Staff', label: 'Staff', icon: Users },
       { id: 'SupplierOrders', label: 'Supplier Orders', icon: Ship },
       { id: 'Transactions', label: 'Transactions', icon: ArrowLeftRight },
       { id: 'Invoices', label: 'Invoices', icon: FileText },
@@ -539,7 +550,7 @@ export const DEPARTMENT_REGISTRY: Record<string, DepartmentEntry> = {
       { id: 'HelpAssistant', label: 'Help Assistant', icon: Bot },
     ],
     sections: [
-      { title: 'Executive Command', tabIds: ['Overview', 'SupplierOrders', 'Approvals', 'PriceApprovals', 'LiveUsers'] },
+      { title: 'Executive Command', tabIds: ['Overview', 'Staff', 'SupplierOrders', 'Approvals', 'PriceApprovals', 'LiveUsers'] },
       { title: 'Treasury & Accounts', tabIds: ['Transactions', 'Invoices', 'Receipts', 'PriceCatalog', 'Wallets', 'Accounts'] },
       { title: 'Fleet Tracking & Intelligence', tabIds: ['Tracking', 'DeptActivity', 'Spreadsheets'] },
       { title: 'Help', tabIds: ['HelpAssistant'] },
@@ -552,6 +563,7 @@ export const DEPARTMENT_REGISTRY: Record<string, DepartmentEntry> = {
     ],
     screens: {
       home: CeoOverviewScreen,
+      Staff: HrStaffScreen,
       SupplierOrders: CeoSupplierOrdersScreen,
       Transactions: CeoTransactionsScreen,
       Invoices: CeoInvoicesScreen,

@@ -94,7 +94,7 @@ export default function VisitorsScreen() {
     }
     setSubmitting(true);
     const badgeNumber = `V-${String(visitors.length + 1).padStart(3, '0')}`;
-    const { error } = await supabase.from('visitors').insert([{
+    const { data: inserted, error } = await supabase.from('visitors').insert([{
       full_name: form.fullName.trim(),
       company: form.company.trim(),
       purpose: form.purpose.trim(),
@@ -103,15 +103,18 @@ export default function VisitorsScreen() {
       badge_number: badgeNumber,
       notes: form.notes.trim(),
       status: 'inside',
-    }]);
+    }]).select('badge_number').single();
     setSubmitting(false);
+    // The database gives the badge (V-001 ...) so two receptionists can
+    // never hand out the same one.
+    const givenBadge = inserted?.badge_number || badgeNumber;
     if (error) {
       Alert.alert('Check-In Failed', error.message);
       return;
     }
     try {
       await supabase.from('supplier_order_notifications').insert([{
-        message: `Visitor ${form.fullName.trim()} (${form.purpose.trim()}) has arrived to see ${form.hostName.trim()}. Badge: ${badgeNumber}`,
+        message: `Visitor ${form.fullName.trim()} (${form.purpose.trim()}) has arrived to see ${form.hostName.trim()}. Badge: ${givenBadge}`,
         notified_department: 'ALL',
         read: false,
         created_at: new Date().toISOString(),

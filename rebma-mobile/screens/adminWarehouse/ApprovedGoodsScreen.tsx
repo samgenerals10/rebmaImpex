@@ -152,6 +152,19 @@ export default function ApprovedGoodsScreen() {
       Alert.alert('Dispatch Failed', error.message);
       return;
     }
+    // The order must pass through PROCESSING before it can ever reach
+    // OUT_FOR_DELIVERY — enforce_order_status_transition() only allows
+    // that jump from PROCESSING, and nothing else in the app ever set
+    // this. Without it, every dispatched order silently gets stuck the
+    // moment the driver starts sharing their location, with no way for
+    // Risk to approve the delivery afterward.
+    const { error: statusErr } = await supabase
+      .from('orders')
+      .update({ status: 'PROCESSING', updated_at: new Date().toISOString() })
+      .eq('id', target.id);
+    if (statusErr) {
+      Alert.alert('Dispatch Warning', `The delivery was created, but the order status could not be updated: ${statusErr.message}`);
+    }
     if (rows && rows[0]) {
       try {
         const deliveryId = rows[0].id;

@@ -12,6 +12,7 @@ import SearchableDropdown from '../../components/ui/SearchableDropdown';
 import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 import type { Visitor } from '../../types/erp';
 import { usePaginatedQuery } from '../../hooks/usePaginatedQuery';
+import DateRangeField from '../../components/ui/DateRangeField';
 
 
 type VisitorRecord = Visitor & { company?: string; badgeNumber: string; expectedTime?: string; idType?: string; idNumber?: string; notes?: string };
@@ -163,7 +164,9 @@ export default function VisitorsView({ addNotification }: Props) {
           hostName: form.hostName,
           checkInTime: dbVisitor.check_in_time,
           expectedTime: form.expectedTime || undefined,
-          badgeNumber,
+          // The database gives the badge (V-001 ...) so two receptionists
+          // can never hand out the same one.
+          badgeNumber: inserted.badge_number || badgeNumber,
           idType: form.idType,
           idNumber: form.idNumber,
           notes: form.notes,
@@ -289,8 +292,10 @@ export default function VisitorsView({ addNotification }: Props) {
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or host..."
             className="bg-transparent border-none outline-none text-[var(--text-primary)] text-xs w-full" />
         </div>
-        <input type="date" value={dateFilter} onChange={e => setDateFilter(e.target.value)}
-          className="bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-xs outline-none" />
+        {/* Calendar instead of a typed date (Part C). */}
+        <DateRangeField mode="single"
+          value={{ start: dateFilter, end: dateFilter }}
+          onChange={v => { if (v.start) setDateFilter(v.start); }} />
         <SearchableDropdown value={statusFilter} onChange={setStatusFilter} options={['All', 'Checked In', 'Checked Out'].map(s => ({ value: s, label: s }))} className="w-40" />
         <SearchableDropdown value={purposeFilter} onChange={setPurposeFilter} options={['All', 'Business Meeting', 'Delivery', 'Personal', 'Interview', 'Other'].map(s => ({ value: s, label: s }))} className="w-44" />
       </div>

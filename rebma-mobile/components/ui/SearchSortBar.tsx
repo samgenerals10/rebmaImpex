@@ -11,6 +11,8 @@ import { View, Text, TextInput, Pressable } from 'react-native';
 import { SlidersHorizontal, Check } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeProvider';
 import Sheet from './Sheet';
+import CalendarPicker from './CalendarPicker';
+import { rangeLabel } from '../../lib/dateRange';
 
 export interface SortOption {
   value: string;
@@ -50,6 +52,7 @@ export default function SearchSortBar({
   const t = useTheme();
   const [open, setOpen] = useState(false);
   const [focused, setFocused] = useState(false);
+  const [calMonth, setCalMonth] = useState<Date>(() => (dateFrom ? new Date(`${dateFrom}T12:00:00`) : new Date()));
 
   const hasControls = !!(sortOptions?.length || filterOptions?.length || onDateFromChange || children);
   const activeCount = (sortValue && sortValue !== sortOptions?.[0]?.value ? 1 : 0) + (filterValue && filterValue !== 'All' && filterValue !== filterOptions?.[0]?.value ? 1 : 0) + (dateFrom || dateTo ? 1 : 0);
@@ -166,25 +169,24 @@ export default function SearchSortBar({
               <Text style={{ fontFamily: t.font.bold, fontSize: t.type.label9.size, letterSpacing: 0.5, textTransform: 'uppercase', color: t.colors.textMuted, marginBottom: t.spacing.sm }}>
                 Date Range
               </Text>
-              <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
-                <View style={{ flex: 1 }}>
-                  <TextInput
-                    value={dateFrom}
-                    onChangeText={onDateFromChange}
-                    placeholder="From YYYY-MM-DD"
-                    placeholderTextColor={t.colors.textMuted}
-                    style={{ backgroundColor: t.colors.bgInput, borderWidth: 1, borderColor: t.colors.border, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontFamily: t.font.medium, fontSize: t.type.body12.size, color: t.colors.textPrimary }}
-                  />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <TextInput
-                    value={dateTo}
-                    onChangeText={onDateToChange}
-                    placeholder="To YYYY-MM-DD"
-                    placeholderTextColor={t.colors.textMuted}
-                    style={{ backgroundColor: t.colors.bgInput, borderWidth: 1, borderColor: t.colors.border, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontFamily: t.font.medium, fontSize: t.type.body12.size, color: t.colors.textPrimary }}
-                  />
-                </View>
+              {/* Calendar instead of typed dates (approved Part C): tap one day,
+                  or a start day and then an end day. */}
+              <CalendarPicker
+                month={calMonth}
+                onMonthChange={setCalMonth}
+                mode="range"
+                value={{ start: dateFrom || null, end: dateTo || dateFrom || null }}
+                onChange={(v) => { onDateFromChange?.(v.start || ''); onDateToChange?.(v.end || ''); }}
+              />
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: t.spacing.sm }}>
+                <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta11.size, color: t.colors.textSecondary }}>
+                  {rangeLabel({ start: dateFrom || null, end: dateTo || null }, 'All dates')}
+                </Text>
+                {(dateFrom || dateTo) ? (
+                  <Pressable onPress={() => { onDateFromChange?.(''); onDateToChange?.(''); }} hitSlop={8}>
+                    <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta11.size, color: t.colors.accent }}>Clear dates</Text>
+                  </Pressable>
+                ) : null}
               </View>
             </View>
           )}

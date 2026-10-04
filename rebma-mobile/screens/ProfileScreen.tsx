@@ -8,8 +8,11 @@
 // is relevant to every employee regardless of department, and mobile has
 // no generic "Payroll" route reachable by most departments today (only
 // Finance/HR/Management/CEO have one). Same precedent as Settings/Feedback.
+import { useCallback, useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
-import { LogOut, Mail, Building2, Hash, Briefcase, Sparkles, ChevronRight, Settings, MessageSquarePlus, Banknote } from 'lucide-react-native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { supabase } from '../lib/supabaseClient';
+import { LogOut, Mail, Building2, Hash, Briefcase, Sparkles, ChevronRight, ChevronLeft, Settings, MessageSquarePlus, Banknote, StickyNote, CheckSquare, HelpCircle } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeProvider';
 import { useAuthStore } from '../store/authStore';
 import { getDepartmentEntry } from '../navigation/departmentRegistry';
@@ -24,14 +27,38 @@ interface Props {
   onOpenSettings: () => void;
   onOpenFeedback: () => void;
   onOpenPayslips: () => void;
+  onOpenNotes: () => void;
+  onOpenTasks: () => void;
+  onOpenEmails: () => void;
+  onOpenHelp: () => void;
 }
 
-export default function ProfileScreen({ onOpenDesignSystem, onOpenSettings, onOpenFeedback, onOpenPayslips }: Props) {
+export default function ProfileScreen({ onOpenDesignSystem, onOpenSettings, onOpenFeedback, onOpenPayslips, onOpenNotes, onOpenTasks, onOpenEmails, onOpenHelp }: Props) {
   const t = useTheme();
+  const navigation = useNavigation<any>();
   const profile = useAuthStore((s) => s.profile);
   const signOut = useAuthStore((s) => s.signOut);
 
+  // Unread internal emails, shown on the Emails row (web shows the same
+  // count in its sidebar).
+  const [unreadEmails, setUnreadEmails] = useState(0);
+  useFocusEffect(useCallback(() => {
+    if (!profile?.id) return;
+    supabase.from('internal_emails').select('id', { count: 'exact', head: true })
+      .eq('to_user_id', profile.id).eq('read', false).eq('recipient_deleted', false)
+      .then(({ count }) => setUnreadEmails(count || 0), () => {});
+  }, [profile?.id]));
+
   if (!profile) return null;
+
+  // Notes, Tasks, Emails and Help & News: the same tools web has in its
+  // sidebar, for every department.
+  const toolRows = [
+    { icon: StickyNote, label: 'Notes', onPress: onOpenNotes, badge: 0 },
+    { icon: CheckSquare, label: 'Tasks', onPress: onOpenTasks, badge: 0 },
+    { icon: Mail, label: 'Emails', onPress: onOpenEmails, badge: unreadEmails },
+    { icon: HelpCircle, label: 'Help & News', onPress: onOpenHelp, badge: 0 },
+  ];
   const dept = getDepartmentEntry(profile.department);
 
   const rows = [
@@ -43,7 +70,20 @@ export default function ProfileScreen({ onOpenDesignSystem, onOpenSettings, onOp
 
   return (
     <Screen>
-      <PageTitle title="Profile" />
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, marginBottom: t.spacing.md }}>
+        {/* Profile is a bottom-tab root too — same fallback as
+            NotificationsScreen's back button. */}
+        <Pressable
+          onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('HomeTab'))}
+          hitSlop={8}
+          style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: t.colors.accentSoft, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <ChevronLeft size={19} color={t.colors.accent} />
+        </Pressable>
+        <View style={{ flex: 1 }}>
+          <PageTitle title="Profile" />
+        </View>
+      </View>
       <Card>
         <View style={{ alignItems: 'center', marginBottom: t.spacing.lg }}>
           <Avatar name={profile.fullName} photo={profile.photo} size={72} />
@@ -61,6 +101,22 @@ export default function ProfileScreen({ onOpenDesignSystem, onOpenSettings, onOp
       </Card>
 
       <View style={{ marginTop: t.spacing.xl, gap: t.spacing.sm }}>
+        {toolRows.map((row) => (
+          <Pressable
+            key={row.label}
+            onPress={row.onPress}
+            style={[{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, padding: t.spacing.md, borderRadius: 20, borderWidth: 1, borderColor: t.colors.border, backgroundColor: t.colors.bgCard }, t.shadow('card')]}
+          >
+            <row.icon size={16} color={t.colors.textSecondary} />
+            <Text style={{ flex: 1, fontFamily: t.font.medium, fontSize: t.type.body14.size, color: t.colors.textPrimary }}>{row.label}</Text>
+            {row.badge > 0 && (
+              <View style={{ minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 6, backgroundColor: t.colors.accent, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontFamily: t.font.bold, fontSize: 10, color: '#fff' }}>{row.badge}</Text>
+              </View>
+            )}
+            <ChevronRight size={16} color={t.colors.textMuted} />
+          </Pressable>
+        ))}
         <Pressable
           onPress={onOpenSettings}
           style={[{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, padding: t.spacing.md, borderRadius: 20, borderWidth: 1, borderColor: t.colors.border, backgroundColor: t.colors.bgCard }, t.shadow('card')]}

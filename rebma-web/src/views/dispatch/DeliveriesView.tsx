@@ -17,6 +17,7 @@ import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import SidePanel from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
 import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
+import DateRangeField from '../../components/ui/DateRangeField';
 
 
 // ── types ─────────────────────────────────────────────────────────────────────
@@ -663,8 +664,10 @@ export default function DeliveriesView({ addNotification, currentUser, setActive
             options={[{ value: '', label: 'All Drivers' }, ...drivers.map(d => ({ value: d.id, label: d.fullName }))]}
             className="w-44"
           />
-          <input type="date" value={dateFilter} onChange={e => setDateFilter(e.target.value)}
-            className="px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-secondary)] focus:outline-none" />
+          {/* Calendar instead of a typed date (Part C). */}
+          <DateRangeField mode="single" allowClear align="right"
+            value={{ start: dateFilter || null, end: dateFilter || null }}
+            onChange={v => setDateFilter(v.start || '')} />
         </div>
       </div>
 

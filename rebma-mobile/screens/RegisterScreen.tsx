@@ -26,26 +26,30 @@
 // (amber), and the turquoise/amber/forest-green palette — no
 // gradients, all three sampled directly from the logo.
 //
-// The screen shown to the user for "create an account" had editable
-// Full Name/Email/Phone/Password fields, but that's not how
-// registration actually works here — HR enters the candidate's record
-// up front, the candidate only confirms it's them, and a password is
-// set later through Settings once HR approves. Copying those literal
-// fields would misrepresent that real flow, so only the shared shape
-// (brand header, boxed fields, button) is carried over — the real
-// invite-link -> confirm-details states stay exactly as they were.
+// HR enters the candidate's record up front; the candidate confirms it's
+// them and chooses their own password here. Nothing else is editable.
+//
+// On submit, the device they're using and (if they allow it) their GPS
+// location are sent along for the approver to review. The server adds
+// their network address itself.
+//
+// Confidentiality rule: the candidate is only ever told their
+// registration is "waiting for approval". Nothing here names who
+// approves it.
 import { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, StyleSheet, StatusBar, ScrollView,
   KeyboardAvoidingView, Platform, Linking, Pressable,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { Link2, User, Mail, Building2, Briefcase, Phone } from 'lucide-react-native';
+import { Link2, User, Mail, Building2, Briefcase, Phone, Lock, Eye, EyeOff, MapPin } from 'lucide-react-native';
 import { callPublicApi, ApiNotConfiguredError } from '../lib/apiBase';
+import { Alert } from '../lib/appAlert';
+import { getRegistrationDevice, getRegistrationLocation } from '../lib/registrationContext';
 import { useTheme } from '../theme/ThemeProvider';
 import AuthBrandHeader from '../components/auth/AuthBrandHeader';
 import AuthBackButton from '../components/auth/AuthBackButton';
-import AuthGradientButton, { AMBER, FOREST } from '../components/auth/AuthGradientButton';
+import AuthGradientButton, { AMBER, FOREST, INK, MUTED, FIELD_FILL, FIELD_HEIGHT } from '../components/auth/AuthGradientButton';
 
 // See LoginScreen.tsx — suppresses the browser's own focus ring on web
 // only; RN Native has no such outline to begin with.
@@ -81,7 +85,7 @@ const HEADER_COPY: Record<InviteState, { title: string; subtitle: string }> = {
   enterLink: { title: 'Create an account', subtitle: 'Paste the invite link HR sent you to get started.' },
   checking: { title: 'Create an account', subtitle: 'Paste the invite link HR sent you to get started.' },
   invalid: { title: 'Link not valid', subtitle: 'This invite link has expired or was already used.' },
-  valid: { title: 'Almost there', subtitle: "HR already entered your record, just confirm it's you." },
+  valid: { title: 'Almost there', subtitle: "HR already entered your record. Confirm it's you and choose a password." },
 };
 
 export default function RegisterScreen() {
@@ -93,6 +97,11 @@ export default function RegisterScreen() {
   const [invite, setInvite] = useState<{ email: string; fullName: string; department: string; role: string; phone: string } | null>(null);
   const [token, setToken] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [formError, setFormError] = useState('');
+  const [step, setStep] = useState('');
 
   const resolveToken = async (t0: string) => {
     setState('checking');
@@ -133,21 +142,49 @@ export default function RegisterScreen() {
     resolveToken(found);
   };
 
+  const passwordProblem = (): string => {
+    if (password.length < 8) return 'Choose a password of at least 8 characters.';
+    if (!/[A-Za-z]/.test(password) || !/\d/.test(password)) return 'Your password needs at least one letter and one number.';
+    if (password !== confirmPassword) return "The two passwords don't match.";
+    return '';
+  };
+
   const confirmRegister = async () => {
     if (!invite) return;
+    const problem = passwordProblem();
+    if (problem) { setFormError(problem); return; }
+    setFormError('');
     setSubmitting(true);
     try {
-      await callPublicApi('/api/register-standard-user', 'POST', {
+      setStep('Checking your location…');
+      const location = await getRegistrationLocation();
+      setStep('Registering…');
+      const result = await callPublicApi<{ message?: string; status?: string }>('/api/register-standard-user', 'POST', {
         email: invite.email,
         fullName: invite.fullName,
         inviteToken: token,
+        password,
+        device: getRegistrationDevice(),
+        location,
       });
-      navigation.navigate('Login');
+      Alert.alert(
+        result?.status === 'ACTIVE' ? 'Registration complete' : 'Waiting for approval',
+        result?.message || 'Your registration is waiting for approval. We will email you as soon as you can sign in.',
+        [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
+      );
     } catch (e: any) {
-      setError(e instanceof ApiNotConfiguredError ? e.message : (e.message || 'Registration failed.'));
-      setState('invalid');
+      // A password or duplicate-account problem is fixable on this screen,
+      // so keep the form open. Only a dead invite goes to the error state.
+      const msg = e instanceof ApiNotConfiguredError ? e.message : (e.message || 'Registration failed.');
+      if (/password|already exists|different email/i.test(msg)) {
+        setFormError(msg);
+      } else {
+        setError(msg);
+        setState('invalid');
+      }
     } finally {
       setSubmitting(false);
+      setStep('');
     }
   };
 
@@ -159,7 +196,11 @@ export default function RegisterScreen() {
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <AuthBackButton />
-        <AuthBrandHeader title={header.title} subtitle={header.subtitle} />
+        {/* Logo/wordmark stay exactly where they are, same as Login —
+            only the title (and subtitle, part of the same header stack)
+            pushes down, this time far enough that "Create an account"
+            starts roughly where the invite-link input box used to sit. */}
+        <AuthBrandHeader title={header.title} subtitle={header.subtitle} titleMarginTop={112} />
 
         {state === 'enterLink' && (
           <>
@@ -172,7 +213,7 @@ export default function RegisterScreen() {
                   value={linkInput}
                   onChangeText={setLinkInput}
                   placeholder="https://.../register?token=... or the code"
-                  placeholderTextColor={t.colors.textMuted}
+                  placeholderTextColor={MUTED}
                   style={[styles.input, noWebOutline]}
                   autoCapitalize="none"
                 />
@@ -186,7 +227,7 @@ export default function RegisterScreen() {
 
         {state === 'checking' && (
           <View style={{ paddingVertical: t.spacing.xl, alignItems: 'center' }}>
-            <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body14.size, color: t.colors.textMuted }}>Verifying your invite…</Text>
+            <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: MUTED }}>Verifying your invite…</Text>
           </View>
         )}
 
@@ -217,9 +258,51 @@ export default function RegisterScreen() {
                 </View>
               );
             })}
+            <View style={styles.field}>
+              <Text style={styles.label}>Choose a password</Text>
+              <View style={styles.inputBox}>
+                <Lock size={18} color={AMBER} />
+                <TextInput
+                  value={password}
+                  onChangeText={(v) => { setPassword(v); setFormError(''); }}
+                  placeholder="At least 8 characters, with a letter and a number"
+                  placeholderTextColor={MUTED}
+                  style={[styles.input, noWebOutline]}
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                  autoComplete="new-password"
+                  textContentType="newPassword"
+                />
+                <Pressable onPress={() => setShowPassword((v) => !v)} hitSlop={8} accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}>
+                  {showPassword ? <EyeOff size={18} color={MUTED} /> : <Eye size={18} color={MUTED} />}
+                </Pressable>
+              </View>
+            </View>
+            <View style={styles.field}>
+              <Text style={styles.label}>Confirm password</Text>
+              <View style={styles.inputBox}>
+                <Lock size={18} color={AMBER} />
+                <TextInput
+                  value={confirmPassword}
+                  onChangeText={(v) => { setConfirmPassword(v); setFormError(''); }}
+                  placeholder="Type the same password again"
+                  placeholderTextColor={MUTED}
+                  style={[styles.input, noWebOutline]}
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                  autoComplete="new-password"
+                  textContentType="newPassword"
+                />
+              </View>
+            </View>
+            <View style={styles.noteRow}>
+              <MapPin size={14} color={MUTED} />
+              <Text style={styles.noteText}>When you register, we record the device you're using and ask for your location. You can say no to the location request.</Text>
+            </View>
+            {formError ? <View style={styles.errorBox}><Text style={styles.errorText}>{formError}</Text></View> : null}
             <View style={{ marginTop: t.spacing.xs }}>
               <AuthGradientButton
-                label={submitting ? 'Registering…' : 'Create account'}
+                label={submitting ? (step || 'Registering…') : 'Create account'}
                 onPress={confirmRegister}
                 disabled={submitting}
               />
@@ -245,15 +328,18 @@ function makeStyles(t: ReturnType<typeof useTheme>) {
     errorBox: { backgroundColor: t.colors.status.danger.bg, borderRadius: t.radius.md, padding: t.spacing.md, marginBottom: t.spacing.md },
     errorText: { fontFamily: t.font.semibold, fontSize: t.type.meta11.size, color: t.colors.status.danger.text, textAlign: 'center' },
     field: { marginBottom: t.spacing.sm },
-    label: { fontFamily: t.font.semibold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginBottom: 4 },
+    label: { fontFamily: t.font.bold, fontSize: t.type.body14.size, color: INK, marginBottom: 4 },
     inputBox: {
       flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm,
-      borderWidth: 1, borderColor: t.colors.border, borderRadius: t.radius.md,
-      paddingHorizontal: t.spacing.md, paddingVertical: 11,
+      height: FIELD_HEIGHT,
+      backgroundColor: FIELD_FILL, borderRadius: t.radius.md,
+      paddingHorizontal: t.spacing.md,
     },
-    input: { flex: 1, fontFamily: t.font.regular, fontSize: t.type.body14.size, color: t.colors.textPrimary, padding: 0 },
-    switchText: { fontFamily: t.font.regular, fontSize: t.type.body14.size, color: t.colors.textPrimary, textAlign: 'center' },
+    input: { flex: 1, fontFamily: t.font.semibold, fontSize: t.type.body14.size, color: INK, padding: 0 },
+    noteRow: { flexDirection: 'row', gap: 6, alignItems: 'flex-start', marginBottom: t.spacing.sm },
+    noteText: { flex: 1, fontFamily: t.font.medium, fontSize: t.type.meta11.size, color: MUTED },
+    switchText: { fontFamily: t.font.semibold, fontSize: t.type.body14.size, color: INK, textAlign: 'center' },
     switchLink: { fontFamily: t.font.bold, color: AMBER },
-    footer: { fontFamily: t.font.medium, fontSize: t.type.meta10.size, color: t.colors.textMuted, textAlign: 'center', marginTop: t.spacing.xl },
+    footer: { fontFamily: t.font.semibold, fontSize: t.type.meta10.size, color: MUTED, textAlign: 'center', marginTop: t.spacing.xl },
   });
 }

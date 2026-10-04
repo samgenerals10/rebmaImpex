@@ -40,14 +40,21 @@ async function fetchPendingForDept(department: string): Promise<PendingItem[]> {
   if (department === 'MANAGEMENT') {
     // Phase 7.6, D47 — counts across Management's 5 live approval lanes,
     // same statuses MgmtApprovalsScreen itself queries.
+    // FIX: cargo was checking PENDING_MANAGEMENT_APPROVAL — a status the
+    // real cargo pipeline stopped writing once Risk took over cargo
+    // approval entirely (same bug just fixed in MgmtOverviewScreen.tsx's
+    // own KPI tile). Real status is PENDING_RISK_APPROVAL; Management
+    // sees it as awareness only (Risk approves it), routed to Set Prices
+    // — the one real, actionable thing Management does once cargo clears
+    // Risk — matching the dashboard tile's own destination exactly.
     const [cargo, orders, production, purchases, float] = await Promise.all([
-      supabase.from('cargo_intake').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_MANAGEMENT_APPROVAL'),
+      supabase.from('cargo_intake').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_RISK_APPROVAL'),
       supabase.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_MANAGEMENT'),
       supabase.from('production_requests').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_MANAGEMENT').then((r) => r, () => ({ count: 0 })),
       supabase.from('general_purchases').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_MANAGEMENT_APPROVAL').then((r) => r, () => ({ count: 0 })),
       supabase.from('float_requests').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_MANAGEMENT').then((r) => r, () => ({ count: 0 })),
     ]);
-    if ((cargo.count || 0) > 0) items.push({ label: 'cargo intake', count: cargo.count || 0, tab: 'CreditApproval' });
+    if ((cargo.count || 0) > 0) items.push({ label: 'cargo pending Risk sign-off', count: cargo.count || 0, tab: 'SetPrices' });
     if ((orders.count || 0) > 0) items.push({ label: 'orders awaiting approval', count: orders.count || 0, tab: 'CreditApproval' });
     if (((production as any).count || 0) > 0) items.push({ label: 'production requests', count: (production as any).count || 0, tab: 'CreditApproval' });
     if (((purchases as any).count || 0) > 0) items.push({ label: 'general purchases', count: (purchases as any).count || 0, tab: 'CreditApproval' });
@@ -102,6 +109,47 @@ async function fetchPendingForDept(department: string): Promise<PendingItem[]> {
     ]);
     if ((registrations.count || 0) > 0) items.push({ label: 'registrations', count: registrations.count || 0, tab: 'Approvals' });
     if ((priceChanges.count || 0) > 0) items.push({ label: 'price changes', count: priceChanges.count || 0, tab: 'PriceApprovals' });
+  }
+  if (department === 'FINANCE') {
+    // accounts_review_order() is the real gate: PENDING_FINANCE ->
+    // PENDING_RISK_RELEASE — this is Finance's own live approval queue,
+    // same status OrdersQueueScreen itself filters to by default.
+    const orders = await supabase.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_FINANCE');
+    if ((orders.count || 0) > 0) items.push({ label: 'orders awaiting Finance review', count: orders.count || 0, tab: 'OrdersQueue' });
+  }
+  if (department === 'HR') {
+    // Same query CEO's own branch runs (unfiltered by department, per
+    // the Phase 8 recruitment reform where either HR or CEO may be the
+    // one configured to act) — HR gets its own copy pointed at its own
+    // Registrations screen rather than CEO's Approvals screen.
+    const registrations = await supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_APPROVAL');
+    if ((registrations.count || 0) > 0) items.push({ label: 'registrations', count: registrations.count || 0, tab: 'Registrations' });
+  }
+  if (department === 'MARKETING') {
+    // Orders returned for correction have no real dedicated screen to
+    // view/fix them today (confirmed by reading CreateOrderScreen.tsx —
+    // it queries orders only for pricing/discount lookups, not as a
+    // list-and-fix UI), so only customers are included here — those
+    // have a real destination (RegisterCustomer), and editing one that's
+    // RETURNED_FOR_CORRECTION already implicitly resubmits it.
+    const customers = await supabase.from('customers').select('id', { count: 'exact', head: true }).eq('status', 'RETURNED_FOR_CORRECTION');
+    if ((customers.count || 0) > 0) items.push({ label: 'customers returned for correction', count: customers.count || 0, tab: 'RegisterCustomer' });
+  }
+  if (department === 'PRODUCTION') {
+    // Awareness only, not an action queue — Production doesn't approve
+    // anything, Management does. Scoped to the last 24h so this doesn't
+    // permanently accumulate every rejection ever (REJECTED is a
+    // terminal status, unlike the other branches' live pending queues).
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const rejected = await supabase.from('production_requests').select('id', { count: 'exact', head: true }).eq('status', 'REJECTED').gte('updated_at', since).then((r) => r, () => ({ count: 0 }));
+    if (((rejected as any).count || 0) > 0) items.push({ label: 'requisitions rejected today', count: (rejected as any).count || 0, tab: 'InternalOrders' });
+  }
+  if (department === 'RECEPTION') {
+    // Reception has no approval chain in this system at all — the one
+    // genuinely real, live thing worth surfacing is who's currently on
+    // site (checked in, not yet checked out).
+    const onSite = await supabase.from('visitors').select('id', { count: 'exact', head: true }).is('check_out_time', null);
+    if ((onSite.count || 0) > 0) items.push({ label: 'visitors currently checked in', count: onSite.count || 0, tab: 'Visitors' });
   }
   return items;
 }

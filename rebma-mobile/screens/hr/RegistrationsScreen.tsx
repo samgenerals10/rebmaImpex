@@ -10,12 +10,21 @@
 // the local list on success — matching web's actual behavior exactly
 // (a re-fetch of getPendingUsers() would no longer include them either,
 // since their status has moved off PENDING_APPROVAL).
+//
+// A registration not approved within 12 hours shows as Expired, with a
+// Resend link button (api/resend-invite.ts). That clears the expired
+// sign-up and emails the person a fresh link; the link is also shown
+// here, with a copy button, for when email isn't set up.
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, Linking } from 'react-native';
 import { Alert } from '../../lib/appAlert';
-import { CheckCircle, XCircle, Trash2 } from 'lucide-react-native';
+import { CheckCircle, XCircle, Trash2, Send, Copy, MessageCircle } from 'lucide-react-native';
+import * as Clipboard from 'expo-clipboard';
+import { isRegistrationExpired, approvalTimeLeft } from '../../lib/registration';
 import { supabase } from '../../lib/supabaseClient';
 import { callPrivilegedApi, ApiNotConfiguredError } from '../../lib/apiBase';
+import { getCeoSetting } from '../../lib/ceoSetting';
+import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '../../theme/ThemeProvider';
 import Screen from '../../components/ui/Screen';
 import Badge from '../../components/ui/Badge';
@@ -28,6 +37,7 @@ const CEO_ONLY_DEPARTMENTS = ['MANAGEMENT', 'HR'];
 
 interface Registration {
   id: string; fullName: string; email: string; department: string; ghanaCard: string; phone: string; submittedAt: string;
+  registeredAt: string | null; expired: boolean;
 }
 
 function generatePassword(): string {
@@ -46,6 +56,15 @@ export default function RegistrationsScreen() {
   const [credPopup, setCredPopup] = useState<{ email: string; password: string } | null>(null);
   const [denyReason, setDenyReason] = useState('');
   const [showDeny, setShowDeny] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [resent, setResent] = useState<{ name: string; message: string; link: string; phone: string } | null>(null);
+  // New staff are approved by the CEO only (same default as
+  // api/approve-user.ts). HR still sees who's waiting, but the buttons
+  // would just be rejected by the server, so they're replaced with a note.
+  const profile = useAuthStore((s) => s.profile);
+  const [ceoOnly, setCeoOnly] = useState(true);
+  useEffect(() => { getCeoSetting<boolean>('ceo_must_approve_registrations', true).then((v) => setCeoOnly(v !== false)); }, []);
+  const canDecide = !!profile?.isAdmin || !ceoOnly;
 
   const load = useCallback(async () => {
     const { data } = await supabase.from('profiles').select('*').eq('status', 'PENDING_APPROVAL').order('created_at', { ascending: false });
@@ -53,7 +72,9 @@ export default function RegistrationsScreen() {
       .filter((r: any) => !CEO_ONLY_DEPARTMENTS.includes(String(r.role || '').toUpperCase()))
       .map((r: any) => ({
         id: r.id, fullName: r.full_name || '', email: r.email || '', department: r.role || '',
-        ghanaCard: r.ghana_card_id || 'N/A', phone: r.phone || '', submittedAt: r.created_at ? new Date(r.created_at).toLocaleString() : '',
+        ghanaCard: r.ghana_card_id || 'N/A', phone: r.phone || '',
+        submittedAt: (r.registered_at || r.created_at) ? new Date(r.registered_at || r.created_at).toLocaleString() : '',
+        registeredAt: r.registered_at || null, expired: isRegistrationExpired(r.status, r.registered_at),
       })));
     setLoading(false);
     setRefreshing(false);
@@ -70,11 +91,13 @@ export default function RegistrationsScreen() {
     if (submitting) return;
     setSubmitting(true);
     try {
-      const pw = generatePassword();
-      await callPrivilegedApi('/api/approve-user', { userId: reg.id, approve: true, generatedPassword: pw });
+      // Only older registrations (no registered_at) need a temporary password.
+      const pw = reg.registeredAt ? undefined : generatePassword();
+      const res: any = await callPrivilegedApi('/api/approve-user', { userId: reg.id, approve: true, generatedPassword: pw });
       setRegistrations((prev) => prev.filter((r) => r.id !== reg.id));
       setSelected(null);
-      setCredPopup({ email: reg.email, password: pw });
+      if (res?.choseOwnPassword || !pw) Alert.alert('Approved', res?.message || `${reg.fullName} can now sign in.`);
+      else setCredPopup({ email: reg.email, password: pw });
     } catch (e: any) {
       if (e instanceof ApiNotConfiguredError) Alert.alert('Not Configured', e.message);
       else Alert.alert('Approval Failed', e.message || 'Could not approve this registration.');
@@ -100,6 +123,22 @@ export default function RegistrationsScreen() {
     }
   };
 
+  const resendLink = async (reg: Registration) => {
+    if (resending) return;
+    setResending(true);
+    try {
+      const res: any = await callPrivilegedApi('/api/resend-invite', { userId: reg.id });
+      setRegistrations((prev) => prev.filter((r) => r.id !== reg.id));
+      setSelected(null);
+      setResent({ name: reg.fullName, message: res?.message || 'A new link is ready.', link: res?.link || '', phone: res?.phone || reg.phone || '' });
+    } catch (e: any) {
+      if (e instanceof ApiNotConfiguredError) Alert.alert('Not Configured', e.message);
+      else Alert.alert('Could Not Resend', e.message || 'Could not resend the link.');
+    } finally {
+      setResending(false);
+    }
+  };
+
   const handleDelete = (id: string) => {
     Alert.alert('Delete Registration', 'Are you sure you want to delete this registration request?', [
       { text: 'Cancel', style: 'cancel' },
@@ -114,7 +153,10 @@ export default function RegistrationsScreen() {
 
   const columns: DataColumn<Registration>[] = [
     { key: 'fullName', label: 'Name', primary: true },
-    { key: 'department', label: 'Department', status: true, render: (r) => <Badge tone="warning" label={r.department} size="xs" /> },
+    { key: 'expired', label: 'Status', status: true, render: (r) => r.expired
+      ? <Badge tone="danger" label="EXPIRED" size="xs" />
+      : <Badge tone="warning" label={(approvalTimeLeft(r.registeredAt) || 'Pending').toUpperCase()} size="xs" /> },
+    { key: 'department', label: 'Department' },
     { key: 'email', label: 'Email' },
     { key: 'submittedAt', label: 'Submitted' },
   ];
@@ -137,9 +179,23 @@ export default function RegistrationsScreen() {
                 <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>Submitted: {selected.submittedAt}</Text>
               </View>
             </SheetSection>
+            {selected.expired ? (
+              <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body12.size, color: t.colors.status.danger.text }}>
+                This registration expired because it was not approved within 12 hours. Resend the link so they can register again.
+              </Text>
+            ) : !canDecide ? (
+              <Badge tone="warning" label="Waiting for CEO approval" />
+            ) : null}
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.sm }}>
-              <Button label="Approve" size="sm" icon={<CheckCircle size={13} color="#fff" />} onPress={() => approve(selected)} loading={submitting} disabled={submitting} />
-              <Button label="Deny" size="sm" variant="danger" icon={<XCircle size={13} color="#fff" />} onPress={() => setShowDeny(true)} disabled={submitting} />
+              {selected.expired && (
+                <Button label={resending ? 'Sending…' : 'Resend link'} size="sm" icon={<Send size={13} color="#fff" />} onPress={() => resendLink(selected)} loading={resending} disabled={resending} />
+              )}
+              {canDecide && !selected.expired && (
+                <>
+                  <Button label="Approve" size="sm" icon={<CheckCircle size={13} color="#fff" />} onPress={() => approve(selected)} loading={submitting} disabled={submitting} />
+                  <Button label="Deny" size="sm" variant="danger" icon={<XCircle size={13} color="#fff" />} onPress={() => setShowDeny(true)} disabled={submitting} />
+                </>
+              )}
               <Button label="Delete" size="sm" variant="ghost" icon={<Trash2 size={13} color={t.colors.textSecondary} />} onPress={() => handleDelete(selected.id)} disabled={submitting} />
             </View>
           </View>
@@ -148,7 +204,29 @@ export default function RegistrationsScreen() {
 
       <Sheet open={showDeny} onClose={() => setShowDeny(false)} title="Deny Registration" subtitle={selected?.fullName} side="bottom" maxHeight={360}
         footer={<Button label={submitting ? 'Denying…' : 'Confirm Deny'} variant="danger" onPress={deny} loading={submitting} disabled={submitting} fullWidth />}>
-        <Field label="Reason (optional)"><Input value={denyReason} onChangeText={setDenyReason} multiline numberOfLines={3} style={{ minHeight: 72, textAlignVertical: 'top' }} /></Field>
+        <Field label="Reason (optional)"><Input value={denyReason} onChangeText={setDenyReason} multiline numberOfLines={3} style={{ minHeight: 72, textAlignVertical: 'top' }} placeholder="Why is this registration being denied?" /></Field>
+      </Sheet>
+
+      <Sheet open={!!resent} onClose={() => setResent(null)} title="Link Resent" subtitle={resent?.name} side="bottom" maxHeight={380}
+        footer={<Button label="Done" onPress={() => setResent(null)} fullWidth />}>
+        {resent && (
+          <View style={{ gap: t.spacing.sm }}>
+            <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textMuted }}>{resent.message}</Text>
+            {!!resent.link && (
+              <>
+                <Text selectable style={{ fontFamily: t.font.medium, fontSize: t.type.meta11.size, color: t.colors.textPrimary }}>{resent.link}</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.sm }}>
+                  <Button label="Send on WhatsApp" size="sm" icon={<MessageCircle size={13} color="#fff" />} onPress={() => {
+                    const digits = resent.phone.replace(/[^\d+]/g, '').replace(/^\+/, '').replace(/^0/, '233');
+                    const text = `Hi ${resent.name}, here is your new Rebma Impex registration link. Open the Rebma app, tap Register and paste it: ${resent.link}`;
+                    Linking.openURL(`https://wa.me/${digits}?text=${encodeURIComponent(text)}`);
+                  }} />
+                  <Button label="Copy link" size="sm" variant="ghost" icon={<Copy size={13} color={t.colors.textSecondary} />} onPress={async () => { await Clipboard.setStringAsync(resent.link); Alert.alert('Copied', 'Link copied.'); }} />
+                </View>
+              </>
+            )}
+          </View>
+        )}
       </Sheet>
 
       <Sheet open={!!credPopup} onClose={() => setCredPopup(null)} title="User Approved" side="bottom" maxHeight={320}

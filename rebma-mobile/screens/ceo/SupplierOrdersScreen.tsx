@@ -444,7 +444,7 @@ export default function SupplierOrdersScreen() {
               <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textMuted }}>Subtotal</Text>
               <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>{currency} {totalAmount.toLocaleString()}</Text>
             </View>
-            <Field label="Exchange Rate (GHS)"><Input value={exchangeRate} onChangeText={setExchangeRate} keyboardType="decimal-pad" /></Field>
+            <Field label="Exchange Rate (GHS)"><Input value={exchangeRate} onChangeText={setExchangeRate} keyboardType="decimal-pad" placeholder="1.00" /></Field>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
               <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary }}>Total in GHS</Text>
               <Text style={{ fontFamily: t.font.extrabold, fontSize: t.type.title18.size, color: t.colors.accent }}>GHS {totalGhs.toLocaleString()}</Text>

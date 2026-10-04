@@ -9,7 +9,8 @@ import {
   CreditCard, ClipboardCheck, MapPin, MessageCircle, RefreshCw, Banknote, ShoppingCart,
   Package, AlertTriangle, UserCheck, Camera, UserPlus, Calendar, Building2, AlertCircle,
   FileBarChart, ClipboardList, Factory, Wrench, BarChart3, Gauge, Plus, ShoppingBag,
-  Smartphone, Receipt, Calculator, PiggyBank, Shield, FileSpreadsheet, ShieldAlert, QrCode, Bot
+  Smartphone, Receipt, Calculator, PiggyBank, Shield, FileSpreadsheet, ShieldAlert, QrCode, Bot,
+  Cake,
 } from 'lucide-react';
 import type { CurrentUser } from '../../types/erp';
 import MiniCalendar from './MiniCalendar';
@@ -88,6 +89,9 @@ export default function Sidebar({
   const departmentTabs: Record<string, Array<{ id: string; label: string; icon: any }>> = {
     CEO: [
       { id: 'Overview',        label: 'Dashboard',            icon: LayoutDashboard },
+      // The CEO's own Staff page (same as HR's, with Add Staff): how the
+      // CEO onboards the first HR, and the next HR after a termination.
+      { id: 'Staff',           label: 'Staff',                 icon: Users },
       { id: 'SupplierOrders',  label: 'Supplier Orders',       icon: ShoppingBag },
       { id: 'Transactions',    label: 'Transactions',          icon: ArrowLeftRight },
       { id: 'Invoices',        label: 'Invoices',              icon: FileText },
@@ -169,6 +173,8 @@ export default function Sidebar({
       { id: 'Payroll',            label: 'Payroll',               icon: Banknote },
       { id: 'DepartmentManager',  label: 'Department Manager',    icon: Building2 },
       { id: 'PerformanceAlerts',  label: 'Performance Alerts',    icon: AlertCircle },
+      { id: 'Birthdays',          label: 'Birthdays',             icon: Cake },
+      { id: 'BirthdayTemplates',  label: 'Birthday Templates',    icon: FileText },
       { id: 'Spreadsheets',       label: 'Spreadsheets',          icon: FileSpreadsheet },
     ],
     // Sales History and Invoices (invoice generation) moved to Finance —

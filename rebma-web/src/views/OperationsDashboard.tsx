@@ -300,32 +300,12 @@ export default function OperationsDashboard({
   // finished-goods PRODUCTION_RELEASE path above, which adds stock) — so this
   // deducts each requisitioned item the same way a confirmed sale does.
   const releaseRawMaterialsToProduction = async (ticket: any) => {
-    const now = new Date().toISOString();
     const items = Array.isArray(ticket.details?.items) ? ticket.details.items : [];
-    for (const item of items) {
-      if (!item.materialName) continue;
-      const qty = Number(item.quantity) || 0;
-      if (qty <= 0) continue;
-
-      await supabase.from('stock_ledger').insert({
-        product_name: item.materialName,
-        movement_type: 'REMOVE',
-        quantity: qty,
-        reference: `Raw material released to Production (ticket ${ticket.id})`,
-        created_at: now,
-      });
-
-      const { data: existing } = await supabase.from('stock').select('id, quantity').ilike('product_name', item.materialName).limit(1);
-      if (existing && existing.length > 0) {
-        const newQty = Math.max(0, (existing[0].quantity || 0) - qty);
-        await supabase.from('stock').update({ quantity: newQty, last_updated: now }).eq('id', existing[0].id);
-      }
-    }
-
-    await supabase.from('fulfillment_tickets').update({ status: 'COMPLETED', updated_at: now }).eq('id', ticket.id);
-    if (ticket.details?.requisitionId) {
-      await supabase.from('material_requisitions').update({ status: 'FULFILLED', updated_at: now }).eq('id', ticket.details.requisitionId);
-    }
+    // One database step (release_raw_materials): checks the ticket is still
+    // waiting, takes the materials out of stock and closes the ticket and
+    // requisition together, so a double click can't release them twice.
+    const { error: releaseErr } = await supabase.rpc('release_raw_materials', { p_ticket_id: String(ticket.id) });
+    if (releaseErr) { addNotification(`Not released: ${releaseErr.message}`); loadRawMaterialTickets(); return; }
     await supabase.from('supplier_order_notifications').insert([{
       message: `Raw materials released to Production: ${items.map((i: any) => `${i.materialName} (${i.quantity}${i.unit ? ' ' + i.unit : ''})`).join(', ')}`,
       notified_department: 'PRODUCTION', read: false,

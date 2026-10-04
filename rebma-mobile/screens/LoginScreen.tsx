@@ -37,7 +37,7 @@ import { useTheme } from '../theme/ThemeProvider';
 import Toggle from '../components/ui/Toggle';
 import AuthBrandHeader from '../components/auth/AuthBrandHeader';
 import AuthBackButton from '../components/auth/AuthBackButton';
-import AuthGradientButton, { TURQUOISE, AMBER, FOREST } from '../components/auth/AuthGradientButton';
+import AuthGradientButton, { TURQUOISE, AMBER, FOREST, INK, MUTED, FIELD_FILL, FIELD_HEIGHT } from '../components/auth/AuthGradientButton';
 
 // react-native-web renders a real <input>, which picks up the
 // browser's own focus ring (often a yellow/blue outline) — RN Native
@@ -92,7 +92,11 @@ export default function LoginScreen() {
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <AuthBackButton />
-        <AuthBrandHeader title={forgotOpen ? 'Reset password' : 'Sign in'} />
+        {/* Per direct correction: the logo/wordmark stay exactly where
+            they were (right under the back button) — only the title
+            ("Sign in"/"Reset password") pushes down, via
+            titleMarginTop, not a wrapper around the whole header. */}
+        <AuthBrandHeader title={forgotOpen ? 'Reset password' : 'Sign in'} titleMarginTop={76} />
 
         {error ? (
           <View style={styles.errorBox}>
@@ -114,7 +118,7 @@ export default function LoginScreen() {
                     value={resetEmail}
                     onChangeText={setResetEmail}
                     placeholder="example12@gmail.com"
-                    placeholderTextColor={t.colors.textMuted}
+                    placeholderTextColor={MUTED}
                     style={[styles.input, noWebOutline]}
                     autoCapitalize="none"
                     keyboardType="email-address"
@@ -141,7 +145,7 @@ export default function LoginScreen() {
                   value={email}
                   onChangeText={setEmail}
                   placeholder="example12@gmail.com"
-                  placeholderTextColor={t.colors.textMuted}
+                  placeholderTextColor={MUTED}
                   style={[styles.input, noWebOutline]}
                   autoCapitalize="none"
                   keyboardType="email-address"
@@ -157,15 +161,15 @@ export default function LoginScreen() {
                   value={password}
                   onChangeText={setPassword}
                   placeholder="Enter password"
-                  placeholderTextColor={t.colors.textMuted}
+                  placeholderTextColor={MUTED}
                   secureTextEntry={!showPassword}
                   style={[styles.input, { flex: 1 }, noWebOutline]}
                 />
                 <Pressable onPress={() => setShowPassword((s) => !s)} hitSlop={8}>
                   {showPassword ? (
-                    <EyeOff size={18} color={t.colors.textMuted} />
+                    <EyeOff size={18} color={MUTED} />
                   ) : (
-                    <Eye size={18} color={t.colors.textMuted} />
+                    <Eye size={18} color={MUTED} />
                   )}
                 </Pressable>
               </View>
@@ -216,30 +220,35 @@ function makeStyles(t: ReturnType<typeof useTheme>) {
     },
     errorText: { fontFamily: t.font.semibold, fontSize: t.type.meta11.size, color: t.colors.status.danger.text, textAlign: 'center' },
     field: { marginBottom: t.spacing.sm },
-    label: { fontFamily: t.font.semibold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginBottom: 4 },
+    // Fixed INK, bumped to bold — labels are theme-independent (this
+    // whole screen always renders on a hardcoded white background) and
+    // prioritize visibility/boldness per direct correction.
+    label: { fontFamily: t.font.bold, fontSize: t.type.body14.size, color: INK, marginBottom: 4 },
+    // Deep border removed per direct correction — replaced with a soft
+    // fixed fill so the field still reads as tappable without a heavy
+    // outline.
     inputBox: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: t.spacing.sm,
-      borderWidth: 1,
-      borderColor: t.colors.border,
+      height: FIELD_HEIGHT,
+      backgroundColor: FIELD_FILL,
       borderRadius: t.radius.md,
       paddingHorizontal: t.spacing.md,
-      paddingVertical: 11,
     },
-    input: { flex: 1, fontFamily: t.font.regular, fontSize: t.type.body14.size, color: t.colors.textPrimary, padding: 0 },
+    input: { flex: 1, fontFamily: t.font.semibold, fontSize: t.type.body14.size, color: INK, padding: 0 },
     optionsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: t.spacing.xs },
     keepLoggedInRow: { flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm },
-    optionsText: { fontFamily: t.font.medium, fontSize: t.type.meta11.size, color: t.colors.textSecondary },
-    forgotText: { fontFamily: t.font.semibold, fontSize: t.type.meta11.size, color: FOREST },
-    switchText: { fontFamily: t.font.regular, fontSize: t.type.body14.size, color: t.colors.textPrimary, textAlign: 'center' },
+    optionsText: { fontFamily: t.font.semibold, fontSize: t.type.meta11.size, color: INK },
+    forgotText: { fontFamily: t.font.bold, fontSize: t.type.meta11.size, color: FOREST },
+    switchText: { fontFamily: t.font.semibold, fontSize: t.type.body14.size, color: INK, textAlign: 'center' },
     switchLink: { fontFamily: t.font.bold, color: AMBER },
-    footer: { fontFamily: t.font.medium, fontSize: t.type.meta10.size, color: t.colors.textMuted, textAlign: 'center', marginTop: t.spacing.xl },
+    footer: { fontFamily: t.font.semibold, fontSize: t.type.meta10.size, color: MUTED, textAlign: 'center', marginTop: t.spacing.xl },
     resetBox: { marginBottom: t.spacing.sm },
-    resetTitle: { fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginBottom: 4 },
-    resetHint: { fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted, marginBottom: t.spacing.md },
-    resetSent: { fontFamily: t.font.medium, fontSize: t.type.body14.size, color: t.colors.status.success.text, textAlign: 'center', paddingVertical: t.spacing.md },
-    resetErrorText: { fontFamily: t.font.medium, fontSize: t.type.meta11.size, color: t.colors.status.danger.text, marginTop: t.spacing.sm },
-    resetCancel: { fontFamily: t.font.semibold, fontSize: t.type.meta11.size, color: t.colors.textMuted, textAlign: 'center' },
+    resetTitle: { fontFamily: t.font.bold, fontSize: t.type.body14.size, color: INK, marginBottom: 4 },
+    resetHint: { fontFamily: t.font.semibold, fontSize: t.type.meta11.size, color: MUTED, marginBottom: t.spacing.md },
+    resetSent: { fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.status.success.text, textAlign: 'center', paddingVertical: t.spacing.md },
+    resetErrorText: { fontFamily: t.font.bold, fontSize: t.type.meta11.size, color: t.colors.status.danger.text, marginTop: t.spacing.sm },
+    resetCancel: { fontFamily: t.font.bold, fontSize: t.type.meta11.size, color: FOREST, textAlign: 'center' },
   });
 }

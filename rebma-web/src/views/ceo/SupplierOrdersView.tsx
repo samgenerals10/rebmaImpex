@@ -1037,7 +1037,7 @@ function NotifyOperationsModal({ order, onClose, currentUser, onSend }: {
   const [specificUserId, setSpecificUserId] = useState('');
 
   useEffect(() => {
-    supabase.from('profiles').select('id, full_name, department').eq('department', dept)
+    supabase.from('profiles').select('id, full_name, department').eq('department', dept).eq('status', 'ACTIVE')
       .then(({ data }) => { setStaffList(data ?? []); setSpecificUserId(''); }, () => {});
   }, [dept]);
 
