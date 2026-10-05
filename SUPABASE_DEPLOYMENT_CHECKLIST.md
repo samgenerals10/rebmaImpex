@@ -1,5 +1,7 @@
 # Supabase Deployment Checklist — Enhancement Blueprint Rollout
 
+**Where the files are:** every `.sql` file named below is in the `database/` folder.
+
 Everything below is **written but not yet confirmed run** against the live database. Supabase access has been billing-blocked since ~2026-09-01 per standing project notes — this checklist is what to work through once that's resolved.
 
 ⚠️ **Read this before anything else — a real, unresolved question about live DB state, not a hypothetical.** `supabase_order_risk_workflow_ROLLBACK.sql` (new, added alongside items #9-10 below) exists *only* because, at some point, `supabase_order_risk_workflow_rls.sql`'s trigger/RLS cutover (Part 2) was **actually applied to the live database** before the matching Web/Mobile code was deployed — which would have blocked every non-admin account from approving, rejecting, or reviewing any order at all. The rollback file's own header says this explicitly. Before running *anything* in this checklist:
