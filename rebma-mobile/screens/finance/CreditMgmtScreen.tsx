@@ -123,7 +123,7 @@ export default function CreditMgmtScreen() {
     }).eq('id', editTarget.id);
     setSavingEdit(false);
     if (error) { Alert.alert('Update Failed', error.message); return; }
-    await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Credit order ${editTarget.id} updated`, performed_by: profile?.fullName || 'Accounts Department', timestamp: new Date().toISOString() }]);
+    await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Credit order ${editTarget.id} updated`, performed_by: profile?.fullName || 'Account Department', timestamp: new Date().toISOString() }]);
     setEditTarget(null);
     load();
   };
@@ -135,7 +135,7 @@ export default function CreditMgmtScreen() {
         text: 'Delete', style: 'destructive', onPress: async () => {
           const { error } = await supabase.from('orders').delete().eq('id', e.id);
           if (error) { Alert.alert('Delete Failed', error.message); return; }
-          await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Credit order ${e.id} deleted`, performed_by: profile?.fullName || 'Accounts Department', timestamp: new Date().toISOString() }]);
+          await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Credit order ${e.id} deleted`, performed_by: profile?.fullName || 'Account Department', timestamp: new Date().toISOString() }]);
           load();
         },
       },
@@ -170,7 +170,7 @@ export default function CreditMgmtScreen() {
     try {
       await supabase.from('global_audit_history').insert({
         department: 'FINANCE', action: `Payment reminder sent to ${entry.customerName} for order ${entry.orderRef}, GHS ${entry.outstanding.toLocaleString()} outstanding.`,
-        performed_by: profile?.fullName || 'Accounts Department', timestamp: new Date().toISOString(),
+        performed_by: profile?.fullName || 'Account Department', timestamp: new Date().toISOString(),
       });
       Alert.alert('Reminder Logged', `Reminder recorded for ${entry.customerName}.`);
     } catch (e: any) {

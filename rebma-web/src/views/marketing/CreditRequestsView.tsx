@@ -22,18 +22,18 @@ interface CreditRequest {
   ghanaCardBackUrl?: string;
   customerPhotoUrl?: string;
   ghanaCardNumber?: string;
-  status: 'Pending Management' | 'Management Approved' | 'Finance Processing' | 'Completed' | 'Rejected';
+  status: 'Pending Management' | 'Management Approved' | 'Account Department Processing' | 'Completed' | 'Rejected';
   managementNote?: string;
   financeNote?: string;
   timeline?: { event: string; by: string; date: string; note?: string }[];
 }
 
-const STATUS_TABS = ['All', 'Pending Management', 'Management Approved', 'Finance Processing', 'Completed', 'Rejected'] as const;
+const STATUS_TABS = ['All', 'Pending Management', 'Management Approved', 'Account Department Processing', 'Completed', 'Rejected'] as const;
 
 const STATUS_STYLES: Record<string, string> = {
   'Pending Management': 'bg-yellow-100 text-yellow-700',
   'Management Approved': 'bg-blue-100 text-blue-700',
-  'Finance Processing': 'bg-purple-100 text-purple-700',
+  'Account Department Processing': 'bg-purple-100 text-purple-700',
   'Completed': 'bg-green-100 text-green-700',
   'Rejected': 'bg-red-100 text-red-700',
 };
@@ -41,7 +41,7 @@ const STATUS_STYLES: Record<string, string> = {
 const STATUS_ICONS: Record<string, React.ElementType> = {
   'Pending Management': Clock,
   'Management Approved': CheckCircle,
-  'Finance Processing': AlertCircle,
+  'Account Department Processing': AlertCircle,
   'Completed': CheckCircle,
   'Rejected': XCircle,
 };
@@ -105,7 +105,7 @@ export default function MarketingCreditRequestsView({ addNotification, currentUs
             timeline: [
               { event: 'Credit request submitted', by: 'Sales Rep', date: o.created_at ? new Date(o.created_at).toLocaleString() : '' },
               (o.status === 'APPROVED' || o.status === 'COMPLETED') ? { event: 'Management approved', by: 'Manager', date: o.updated_at ? new Date(o.updated_at).toLocaleString() : '' } : null,
-              o.status === 'COMPLETED' ? { event: 'Finance completed', by: 'Finance Team', date: o.updated_at ? new Date(o.updated_at).toLocaleString() : '' } : null,
+              o.status === 'COMPLETED' ? { event: 'Account Department completed', by: 'Account Department Team', date: o.updated_at ? new Date(o.updated_at).toLocaleString() : '' } : null,
             ].filter(Boolean) as any[]
           };
         });
@@ -129,7 +129,7 @@ export default function MarketingCreditRequestsView({ addNotification, currentUs
   const counts = {
     pending: requests.filter(r => r.status === 'Pending Management').length,
     approved: requests.filter(r => r.status === 'Management Approved').length,
-    processing: requests.filter(r => r.status === 'Finance Processing').length,
+    processing: requests.filter(r => r.status === 'Account Department Processing').length,
     completed: requests.filter(r => r.status === 'Completed').length,
     rejected: requests.filter(r => r.status === 'Rejected').length,
   };
@@ -227,7 +227,7 @@ export default function MarketingCreditRequestsView({ addNotification, currentUs
                 )}
                 {detail.financeNote && (
                   <div className="p-3 bg-[var(--bg-input)] rounded-xl">
-                    <p className="text-xs font-medium text-[var(--text-muted)] mb-1">Finance Note</p>
+                    <p className="text-xs font-medium text-[var(--text-muted)] mb-1">Account Department Note</p>
                     <p className="text-sm text-[var(--text-primary)]">{detail.financeNote}</p>
                   </div>
                 )}
@@ -266,7 +266,7 @@ export default function MarketingCreditRequestsView({ addNotification, currentUs
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">Credit Requests</h1>
-          <p className="text-sm text-[var(--text-secondary)]">Track credit orders submitted to Management & Finance</p>
+          <p className="text-sm text-[var(--text-secondary)]">Track credit orders submitted to Management & Account Department</p>
         </div>
         <button onClick={handleExport} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)]">
           <Download size={14} /> Export CSV
@@ -278,7 +278,7 @@ export default function MarketingCreditRequestsView({ addNotification, currentUs
         {[
           { label: 'Pending Mgmt', count: counts.pending, color: '#f59e0b', bg: 'bg-yellow-50' },
           { label: 'Mgmt Approved', count: counts.approved, color: '#3b82f6', bg: 'bg-blue-50' },
-          { label: 'Finance Processing', count: counts.processing, color: '#8b5cf6', bg: 'bg-purple-50' },
+          { label: 'Account Department Processing', count: counts.processing, color: '#8b5cf6', bg: 'bg-purple-50' },
           { label: 'Completed', count: counts.completed, color: '#10b981', bg: 'bg-green-50' },
           { label: 'Rejected', count: counts.rejected, color: '#ef4444', bg: 'bg-red-50' },
         ].map(({ label, count, color, bg }) => (

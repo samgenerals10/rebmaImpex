@@ -655,7 +655,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
             suffix: '%',
             change: avgProfitMargin !== null ? (avgProfitMargin >= 0 ? 'positive margin' : 'negative margin') : 'No expense data yet',
             up: avgProfitMargin === null ? true : avgProfitMargin >= 0,
-            sub: avgProfitMargin !== null ? 'revenue vs expenses' : 'log expenses in Finance',
+            sub: avgProfitMargin !== null ? 'revenue vs expenses' : 'log expenses in Account Department',
             linkTab: 'MgmtAnalytics'
           },
           {

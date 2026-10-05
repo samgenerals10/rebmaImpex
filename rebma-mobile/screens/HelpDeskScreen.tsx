@@ -170,7 +170,7 @@ export default function HelpDeskScreen() {
         footer={<Button label={saving ? 'Publishing…' : 'Publish'} onPress={publishArticle} loading={saving} disabled={saving || !articleForm?.title.trim()} fullWidth />}
       >
         <Field label="Title"><Input value={articleForm?.title || ''} onChangeText={(v) => setArticleForm((f) => (f ? { ...f, title: v } : f))} placeholder="Article title" /></Field>
-        <Field label="Category"><Input value={articleForm?.category || ''} onChangeText={(v) => setArticleForm((f) => (f ? { ...f, category: v } : f))} placeholder="e.g. Finance, HR, Navigation" /></Field>
+        <Field label="Category"><Input value={articleForm?.category || ''} onChangeText={(v) => setArticleForm((f) => (f ? { ...f, category: v } : f))} placeholder="e.g. Account Department, HR, Navigation" /></Field>
         <Field label="Article">
           <Input value={articleForm?.body || ''} onChangeText={(v) => setArticleForm((f) => (f ? { ...f, body: v } : f))} multiline numberOfLines={6} placeholder="Explain the steps…" style={{ minHeight: 130, textAlignVertical: 'top' }} />
         </Field>

@@ -351,7 +351,7 @@ export default function WalletsView({ setActiveSubTab }: WalletsViewProps) {
           <div className="flex flex-col items-center py-12 text-[var(--text-muted)]">
             <Wallet className="w-10 h-10 mb-3 opacity-20" />
             <p className="text-sm font-semibold">No transactions yet</p>
-            <p className="text-xs opacity-70 mt-1">Finance records appear here as payments are logged</p>
+            <p className="text-xs opacity-70 mt-1">Account Department records appear here as payments are logged</p>
           </div>
         ) : (
           <div className="divide-y divide-[var(--border)]">

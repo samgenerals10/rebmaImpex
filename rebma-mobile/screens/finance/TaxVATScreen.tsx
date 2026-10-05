@@ -79,7 +79,7 @@ export default function TaxVATScreen() {
     const { error } = await supabase.from('finance_settings').upsert([{
       key: 'tax_rates',
       value: JSON.stringify({ vat: parseFloat(rates.vat), nhil: parseFloat(rates.nhil), getfund: parseFloat(rates.getfund), covid: parseFloat(rates.covid) }),
-      updated_by: profile?.fullName || 'Accounts Department', updated_at: new Date().toISOString(),
+      updated_by: profile?.fullName || 'Account Department', updated_at: new Date().toISOString(),
     }]);
     setSavingRates(false);
     if (error) {

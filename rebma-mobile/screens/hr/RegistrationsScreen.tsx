@@ -40,11 +40,6 @@ interface Registration {
   registeredAt: string | null; expired: boolean;
 }
 
-function generatePassword(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#';
-  return Array.from({ length: 10 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-}
-
 export default function RegistrationsScreen() {
   const t = useTheme();
   const [registrations, setRegistrations] = useState<Registration[]>([]);
@@ -91,13 +86,13 @@ export default function RegistrationsScreen() {
     if (submitting) return;
     setSubmitting(true);
     try {
-      // Only older registrations (no registered_at) need a temporary password.
-      const pw = reg.registeredAt ? undefined : generatePassword();
-      const res: any = await callPrivilegedApi('/api/approve-user', { userId: reg.id, approve: true, generatedPassword: pw });
+      // Only older registrations (no registered_at) need a temporary
+      // password; the server makes it and returns it once.
+      const res: any = await callPrivilegedApi('/api/approve-user', { userId: reg.id, approve: true, issueTemporaryPassword: !reg.registeredAt });
       setRegistrations((prev) => prev.filter((r) => r.id !== reg.id));
       setSelected(null);
-      if (res?.choseOwnPassword || !pw) Alert.alert('Approved', res?.message || `${reg.fullName} can now sign in.`);
-      else setCredPopup({ email: reg.email, password: pw });
+      if (res?.temporaryPassword) setCredPopup({ email: reg.email, password: res.temporaryPassword });
+      else Alert.alert('Approved', res?.message || `${reg.fullName} can now sign in.`);
     } catch (e: any) {
       if (e instanceof ApiNotConfiguredError) Alert.alert('Not Configured', e.message);
       else Alert.alert('Approval Failed', e.message || 'Could not approve this registration.');

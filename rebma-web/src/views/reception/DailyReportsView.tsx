@@ -153,7 +153,7 @@ export default function DailyReportsView({ addNotification }: Props) {
         }, {});
 
         // fallback initial categories for Rebma Impex if departments is empty
-        const initialDepts = ['Management', 'Finance', 'Marketing', 'Operations', 'HR', 'Dispatch', 'Production', 'Reception'];
+        const initialDepts = ['Management', 'Account Department', 'Marketing', 'Operations', 'HR', 'Dispatch', 'Production', 'Reception'];
         initialDepts.forEach(d => {
           if (!deptMap[d]) {
             deptMap[d] = { name: d, present: 0, total: d === 'Dispatch' ? 12 : d === 'Production' ? 11 : 5 };
@@ -162,7 +162,8 @@ export default function DailyReportsView({ addNotification }: Props) {
 
         if (attData) {
           for (const a of attData) {
-            const deptName = a.department;
+            // Older rows may say Finance or Accounts Department.
+            const deptName = /^(finance|accounts? department)$/i.test(String(a.department || '')) ? 'Account Department' : a.department;
             if (deptMap[deptName]) {
               deptMap[deptName].present += 1;
             } else {

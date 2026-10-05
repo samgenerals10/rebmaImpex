@@ -10,7 +10,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text } from 'react-native';
 import { Alert } from '../../lib/appAlert';
-import { Plus, Trash2, Download } from 'lucide-react-native';
+import { Plus, Trash2, Download, Printer } from 'lucide-react-native';
+import { printProforma } from '../../lib/documentPrint';
+import { getDocumentTemplate } from '../../components/shared/DocumentTemplatesEditor';
+import { getCeoSetting } from '../../lib/ceoSetting';
+import { useAuthStore } from '../../store/authStore';
 import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../theme/ThemeProvider';
 import Screen from '../../components/ui/Screen';
@@ -52,6 +56,21 @@ export default function InvoicesScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [detail, setDetail] = useState<ProformaRow | null>(null);
+  const profile = useAuthStore((st) => st.profile);
+  const [printing, setPrinting] = useState(false);
+  // Same branded Proforma Invoice as the laptop, through the phone's print dialog.
+  const printDetail = async () => {
+    if (!detail || printing) return;
+    setPrinting(true);
+    try {
+      const [template, printEnabled] = await Promise.all([getDocumentTemplate('INVOICE'), getCeoSetting('print_enabled', true)]);
+      await printProforma(detail as any, profile?.fullName || 'REBMA IMPEX Staff', template, printEnabled !== false);
+    } catch (e: any) {
+      Alert.alert('Print', e?.message || 'Could not print this invoice.');
+    } finally {
+      setPrinting(false);
+    }
+  };
 
   const [showAdd, setShowAdd] = useState(false);
   const [clientName, setClientName] = useState('');
@@ -64,7 +83,7 @@ export default function InvoicesScreen() {
   const [exportOpen, setExportOpen] = useState(false);
 
   const load = useCallback(async () => {
-    const { data, error } = await supabase.from('proforma_invoices').select('id, proforma_no, client_name, line_items, subtotal, tax_amount, grand_total, currency, status, created_at, notes').order('created_at', { ascending: false }).limit(200);
+    const { data, error } = await supabase.from('proforma_invoices').select('*').order('created_at', { ascending: false }).limit(200);
     if (!error && data) setProformas(data as any);
     setLoading(false);
     setRefreshing(false);
@@ -239,6 +258,7 @@ export default function InvoicesScreen() {
                 <Text style={{ fontFamily: t.font.extrabold, fontSize: t.type.title18.size, color: t.colors.accent }}>GHS {Number(detail.grand_total || 0).toLocaleString()}</Text>
               </View>
             </SheetSection>
+            <Button icon={<Printer size={14} color={t.colors.onAccent} />} label="Print Proforma" onPress={printDetail} loading={printing} disabled={printing} fullWidth />
           </>
         )}
       </Sheet>

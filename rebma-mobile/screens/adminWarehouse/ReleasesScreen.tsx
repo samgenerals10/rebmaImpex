@@ -176,7 +176,7 @@ export default function ReleasesScreen() {
                   <View key={tk.id} style={rowStyle(t)}>
                     <View style={{ flex: 1, marginRight: t.spacing.sm }}>
                       <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary }} numberOfLines={2}>{summary}</Text>
-                      <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted }}>{tk.details?.notes || 'Recorded by Accounts Department, ready for Production pickup'}</Text>
+                      <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted }}>{tk.details?.notes || 'Recorded by Account Department, ready for Production pickup'}</Text>
                     </View>
                     <Button label="Release" size="sm" onPress={() => releaseRawMaterials(tk)} loading={busyId === tk.id} disabled={busyId === tk.id} />
                   </View>

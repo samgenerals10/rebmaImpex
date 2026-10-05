@@ -395,7 +395,7 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
             options={[
               { value: 'ALL', label: 'All Statuses' },
               { value: 'PENDING_RISK', label: 'Pending Risk Review' },
-              { value: 'PENDING_FINANCE', label: 'Pending Finance' },
+              { value: 'PENDING_FINANCE', label: 'Pending Account Department' },
               { value: 'PENDING_MANAGEMENT', label: 'Special Dispensation (Mgmt)' },
               { value: 'APPROVED', label: 'Approved' },
               { value: 'PROCESSING', label: 'Processing' },

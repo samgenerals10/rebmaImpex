@@ -23,12 +23,12 @@ import ResponsiveDataView, { type DataColumn } from '../../components/mobile/Res
 const STAFF_CATEGORIES = ['Senior Staff', 'Junior Staff', 'Management', 'Contract Staff', 'Intern'];
 
 
-const DEPARTMENTS = ['All', 'Admin & Warehouse', 'Finance', 'HR', 'Marketing', 'Reception', 'Production', 'Management', 'Risk'];
+const DEPARTMENTS = ['All', 'Admin & Warehouse', 'Account Department', 'HR', 'Marketing', 'Reception', 'Production', 'Management', 'Risk'];
 
 // profiles.role has its own check constraint with specific casing/naming
 // (e.g. 'receptionist' not 'Reception') — map the UI's department labels to it.
 const DEPT_TO_ROLE: Record<string, string> = {
-  'Admin & Warehouse': 'admin_warehouse', Finance: 'finance', HR: 'HR',
+  'Admin & Warehouse': 'admin_warehouse', 'Account Department': 'finance', HR: 'HR',
   Marketing: 'marketing', Reception: 'receptionist', Production: 'production', Management: 'management',
   Risk: 'risk',
 };

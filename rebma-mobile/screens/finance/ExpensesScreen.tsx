@@ -105,7 +105,7 @@ export default function ExpensesScreen() {
     }).eq('id', editTarget.id);
     setSavingEdit(false);
     if (error) { Alert.alert('Update Failed', error.message); return; }
-    await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Expense ${editTarget.id} updated`, performed_by: profile?.fullName || 'Accounts Department', timestamp: new Date().toISOString() }]);
+    await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Expense ${editTarget.id} updated`, performed_by: profile?.fullName || 'Account Department', timestamp: new Date().toISOString() }]);
     setEditTarget(null);
     load();
   };
@@ -118,7 +118,7 @@ export default function ExpensesScreen() {
     setSubmitting(true);
     const { error } = await supabase.from('finance_expenses').insert([{
       category: form.category, description: form.description.trim(), amount: parseFloat(form.amount) || 0,
-      date: form.date, notes: form.notes.trim() || null, submitted_by: profile?.fullName || 'Accounts Department', status: 'Pending',
+      date: form.date, notes: form.notes.trim() || null, submitted_by: profile?.fullName || 'Account Department', status: 'Pending',
     }]);
     setSubmitting(false);
     if (error) {
@@ -135,7 +135,7 @@ export default function ExpensesScreen() {
       Alert.alert('Update Failed', error.message);
       return;
     }
-    await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Expense ${e.id} ${status}`, performed_by: profile?.fullName || 'Accounts Department', timestamp: new Date().toISOString() }]);
+    await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Expense ${e.id} ${status}`, performed_by: profile?.fullName || 'Account Department', timestamp: new Date().toISOString() }]);
     load();
   };
 
@@ -149,7 +149,7 @@ export default function ExpensesScreen() {
             Alert.alert('Delete Failed', error.message);
             return;
           }
-          await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Expense ${e.id} deleted`, performed_by: profile?.fullName || 'Accounts Department', timestamp: new Date().toISOString() }]);
+          await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Expense ${e.id} deleted`, performed_by: profile?.fullName || 'Account Department', timestamp: new Date().toISOString() }]);
           load();
         },
       },

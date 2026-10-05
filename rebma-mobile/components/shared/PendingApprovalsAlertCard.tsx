@@ -116,7 +116,7 @@ async function fetchPendingForDept(department: string): Promise<PendingItem[]> {
     // PENDING_RISK_RELEASE — this is Finance's own live approval queue,
     // same status OrdersQueueScreen itself filters to by default.
     const orders = await supabase.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_FINANCE');
-    if ((orders.count || 0) > 0) items.push({ label: 'orders awaiting Finance review', count: orders.count || 0, tab: 'OrdersQueue' });
+    if ((orders.count || 0) > 0) items.push({ label: 'orders awaiting Account Department review', count: orders.count || 0, tab: 'OrdersQueue' });
   }
   if (department === 'HR') {
     // Same query CEO's own branch runs (unfiltered by department, per

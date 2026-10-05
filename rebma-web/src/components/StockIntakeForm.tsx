@@ -544,7 +544,7 @@ export default function StockIntakeForm({
               <div className="p-3.5 bg-[var(--accent-light)] border border-[var(--border)] rounded-xl text-xs text-[var(--accent)] flex items-start gap-2.5">
                 <Info className="w-4 h-4 mt-0.5 shrink-0" />
                 <span>
-                  This entry will be recorded under general purchases. Once approved by Management, it will be visible in the stock table under general purchases and sync with the Finance, CEO, and Management terminals.
+                  This entry will be recorded under general purchases. Once approved by Management, it will be visible in the stock table under general purchases and sync with the Account Department, CEO, and Management terminals.
                 </span>
               </div>
             </>

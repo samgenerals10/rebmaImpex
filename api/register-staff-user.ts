@@ -7,12 +7,14 @@ import { createClient } from '@supabase/supabase-js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { findUserByEmail } from './_shared/findUserByEmail';
 import { isRateLimited } from './_shared/rateLimit';
+import { randomInt } from 'crypto';
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
+// Uses crypto's randomInt so passwords can't be predicted.
 const generateSecurePassword = (length = 16): string => {
   const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
   const lower = 'abcdefghjkmnpqrstuvwxyz';
@@ -21,18 +23,18 @@ const generateSecurePassword = (length = 16): string => {
   const all = upper + lower + digits + symbols;
 
   const pw = [
-    upper[Math.floor(Math.random() * upper.length)],
-    lower[Math.floor(Math.random() * lower.length)],
-    digits[Math.floor(Math.random() * digits.length)],
-    symbols[Math.floor(Math.random() * symbols.length)]
+    upper[randomInt(upper.length)],
+    lower[randomInt(lower.length)],
+    digits[randomInt(digits.length)],
+    symbols[randomInt(symbols.length)]
   ];
 
   for (let i = 4; i < length; i++) {
-    pw.push(all[Math.floor(Math.random() * all.length)]);
+    pw.push(all[randomInt(all.length)]);
   }
 
   for (let i = pw.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = randomInt(i + 1);
     [pw[i], pw[j]] = [pw[j], pw[i]];
   }
 

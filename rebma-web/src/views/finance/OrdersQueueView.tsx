@@ -122,7 +122,7 @@ export async function approveAccountsReview(order: Order, currentUser?: { fullNa
   }
 
   const { data: sessionData } = await supabase.auth.getSession();
-  const performedBy = currentUser?.fullName || 'Finance';
+  const performedBy = currentUser?.fullName || 'Account Department';
   const performedByEmail = sessionData?.session?.user?.email || null;
   const now = new Date().toISOString();
 
@@ -292,7 +292,7 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
       // decision for this exact case.
       const verbLabel = isReturn ? 'RETURNED FOR CORRECTION' : 'REJECTED';
       await supabase.from('supplier_order_notifications').insert([{ message: `Order ${id} ${verbLabel} by Accounts. Reason: ${rejectReason}`, notified_department: 'MARKETING', read: false }]);
-      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Order ${id} ${verbLabel}. Reason: ${rejectReason}`, performed_by: currentUser?.fullName || 'Finance', reference_id: id, timestamp: new Date().toISOString() }]);
+      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Order ${id} ${verbLabel}. Reason: ${rejectReason}`, performed_by: currentUser?.fullName || 'Account Department', reference_id: id, timestamp: new Date().toISOString() }]);
 
       addNotification?.(`Order ${id} ${isReturn ? 'returned for correction' : 'rejected'}.`);
       setRejectModal(null);
@@ -318,7 +318,7 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
       const invoiceNumber = order.ticketNumber || `ORD-${String(order.id).slice(0, 6).toUpperCase()}`;
       const amountPaid = Number(payForm.amountReceived || order.totalAmount);
       const paymentType = isPartPayment ? 'Part Payment' : 'Full Payment';
-      const recordedBy = currentUser?.fullName || 'Finance';
+      const recordedBy = currentUser?.fullName || 'Account Department';
       const createdAt = new Date().toISOString();
       // Distinct from the order's own ticket number — a receipt is its own
       // document, not the dispatch ticket reprinted with a different label.
@@ -497,7 +497,7 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
                   </div>
                   <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Date Received</label><input type="date" value={payForm.dateReceived} onChange={e => setPayForm(f => ({ ...f, dateReceived: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" /></div>
                   <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Receipt Number</label><input value={payForm.receiptNumber} readOnly className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-muted)]" /></div>
-                  <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Received By</label><input value={currentUser?.fullName || 'Finance'} readOnly className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-muted)]" /></div>
+                  <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Received By</label><input value={currentUser?.fullName || 'Account Department'} readOnly className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-muted)]" /></div>
                   <div className="col-span-full"><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Notes</label><textarea value={payForm.notes} onChange={e => setPayForm(f => ({ ...f, notes: e.target.value }))} rows={2} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] resize-none" /></div>
                 </div>
               )}

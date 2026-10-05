@@ -1501,7 +1501,7 @@ export default function OperationsDashboard({
                       <div key={ticket.id} className="py-4 flex items-center justify-between">
                         <div className="text-[var(--text-primary)]">
                           <p className="text-xs font-bold text-[var(--text-primary)]">{summary}</p>
-                          <p className="text-[10px] text-[var(--text-muted)] mt-0.5">{ticket.details?.notes || 'Recorded by Finance, ready for Production pickup'}</p>
+                          <p className="text-[10px] text-[var(--text-muted)] mt-0.5">{ticket.details?.notes || 'Recorded by Account Department, ready for Production pickup'}</p>
                           <p className="text-[10px] text-cyan-500 font-semibold mt-1">Approved & recorded. Ready to release.</p>
                         </div>
                         <button

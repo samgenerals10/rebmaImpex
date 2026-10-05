@@ -15,14 +15,14 @@ import SidePanel from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
 import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 
-const DEPARTMENTS = ['All', 'Admin & Warehouse', 'Finance', 'HR', 'Marketing', 'Reception', 'Production', 'Management'];
+const DEPARTMENTS = ['All', 'Admin & Warehouse', 'Account Department', 'HR', 'Marketing', 'Reception', 'Production', 'Management'];
 const STATUSES = ['All', 'PENDING', 'APPROVED', 'REJECTED'];
 
 const deptToRole = (dept: string): string => {
   const map: Record<string, string> = {
     'HR': 'HR',
     'Admin & Warehouse': 'admin_warehouse',
-    'Finance': 'finance',
+    'Account Department': 'finance',
     'Marketing': 'marketing',
     'Reception': 'receptionist',
     'Production': 'production',
@@ -31,15 +31,10 @@ const deptToRole = (dept: string): string => {
   return map[dept] || 'Staff';
 };
 
-function generatePassword(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#';
-  return Array.from({ length: 10 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-}
-
 interface Props {
   pendingRegistrations: PendingRegistration[];
   addNotification: (msg: string) => void;
-  onApprove: (reg: PendingRegistration, pw: string, token: string) => unknown;
+  onApprove: (reg: PendingRegistration) => unknown;
   onDeny: (reg: PendingRegistration) => void;
   isAdmin?: boolean;
 }
@@ -49,7 +44,7 @@ interface CredPopup {
   fullName: string;
   email: string;
   password: string;
-  magicLink: string;
+  signInLink: string;
 }
 
 export default function RegistrationsView({ pendingRegistrations, addNotification, onApprove, onDeny, isAdmin }: Props) {
@@ -119,13 +114,11 @@ export default function RegistrationsView({ pendingRegistrations, addNotificatio
     if (submitting) return;
     setSubmitting(true);
     try {
-      const pw = generatePassword();
-      const token = `https://rebma.app/magic?token=${Math.random().toString(36).slice(2)}`;
-      const res: any = await onApprove(reg, pw, token);
+      const res: any = await onApprove(reg);
       // null means it failed (already alerted). Someone who chose their own
       // password gets no temporary one, so there's nothing to show.
-      if (res && !reg.registeredAt && !res.choseOwnPassword) {
-        setCredPopup({ show: true, fullName: reg.fullName, email: reg.email, password: pw, magicLink: token });
+      if (res?.temporaryPassword) {
+        setCredPopup({ show: true, fullName: reg.fullName, email: reg.email, password: res.temporaryPassword, signInLink: window.location.origin });
         addNotification(`${reg.fullName} approved and credentials generated`);
       }
     } catch (e: any) {
@@ -464,14 +457,14 @@ export default function RegistrationsView({ pendingRegistrations, addNotificatio
                 </div>
               </div>
               <div className="border-t border-[var(--border)] pt-2">
-                <p className="text-[10px] uppercase tracking-wider text-[var(--text-secondary)] font-bold mb-1">Magic Link</p>
-                <p className="text-[11px] text-blue-500 break-all select-all">{credPopup.magicLink}</p>
+                <p className="text-[10px] uppercase tracking-wider text-[var(--text-secondary)] font-bold mb-1">Sign-in Address</p>
+                <p className="text-[11px] text-blue-500 break-all select-all">{credPopup.signInLink}</p>
               </div>
             </div>
             <div className="flex gap-2 mt-4">
               <button
                 onClick={() => {
-                  const text = `Dear ${credPopup.fullName},\n\nYour REBMA IMPEX account has been approved!\n\nEmail: ${credPopup.email}\nTemporary Password: ${credPopup.password}\n\nMagic Link: ${credPopup.magicLink}\n\nPlease reset your password upon first login.\n\nRebma Impex Ghana Ltd.`;
+                  const text = `Dear ${credPopup.fullName},\n\nYour REBMA IMPEX account has been approved!\n\nEmail: ${credPopup.email}\nTemporary Password: ${credPopup.password}\n\nSign in at: ${credPopup.signInLink}\n\nPlease reset your password upon first login.\n\nRebma Impex Ghana Ltd.`;
                   navigator.clipboard.writeText(text);
                   addNotification('Credentials copied to clipboard');
                 }}

@@ -105,8 +105,8 @@ export default function MarketingAnalyticsView({ addNotification, currentUser }:
         for (const o of orderList) statusCounts[o.status] = (statusCounts[o.status] || 0) + 1;
         const funnelStages = [
           { key: null, name: 'Created' },
-          { key: 'PENDING_FINANCE', name: 'Sent to Finance' },
-          { key: 'finance_approved', name: 'Finance Approved' },
+          { key: 'PENDING_FINANCE', name: 'Sent to Account Department' },
+          { key: 'finance_approved', name: 'Account Department Approved' },
           { key: 'PREPARED', name: 'Prepared' },
           { key: 'DELIVERED', name: 'Delivered' },
         ];

@@ -25,7 +25,7 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // Department codes as stored in profiles.role (lower case). Never CEO.
 const DEPARTMENTS: Record<string, string> = {
-  admin_warehouse: 'Admin & Warehouse', finance: 'Accounts Department', hr: 'HR', marketing: 'Marketing',
+  admin_warehouse: 'Admin & Warehouse', finance: 'Account Department', hr: 'HR', marketing: 'Marketing',
   receptionist: 'Reception', production: 'Production', management: 'Management', risk: 'Risk',
 };
 // How each department is written in profiles.role by the apps (HR is

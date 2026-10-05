@@ -219,7 +219,7 @@ export default function DepartmentManager({ currentUser, addNotification }: Depa
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[10px] font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-1">Department Name *</label>
-                  <input value={modal.name} onChange={e => setModal(m => ({ ...m, name: e.target.value }))} placeholder="e.g. Finance"
+                  <input value={modal.name} onChange={e => setModal(m => ({ ...m, name: e.target.value }))} placeholder="e.g. Account Department"
                     className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]" />
                 </div>
                 <div>

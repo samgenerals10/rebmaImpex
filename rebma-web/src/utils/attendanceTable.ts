@@ -37,7 +37,7 @@ interface Person { fullName: string; photo?: string; employeeNumber?: string; de
 // The role column holds the department code in this app (e.g. 'finance').
 const ROLE_TO_DEPT: Record<string, string> = {
   admin_warehouse: 'Admin & Warehouse', operations: 'Admin & Warehouse', dispatch: 'Admin & Warehouse', logistics: 'Admin & Warehouse',
-  finance: 'Accounts Department', hr: 'HR', marketing: 'Marketing', receptionist: 'Reception', production: 'Production',
+  finance: 'Account Department', hr: 'HR', marketing: 'Marketing', receptionist: 'Reception', production: 'Production',
   management: 'Management', risk: 'Risk', ceo: 'CEO',
 };
 const deptLabel = (role?: string | null) => (role ? ROLE_TO_DEPT[String(role).toLowerCase()] || role : undefined);

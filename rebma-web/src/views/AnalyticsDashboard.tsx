@@ -321,7 +321,7 @@ export default function AnalyticsDashboard({ department, currentUser, addNotific
   const stats = liveStats;
 
   const deptTitle: Record<string, string> = {
-    CEO: 'Executive Analytics', FINANCE: 'Finance Analytics', HR: 'HR Analytics',
+    CEO: 'Executive Analytics', FINANCE: 'Account Department Analytics', HR: 'HR Analytics',
     MARKETING: 'Sales & Marketing Analytics', ADMIN_WAREHOUSE: 'Admin & Warehouse Analytics',
     PRODUCTION: 'Production Analytics',
     RECEPTION: 'Reception Analytics',

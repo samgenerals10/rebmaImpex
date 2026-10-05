@@ -85,10 +85,7 @@ export async function releaseOrderToDispatch(orderId: string): Promise<{ driverN
 
   if (delivery && delivery[0]) {
     const deliveryId = delivery[0].id;
-    const { data: existing } = await supabase.from('waybills').select('id').eq('delivery_log_id', deliveryId).limit(1);
-    if (!existing || existing.length === 0) {
-      await supabase.from('waybills').insert({ order_id: orderId, delivery_log_id: deliveryId }).select();
-    }
+    // The waybill is made and printed by Risk (lib/waybillPrint.ts), not here.
     await logDeliveryEvent(deliveryId, `DISPATCHED: assigned to ${driver.full_name}${driver.vehicle_id ? ` (${driver.vehicle_id})` : ''}`, orderId);
   }
 

@@ -11,7 +11,11 @@
 // out of scope, same as the print action above).
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text } from 'react-native';
-import { Download } from 'lucide-react-native';
+import { Download, Printer } from 'lucide-react-native';
+import { Alert } from '../../lib/appAlert';
+import { printReceipt, type OrderLineItem } from '../../lib/documentPrint';
+import { getDocumentTemplate } from '../../components/shared/DocumentTemplatesEditor';
+import { getCeoSetting } from '../../lib/ceoSetting';
 import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../theme/ThemeProvider';
 import Screen from '../../components/ui/Screen';
@@ -45,6 +49,41 @@ export default function ReceiptsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [detail, setDetail] = useState<PaymentRow | null>(null);
+  const [printing, setPrinting] = useState(false);
+  // Same branded receipt as the laptop, with the order's items when known.
+  const printDetail = async () => {
+    if (!detail || printing) return;
+    setPrinting(true);
+    try {
+      let lineItems: OrderLineItem[] | null = null;
+      let phone = '';
+      if (detail.order_id) {
+        const { data } = await supabase.from('orders').select('metadata, phone').eq('id', detail.order_id).limit(1);
+        const items = data?.[0]?.metadata?.items;
+        if (Array.isArray(items) && items.length > 0) lineItems = items;
+        phone = data?.[0]?.phone || '';
+      }
+      const [template, printEnabled] = await Promise.all([getDocumentTemplate('RECEIPT'), getCeoSetting('print_enabled', true)]);
+      await printReceipt({
+        id: detail.id,
+        clientName: detail.client_name || '',
+        amount: Number(detail.amount || 0),
+        paymentMode: detail.payment_mode,
+        paymentType: detail.payment_type || '',
+        orderId: detail.order_id,
+        ticketNumber: detail.invoice_number || detail.order_ref || '',
+        receiptNumber: detail.receipt_number || detail.invoice_number || detail.id,
+        recordedBy: detail.recorded_by || null,
+        status: detail.status || '',
+        createdAt: detail.created_at,
+        customerPhone: phone,
+      }, lineItems, template, printEnabled !== false);
+    } catch (e: any) {
+      Alert.alert('Print', e?.message || 'Could not print this receipt.');
+    } finally {
+      setPrinting(false);
+    }
+  };
   const [exportOpen, setExportOpen] = useState(false);
 
   const load = useCallback(async () => {
@@ -108,6 +147,8 @@ export default function ReceiptsScreen() {
             <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>Type: {detail.payment_type || '—'}</Text>
             <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>Recorded by: {detail.recorded_by || '—'}</Text>
             <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>Date: {new Date(detail.created_at).toLocaleString()}</Text>
+            <View style={{ height: t.spacing.md }} />
+            <Button icon={<Printer size={14} color={t.colors.onAccent} />} label="Print Receipt" onPress={printDetail} loading={printing} disabled={printing} fullWidth />
           </SheetSection>
         )}
       </Sheet>

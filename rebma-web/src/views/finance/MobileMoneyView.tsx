@@ -120,7 +120,7 @@ export default function FinanceMobileMoneyView({ addNotification, currentUser }:
       const { error } = await supabase.from('finance_payments').update({ status: 'Verified' }).eq('id', id);
       if (error) throw error;
       setTxns(prev => prev.map(t => t.id === id ? { ...t, status: 'Verified' } : t));
-      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `MoMo transaction ${id} verified — ${txn?.transactionId}`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
+      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `MoMo transaction ${id} verified — ${txn?.transactionId}`, performed_by: currentUser?.fullName || 'Account Department', timestamp: new Date().toISOString() }]);
       addNotification?.(`MoMo transaction verified: ${txn?.transactionId}`);
     } catch (e: any) {
       alert(e.message || 'Failed to verify transaction.');
@@ -163,7 +163,7 @@ export default function FinanceMobileMoneyView({ addNotification, currentUser }:
       if (error) throw error;
       setTxns(prev => prev.map(t => t.id === editTxn.id ? { ...t, transactionId: editForm.transactionId, network: editForm.network, customerName: editForm.customerName, momoNumber: editForm.momoNumber, amount: updatedAmount, date: editForm.date } : t));
       addNotification?.('MoMo transaction updated successfully.');
-      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `MoMo transaction ${editTxn.id} updated`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
+      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `MoMo transaction ${editTxn.id} updated`, performed_by: currentUser?.fullName || 'Account Department', timestamp: new Date().toISOString() }]);
       setShowEditForm(false);
       setEditTxn(null);
     } catch (err: any) {
@@ -182,7 +182,7 @@ export default function FinanceMobileMoneyView({ addNotification, currentUser }:
       if (error) throw error;
       setTxns(prev => prev.filter(t => t.id !== id));
       addNotification?.('Transaction record deleted successfully.');
-      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `MoMo transaction ${id} deleted`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
+      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `MoMo transaction ${id} deleted`, performed_by: currentUser?.fullName || 'Account Department', timestamp: new Date().toISOString() }]);
     } catch (err: any) {
       alert(err.message || 'Failed to delete transaction.');
     } finally {

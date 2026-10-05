@@ -29,7 +29,7 @@ interface PastReportRow {
   checkins: number;
 }
 
-const FALLBACK_DEPTS = ['Management', 'Accounts Department', 'Marketing', 'Operations', 'HR', 'Dispatch', 'Production', 'Reception'];
+const FALLBACK_DEPTS = ['Management', 'Account Department', 'Marketing', 'Operations', 'HR', 'Dispatch', 'Production', 'Reception'];
 
 export default function DailyReportsScreen() {
   const t = useTheme();
@@ -66,7 +66,8 @@ export default function DailyReportsScreen() {
       if (!deptMap[d]) deptMap[d] = { name: d, present: 0, total: d === 'Dispatch' ? 12 : d === 'Production' ? 11 : 5 };
     }
     for (const a of attData || []) {
-      const name = a.department;
+      // Older rows may say Finance or Accounts Department.
+      const name = /^(finance|accounts? department)$/i.test(String(a.department || '')) ? 'Account Department' : a.department;
       if (deptMap[name]) deptMap[name].present += 1;
       else deptMap[name] = { name, present: 1, total: 1 };
     }

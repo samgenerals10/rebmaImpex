@@ -30,13 +30,9 @@
 // two elsewhere (authStore.ts login gate, lib/messenger.ts send gate) —
 // added below as plain toggles.
 //
-// Still deliberately deferred: the per-user exception override
-// (SettingToggleWithException on web) for spreadsheets_enabled,
-// mobile_app_access_allowed, and messaging_access_allowed alike — each of
-// those three toggles is ported as a plain on/off switch, with the
-// per-email allow/block list layered on top of it left to web only. A
-// narrow, rarely-used admin surface, genuinely out of scope for a quick
-// pass; revisit if a real need for it on mobile comes up.
+// Per-person exceptions (spreadsheets_enabled, mobile_app_access_allowed,
+// messaging_access_allowed) are managed here too, via FeatureExceptions,
+// same table and rules as web's SettingToggleWithException.
 import { useCallback, useEffect, useState } from 'react';
 import { View, Text, ScrollView } from 'react-native';
 import { Alert } from '../../lib/appAlert';
@@ -64,7 +60,7 @@ import ExportSheet from '../../components/shared/ExportSheet';
 import PasswordConfirmSheet from '../../components/shared/PasswordConfirmSheet';
 
 export type SettingField =
-  | { key: string; label: string; description?: string; kind: 'bool'; defaultOn?: boolean }
+  | { key: string; label: string; description?: string; kind: 'bool'; defaultOn?: boolean; withExceptions?: boolean }
   | { key: string; label: string; description?: string; kind: 'text'; placeholder?: string }
   | { key: string; label: string; description?: string; kind: 'number' }
   | { key: string; label: string; description?: string; kind: 'select'; options: { value: string; label: string }[] };
@@ -82,7 +78,7 @@ export const SECTIONS: Section[] = [
       { key: 'registrations_allowed', label: 'Registrations Allowed', kind: 'bool' },
       { key: 'invitation_only', label: 'Invitation Only', kind: 'bool' },
       { key: 'hr_can_invite_staff', label: 'HR Can Invite Staff', kind: 'bool' },
-      { key: 'mobile_app_access_allowed', label: 'Mobile App Access Allowed', description: 'Per-user email exceptions to this are set on web only, not from mobile.', kind: 'bool' },
+      { key: 'mobile_app_access_allowed', label: 'Mobile App Access Allowed', description: 'Master switch for who can sign in on the phone app. Exceptions below override it for named people.', kind: 'bool', withExceptions: true },
       { key: 'hr_can_approve_registrations', label: 'HR Can Approve Registrations', kind: 'bool' },
       { key: 'management_can_approve_registrations', label: 'Management Can Approve Registrations', kind: 'bool' },
       { key: 'ceo_must_approve_registrations', label: 'CEO Must Approve Registrations', kind: 'bool' },
@@ -96,7 +92,7 @@ export const SECTIONS: Section[] = [
       { key: 'cheque_payments_enabled', label: 'Cheque Payments Enabled', kind: 'bool' },
       { key: 'momo_payments_enabled', label: 'Mobile Money Payments Enabled', kind: 'bool' },
       { key: 'invoice_generation_enabled', label: 'Invoice Generation Enabled', kind: 'bool' },
-      { key: 'finance_needs_ceo_cosign', label: 'Accounts Department Needs CEO Co-Sign', kind: 'bool' },
+      { key: 'finance_needs_ceo_cosign', label: 'Account Department Needs CEO Co-Sign', kind: 'bool' },
       { key: 'payroll_processing_enabled', label: 'Payroll Processing Enabled', kind: 'bool' },
       { key: 'ceo_approval_threshold', label: 'CEO Approval Threshold (GHS)', kind: 'number' },
       { key: 'management_price_setting', label: 'Management Price Setting', kind: 'bool' },
@@ -138,7 +134,7 @@ export const SECTIONS: Section[] = [
       { key: 'global_chat_enabled', label: 'Global Chat Enabled', kind: 'bool' },
       { key: 'department_chat_enabled', label: 'Department Chat Enabled', kind: 'bool' },
       { key: 'direct_messages_enabled', label: 'Direct Messages Enabled', kind: 'bool' },
-      { key: 'messaging_access_allowed', label: 'Messaging Access Allowed', description: 'Per-user email exceptions to this are set on web only, not from mobile.', kind: 'bool' },
+      { key: 'messaging_access_allowed', label: 'Messaging Access Allowed', description: 'Master switch for Messages. Exceptions below override it for named people.', kind: 'bool', withExceptions: true },
       { key: 'messenger_calls_enabled', label: 'Voice/Video Calls Enabled', kind: 'bool' },
       { key: 'messenger_attachments_enabled', label: 'Attachments Enabled', kind: 'bool' },
       { key: 'meeting_recording_allowed', label: 'Meeting Recording Allowed', description: 'When off, hosts cannot start a local recording in Boardroom or Meetings.', kind: 'bool' },
@@ -155,7 +151,7 @@ export const SECTIONS: Section[] = [
       { key: 'maintenance_mode', label: 'Maintenance Mode', description: 'Confirm before enabling. It blocks normal app use.', kind: 'bool' },
       { key: 'session_timeout_minutes', label: 'Session Timeout (minutes)', kind: 'number' },
       { key: 'force_2fa_management', label: 'Force 2FA for Management', kind: 'bool' },
-      { key: 'force_2fa_finance', label: 'Force 2FA for Accounts Department', kind: 'bool' },
+      { key: 'force_2fa_finance', label: 'Force 2FA for Account Department', kind: 'bool' },
       { key: 'password_reset_authority', label: 'Password Reset Authority', kind: 'select', options: [{ value: 'ceo_only', label: 'CEO Only' }, { value: 'hr_and_ceo', label: 'HR and CEO' }, { value: 'specific_user', label: 'Specific User' }] },
       { key: 'account_deletion_authority', label: 'Account Deletion Authority', kind: 'select', options: [{ value: 'ceo_only', label: 'CEO Only' }, { value: 'specific_user', label: 'Specific User' }] },
     ],
@@ -185,7 +181,7 @@ export const SECTIONS: Section[] = [
   },
   {
     id: 'spreadsheets', title: 'Spreadsheets Control', fields: [
-      { key: 'spreadsheets_enabled', label: 'Spreadsheets Enabled', kind: 'bool' },
+      { key: 'spreadsheets_enabled', label: 'Spreadsheets Enabled', description: 'Master switch for Spreadsheets. Exceptions below override it for named people.', kind: 'bool', withExceptions: true },
     ],
   },
 ];
@@ -204,7 +200,7 @@ interface DelegateRow { id: string; delegated_to_email: string; delegated_to_nam
 const AUDIT_ENTRY = { name: 'global_audit_history', label: 'Department Audit Trail' };
 const DEPT_TABLES: Record<string, { label: string; tables: { name: string; label: string }[] }> = {
   MARKETING: { label: 'Marketing', tables: [{ name: 'orders', label: 'Sales Orders' }, { name: 'customers', label: 'Customer Directory' }, AUDIT_ENTRY] },
-  FINANCE: { label: 'Accounts Department', tables: [
+  FINANCE: { label: 'Account Department', tables: [
     { name: 'finance_payments', label: 'Accounts Payments (Receipts)' },
     { name: 'finance_expenses', label: 'Accounts Expenses' },
     { name: 'finance_cheques', label: 'Accounts Cheques' },
@@ -373,6 +369,72 @@ function TextSetting({ value, placeholder, onSave }: { value: any; placeholder?:
   );
 }
 
+// Per-person overrides of a master switch, stored in ceo_feature_exceptions
+// (same table and rules as the laptop's Control Center). Allow lets that
+// person in even when the switch is off; Block keeps them out even when
+// it is on.
+function FeatureExceptions({ featureKey }: { featureKey: string }) {
+  const t = useTheme();
+  const [open, setOpen] = useState(false);
+  const [rows, setRows] = useState<{ user_email: string; allowed: boolean }[]>([]);
+  const [email, setEmail] = useState('');
+  const [allow, setAllow] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    supabase.from('ceo_feature_exceptions').select('user_email, allowed').eq('feature_key', featureKey)
+      .then(({ data }) => setRows((data as any) || []), () => {});
+  }, [open, featureKey]);
+
+  const add = async () => {
+    const e = email.trim().toLowerCase();
+    if (!e || busy) return;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) { Alert.alert('Exceptions', 'Enter a valid email address.'); return; }
+    setBusy(true);
+    const { error } = await supabase.from('ceo_feature_exceptions')
+      .upsert([{ feature_key: featureKey, user_email: e, allowed: allow }], { onConflict: 'feature_key,user_email' });
+    setBusy(false);
+    if (error) { Alert.alert('Exceptions', error.message); return; }
+    setRows((prev) => [...prev.filter((r) => r.user_email !== e), { user_email: e, allowed: allow }]);
+    setEmail('');
+  };
+
+  const remove = async (e: string) => {
+    const { error } = await supabase.from('ceo_feature_exceptions').delete().eq('feature_key', featureKey).eq('user_email', e);
+    if (error) { Alert.alert('Exceptions', error.message); return; }
+    setRows((prev) => prev.filter((r) => r.user_email !== e));
+  };
+
+  return (
+    <View style={{ marginTop: t.spacing.sm }}>
+      <Button variant="ghost" size="sm" icon={<Key size={13} color={t.colors.accent} />} label={open ? 'Hide people exceptions' : 'Manage people exceptions'} onPress={() => setOpen((v) => !v)} />
+      {open && (
+        <View style={{ marginTop: t.spacing.sm, gap: t.spacing.sm }}>
+          <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted }}>
+            Allow lets that person in even when the switch is off. Block keeps them out even when it is on.
+          </Text>
+          <Input value={email} onChangeText={setEmail} placeholder="person@company.com" autoCapitalize="none" keyboardType="email-address" />
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+            <View style={{ flex: 1 }}><Button size="sm" label="Block" variant={!allow ? 'primary' : 'ghost'} onPress={() => setAllow(false)} /></View>
+            <View style={{ flex: 1 }}><Button size="sm" label="Allow" variant={allow ? 'primary' : 'ghost'} onPress={() => setAllow(true)} /></View>
+          </View>
+          <Button size="sm" icon={<Plus size={13} color={t.colors.onAccent} />} label="Add exception" onPress={add} loading={busy} disabled={busy || !email.trim()} />
+          {rows.length === 0 ? (
+            <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted }}>No exceptions yet.</Text>
+          ) : rows.map((r) => (
+            <View key={r.user_email} style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm }}>
+              <Text style={{ flex: 1, fontFamily: t.font.medium, fontSize: t.type.body12.size, color: t.colors.textPrimary }} numberOfLines={1}>{r.user_email}</Text>
+              <Badge tone={r.allowed ? 'success' : 'danger'} label={r.allowed ? 'Allow' : 'Block'} />
+              <Button variant="ghost" size="sm" icon={<X size={13} color={t.colors.textSecondary} />} label="Remove" onPress={() => remove(r.user_email)} />
+            </View>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
 function AdminSetting({ field, value, onChange }: { field: SettingField; value: any; onChange: (v: any) => void }) {
   const t = useTheme();
   return (
@@ -386,6 +448,7 @@ function AdminSetting({ field, value, onChange }: { field: SettingField; value: 
           <Toggle value={!!(value ?? field.defaultOn)} onChange={onChange} />
         )}
       </View>
+      {field.kind === 'bool' && field.withExceptions && <FeatureExceptions featureKey={field.key} />}
       {field.kind === 'text' && <TextSetting value={value} placeholder={field.placeholder} onSave={onChange} />}
       {field.kind === 'number' && (
         <View style={{ marginTop: t.spacing.sm }}>

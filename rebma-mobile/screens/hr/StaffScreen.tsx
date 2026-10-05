@@ -45,9 +45,9 @@ import EnrollmentSection from '../../components/shared/EnrollmentSection';
 import ExportSheet from '../../components/shared/ExportSheet';
 import { useAuthStore } from '../../store/authStore';
 
-const DEPARTMENTS = ['Admin & Warehouse', 'Accounts Department', 'HR', 'Marketing', 'Reception', 'Production', 'Management', 'Risk'];
+const DEPARTMENTS = ['Admin & Warehouse', 'Account Department', 'HR', 'Marketing', 'Reception', 'Production', 'Management', 'Risk'];
 const DEPT_TO_ROLE: Record<string, string> = {
-  'Admin & Warehouse': 'admin_warehouse', 'Accounts Department': 'finance', HR: 'HR',
+  'Admin & Warehouse': 'admin_warehouse', 'Account Department': 'finance', HR: 'HR',
   Marketing: 'marketing', Reception: 'receptionist', Production: 'production', Management: 'management',
   Risk: 'risk',
 };

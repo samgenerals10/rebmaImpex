@@ -12,7 +12,7 @@ import { useCallback, useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../lib/supabaseClient';
-import { LogOut, Mail, Building2, Hash, Briefcase, Sparkles, ChevronRight, ChevronLeft, Settings, MessageSquarePlus, Banknote, StickyNote, CheckSquare, HelpCircle } from 'lucide-react-native';
+import { LogOut, Mail, Building2, Hash, Briefcase, Sparkles, ChevronRight, ChevronLeft, Settings, MessageSquarePlus, Banknote, StickyNote, CheckSquare, HelpCircle, MessageCircleQuestion } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeProvider';
 import { useAuthStore } from '../store/authStore';
 import { getDepartmentEntry } from '../navigation/departmentRegistry';
@@ -31,9 +31,11 @@ interface Props {
   onOpenTasks: () => void;
   onOpenEmails: () => void;
   onOpenHelp: () => void;
+  // Any staff member can send HR a question (same as the laptop).
+  onOpenHrQueries?: () => void;
 }
 
-export default function ProfileScreen({ onOpenDesignSystem, onOpenSettings, onOpenFeedback, onOpenPayslips, onOpenNotes, onOpenTasks, onOpenEmails, onOpenHelp }: Props) {
+export default function ProfileScreen({ onOpenDesignSystem, onOpenSettings, onOpenFeedback, onOpenPayslips, onOpenNotes, onOpenTasks, onOpenEmails, onOpenHelp, onOpenHrQueries }: Props) {
   const t = useTheme();
   const navigation = useNavigation<any>();
   const profile = useAuthStore((s) => s.profile);
@@ -133,6 +135,16 @@ export default function ProfileScreen({ onOpenDesignSystem, onOpenSettings, onOp
           <Text style={{ flex: 1, fontFamily: t.font.medium, fontSize: t.type.body14.size, color: t.colors.textPrimary }}>Feedback</Text>
           <ChevronRight size={16} color={t.colors.textMuted} />
         </Pressable>
+        {onOpenHrQueries && (
+          <Pressable
+            onPress={onOpenHrQueries}
+            style={[{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, padding: t.spacing.md, borderRadius: 20, borderWidth: 1, borderColor: t.colors.border, backgroundColor: t.colors.bgCard }, t.shadow('card')]}
+          >
+            <MessageCircleQuestion size={16} color={t.colors.textSecondary} />
+            <Text style={{ flex: 1, fontFamily: t.font.medium, fontSize: t.type.body14.size, color: t.colors.textPrimary }}>HR Queries</Text>
+            <ChevronRight size={16} color={t.colors.textMuted} />
+          </Pressable>
+        )}
         <Pressable
           onPress={onOpenPayslips}
           style={[{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, padding: t.spacing.md, borderRadius: 20, borderWidth: 1, borderColor: t.colors.border, backgroundColor: t.colors.bgCard }, t.shadow('card')]}

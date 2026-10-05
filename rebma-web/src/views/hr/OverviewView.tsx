@@ -21,16 +21,11 @@ interface Props {
   staffList: StaffMember[];
   pendingRegistrations: PendingRegistration[];
   attendanceList: Attendance[];
-  onApprove: (reg: PendingRegistration, pw: string, token: string) => unknown;
+  onApprove: (reg: PendingRegistration) => unknown;
   onDeny: (reg: PendingRegistration) => void;
 }
 
 const DEPT_COLORS = ['var(--accent)', '#10b981', '#6366f1', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6'];
-
-function generatePassword(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#';
-  return Array.from({ length: 10 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-}
 
 export default function HrOverviewView({ currentUser, addNotification, setActiveSubTab, staffList, pendingRegistrations, attendanceList, onApprove, onDeny }: Props) {
   const [auditLog, setAuditLog] = useState<{ action: string; dept: string; by: string; time: string }[]>([]);
@@ -223,11 +218,15 @@ export default function HrOverviewView({ currentUser, addNotification, setActive
     { name: 'Suspended', value: statusCounts.SUSPENDED, color: '#ef4444' },
   ];
 
-  const handleQuickApprove = (reg: PendingRegistration) => {
-    const pw = generatePassword();
-    const token = `https://rebma.app/magic?token=${Math.random().toString(36).slice(2)}`;
-    onApprove(reg, pw, token);
+  const handleQuickApprove = async (reg: PendingRegistration) => {
+    const res: any = await onApprove(reg);
+    if (!res) return; // failed, already alerted
     addNotification(`${reg.fullName} approved`);
+    // Older registrations get a temporary password from the server. Show
+    // it once so HR can pass it on; before, it was never shown at all.
+    if (res.temporaryPassword) {
+      alert(`${reg.fullName} is approved.\n\nTemporary password: ${res.temporaryPassword}\nSign in at: ${window.location.origin}\n\nShare these with them. They will be asked to change the password when they first sign in.`);
+    }
   };
 
   const handleQuickDeny = (reg: PendingRegistration) => {

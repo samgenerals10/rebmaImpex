@@ -65,7 +65,6 @@ export default function ApprovedGoodsScreen() {
   // vehicleId/driverName removed (Phase 9) — Admin & Warehouse no longer
   // assigns either; Risk does, once the order lands in their Dispatch
   // queue as PENDING_ASSIGNMENT.
-  const [containerNumber, setContainerNumber] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -125,7 +124,6 @@ export default function ApprovedGoodsScreen() {
 
   const openDispatch = (order: OrderRow) => {
     setTarget(order);
-    setContainerNumber('');
   };
 
   const submitDispatch = async () => {
@@ -165,20 +163,7 @@ export default function ApprovedGoodsScreen() {
     if (statusErr) {
       Alert.alert('Dispatch Warning', `The delivery was created, but the order status could not be updated: ${statusErr.message}`);
     }
-    if (rows && rows[0]) {
-      try {
-        const deliveryId = rows[0].id;
-        const { data: existing } = await supabase.from('waybills').select('id').eq('delivery_log_id', deliveryId).limit(1);
-        if (!existing || existing.length === 0) {
-          await supabase.from('waybills').insert({
-            order_id: target.id,
-            delivery_log_id: deliveryId,
-            container_number: containerNumber.trim() || null,
-            created_by: profile?.fullName || null,
-          });
-        }
-      } catch {}
-    }
+    // The waybill is made and printed by Risk (lib/waybillPrint.ts), not here.
     try {
       await supabase.from('global_audit_history').insert({
         action: 'DISPATCH_ORDER',
@@ -321,7 +306,6 @@ export default function ApprovedGoodsScreen() {
         <Text style={{ fontSize: t.type.body12.size, color: t.colors.textMuted, marginBottom: t.spacing.md }}>
           Vehicle and driver are no longer assigned here. Risk picks them once this order lands in their Dispatch queue.
         </Text>
-        <Field label="Container Number" hint="Optional"><Input value={containerNumber} onChangeText={setContainerNumber} placeholder="E.g., MSKU-1234567" /></Field>
         {!!currentUserEmail && (
           <Text style={{ fontFamily: t.font.regular, fontSize: t.type.label9.size, color: t.colors.textMuted, marginTop: t.spacing.sm }}>
             This action will be attributed to: <Text style={{ fontFamily: t.font.semibold, color: t.colors.textSecondary }}>{currentUserEmail}</Text>

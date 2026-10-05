@@ -119,7 +119,7 @@ export default function ChequesScreen() {
       }).eq('id', editTarget.id);
       setSubmitting(false);
       if (error) { Alert.alert('Update Failed', error.message); return; }
-      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Cheque ${editTarget.id} updated`, performed_by: profile?.fullName || 'Accounts Department', timestamp: new Date().toISOString() }]);
+      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Cheque ${editTarget.id} updated`, performed_by: profile?.fullName || 'Account Department', timestamp: new Date().toISOString() }]);
       closeForm();
       load();
       return;
@@ -128,7 +128,7 @@ export default function ChequesScreen() {
       cheque_number: form.chequeNumber.trim(), bank_name: form.bankName.trim(), account_name: form.accountName.trim(),
       account_number: form.accountNumber.trim() || null, amount: parseFloat(form.amount) || 0,
       cheque_date: form.chequeDate || null, expected_clearing: form.expectedClearing || null,
-      order_ref: form.orderRef.trim() || null, status: 'Received', recorded_by: profile?.fullName || 'Accounts Department',
+      order_ref: form.orderRef.trim() || null, status: 'Received', recorded_by: profile?.fullName || 'Account Department',
     }]);
     setSubmitting(false);
     if (error) {
@@ -146,7 +146,7 @@ export default function ChequesScreen() {
         text: 'Delete', style: 'destructive', onPress: async () => {
           const { error } = await supabase.from('finance_cheques').delete().eq('id', c.id);
           if (error) { Alert.alert('Delete Failed', error.message); return; }
-          await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Cheque ${c.id} deleted`, performed_by: profile?.fullName || 'Accounts Department', timestamp: new Date().toISOString() }]);
+          await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Cheque ${c.id} deleted`, performed_by: profile?.fullName || 'Account Department', timestamp: new Date().toISOString() }]);
           load();
         },
       },
@@ -165,7 +165,7 @@ export default function ChequesScreen() {
       Alert.alert('Update Failed', error.message);
       return;
     }
-    await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Cheque ${c.id} status updated to ${status}`, performed_by: profile?.fullName || 'Accounts Department', timestamp: new Date().toISOString() }]);
+    await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Cheque ${c.id} status updated to ${status}`, performed_by: profile?.fullName || 'Account Department', timestamp: new Date().toISOString() }]);
     load();
   };
 

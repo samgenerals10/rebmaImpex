@@ -537,7 +537,7 @@ export default function FinanceDashboard({
       ],
       tableData: localPayments.map(p => ({
         date: p.createdAt, customer: p.clientName, order: p.orderId || '—',
-        amount: `GHS ${p.amount.toLocaleString()}`, payment_type: p.paymentType, recorded_by: 'Finance', status: 'Paid',
+        amount: `GHS ${p.amount.toLocaleString()}`, payment_type: p.paymentType, recorded_by: 'Account Department', status: 'Paid',
       })),
       columns: [
         { key: 'date', label: 'Date' }, { key: 'customer', label: 'Customer' }, { key: 'order', label: 'Order#' },
@@ -795,12 +795,12 @@ export default function FinanceDashboard({
       <div className="lg:hidden mobile-only space-y-4 pb-4 mobile-animate-up">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-bold text-text-primary tracking-tight">Finance</h1>
+            <h1 className="text-lg font-bold text-text-primary tracking-tight">Account Department</h1>
             <p className="text-[11px] text-text-muted mt-0.5">Revenue tracking & payments</p>
           </div>
           <div className="flex gap-2">
             <button onClick={() => exportToCSV(localPayments, ['id', 'clientName', 'amount', 'paymentMethod', 'createdAt'], 'payments')} className="p-2 bg-bg-card rounded-xl border border-[var(--border)] shadow-card"><FileSpreadsheet className="w-4 h-4 text-text-secondary" /></button>
-            <button onClick={() => exportToPDF('Finance Report', localPayments, ['id', 'clientName', 'amount'])} className="p-2 bg-bg-card rounded-xl border border-[var(--border)] shadow-card"><FileText className="w-4 h-4 text-text-secondary" /></button>
+            <button onClick={() => exportToPDF('Account Department Report', localPayments, ['id', 'clientName', 'amount'])} className="p-2 bg-bg-card rounded-xl border border-[var(--border)] shadow-card"><FileText className="w-4 h-4 text-text-secondary" /></button>
           </div>
         </div>
 
@@ -914,14 +914,14 @@ export default function FinanceDashboard({
           {/* Header */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-[var(--text-primary)]">
             <div>
-              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-[var(--text-primary)]">Finance Ledgers</h1>
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-[var(--text-primary)]">Account Department</h1>
               <p className="text-xs sm:text-sm text-[var(--text-secondary)] opacity-80">Clear cash invoice payments, verify credit requests, and issue receipt tickets.</p>
             </div>
             <div className="flex gap-2 w-full sm:w-auto justify-end">
               {dataExportEnabled && <button onClick={() => exportToCSV(effectiveOrders, ['id', 'ticketNumber', 'clientName', 'productName', 'destination', 'paymentMode', 'totalAmount', 'status', 'createdAt'], 'finance_orders_ledger')} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg)] hover:bg-[var(--accent-light)] text-[var(--text-primary)] rounded-lg text-xs font-semibold cursor-pointer border border-[var(--border)] transition-colors">
                 <FileSpreadsheet className="w-3.5 h-3.5" /><span>Ledgers (CSV)</span>
               </button>}
-              <button onClick={() => exportToPDF('Finance Ledger Statement', effectiveOrders, ['id', 'ticketNumber', 'clientName', 'productName', 'paymentMode', 'totalAmount', 'status', 'createdAt'])} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg)] hover:bg-[var(--accent-light)] text-[var(--text-primary)] rounded-lg text-xs font-semibold cursor-pointer border border-[var(--border)] transition-colors">
+              <button onClick={() => exportToPDF('Account Department Ledger Statement', effectiveOrders, ['id', 'ticketNumber', 'clientName', 'productName', 'paymentMode', 'totalAmount', 'status', 'createdAt'])} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg)] hover:bg-[var(--accent-light)] text-[var(--text-primary)] rounded-lg text-xs font-semibold cursor-pointer border border-[var(--border)] transition-colors">
                 <FileText className="w-3.5 h-3.5" /><span>Ledgers (PDF)</span>
               </button>
             </div>
@@ -995,7 +995,7 @@ export default function FinanceDashboard({
           {/* Chart, and — on the Record Payment tab — the payment form beside it */}
           <div className={activeSubTab === 'RecordPayment' ? 'grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-4 md:gap-6 items-start' : ''}>
           <div title="Weekly revenue recognized vs. daily liquid (cash-in-hand) payments collected" className="p-4 md:p-6 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)]">
-            <h3 className="text-base md:text-lg font-bold text-[var(--text-primary)]">Finance Revenue & Cash Collection Performance</h3>
+            <h3 className="text-base md:text-lg font-bold text-[var(--text-primary)]">Account Department Revenue & Cash Collection Performance</h3>
             <p className="text-xs text-[var(--text-muted)]">Weekly revenue flow vs daily liquid payments collection.</p>
             <div className="h-48 md:h-60 mt-4">
               <ResponsiveContainer width="100%" height="100%">
@@ -1051,7 +1051,7 @@ export default function FinanceDashboard({
                         }))}
                       />
                       {effectiveOrders.filter(o => o.paymentMode === 'CREDIT' && o.status === 'PENDING_FINANCE').length === 0 && (
-                        <p className="text-[10px] text-amber-500 mt-1">No pending credit orders found. Check Finance queue first.</p>
+                        <p className="text-[10px] text-amber-500 mt-1">No pending credit orders found. Check Account Department queue first.</p>
                       )}
                     </div>
                     {selectedOrderId && (() => {
@@ -1352,7 +1352,7 @@ export default function FinanceDashboard({
               <div className="p-6 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)] space-y-4">
                 <div className="flex items-center gap-2 text-[var(--text-primary)]">
                   <ExternalLink className="w-5 h-5 text-[var(--accent)]" />
-                  <h3 className="text-lg font-bold">Finance Intake Form</h3>
+                  <h3 className="text-lg font-bold">Account Department Intake Form</h3>
                 </div>
                 <p className="text-xs text-[var(--text-secondary)]">Use the form below to submit payment intake requests directly from Google Forms.</p>
                 <div className="rounded-xl overflow-hidden border border-[var(--border)]" style={{ height: '600px' }}>
@@ -1363,7 +1363,7 @@ export default function FinanceDashboard({
                     frameBorder="0"
                     marginHeight={0}
                     marginWidth={0}
-                    title="Finance Intake Form"
+                    title="Account Department Intake Form"
                   >
                     Loading Google Form…
                   </iframe>
@@ -2114,10 +2114,10 @@ export default function FinanceDashboard({
         )} {/* end activeSubTab !== 'Evaluation' */}
       </div>
 
-      {/* Finance + Operations Activity Feed */}
+      {/* Account Department + Operations Activity Feed */}
       <div className="mt-6">
         <ActivityFeed
-          title="Finance & Operations Activity"
+          title="Account Department & Operations Activity"
           departments={['FINANCE', 'OPERATIONS']}
           limit={20}
         />

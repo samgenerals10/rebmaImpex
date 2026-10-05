@@ -39,8 +39,8 @@ import type { CurrentUser } from '../../types/erp';
 // ── Department → allowed Data Sheet tables ───────────────────────────────────
 
 const DEPT_TABLES: Record<string, Array<{ id: string; label: string }>> = {
-  CEO:        [{ id: 'orders', label: 'Customer Orders' }, { id: 'finance_payments', label: 'Finance Payments' }, { id: 'delivery_logs', label: 'Delivery Logs' }, { id: 'global_audit_history', label: 'Audit History' }, { id: 'stock', label: 'Stock Inventory' }, { id: 'cargo_intake', label: 'Cargo Intake' }],
-  FINANCE:    [{ id: 'finance_payments', label: 'Finance Payments' }, { id: 'orders', label: 'Customer Orders' }, { id: 'stock', label: 'Stock Inventory' }],
+  CEO:        [{ id: 'orders', label: 'Customer Orders' }, { id: 'finance_payments', label: 'Account Department Payments' }, { id: 'delivery_logs', label: 'Delivery Logs' }, { id: 'global_audit_history', label: 'Audit History' }, { id: 'stock', label: 'Stock Inventory' }, { id: 'cargo_intake', label: 'Cargo Intake' }],
+  FINANCE:    [{ id: 'finance_payments', label: 'Account Department Payments' }, { id: 'orders', label: 'Customer Orders' }, { id: 'stock', label: 'Stock Inventory' }],
   MANAGEMENT: [{ id: 'cargo_intake', label: 'Cargo Intake' }, { id: 'orders', label: 'Customer Orders' }, { id: 'production_requests', label: 'Production Requests' }, { id: 'general_purchases', label: 'General Purchases' }],
   MARKETING:  [{ id: 'orders', label: 'Customer Orders' }],
   ADMIN_WAREHOUSE: [{ id: 'cargo_intake', label: 'Cargo Intake' }, { id: 'stock', label: 'Stock Inventory' }, { id: 'stock_ledger', label: 'Stock Ledger' }, { id: 'delivery_logs', label: 'Delivery Logs' }, { id: 'drivers', label: 'Drivers' }],

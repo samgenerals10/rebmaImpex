@@ -3,7 +3,7 @@ import { ChevronRight } from 'lucide-react';
 
 const DEPT_LABELS: Record<string, string> = {
   CEO: 'CEO Command', RISK: 'Risk & Compliance', MANAGEMENT: 'Management Office', HR: 'Human Resources',
-  MARKETING: 'Marketing', ADMIN_WAREHOUSE: 'Admin & Warehouse', FINANCE: 'Finance',
+  MARKETING: 'Marketing', ADMIN_WAREHOUSE: 'Admin & Warehouse', FINANCE: 'Account Department',
   PRODUCTION: 'Production', RECEPTION: 'Reception',
   BOARDROOM: 'Boardroom', SETTINGS: 'Settings',
 };

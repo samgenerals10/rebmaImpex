@@ -193,7 +193,7 @@ const isUnknownRoute = currentPath !== '/' && !tripToken && currentPath !== '/re
 
 const DEPT_CODE_TO_LABEL: Record<string, string> = {
   CEO: 'CEO Office (OTP verification)', HR: 'Human Resources', MANAGEMENT: 'Management Office',
-  MARKETING: 'Marketing Department', ADMIN_WAREHOUSE: 'Admin & Warehouse', FINANCE: 'Finance (Ledgers)',
+  MARKETING: 'Marketing Department', ADMIN_WAREHOUSE: 'Admin & Warehouse', FINANCE: 'Account Department',
   PRODUCTION: 'Production Line', RECEPTION: 'Reception Desk', RECEPTIONIST: 'Reception Desk',
   RISK: 'Risk & Compliance',
 };
@@ -216,7 +216,7 @@ export default function App() {
     if (d === 'Management Office' || d === 'MANAGEMENT' || d === 'admin' || d === 'management') return 'management';
     if (d === 'Marketing Department' || d === 'MARKETING' || d === 'marketing') return 'marketing';
     if (d === 'Admin & Warehouse' || d === 'ADMIN_WAREHOUSE' || d === 'admin_warehouse') return 'admin_warehouse';
-    if (d === 'Finance (Ledgers)' || d === 'FINANCE' || d === 'finance') return 'finance';
+    if (d === 'Account Department' || d === 'FINANCE' || d === 'finance') return 'finance';
     if (d === 'Production Line' || d === 'PRODUCTION' || d === 'production') return 'production';
     if (d === 'Reception Desk' || d === 'RECEPTION' || d === 'receptionist') return 'receptionist';
     if (d === 'Risk & Compliance' || d === 'RISK' || d === 'risk') return 'risk';
@@ -2084,7 +2084,7 @@ export default function App() {
   const handleCreateOrder = async (data: Partial<Order>) => {
     // OrdersView already inserts the order to Supabase directly.
     // This callback only needs to update global state and refresh data.
-    addNotification(`Marketing created order successfully. Routed to Finance.`);
+    addNotification(`Marketing created order successfully. Routed to Account Department.`);
     refreshAllData();
   };
 
@@ -2119,7 +2119,7 @@ export default function App() {
   const handleFinalizeOrder = async (id: string) => {
     try {
       await finance.finalizeOrder(id);
-      addNotification(`Finance generated invoice and warehouse fulfillment ticket.`);
+      addNotification(`Account Department generated invoice and warehouse fulfillment ticket.`);
       refreshAllData();
     } catch (err: any) {
       alert(err.message || 'Failed to finalize order.');
@@ -2225,9 +2225,10 @@ export default function App() {
   // Returns the server's response, or null when it failed (already
   // alerted), so callers only show a temporary password that was actually
   // set. People who chose their own password get none at all.
-  const handleApproveUser = async (reg: PendingRegistration, pw: string) => {
+  const handleApproveUser = async (reg: PendingRegistration) => {
     try {
-      const res = await hr.approveUser(reg.id, true, reg.registeredAt ? undefined : pw);
+      // Older registrations get a temporary password, made by the server.
+      const res = await hr.approveUser(reg.id, true, !reg.registeredAt);
       addNotification(res?.message || `User ${reg.fullName} approved successfully.`);
       refreshAllData();
       return res;
@@ -2270,7 +2271,7 @@ export default function App() {
     { name: 'HR', Staff: 12, Visitors: 25 },
     { name: 'Ops', Staff: 28, Visitors: 5 },
     { name: 'Mktg', Staff: 15, Visitors: 40 },
-    { name: 'Finance', Staff: 8, Visitors: 12 },
+    { name: 'Account Department', Staff: 8, Visitors: 12 },
 { name: 'Production', Staff: 35, Visitors: 3 },
   ];
 
@@ -3349,6 +3350,8 @@ export default function App() {
       if (activeSubTab === 'PriceApprovals')  return <CeoPriceApprovalsView currentUser={currentUser} addNotification={addNotification} />;
       if (activeSubTab === 'PriceCatalog')    return <GoodsPriceCatalogView addNotification={addNotification} currentUser={currentUser} department={activeDepartment} />;
       if (activeSubTab === 'SupplierOrders')  return <CeoSupplierOrdersView currentUser={currentUser} addNotification={addNotification} />;
+      // Was missing: the sidebar's GPS Tracking fell through to the dashboard.
+      if (activeSubTab === 'Tracking')        return <DispatchTrackingView addNotification={addNotification} />;
       if (activeSubTab === 'DeptActivity')    return <DeptActivityView currentUser={currentUser} addNotification={addNotification} />;
       if (activeSubTab === 'LiveUsers')       return <LiveUsersView currentUser={currentUser} addNotification={addNotification} onMessageUser={(userId: string) => { setMessengerTargetUserId(userId); setIsChatOpen(true); }} />;
       if (activeSubTab === 'HelpAssistant')   return <HelpAssistantView setActiveDepartment={setActiveDepartment} setActiveSubTab={setActiveSubTab} />;
@@ -3389,6 +3392,7 @@ export default function App() {
       if (activeSubTab === 'Transactions')    return <ManagementTransactionsView addNotification={addNotification} />;
       if (activeSubTab === 'MgmtAnalytics')   return <MgmtAnalyticsView addNotification={addNotification} />;
       if (activeSubTab === 'StockManagement') return <MgmtStockManagementView addNotification={addNotification} currentUser={currentUser} />;
+      if (activeSubTab === 'Tracking')        return <DispatchTrackingView addNotification={addNotification} />;
       if (activeSubTab === 'DeptActivity')    return <DeptActivityView currentUser={currentUser} addNotification={addNotification} />;
       if (activeSubTab === 'FleetOverview')   return <LogisticsFleetOverviewView addNotification={addNotification} />;
       if (activeSubTab === 'FuelManagement')  return <LogisticsFuelManagementView addNotification={addNotification} />;

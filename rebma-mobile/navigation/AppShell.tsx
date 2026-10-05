@@ -34,6 +34,7 @@ import ProfileScreen from '../screens/ProfileScreen';
 import DesignSystemScreen from '../screens/DesignSystemScreen';
 import SearchScreen from '../screens/SearchScreen';
 import FeedbackScreen from '../screens/FeedbackScreen';
+import HrQueriesScreen from '../screens/hr/HrQueriesScreen';
 import PayslipsScreen from '../screens/PayslipsScreen';
 import NotesScreen from '../screens/NotesScreen';
 import TasksScreen from '../screens/TasksScreen';
@@ -95,6 +96,7 @@ function ProfileStackScreen() {
             onOpenDesignSystem={() => navigation.navigate('DesignSystem')}
             onOpenSettings={() => { useUIStore.getState().setActiveDepartment('SETTINGS'); navigation.getParent()?.navigate('HomeTab'); }}
             onOpenFeedback={() => navigation.navigate('Feedback')}
+            onOpenHrQueries={() => navigation.navigate('HrQueries')}
             onOpenPayslips={() => navigation.navigate('Payslips')}
             onOpenNotes={() => navigation.navigate('Notes')}
             onOpenTasks={() => navigation.navigate('Tasks')}
@@ -112,6 +114,11 @@ function ProfileStackScreen() {
         name="Feedback"
         component={FeedbackScreen}
         options={{ headerShown: true, headerTitle: 'Feedback', header: (props) => <SubScreenHeader {...props} /> }}
+      />
+      <ProfileStackNav.Screen
+        name="HrQueries"
+        component={HrQueriesScreen}
+        options={{ headerShown: true, headerTitle: 'HR Queries', header: (props) => <SubScreenHeader {...props} /> }}
       />
       <ProfileStackNav.Screen
         name="Payslips"

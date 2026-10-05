@@ -65,7 +65,7 @@ const getDisplayStatus = (order: any, wipList: any[]) => {
 
 const REQ_STATUS_LABELS: Record<string, string> = {
   PENDING_MANAGEMENT: 'Awaiting Management',
-  PENDING_FINANCE: 'Awaiting Accounts Department',
+  PENDING_FINANCE: 'Awaiting Account Department',
   APPROVED: 'Approved, Awaiting Pickup',
   FULFILLED: 'Materials Released',
   REJECTED: 'Rejected',
@@ -291,7 +291,7 @@ export default function InternalOrdersScreen() {
         </View>
 
         <Card>
-          <SectionHeader title="Raw Material Requisitions" subtitle="Goes to Management, then Accounts Department, then Operations releases the stock." />
+          <SectionHeader title="Raw Material Requisitions" subtitle="Goes to Management, then Account Department, then Operations releases the stock." />
           <View style={{ gap: t.spacing.sm }}>
             {requisitions.slice(0, 8).map((r) => {
               const items = Array.isArray(r.items) ? r.items : [];
@@ -500,7 +500,7 @@ export default function InternalOrdersScreen() {
         open={showMaterialModal}
         onClose={() => setShowMaterialModal(false)}
         title="Request Raw Materials"
-        subtitle="Goes to Management, then Accounts Department, then Operations releases the materials to you."
+        subtitle="Goes to Management, then Account Department, then Operations releases the materials to you."
         side="bottom"
         maxHeight={600}
         footer={<Button label={submittingMaterial ? 'Submitting…' : 'Submit Request'} onPress={handleSubmitMaterialRequest} loading={submittingMaterial} disabled={submittingMaterial} fullWidth />}

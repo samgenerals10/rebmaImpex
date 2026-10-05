@@ -12,7 +12,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { View, Text } from 'react-native';
 import { Alert } from '../../lib/appAlert';
 import { useNavigation } from '@react-navigation/native';
-import { Camera as CameraIcon, MessageCircle, Trash2, MapPin, History } from 'lucide-react-native';
+import { Camera as CameraIcon, MessageCircle, Trash2, MapPin, History, Printer, FileDown } from 'lucide-react-native';
+import { exportTableDocument } from '../../lib/exportEngine';
+import { printWaybillForDelivery, waybillExists } from '../../lib/waybillPrint';
+import { getCeoSetting } from '../../lib/ceoSetting';
+import Input, { Field } from '../../components/ui/Input';
 import { supabase } from '../../lib/supabaseClient';
 import { assignDriverToDelivery, sendWhatsAppDirections } from '../../lib/dispatchActions';
 import { logWorkflowEvent } from '../../lib/auditLog';
@@ -69,6 +73,48 @@ export default function ActiveDeliveriesScreen() {
   const [reassignDriverId, setReassignDriverId] = useState('');
   const [busy, setBusy] = useState(false);
   const [timelineOpen, setTimelineOpen] = useState(false);
+  // Only Risk (and the CEO) make and print waybills.
+  const canPrintWaybill = !!profile?.isAdmin || profile?.department === 'RISK';
+  const [waybillFor, setWaybillFor] = useState<DeliveryRow | null>(null);
+  const [containerInput, setContainerInput] = useState('');
+  const [printing, setPrinting] = useState(false);
+
+  const runWaybillPrint = async (row: DeliveryRow, containerNumber?: string) => {
+    setPrinting(true);
+    try {
+      const printEnabled = await getCeoSetting('print_enabled', true);
+      await printWaybillForDelivery(row.id, { containerNumber, printedBy: profile?.fullName, printEnabled: printEnabled !== false });
+      setWaybillFor(null);
+    } catch (e: any) {
+      Alert.alert('Waybill', e?.message || 'The waybill could not be printed.');
+    } finally {
+      setPrinting(false);
+    }
+  };
+
+  // Same delivery note as the laptop's "Export Delivery Note PDF".
+  const exportDeliveryNote = async (row: DeliveryRow) => {
+    try {
+      await exportTableDocument('pdf', `Delivery Note, ${row.id}`, [
+        { key: 'id', label: 'ID' },
+        { key: 'order_id', label: 'Order ID' },
+        { key: 'customer_name', label: 'Client Name' },
+        { key: 'delivery_address', label: 'Destination' },
+        { key: 'driver_name', label: 'Driver Name' },
+        { key: 'status', label: 'Status' },
+      ], [row], 'legacy');
+    } catch (e: any) {
+      Alert.alert('Delivery Note', e?.message || 'Could not create the delivery note.');
+    }
+  };
+
+  // First print asks for an optional container number; later prints reuse the waybill.
+  const startWaybillPrint = async (row: DeliveryRow) => {
+    if (!row.order_id) { Alert.alert('Waybill', 'This delivery is not linked to an order, so it has no waybill.'); return; }
+    if (await waybillExists(row.id)) { runWaybillPrint(row); return; }
+    setContainerInput('');
+    setWaybillFor(row);
+  };
 
   const load = useCallback(async () => {
     const [dRes, drRes] = await Promise.all([
@@ -265,6 +311,10 @@ export default function ActiveDeliveriesScreen() {
                 <Button variant="ghost" size="sm" icon={<CameraIcon size={13} color={t.colors.textSecondary} />} label={detail.proof_photo ? 'Change Proof Photo' : 'Add Proof Photo'} onPress={doProof} />
                 <Button variant="ghost" size="sm" icon={<MapPin size={13} color={t.colors.textSecondary} />} label="Track on GPS Map" onPress={() => { setDetail(null); navigation.navigate('Tracking'); }} />
                 <Button variant="ghost" size="sm" icon={<History size={13} color={t.colors.textSecondary} />} label="View Timeline" onPress={() => setTimelineOpen(true)} />
+                <Button variant="ghost" size="sm" icon={<FileDown size={13} color={t.colors.textSecondary} />} label="Delivery Note PDF" onPress={() => exportDeliveryNote(detail)} />
+                {canPrintWaybill && (
+                  <Button variant="ghost" size="sm" icon={<Printer size={13} color={t.colors.textSecondary} />} label="Print Waybill" onPress={() => startWaybillPrint(detail)} loading={printing} disabled={printing} />
+                )}
               </View>
             </SheetSection>
 
@@ -284,6 +334,14 @@ export default function ActiveDeliveriesScreen() {
             </SheetSection>
           </>
         )}
+      </Sheet>
+
+      <Sheet open={!!waybillFor} onClose={() => setWaybillFor(null)} title="Print Waybill" subtitle="This creates the waybill number for this delivery.">
+        <Field label="Container Number" hint="Optional">
+          <Input value={containerInput} onChangeText={setContainerInput} placeholder="E.g., MSKU-1234567" />
+        </Field>
+        <View style={{ height: t.spacing.md }} />
+        <Button label="Create and Print" onPress={() => waybillFor && runWaybillPrint(waybillFor, containerInput)} loading={printing} disabled={printing} fullWidth />
       </Sheet>
 
       {detail && (

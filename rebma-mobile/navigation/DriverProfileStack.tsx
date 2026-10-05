@@ -13,11 +13,12 @@
 // tapped, or duplicating that whole routing mechanism blind without a
 // way to test it, this shows an honest "not built yet" message — flagged
 // here and in the build report, not shipped as a quiet dead button.
-import { Alert } from '../lib/appAlert';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import ProfileScreen from '../screens/ProfileScreen';
 import DesignSystemScreen from '../screens/DesignSystemScreen';
 import FeedbackScreen from '../screens/FeedbackScreen';
+import HrQueriesScreen from '../screens/hr/HrQueriesScreen';
+import ChangePasswordScreen from '../screens/settings/ChangePasswordScreen';
 import PayslipsScreen from '../screens/PayslipsScreen';
 import NotesScreen from '../screens/NotesScreen';
 import TasksScreen from '../screens/TasksScreen';
@@ -34,8 +35,9 @@ export default function DriverProfileStack() {
         {({ navigation }) => (
           <ProfileScreen
             onOpenDesignSystem={() => navigation.navigate('DesignSystem')}
-            onOpenSettings={() => Alert.alert('Settings', 'Account settings for drivers are not built yet.')}
+            onOpenSettings={() => navigation.navigate('ChangePassword')}
             onOpenFeedback={() => navigation.navigate('Feedback')}
+            onOpenHrQueries={() => navigation.navigate('HrQueries')}
             onOpenPayslips={() => navigation.navigate('Payslips')}
             onOpenNotes={() => navigation.navigate('Notes')}
             onOpenTasks={() => navigation.navigate('Tasks')}
@@ -53,6 +55,16 @@ export default function DriverProfileStack() {
         name="Feedback"
         component={FeedbackScreen}
         options={{ headerShown: true, headerTitle: 'Feedback', header: (props) => <SubScreenHeader {...props} /> }}
+      />
+      <Stack.Screen
+        name="HrQueries"
+        component={HrQueriesScreen}
+        options={{ headerShown: true, headerTitle: 'HR Queries', header: (props) => <SubScreenHeader {...props} /> }}
+      />
+      <Stack.Screen
+        name="ChangePassword"
+        component={ChangePasswordScreen}
+        options={{ headerShown: true, headerTitle: 'Change Password', header: (props) => <SubScreenHeader {...props} /> }}
       />
       <Stack.Screen
         name="Payslips"

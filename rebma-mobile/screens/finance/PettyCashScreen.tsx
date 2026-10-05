@@ -108,7 +108,7 @@ export default function PettyCashScreen() {
     }).eq('id', editTarget.id);
     setSavingEdit(false);
     if (error) { Alert.alert('Update Failed', error.message); return; }
-    await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Petty cash ${editTarget.id} updated`, performed_by: profile?.fullName || 'Accounts Department', timestamp: new Date().toISOString() }]);
+    await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Petty cash ${editTarget.id} updated`, performed_by: profile?.fullName || 'Account Department', timestamp: new Date().toISOString() }]);
     setEditTarget(null);
     load();
   };
@@ -120,7 +120,7 @@ export default function PettyCashScreen() {
         text: 'Delete', style: 'destructive', onPress: async () => {
           const { error } = await supabase.from('finance_petty_cash').delete().eq('id', e.id);
           if (error) { Alert.alert('Delete Failed', error.message); return; }
-          await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Petty cash ${e.id} deleted`, performed_by: profile?.fullName || 'Accounts Department', timestamp: new Date().toISOString() }]);
+          await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Petty cash ${e.id} deleted`, performed_by: profile?.fullName || 'Account Department', timestamp: new Date().toISOString() }]);
           load();
         },
       },
@@ -158,7 +158,7 @@ export default function PettyCashScreen() {
     }
     setSubmitting(true);
     const { error } = await supabase.from('float_requests').insert([{
-      department: 'FINANCE', requested_by: profile?.fullName || 'Accounts Department', amount: parseFloat(replenAmount), reason: replenReason.trim(), status: 'PENDING_MANAGEMENT',
+      department: 'FINANCE', requested_by: profile?.fullName || 'Account Department', amount: parseFloat(replenAmount), reason: replenReason.trim(), status: 'PENDING_MANAGEMENT',
     }]);
     if (!error) {
       await supabase.from('supplier_order_notifications').insert([{ message: `Petty cash replenishment request: GHS ${replenAmount} needed. Reason: ${replenReason.trim()}`, notified_department: 'MANAGEMENT', read: false }]);

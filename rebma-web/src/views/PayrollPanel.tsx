@@ -210,7 +210,7 @@ export default function PayrollPanel({ currentUser, addNotification }: PayrollPa
         )}
       </div>
 
-      {/* Summary cards for Finance */}
+      {/* Summary cards for Account Department */}
       {canViewTotals && !canManage && (
         <div className="grid grid-cols-3 gap-4">
           {(['draft','approved','paid'] as const).map(s => {

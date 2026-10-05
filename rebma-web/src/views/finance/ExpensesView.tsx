@@ -109,7 +109,7 @@ export default function FinanceExpensesView({ addNotification, currentUser }: Pr
       if (error) throw error;
       setExpenses(prev => prev.map(e => e.id === id ? { ...e, status } : e));
       addNotification?.(`Expense ${status.toLowerCase()}`);
-      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Expense ${id} ${status}`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
+      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Expense ${id} ${status}`, performed_by: currentUser?.fullName || 'Account Department', timestamp: new Date().toISOString() }]);
     } catch (e: any) {
       alert(e.message || 'Failed to update expense status.');
     } finally {
@@ -149,7 +149,7 @@ export default function FinanceExpensesView({ addNotification, currentUser }: Pr
       if (error) throw error;
       setExpenses(prev => prev.map(e => e.id === editExpense.id ? { ...e, category: editForm.category, description: editForm.description, amount: updatedAmount, date: editForm.date } : e));
       addNotification?.('Expense updated successfully.');
-      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Expense ${editExpense.id} updated`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
+      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Expense ${editExpense.id} updated`, performed_by: currentUser?.fullName || 'Account Department', timestamp: new Date().toISOString() }]);
       setShowEditForm(false);
       setEditExpense(null);
     } catch (err: any) {
@@ -168,7 +168,7 @@ export default function FinanceExpensesView({ addNotification, currentUser }: Pr
       if (error) throw error;
       setExpenses(prev => prev.filter(e => e.id !== id));
       addNotification?.('Expense deleted successfully.');
-      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Expense ${id} deleted`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
+      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Expense ${id} deleted`, performed_by: currentUser?.fullName || 'Account Department', timestamp: new Date().toISOString() }]);
     } catch (err: any) {
       alert(err.message || 'Failed to delete expense.');
     } finally {
@@ -181,7 +181,7 @@ export default function FinanceExpensesView({ addNotification, currentUser }: Pr
     if (!form.description || !form.amount || submitting) return;
     setSubmitting(true);
     try {
-      const entry: Expense = { id: Date.now().toString(), category: form.category, description: form.description, amount: parseFloat(form.amount), date: form.date, receipt: false, submittedBy: currentUser?.fullName || 'Finance', status: 'Pending' };
+      const entry: Expense = { id: Date.now().toString(), category: form.category, description: form.description, amount: parseFloat(form.amount), date: form.date, receipt: false, submittedBy: currentUser?.fullName || 'Account Department', status: 'Pending' };
       setExpenses(prev => [entry, ...prev]);
       const { error } = await supabase.from('finance_expenses').insert([{
         category: form.category,
@@ -189,7 +189,7 @@ export default function FinanceExpensesView({ addNotification, currentUser }: Pr
         amount: parseFloat(form.amount),
         date: form.date,
         notes: form.notes,
-        submitted_by: currentUser?.fullName || 'Finance',
+        submitted_by: currentUser?.fullName || 'Account Department',
         status: 'Pending',
       }]);
       if (error) throw error;

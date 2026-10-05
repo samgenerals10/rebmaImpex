@@ -21,7 +21,7 @@ interface LeaveRequest {
 }
 
 
-const DEPARTMENTS = ['All', 'Operations', 'Finance', 'Logistics', 'HR', 'Marketing', 'Reception', 'Production', 'Management'];
+const DEPARTMENTS = ['All', 'Operations', 'Account Department', 'Logistics', 'HR', 'Marketing', 'Reception', 'Production', 'Management'];
 const LEAVE_TYPES = ['All', 'Annual', 'Sick', 'Personal', 'Emergency'];
 const STATUSES = ['All', 'PENDING', 'APPROVED', 'REJECTED'];
 
@@ -48,7 +48,7 @@ interface Props {
 
 const LEAVE_BALANCES = [
   { name: 'Kwame Mensah', dept: 'Operations', annual: 21, used: 5, sick: 10, usedSick: 2 },
-  { name: 'Abena Owusu', dept: 'Finance', annual: 21, used: 7, sick: 10, usedSick: 4 },
+  { name: 'Abena Owusu', dept: 'Account Department', annual: 21, used: 7, sick: 10, usedSick: 4 },
   { name: 'Kofi Asante', dept: 'Logistics', annual: 21, used: 1, sick: 10, usedSick: 0 },
   { name: 'Ama Boateng', dept: 'HR', annual: 21, used: 3, sick: 10, usedSick: 1 },
   { name: 'Yaw Darko', dept: 'Marketing', annual: 21, used: 8, sick: 10, usedSick: 3 },

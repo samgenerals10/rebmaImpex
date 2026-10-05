@@ -5,8 +5,9 @@ import { dispatch as dispatchApi } from '../../services/apiClient';
 import {
   Truck, CheckCircle, XCircle, Search, Eye, Clock,
   Download, MoreVertical, ChevronLeft, MapPin, Camera, AlertCircle,
-  Calendar, User, Package, UserCheck, Edit, Trash2, MessageCircle
+  Calendar, User, Package, UserCheck, Edit, Trash2, MessageCircle, Printer
 } from 'lucide-react';
+import { printWaybillForDelivery } from '../../utils/waybillPrint';
 import { exportToCSV, exportToPDF, downloadRowPDF } from '../../utils/export';
 import { uploadFile } from '../../utils/uploadFile';
 import type { DeliveryRecord, Driver } from '../../types/erp';
@@ -729,6 +730,8 @@ export default function DeliveriesView({ addNotification, currentUser, setActive
                       <button onClick={() => { setDetailRecord(d); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><Eye size={11} /> View Details</button>
                       <button onClick={() => { setMenuOpen(null); setActiveSubTab?.('Tracking'); }} className="w-full text-left px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><MapPin size={11} /> Track on GPS Map</button>
                       <button onClick={() => { setAssignTarget(d); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><UserCheck size={11} /> {d.driverId ? 'Reassign Driver' : 'Assign Driver'}</button>
+                      {/* Only Risk makes and prints waybills. */}
+                      <button onClick={async () => { setMenuOpen(null); await printWaybillForDelivery(d.id, currentUser?.fullName, getSetting('print_enabled', true)); }} className="w-full text-left px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><Printer size={11} /> Print Waybill</button>
                       {d.driverId && (d.status === 'ASSIGNED' || d.status === 'IN_TRANSIT') && (
                         <button
                           onClick={async () => {

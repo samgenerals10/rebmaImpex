@@ -54,7 +54,7 @@ export default function FinanceMaterialRequisitionsPanel({ addNotification, curr
       await supabase.from('global_audit_history').insert([{
         department: 'FINANCE',
         action: `RECORD_MATERIAL_REQUISITION_CREDIT: ${summary} — requested by ${req.requested_by || 'Production'}`,
-        performed_by: currentUser?.fullName || 'Finance',
+        performed_by: currentUser?.fullName || 'Account Department',
       }]);
 
       await supabase.from('fulfillment_tickets').insert({
@@ -66,11 +66,11 @@ export default function FinanceMaterialRequisitionsPanel({ addNotification, curr
       });
 
       await supabase.from('supplier_order_notifications').insert([{
-        message: `Raw material requisition recorded by Finance and ready for release: ${summary}`,
+        message: `Raw material requisition recorded by Account Department and ready for release: ${summary}`,
         notified_department: 'OPERATIONS', read: false,
       }]);
       await supabase.from('supplier_order_notifications').insert([{
-        message: `Your material request has been recorded by Finance and sent to Operations for release: ${summary}`,
+        message: `Your material request has been recorded by Account Department and sent to Operations for release: ${summary}`,
         notified_department: 'PRODUCTION', read: false,
       }]);
 

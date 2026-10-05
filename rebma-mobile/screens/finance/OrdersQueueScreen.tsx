@@ -145,7 +145,7 @@ export default function OrdersQueueScreen() {
     if (!error) {
       const verbLabel = mode === 'return' ? 'RETURNED FOR CORRECTION' : 'REJECTED';
       await supabase.from('supplier_order_notifications').insert([{ message: `Order ${selected.id} ${verbLabel} by Accounts. Reason: ${rejectReason}`, notified_department: 'MARKETING', read: false }]);
-      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Order ${selected.id} ${verbLabel}. Reason: ${rejectReason}`, performed_by: profile?.fullName || 'Accounts Department', reference_id: selected.id, timestamp: new Date().toISOString() }]);
+      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Order ${selected.id} ${verbLabel}. Reason: ${rejectReason}`, performed_by: profile?.fullName || 'Account Department', reference_id: selected.id, timestamp: new Date().toISOString() }]);
     }
     setSubmitting(false);
     if (error) {
@@ -157,7 +157,7 @@ export default function OrdersQueueScreen() {
   };
 
   const approveOrder = async (order: OrderRow) => {
-    const performedBy = profile?.fullName || 'Accounts Department';
+    const performedBy = profile?.fullName || 'Account Department';
     return approveAccountsReview(order, performedBy);
   };
 
@@ -167,7 +167,7 @@ export default function OrdersQueueScreen() {
     const invoiceNumber = selected.ticket_number || `ORD-${String(selected.id).slice(0, 6).toUpperCase()}`;
     const amountPaid = Number(payForm.amountReceived || selected.total_amount);
     const paymentType = isPartPayment ? 'Part Payment' : 'Full Payment';
-    const recordedBy = profile?.fullName || 'Accounts Department';
+    const recordedBy = profile?.fullName || 'Account Department';
     const createdAt = new Date().toISOString();
     const receiptNumber = generateReceiptNumber();
 

@@ -131,12 +131,12 @@ const WORKFLOW_ENTRIES: HelpEntry[] = [
     id: 'wf-order-chain',
     title: 'How an order moves through the company',
     answer:
-      'Marketing creates the order (PENDING_RISK) → Risk does the initial review (PENDING_MANAGEMENT) → Management reviews (PENDING_FINANCE) → Accounts/Finance reviews, checks stock, deducts it (PENDING_RISK_RELEASE) → Risk gives the final release for warehouse → Admin & Warehouse marks it ready for dispatch → Risk assigns a vehicle/driver and dispatches it → Risk reviews the Proof of Delivery, which is the only step that ever marks an order DELIVERED.',
+      'Marketing creates the order (PENDING_RISK) → Risk does the initial review (PENDING_MANAGEMENT) → Management reviews (PENDING_FINANCE) → Account Department reviews, checks stock, deducts it (PENDING_RISK_RELEASE) → Risk gives the final release for warehouse → Admin & Warehouse marks it ready for dispatch → Risk assigns a vehicle/driver and dispatches it → Risk reviews the Proof of Delivery, which is the only step that ever marks an order DELIVERED.',
     steps: [
       'Marketing creates the order — status becomes PENDING_RISK.',
       'Risk does the initial review — approving moves it to PENDING_MANAGEMENT.',
       'Management reviews it — approving moves it to PENDING_FINANCE.',
-      'Accounts/Finance reviews it, checks stock, and deducts it — approving moves it to PENDING_RISK_RELEASE.',
+      'Account Department reviews it, checks stock, and deducts it — approving moves it to PENDING_RISK_RELEASE.',
       'Risk gives the final release for warehouse.',
       'Admin & Warehouse marks it ready for dispatch.',
       'Risk assigns a vehicle and driver, then dispatches it.',

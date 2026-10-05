@@ -167,7 +167,7 @@ export default function DepartmentManagerScreen() {
 
       <Sheet open={!!showForm} onClose={() => setShowForm(null)} title={showForm === 'edit' ? 'Edit Department' : 'New Department'} side="bottom" maxHeight={680}
         footer={<Button label={saving ? 'Saving…' : 'Save Department'} onPress={save} loading={saving} disabled={saving || !form.name.trim() || (showForm === 'edit' && !form.code.trim())} fullWidth />}>
-        <Field label="Department Name *"><Input value={form.name} onChangeText={(v) => setForm((f) => ({ ...f, name: v }))} placeholder="e.g. Finance" /></Field>
+        <Field label="Department Name *"><Input value={form.name} onChangeText={(v) => setForm((f) => ({ ...f, name: v }))} placeholder="e.g. Account Department" /></Field>
         {showForm === 'edit' && (
           <>
             <Field label="Code *"><Input value={form.code} onChangeText={(v) => setForm((f) => ({ ...f, code: v.toUpperCase() }))} placeholder="e.g. FIN" autoCapitalize="characters" /></Field>

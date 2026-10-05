@@ -23,7 +23,7 @@ const STATUS_STYLES: Record<string, string> = {
   OUT_FOR_DELIVERY:    'bg-violet-100 text-violet-700',
 };
 const STATUS_LABEL: Record<string, string> = {
-  PENDING_FINANCE: 'Pending Finance', PENDING_MANAGEMENT: 'Pending Mgmt',
+  PENDING_FINANCE: 'Pending Account Department', PENDING_MANAGEMENT: 'Pending Mgmt',
   APPROVED: 'Approved', DELIVERED: 'Delivered', REJECTED: 'Rejected',
   PROCESSING: 'Processing', OUT_FOR_DELIVERY: 'Out for Delivery',
 };

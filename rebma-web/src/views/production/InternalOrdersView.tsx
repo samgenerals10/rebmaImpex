@@ -134,7 +134,7 @@ export default function InternalOrdersView({ productionRequests, addNotification
 
   const REQ_STATUS_LABELS: Record<string, string> = {
     PENDING_MANAGEMENT: 'Awaiting Management',
-    PENDING_FINANCE: 'Awaiting Finance',
+    PENDING_FINANCE: 'Awaiting Account Department',
     APPROVED: 'Approved, Awaiting Pickup',
     FULFILLED: 'Materials Released',
     REJECTED: 'Rejected',
@@ -403,7 +403,7 @@ export default function InternalOrdersView({ productionRequests, addNotification
 
       <div style={{ background: 'var(--bg-card)', borderRadius: 16, padding: '20px', border: '1px solid var(--border)', boxShadow: 'var(--box-shadow)' }}>
         <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 4px' }}>Raw Material Requisitions</h3>
-        <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 14px' }}>Materials needed before processing can begin. Goes to Management, then Finance, then Operations releases the stock.</p>
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 14px' }}>Materials needed before processing can begin. Goes to Management, then Account Department, then Operations releases the stock.</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {loadingRequisitions && <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Loading…</p>}
           {!loadingRequisitions && requisitions.slice(0, 8).map(r => {
@@ -733,7 +733,7 @@ export default function InternalOrdersView({ productionRequests, addNotification
         open={showMaterialModal}
         onClose={() => setShowMaterialModal(false)}
         title="Request Raw Materials"
-        subtitle="This goes to Management for approval, then Finance records it, then Operations releases the materials to you."
+        subtitle="This goes to Management for approval, then Account Department records it, then Operations releases the materials to you."
         footer={
           <div style={{ display: 'flex', gap: 12 }}>
             <button disabled={submittingMaterial} onClick={() => setShowMaterialModal(false)} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px', color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600, opacity: submittingMaterial ? 0.5 : 1 }}>Cancel</button>

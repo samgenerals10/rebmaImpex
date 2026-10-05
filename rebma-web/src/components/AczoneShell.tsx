@@ -67,7 +67,7 @@ export default function AczoneShell({ activeDepartment, currentUser, children }:
 
   const deptTitle: Record<string, string> = {
     CEO: 'CEO Command', MANAGEMENT: 'Management', MARKETING: 'Marketing',
-    HR: 'Human Resources', OPERATIONS: 'Operations', FINANCE: 'Finance',
+    HR: 'Human Resources', OPERATIONS: 'Operations', FINANCE: 'Account Department',
     PRODUCTION: 'Production', RECEPTION: 'Reception', DISPATCH: 'Dispatch',
     LOGISTICS: 'Logistics',
   };

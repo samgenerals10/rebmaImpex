@@ -88,7 +88,7 @@ export default function Header({
     { value: 'HR', label: 'Human Resources', icon: Users },
     { value: 'MARKETING', label: 'Marketing Pipeline', icon: TrendingUp },
     { value: 'ADMIN_WAREHOUSE', label: 'Admin & Warehouse', icon: Warehouse },
-    { value: 'FINANCE', label: 'Finance Ledgers', icon: DollarSign },
+    { value: 'FINANCE', label: 'Account Department', icon: DollarSign },
     { value: 'PRODUCTION', label: 'Production Line', icon: Clipboard },
     { value: 'RECEPTION', label: 'Reception Terminal', icon: Users },
     { value: 'BOARDROOM', label: 'Executive Boardroom', icon: Video },
@@ -179,7 +179,7 @@ export default function Header({
           id: p.id,
           title: `Payment: ${p.clientName}`,
           subtitle: `Receipt: ${p.id} · GHS ${Number(p.amount || 0).toLocaleString()} · Mode: ${p.paymentMode}`,
-          category: 'Finance Receipts',
+          category: 'Account Department Receipts',
           dept: 'FINANCE',
           tab: 'Tickets',
           icon: DollarSign

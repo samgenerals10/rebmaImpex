@@ -871,7 +871,7 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
 
               {showModal === 'approve' && selectedItem.type === 'Sales Order' && (
                 <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-xl text-xs text-indigo-700">
-                  Approving forwards this order to <strong>Management</strong> for the next mandatory review. It does not go straight to Finance.
+                  Approving forwards this order to <strong>Management</strong> for the next mandatory review. It does not go straight to Account Department.
                 </div>
               )}
 

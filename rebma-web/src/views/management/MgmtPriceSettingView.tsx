@@ -791,7 +791,7 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
               <div>
                 <label className="text-xs font-medium text-[var(--text-secondary)] mb-2 block flex items-center gap-1"><Bell size={12} /> Notify Departments</label>
                 <div className="flex items-center gap-4 flex-wrap">
-                  {[{ label: 'Finance', state: broadcastFinance, set: setRadioFinance }, { label: 'Marketing', state: broadcastMarketing, set: setRadioMarketing }, { label: 'CEO', state: broadcastCeo, set: setRadioCeo }].map(({ label, state, set }) => (
+                  {[{ label: 'Account Department', state: broadcastFinance, set: setRadioFinance }, { label: 'Marketing', state: broadcastMarketing, set: setRadioMarketing }, { label: 'CEO', state: broadcastCeo, set: setRadioCeo }].map(({ label, state, set }) => (
                     <label key={label} className="flex items-center gap-2 text-sm text-[var(--text-primary)] cursor-pointer">
                       <input type="checkbox" checked={state} onChange={e => set(e.target.checked)} className="rounded" /> {label}
                     </label>

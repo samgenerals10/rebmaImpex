@@ -425,11 +425,11 @@ const AUDIT_ENTRY = { name: 'global_audit_history', label: 'Department Audit Tra
 
 const DEPT_TABLES: Record<string, { label: string; tables: { name: string; label: string }[] }> = {
   MARKETING:   { label: 'Marketing',   tables: [{ name: 'orders', label: 'Sales Orders' }, { name: 'customers', label: 'Customer Directory' }, AUDIT_ENTRY] },
-  FINANCE:     { label: 'Finance',     tables: [
-    { name: 'finance_payments', label: 'Finance Payments (Receipts)' },
-    { name: 'finance_expenses', label: 'Finance Expenses' },
-    { name: 'finance_cheques', label: 'Finance Cheques' },
-    { name: 'finance_petty_cash', label: 'Finance Petty Cash' },
+  FINANCE:     { label: 'Account Department',     tables: [
+    { name: 'finance_payments', label: 'Account Department Payments (Receipts)' },
+    { name: 'finance_expenses', label: 'Account Department Expenses' },
+    { name: 'finance_cheques', label: 'Account Department Cheques' },
+    { name: 'finance_petty_cash', label: 'Account Department Petty Cash' },
     { name: 'recurring_payments', label: 'Recurring Payments' },
     { name: 'finance_report_history', label: 'Financial Statements & Reports History' },
     AUDIT_ENTRY
@@ -463,7 +463,7 @@ const DEPT_TABLES: Record<string, { label: string; tables: { name: string; label
   LOGISTICS:   { label: 'Logistics',   tables: [AUDIT_ENTRY] },
   ALL:         { label: 'ALL Departments', tables: [
     { name: 'orders', label: 'Sales Orders' }, { name: 'customers', label: 'Customer Directory' },
-    { name: 'finance_payments', label: 'Finance Payments (Receipts)' }, { name: 'finance_expenses', label: 'Finance Expenses' }, { name: 'finance_cheques', label: 'Finance Cheques' }, { name: 'finance_petty_cash', label: 'Finance Petty Cash' }, { name: 'recurring_payments', label: 'Recurring Payments' }, { name: 'finance_report_history', label: 'Financial Statements & Reports History' },
+    { name: 'finance_payments', label: 'Account Department Payments (Receipts)' }, { name: 'finance_expenses', label: 'Account Department Expenses' }, { name: 'finance_cheques', label: 'Account Department Cheques' }, { name: 'finance_petty_cash', label: 'Account Department Petty Cash' }, { name: 'recurring_payments', label: 'Recurring Payments' }, { name: 'finance_report_history', label: 'Financial Statements & Reports History' },
     { name: 'cargo_intake', label: 'Cargo Intake Log' }, { name: 'stock_ledger', label: 'Recent Stock Movements' }, { name: 'general_purchases', label: 'General Purchases' }, { name: 'stock', label: 'Stock Levels' }, { name: 'wip_stock', label: 'WIP Stock' },
     { name: 'production_logs', label: 'Production Logs' }, { name: 'production_requests', label: 'Production Requests' },
     { name: 'goods_prices', label: 'Goods Prices Catalog' }, { name: 'supplier_orders', label: 'Supplier Orders' }, { name: 'suppliers', label: 'Suppliers Directory' }, { name: 'departments', label: 'Departments Directory' },

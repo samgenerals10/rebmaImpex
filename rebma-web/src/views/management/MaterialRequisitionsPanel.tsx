@@ -65,7 +65,7 @@ export default function MaterialRequisitionsPanel({ addNotification, currentUser
 
       if (approve) {
         await supabase.from('supplier_order_notifications').insert([{
-          message: `Raw material requisition approved by Management, awaiting Finance recording: ${summary} (requested by ${req.requested_by || 'Production'})`,
+          message: `Raw material requisition approved by Management, awaiting Account Department recording: ${summary} (requested by ${req.requested_by || 'Production'})`,
           notified_department: 'FINANCE', read: false,
         }]);
       } else {
@@ -81,7 +81,7 @@ export default function MaterialRequisitionsPanel({ addNotification, currentUser
         performed_by: currentUser?.fullName || 'Management',
       }]);
 
-      addNotification?.(`Material requisition ${approve ? 'approved and sent to Finance' : 'rejected'}.`);
+      addNotification?.(`Material requisition ${approve ? 'approved and sent to Account Department' : 'rejected'}.`);
       setItemEdits(prev => {
         const next = { ...prev };
         originalItems.forEach((_: any, idx: number) => { delete next[`${req.id}:${idx}`]; });
@@ -103,7 +103,7 @@ export default function MaterialRequisitionsPanel({ addNotification, currentUser
         <Boxes size={16} color="var(--accent)" />
         <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Raw Material Requisitions</h3>
       </div>
-      <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 14px' }}>Production is requesting these materials before processing can begin. Approving sends it to Finance to record; rejecting sends it back.</p>
+      <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 14px' }}>Production is requesting these materials before processing can begin. Approving sends it to Account Department to record; rejecting sends it back.</p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {loading && <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Loading…</p>}
         {!loading && requisitions.map(req => {

@@ -24,11 +24,6 @@ import { exportToCSV } from '../../utils/export';
 import DeletionRequestsPanel from '../../components/hr/DeletionRequestsPanel';
 import DepartmentChangesPanel from '../../components/hr/DepartmentChangesPanel';
 
-function generateTempPassword(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#';
-  return Array.from({ length: 10 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-}
-
 interface Approval {
   id: string;
   // 'credit'/'cargo' stay in the type union so old audit-history rows (from
@@ -184,10 +179,10 @@ export default function ApprovalsView({ currentUser, addNotification }: Props) {
       // Management/HR registrants server-side. approve-user.ts writes its
       // own audit entry (with reference_id + the remark) — no duplicate
       // insert needed here.
-      // Only older registrations (no registered_at) need a temporary password.
-      const pw = item.registeredAt ? undefined : generateTempPassword();
-      const res = await hr.approveUser(id, true, pw, undefined, note);
-      if (pw && !res?.choseOwnPassword) setCredPopup({ fullName: item.requester, password: pw });
+      // Only older registrations (no registered_at) need a temporary
+      // password; the server makes it and returns it once.
+      const res = await hr.approveUser(id, true, !item.registeredAt, undefined, note);
+      if (res?.temporaryPassword) setCredPopup({ fullName: item.requester, password: res.temporaryPassword });
       else if (res?.message) addNotification(res.message);
       setReviewing(null);
 

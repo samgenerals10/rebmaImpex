@@ -107,7 +107,7 @@ export default function FinanceChequesView({ addNotification, currentUser }: Pro
         addNotification?.(`Cheque #${cheques.find(c => c.id === id)?.chequeNumber} marked as ${status}`);
       }
       await supabase.from('finance_cheques').update({ status }).eq('id', id);
-      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Cheque ${id} status updated to ${status}`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
+      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Cheque ${id} status updated to ${status}`, performed_by: currentUser?.fullName || 'Account Department', timestamp: new Date().toISOString() }]);
       setCheques(prev => prev.map(c => c.id === id ? { ...c, status } : c));
     } catch (e: any) {
       alert(e.message || 'Failed to update cheque status.');
@@ -155,7 +155,7 @@ export default function FinanceChequesView({ addNotification, currentUser }: Pro
       if (error) throw error;
       setCheques(prev => prev.map(c => c.id === editCheque.id ? { ...c, chequeNumber: editForm.chequeNumber, bankName: editForm.bankName, accountName: editForm.accountName, amount: updatedAmount, chequeDate: editForm.chequeDate, expectedClearing: editForm.expectedClearing, orderRef: editForm.orderRef } : c));
       addNotification?.('Cheque updated successfully.');
-      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Cheque ${editCheque.id} updated`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
+      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Cheque ${editCheque.id} updated`, performed_by: currentUser?.fullName || 'Account Department', timestamp: new Date().toISOString() }]);
       setShowEditForm(false);
       setEditCheque(null);
     } catch (err: any) {
@@ -174,7 +174,7 @@ export default function FinanceChequesView({ addNotification, currentUser }: Pro
       if (error) throw error;
       setCheques(prev => prev.filter(c => c.id !== id));
       addNotification?.('Cheque deleted successfully.');
-      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Cheque ${id} deleted`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
+      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Cheque ${id} deleted`, performed_by: currentUser?.fullName || 'Account Department', timestamp: new Date().toISOString() }]);
     } catch (err: any) {
       alert(err.message || 'Failed to delete cheque.');
     } finally {
@@ -199,7 +199,7 @@ export default function FinanceChequesView({ addNotification, currentUser }: Pro
         customer_ref: form.accountName,
         order_ref: form.orderRef,
         status: 'Received',
-        recorded_by: currentUser?.fullName || 'Finance',
+        recorded_by: currentUser?.fullName || 'Account Department',
         timestamp: new Date().toISOString()
       }]).select();
       if (error) throw error;

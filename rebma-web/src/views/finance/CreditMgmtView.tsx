@@ -102,7 +102,7 @@ export default function FinanceCreditMgmtView({ addNotification, currentUser }: 
 
   function openReminder(item: CreditEntry) {
     setReminderModal(item);
-    setReminderMsg(`Dear ${item.customerName},\n\nYour payment of GHS ${item.outstanding.toLocaleString()} for order ${item.orderRef} was due on ${item.dueDate}. Please make payment at your earliest convenience.\n\nREBMA IMPEX Finance Department.`);
+    setReminderMsg(`Dear ${item.customerName},\n\nYour payment of GHS ${item.outstanding.toLocaleString()} for order ${item.orderRef} was due on ${item.dueDate}. Please make payment at your earliest convenience.\n\nREBMA IMPEX Account Department.`);
   }
 
   const [submitting, setSubmitting] = useState(false);
@@ -114,7 +114,7 @@ export default function FinanceCreditMgmtView({ addNotification, currentUser }: 
     if (submitting) return;
     setSubmitting(true);
     try {
-      const { error } = await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Payment reminder sent to ${reminderModal.customerName} via ${reminderType} for order ${reminderModal.orderRef}`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
+      const { error } = await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Payment reminder sent to ${reminderModal.customerName} via ${reminderType} for order ${reminderModal.orderRef}`, performed_by: currentUser?.fullName || 'Account Department', timestamp: new Date().toISOString() }]);
       if (error) throw error;
       addNotification?.(`Reminder sent to ${reminderModal.customerName} via ${reminderType}`);
       setReminderModal(null);
@@ -181,7 +181,7 @@ export default function FinanceCreditMgmtView({ addNotification, currentUser }: 
         };
       }));
       addNotification?.('Credit order updated successfully.');
-      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Credit order ${editItem.id} updated`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
+      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Credit order ${editItem.id} updated`, performed_by: currentUser?.fullName || 'Account Department', timestamp: new Date().toISOString() }]);
       setShowEditForm(false);
       setEditItem(null);
     } catch (err: any) {
@@ -200,7 +200,7 @@ export default function FinanceCreditMgmtView({ addNotification, currentUser }: 
       if (error) throw error;
       setItems(prev => prev.filter(i => i.id !== id));
       addNotification?.('Credit order deleted successfully.');
-      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Credit order ${id} deleted`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
+      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Credit order ${id} deleted`, performed_by: currentUser?.fullName || 'Account Department', timestamp: new Date().toISOString() }]);
     } catch (err: any) {
       alert(err.message || 'Failed to delete credit order.');
     } finally {

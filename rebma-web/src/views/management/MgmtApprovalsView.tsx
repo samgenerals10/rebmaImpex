@@ -276,7 +276,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
         date: row.created_at?.slice(0, 10) || '',
         priority: 'High' as const,
         status: 'Pending' as ApprovalItem['status'],
-        submittedBy: row.requested_by || 'Finance',
+        submittedBy: row.requested_by || 'Account Department',
         raw: row,
       }));
 
@@ -1021,7 +1021,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
                 if (orderItems.length === 0) {
                   return (
                     <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-700">
-                      Approving will move this order to <strong>Finance</strong> for payment processing.
+                      Approving will move this order to <strong>Account Department</strong> for payment processing.
                     </div>
                   );
                 }
@@ -1040,7 +1040,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
                       <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Order Total (as adjusted)</span>
                       <span className="text-sm font-bold" style={{ color: 'var(--accent)' }}>GHS {adjustedTotal.toLocaleString()}</span>
                     </div>
-                    <p className="text-[9px] text-[var(--text-muted)]">Approving forwards this to Finance for payment processing at the quantities/prices shown on the order breakdown.</p>
+                    <p className="text-[9px] text-[var(--text-muted)]">Approving forwards this to Account Department for payment processing at the quantities/prices shown on the order breakdown.</p>
                   </div>
                 );
               })()}

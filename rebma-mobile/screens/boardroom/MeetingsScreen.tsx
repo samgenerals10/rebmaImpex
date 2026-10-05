@@ -38,9 +38,14 @@ import GroupCallSheet from '../../components/shared/GroupCallSheet';
 import CalendarPicker, { toKey, type CalendarValue } from '../../components/ui/CalendarPicker';
 import { setActiveInterval } from '../../lib/activeInterval';
 import { useIsFocused } from '@react-navigation/native';
+import { newSecureToken } from '../../lib/secureToken';
+import * as Clipboard from 'expo-clipboard';
 
-function slugRoom(prefix: string) {
-  return `Rebma-${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+// A meeting code works like an invitation (anyone with it can join), so
+// it is made from a database-generated random token, not Math.random.
+async function slugRoom(prefix: string) {
+  const token = await newSecureToken();
+  return `Rebma-${prefix}-${Date.now().toString(36)}-${token.slice(0, 12)}`;
 }
 
 interface Meeting {
@@ -137,7 +142,7 @@ export default function MeetingsScreen() {
     setSubmitting(true);
     try {
       const scheduledAt = new Date(`${date}T${time}`).toISOString();
-      const room = slugRoom('Mtg');
+      const room = await slugRoom('Mtg');
       const { data: created, error } = await supabase.from('meetings').insert({
         title: title.trim(), description: '', scheduled_at: scheduledAt, duration_minutes: Number(duration) || 30,
         organizer_id: myId, jitsi_room: room, status: 'SCHEDULED',
@@ -165,7 +170,8 @@ export default function MeetingsScreen() {
   // Join History / attendance / in-call chat all work the same as a
   // scheduled meeting) — it just skips straight to IN_PROGRESS.
   const startInstantMeeting = async () => {
-    const room = slugRoom('Now');
+    let room: string;
+    try { room = await slugRoom('Now'); } catch (e: any) { Alert.alert('Failed', e?.message || 'Could not start the meeting.'); return; }
     const { data: created, error } = await supabase.from('meetings').insert({
       title: 'Quick Meeting', description: '', scheduled_at: new Date().toISOString(), duration_minutes: 30,
       organizer_id: myId, jitsi_room: room, status: 'IN_PROGRESS',
@@ -186,15 +192,14 @@ export default function MeetingsScreen() {
     if (!code) return;
     setJoiningByCode(true);
     try {
-      const { data } = await supabase.from('meetings').select('*').or(`id.eq.${code},jitsi_room.eq.${code}`).maybeSingle();
-      if (!data) { Alert.alert('Not found', "No meeting matches that code — check it and try again."); return; }
-      const { data: existing } = await supabase.from('meeting_attendees').select('user_id').eq('meeting_id', data.id).eq('user_id', myId).maybeSingle();
-      if (!existing) await supabase.from('meeting_attendees').insert({ meeting_id: data.id, user_id: myId, rsvp_status: 'ACCEPTED', joined_at: new Date().toISOString() });
-      else await supabase.from('meeting_attendees').update({ joined_at: new Date().toISOString() }).eq('meeting_id', data.id).eq('user_id', myId);
-      await supabase.from('meetings').update({ status: 'IN_PROGRESS' }).eq('id', data.id).eq('status', 'SCHEDULED');
+      // A database function does the join: meetings are only visible to
+      // invited people, so the code itself acts as the invitation.
+      const { data, error } = await supabase.rpc('join_meeting_by_code', { p_code: code });
+      const row = Array.isArray(data) ? data[0] : data;
+      if (error || !row) { Alert.alert('Not found', error?.message || 'No meeting matches that code. Check it and try again.'); return; }
       setShowJoinByCode(false);
       setJoinCode('');
-      setActiveCall({ room: data.jitsi_room, title: data.title, meetingId: data.id });
+      setActiveCall({ room: row.room, title: row.title, meetingId: row.meeting_id });
       loadMeetings();
     } finally {
       setJoiningByCode(false);
@@ -292,6 +297,15 @@ export default function MeetingsScreen() {
                           </Text>
                         </Pressable>
                       ) : null}
+                      {mtg.status !== 'CANCELLED' && mtg.status !== 'COMPLETED' && mtg.jitsi_room && (
+                        // Share this code so others can use Join Meeting.
+                        <Pressable
+                          onPress={async () => { await Clipboard.setStringAsync(mtg.jitsi_room); Alert.alert('Copied', 'Meeting code copied. Share it so others can join.'); }}
+                          style={{ paddingHorizontal: t.spacing.md, paddingVertical: 6 }}
+                        >
+                          <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta10.size, color: t.colors.accent }}>Copy code</Text>
+                        </Pressable>
+                      )}
                     </View>
                   </View>
                   {mtg.recap_notes && (

@@ -112,7 +112,7 @@ export default function FinancePettyCashView({ addNotification, currentUser }: P
       if (error) throw error;
       setEntries(prev => prev.map(e => e.id === editEntry.id ? { ...e, amount: updatedAmount, description: editForm.description, disbursedTo: editForm.disbursedTo, category: editForm.category, balanceAfter: updatedBalance } : e));
       addNotification?.('Petty cash entry updated successfully.');
-      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Petty cash ${editEntry.id} updated`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
+      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Petty cash ${editEntry.id} updated`, performed_by: currentUser?.fullName || 'Account Department', timestamp: new Date().toISOString() }]);
       setShowEditForm(false);
       setEditEntry(null);
     } catch (err: any) {
@@ -131,7 +131,7 @@ export default function FinancePettyCashView({ addNotification, currentUser }: P
       if (error) throw error;
       setEntries(prev => prev.filter(e => e.id !== id));
       addNotification?.('Entry deleted successfully.');
-      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Petty cash ${id} deleted`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
+      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Petty cash ${id} deleted`, performed_by: currentUser?.fullName || 'Account Department', timestamp: new Date().toISOString() }]);
     } catch (err: any) {
       alert(err.message || 'Failed to delete entry.');
     } finally {
@@ -178,7 +178,7 @@ export default function FinancePettyCashView({ addNotification, currentUser }: P
     try {
       const { error } = await supabase.from('float_requests').insert([{
         department: 'FINANCE',
-        requested_by: currentUser?.fullName || 'Finance',
+        requested_by: currentUser?.fullName || 'Account Department',
         amount: parseFloat(replenForm.amount),
         reason: replenForm.reason,
         status: 'PENDING_MANAGEMENT',

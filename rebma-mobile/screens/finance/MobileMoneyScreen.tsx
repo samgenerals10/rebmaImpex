@@ -96,7 +96,7 @@ export default function MobileMoneyScreen() {
     }).eq('id', editTarget.id);
     setSavingEdit(false);
     if (error) { Alert.alert('Update Failed', error.message); return; }
-    await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `MoMo transaction ${editTarget.id} updated`, performed_by: profile?.fullName || 'Accounts Department', timestamp: new Date().toISOString() }]);
+    await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `MoMo transaction ${editTarget.id} updated`, performed_by: profile?.fullName || 'Account Department', timestamp: new Date().toISOString() }]);
     setEditTarget(null);
     load();
   };
@@ -107,7 +107,7 @@ export default function MobileMoneyScreen() {
       Alert.alert('Verify Failed', error.message);
       return;
     }
-    await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `MoMo transaction ${tx.id} verified — ${tx.transaction_id}`, performed_by: profile?.fullName || 'Accounts Department', timestamp: new Date().toISOString() }]);
+    await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `MoMo transaction ${tx.id} verified — ${tx.transaction_id}`, performed_by: profile?.fullName || 'Account Department', timestamp: new Date().toISOString() }]);
     setDetail(null);
     load();
   };
@@ -122,7 +122,7 @@ export default function MobileMoneyScreen() {
             Alert.alert('Delete Failed', error.message);
             return;
           }
-          await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `MoMo transaction ${tx.id} deleted`, performed_by: profile?.fullName || 'Accounts Department', timestamp: new Date().toISOString() }]);
+          await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `MoMo transaction ${tx.id} deleted`, performed_by: profile?.fullName || 'Account Department', timestamp: new Date().toISOString() }]);
           setDetail(null);
           load();
         },

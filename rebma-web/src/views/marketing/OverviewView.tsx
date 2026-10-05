@@ -38,7 +38,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const STATUS_LABELS: Record<string, string> = {
-  PENDING_FINANCE: 'Finance Review',
+  PENDING_FINANCE: 'Account Department Review',
   PENDING_MANAGEMENT: 'Mgmt Review',
   APPROVED: 'Approved',
   PROCESSING: 'Preparing',
@@ -326,7 +326,7 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
       customer: o.clientName,
       amount: o.totalAmount,
       date: new Date(o.createdAt).toISOString().split('T')[0],
-      status: o.status === 'PENDING_MANAGEMENT' ? 'Pending Management' : o.status === 'APPROVED' ? 'Management Approved' : 'Finance Processing'
+      status: o.status === 'PENDING_MANAGEMENT' ? 'Pending Management' : o.status === 'APPROVED' ? 'Management Approved' : 'Account Department Processing'
     }))
     .slice(0, 5);
 
@@ -388,7 +388,7 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
         {[
           { label: 'Total Orders', value: totalOrders, prefix: '', change: `${ordersUp ? '+' : ''}${ordersChange}%`, up: ordersUp, sub: 'vs last week', tab: 'CreateOrder' },
           { label: 'Total Customers', value: totalCustomers, prefix: '', change: `+${thisMonthCustomers} new`, up: customersUp, sub: 'this month', tab: 'RegisterCustomer' },
-          { label: 'Pending Finance', value: pendingFinance, prefix: '', change: pendingChange === 0 ? 'no change' : `${pendingChange > 0 ? '+' : ''}${pendingChange} orders`, up: pendingUp, sub: 'vs 7 days ago', tab: 'CreateOrder' },
+          { label: 'Pending Account Department', value: pendingFinance, prefix: '', change: pendingChange === 0 ? 'no change' : `${pendingChange > 0 ? '+' : ''}${pendingChange} orders`, up: pendingUp, sub: 'vs 7 days ago', tab: 'CreateOrder' },
           { label: 'Revenue Generated', value: revenue, prefix: 'GHS ', change: `${revenueUp ? '+' : ''}${revenueChange}%`, up: revenueUp, sub: 'vs last month', tab: 'MktAnalytics' },
         ].map(({ label, value, prefix, change, up, sub, tab }) => (
           <div key={label} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 cursor-pointer hover:border-[var(--accent)] transition-colors" onClick={() => setActiveSubTab?.(tab)}>

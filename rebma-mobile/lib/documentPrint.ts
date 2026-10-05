@@ -1,25 +1,32 @@
-// rebma-web/src/views/finance/ReceiptsView.tsx
-// Every payment approval auto-generates a finance_payments row (the receipt)
-// but there was nowhere in the app to actually see it — this is that page:
-// a searchable, printable list of every receipt on record. Shared across
-// Finance/Management/Marketing/CEO sidebars (same data, same component).
-import { useEffect, useState, useCallback } from 'react';
-import { Search, Receipt as ReceiptIcon, Download } from 'lucide-react';
+// rebma-mobile/lib/documentPrint.ts
+//
+// Phone versions of the laptop's branded Proforma Invoice and Receipt
+// (rebma-web/src/views/ceo/InvoicesView.tsx printProforma and
+// rebma-web/src/views/finance/ReceiptsView.tsx printReceipt): same layout,
+// printed through the phone's own print dialog, which can also save a PDF.
+import * as Print from 'expo-print';
 import QRCode from 'qrcode';
-import { supabase } from '../../lib/supabaseClient';
-import { useRealtimeChannel } from '../../hooks/useRealtimeChannel';
-import { safeDisplayName } from '../../utils/export';
-import { documentTemplates, type DocumentTemplate } from '../../services/apiClient';
-import type { OrderLineItem } from '../../types/erp';
-import { useCeoSettings } from '../../contexts/CeoSettingsContext';
-import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
-import UniversalExportModal, { type ExportColumn } from '../../components/common/UniversalExportModal';
+import type { DocumentTemplate } from '../components/shared/DocumentTemplatesEditor';
+
+const API_BASE = (process.env.EXPO_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+
+// Relative logo paths live on the web app; use its address when set.
+function logoSrc(url: string): string {
+  if (!url) return API_BASE ? `${API_BASE}/logo.png` : '';
+  if (url.startsWith('http') || url.startsWith('data:')) return url;
+  return API_BASE ? API_BASE + url : '';
+}
+
+// An email address is never put inside a QR code (phones read it as a mail link).
+function safeDisplayName(name: string | null | undefined, fallback: string): string {
+  if (!name || !name.trim()) return fallback;
+  return name.includes('@') ? fallback : name;
+}
+
+export interface OrderLineItem { productName: string; quantity: number; unitPrice?: number; lineTotal?: number; [key: string]: any }
 
 const BRAND = { green: '#1a5c32', blue: '#29a9dc', lime: '#7fc241' };
 
-// Spelled-out amount ("Fifty Ghana Cedis only") — standard on Ghanaian
-// financial documents, and it fills what was otherwise a lot of dead space
-// on a single-line-item receipt while doubling as a tamper-check.
 const ONES = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
   'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
 const TENS = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
@@ -68,19 +75,153 @@ export interface ReceiptRow {
   customerPhone?: string;
 }
 
-// A receipt number distinct from the order's own dispatch ticket number —
-// reusing the ticket number made every printed receipt read as a ticket,
-// not a receipt, even though the two documents mean different things.
-export function generateReceiptNumber(): string {
-  return 'RCP-' + Math.floor(10000 + Math.random() * 90000);
+export interface ProformaLineItem {
+  productName: string;
+  quantity: number;
+  unitPrice: number;
 }
 
-// Same branded shell as the Operations dispatch ticket and the Proforma
-// Invoice — logo, watermark, gradient stripe, QR verification — so a
-// receipt carries the same security features as every other REBMA IMPEX
-// document. Renders an itemized table when the underlying order's line
-// items are available, rather than summary cards.
+export interface ProformaRow {
+  id: string;
+  proforma_no: string;
+  order_id: string | null;
+  client_name: string;
+  line_items: ProformaLineItem[];
+  subtotal: number;
+  tax_amount: number;
+  grand_total: number;
+  currency: string;
+  status: 'DRAFT' | 'SENT' | 'CONVERTED';
+  notes: string | null;
+  created_at: string;
+  // Captured when Marketing/CEO generates the invoice — display-only here,
+  // not editable from this screen.
+  contact_info?: { customerPhone?: string } | null;
+}
+
+export async function printProforma(r: ProformaRow, issuedBy: string, template: DocumentTemplate, printEnabled: boolean = true) {
+  if (!printEnabled) throw new Error('Printing is currently turned off by the CEO.');
+  const GREEN = '#1a5c32', BLUE = '#29a9dc', LIME = '#7fc241';
+  const t = template;
+  const customerPhone = r.contact_info?.customerPhone || '';
+  // Shown on the printed invoice itself exactly as before — an email here is
+  // legitimate identification, not a bug. Only the copy embedded in the QR
+  // payload gets sanitized, since that's the one iOS's scanner misreads as
+  // a "Mail" action instead of showing the invoice content.
+  const issuedByForQr = safeDisplayName(issuedBy, 'REBMA IMPEX Staff');
+  let qrDataUrl = '';
+  try {
+    qrDataUrl = await QRCode.toString(
+      `REBMA IMPEX GHANA LIMITED\nProforma: ${r.proforma_no}\nCustomer: ${r.client_name}\nGrand Total: ${r.currency} ${Number(r.grand_total).toLocaleString()}\nIssued by: ${issuedByForQr}`,
+      { type: 'svg', width: 110, margin: 1, color: { dark: GREEN, light: '#ffffff' } }
+    );
+  } catch (err) { console.error('QR generation failed for proforma', r.proforma_no, err); qrDataUrl = ''; }
+
+  const dateStr = new Date(r.created_at).toISOString().split('T')[0];
+
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Proforma ${r.proforma_no} — REBMA IMPEX Ghana Limited</title><style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',Arial,sans-serif;background:#f1f5f9;color:#1e293b}
+    .page{background:#fff;max-width:780px;margin:28px auto;border-radius:14px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.12);position:relative}
+    .watermark{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-35deg);font-size:80px;font-weight:900;color:rgba(26,92,50,0.04);white-space:nowrap;pointer-events:none;z-index:0;letter-spacing:6px;user-select:none}
+    .stripe{height:6px;background:linear-gradient(90deg,${GREEN},${BLUE},${LIME})}
+    .content{position:relative;z-index:1;padding:40px 52px 48px}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px;gap:20px}
+    .logo-wrap{display:flex;align-items:center;gap:14px}
+    .logo-wrap img{width:56px;height:56px;object-fit:contain;flex-shrink:0}
+    .logo-block .company{font-size:20px;font-weight:900;color:${GREEN};letter-spacing:1px;line-height:1}
+    .logo-block .tagline{font-size:10px;color:${BLUE};margin-top:2px;font-weight:700;letter-spacing:2px;text-transform:uppercase}
+    .logo-block .address{font-size:9.5px;color:#94a3b8;margin-top:8px;line-height:1.7}
+    .inv-meta{text-align:right;flex-shrink:0}
+    .inv-meta .inv-label{font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:.12em;margin-bottom:3px}
+    .inv-meta .inv-no{font-size:22px;font-weight:900;color:${GREEN};letter-spacing:1px}
+    .inv-meta .inv-date{font-size:10px;color:#64748b;margin-top:4px}
+    .badge{display:inline-block;padding:5px 16px;border-radius:99px;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;margin-top:8px;background:#fef3c7;color:#92400e}
+    .divider{height:2px;background:linear-gradient(90deg,${GREEN},${BLUE},transparent);margin:0 0 28px;border:none;border-radius:99px}
+    .bill-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:16px 18px;margin-bottom:28px}
+    .blabel{font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#94a3b8;margin-bottom:8px}
+    .bname{font-size:14px;font-weight:700;color:#1e293b;margin-bottom:3px}
+    .items-table{width:100%;border-collapse:collapse;margin-bottom:24px;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden}
+    .items-table th{background:#f8fafc;padding:10px 16px;text-align:left;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;border-bottom:1px solid #e2e8f0}
+    .items-table td{padding:12px 16px;font-size:13px;border-bottom:1px solid #f1f5f9;color:#1e293b}
+    .items-table tr:last-child td{border-bottom:none}
+    .items-table .total{background:#1e293b;color:#fff;font-weight:700;font-size:14px}
+    .items-table .total td{color:#fff}
+    .notes-box{background:#fefce8;border:1px solid #fde68a;border-radius:10px;padding:14px 18px;margin-bottom:24px;font-size:12px;color:#92400e}
+    .notes-box strong{display:block;margin-bottom:4px;font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:#b45309}
+    .footer{display:flex;justify-content:space-between;align-items:flex-end;padding-top:20px;border-top:1px solid #f1f5f9}
+    .legal{font-size:8.5px;color:#94a3b8;line-height:1.8;max-width:420px}
+    .qr-block{text-align:center}
+    .qr-block img{width:96px;height:96px;border:2px solid #e2e8f0;border-radius:8px}
+    .qlabel{font-size:8px;color:#94a3b8;margin-top:4px}
+    @media print{body{background:#fff}.page{margin:0;box-shadow:none;border-radius:0}.stripe{-webkit-print-color-adjust:exact;print-color-adjust:exact}button{display:none!important}}
+  </style></head><body>
+  <div class="page">
+    <div class="stripe"></div>
+    <div class="watermark">REBMA IMPEX</div>
+    <div class="content">
+      <div class="header">
+        <div class="logo-wrap">
+          <img src="${logoSrc(t.logoUrl)}" alt="${t.companyName}"/>
+          <div class="logo-block">
+            <div class="company">${t.companyName}</div>
+            <div class="tagline">Ghana Limited</div>
+            <div class="address">${t.companyAddress}<br/>${t.companyPhone ? `Tel: ${t.companyPhone}` : ''}${t.companyPhone && t.companyEmail ? ' &bull; ' : ''}${t.companyEmail || ''}</div>
+          </div>
+        </div>
+        <div class="inv-meta">
+          <div class="inv-label">${t.subtitle}</div>
+          <div class="inv-no">${r.proforma_no}</div>
+          <div class="inv-date">Issued: ${dateStr}</div>
+          <span class="badge">Not a Tax Invoice</span>
+        </div>
+      </div>
+      <hr class="divider"/>
+      <div class="bill-box">
+        <div class="blabel">Prepared For</div>
+        <div class="bname">${r.client_name}</div>
+        ${customerPhone ? `<div style="font-size:12px;color:#64748b;margin-top:3px">Tel: ${customerPhone}</div>` : ''}
+      </div>
+      <table class="items-table">
+        <thead><tr><th>Product / Service</th><th style="text-align:center">Qty</th><th style="text-align:right">Unit Price (${r.currency})</th><th style="text-align:right">Amount (${r.currency})</th></tr></thead>
+        <tbody>
+          ${r.line_items.map(item => `
+            <tr>
+              <td><strong>${item.productName}</strong></td>
+              <td style="text-align:center;font-weight:700">${item.quantity}</td>
+              <td style="text-align:right">${Number(item.unitPrice).toLocaleString()}</td>
+              <td style="text-align:right;font-weight:700">${(item.quantity * item.unitPrice).toLocaleString()}</td>
+            </tr>
+          `).join('')}
+          <tr><td colspan="3" style="text-align:right;color:#64748b">Subtotal</td><td style="text-align:right">${Number(r.subtotal).toLocaleString()}</td></tr>
+          <tr><td colspan="3" style="text-align:right;color:#64748b">Tax</td><td style="text-align:right">${Number(r.tax_amount).toLocaleString()}</td></tr>
+          <tr class="total">
+            <td colspan="3" style="font-size:12px;letter-spacing:.05em;text-transform:uppercase;opacity:0.8">Grand Total</td>
+            <td style="text-align:right;font-size:18px">${r.currency} ${Number(r.grand_total).toLocaleString()}</td>
+          </tr>
+        </tbody>
+      </table>
+      ${r.notes ? `<div class="notes-box"><strong>Notes</strong>${r.notes}</div>` : ''}
+      <div class="footer">
+        <div class="legal">
+          ${t.footerNote}<br/>
+          Issued by ${issuedBy}, ${t.companyName} Ghana Limited.
+        </div>
+        <div class="qr-block">
+          ${qrDataUrl ? `<div class="qr-svg">${qrDataUrl}</div>` : ''}
+          <div class="qlabel">Scan to verify</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div style="text-align:center;margin:16px 0 32px">
+  </div>
+  </body></html>`;
+  await Print.printAsync({ html });
+}
+
 export async function printReceipt(r: ReceiptRow, lineItems: OrderLineItem[] | null, template: DocumentTemplate, printEnabled: boolean = true) {
+  if (!printEnabled) throw new Error('Printing is currently turned off by the CEO.');
   const t = template;
   // Shown on the printed receipt itself exactly as before — including a raw
   // email if that's what's on file, which is legitimate identification, not
@@ -90,7 +231,7 @@ export async function printReceipt(r: ReceiptRow, lineItems: OrderLineItem[] | n
   const recordedByForQr = safeDisplayName(r.recordedBy, 'Account Department');
   let qrDataUrl = '';
   try {
-    qrDataUrl = await QRCode.toDataURL(
+    qrDataUrl = await QRCode.toString(
       [
         'REBMA IMPEX GHANA LIMITED',
         `Receipt: ${r.receiptNumber}`,
@@ -100,7 +241,7 @@ export async function printReceipt(r: ReceiptRow, lineItems: OrderLineItem[] | n
         `Recorded by: ${recordedByForQr}`,
         `Status: ${r.status}`,
       ].join('\n'),
-      { width: 140, margin: 1, color: { dark: BRAND.green, light: '#ffffff' } }
+      { type: 'svg', width: 110, margin: 1, color: { dark: BRAND.green, light: '#ffffff' } }
     );
   } catch (err) { console.error('QR generation failed for receipt', r.receiptNumber, err); qrDataUrl = ''; }
 
@@ -181,7 +322,7 @@ export async function printReceipt(r: ReceiptRow, lineItems: OrderLineItem[] | n
 
         <div class="header">
           <div class="brand">
-            <img src="${t.logoUrl.startsWith('http') || t.logoUrl.startsWith('data:') ? t.logoUrl : window.location.origin + t.logoUrl}" alt="${t.companyName}"/>
+            <img src="${logoSrc(t.logoUrl)}" alt="${t.companyName}"/>
             <div class="brand-text">
               <div class="name">${t.companyName}</div>
               <div class="sub">${t.subtitle}</div>
@@ -240,7 +381,7 @@ export async function printReceipt(r: ReceiptRow, lineItems: OrderLineItem[] | n
           </div>
           <div class="qr-wrap">
             ${qrDataUrl
-              ? `<img src="${qrDataUrl}" alt="Receipt QR"/>`
+              ? `<div class="qr-svg">${qrDataUrl}</div>`
               : `<div style="width:92px;height:92px;border:2px dashed #e2e8f0;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:8px;color:#94a3b8">QR</div>`}
             <div class="ql">Scan to verify</div>
             <div class="ql2">Matches ticket &amp; invoice</div>
@@ -254,160 +395,9 @@ export async function printReceipt(r: ReceiptRow, lineItems: OrderLineItem[] | n
       </div>
     </div>
     <div style="text-align:center;margin-top:16px;display:flex;gap:10px;justify-content:center">
-      ${printEnabled ? `<button onclick="window.print()" style="background:${BRAND.green};color:#fff;border:none;padding:11px 30px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer">🖨 Print Receipt</button>` : `<button disabled title="Printing is currently disabled by the CEO" style="background:#cbd5e1;color:#64748b;border:none;padding:11px 30px;border-radius:9px;font-size:13px;font-weight:700;cursor:not-allowed">🖨 Print (disabled)</button>`}
-      <button onclick="window.close()" style="background:#f1f5f9;color:#334155;border:1px solid #e2e8f0;padding:11px 26px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer">Close</button>
     </div>
   </div>
   </body></html>`;
 
-  const win = window.open('', '_blank', 'width=740,height=900');
-  if (win) { win.document.write(html); win.document.close(); }
-  else { alert('Your browser blocked the receipt pop-up. Please allow pop-ups for this site, then try again.'); }
-}
-
-interface Props {
-  addNotification?: (msg: string) => void;
-}
-
-export default function FinanceReceiptsView({ addNotification }: Props) {
-  const { getSetting } = useCeoSettings();
-  const [receipts, setReceipts] = useState<ReceiptRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [exportOpen, setExportOpen] = useState(false);
-
-  const exportColumns: ExportColumn[] = [
-    { key: 'receiptNumber', label: 'Receipt #' },
-    { key: 'ticketNumber', label: 'Order Ticket' },
-    { key: 'clientName', label: 'Client' },
-    { key: 'amount', label: 'Amount (GHS)', render: r => r.amount.toLocaleString(undefined, { minimumFractionDigits: 2 }) },
-    { key: 'paymentMode', label: 'Payment Mode' },
-    { key: 'paymentType', label: 'Payment Type' },
-    { key: 'orderId', label: 'Order ID', render: r => r.orderId || '—' },
-    { key: 'recordedBy', label: 'Recorded By', render: r => r.recordedBy || '—' },
-    { key: 'status', label: 'Status' },
-    { key: 'createdAt', label: 'Date', render: r => r.createdAt ? new Date(r.createdAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '—' },
-  ];
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const { data } = await supabase
-        .from('finance_payments')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(300);
-      setReceipts((data || []).map((r: any) => ({
-        id: r.id,
-        clientName: r.client_name || r.customer_name || 'Customer',
-        amount: Number(r.amount || 0),
-        paymentMode: r.payment_mode || 'CASH',
-        paymentType: r.payment_type || 'Full Payment',
-        orderId: r.order_id || null,
-        ticketNumber: r.invoice_number || r.order_ref || '',
-        receiptNumber: r.receipt_number || r.invoice_number || r.id,
-        recordedBy: r.recorded_by || null,
-        status: r.status || 'CONFIRMED',
-        createdAt: r.created_at || '',
-        customerPhone: r.metadata?.contactInfo?.customerPhone || undefined,
-      })));
-    } catch {
-      setReceipts([]);
-    }
-    setLoading(false);
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
-
-  useRealtimeChannel('finance-receipts', ['finance_payments'], () => load());
-
-  const filtered = receipts.filter(r =>
-    !search ||
-    r.clientName.toLowerCase().includes(search.toLowerCase()) ||
-    r.receiptNumber.toLowerCase().includes(search.toLowerCase()) ||
-    r.ticketNumber.toLowerCase().includes(search.toLowerCase()) ||
-    (r.orderId || '').toLowerCase().includes(search.toLowerCase())
-  );
-
-  const totalAmount = filtered.reduce((s, r) => s + r.amount, 0);
-
-  const handlePrintReceipt = async (r: ReceiptRow) => {
-    let lineItems: OrderLineItem[] | null = null;
-    let orderPhone = r.customerPhone || '';
-    if (r.orderId) {
-      try {
-        const { data } = await supabase.from('orders').select('metadata, phone').eq('id', r.orderId).limit(1);
-        const items = data?.[0]?.metadata?.items;
-        if (Array.isArray(items) && items.length > 0) lineItems = items;
-        orderPhone = data?.[0]?.phone || orderPhone;
-      } catch { /* falls back to the no-items message on the receipt */ }
-    }
-    const template = await documentTemplates.get('RECEIPT');
-    printReceipt({ ...r, customerPhone: orderPhone }, lineItems, template, getSetting('print_enabled', true));
-    addNotification?.(`Opened receipt ${r.receiptNumber} for printing.`);
-  };
-
-  return (
-    <div className="space-y-4">
-      <UniversalExportModal
-        open={exportOpen}
-        onClose={() => setExportOpen(false)}
-        title="Receipts"
-        data={filtered}
-        columns={exportColumns}
-      />
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-bold text-[var(--text-primary)]">Receipts</h2>
-          <p className="text-xs text-[var(--text-muted)]">{filtered.length} receipt{filtered.length !== 1 ? 's' : ''} · GHS {totalAmount.toLocaleString()} total</p>
-        </div>
-        <button
-          onClick={() => setExportOpen(true)}
-          className="flex items-center gap-1 px-3 py-1.5 bg-[var(--accent-light)] text-[var(--accent)] text-xs font-semibold rounded-xl cursor-pointer hover:opacity-90 shrink-0"
-        >
-          <Download className="w-3 h-3" /> Export
-        </button>
-      </div>
-
-      <div className="relative">
-        <Search className="w-3.5 h-3.5 text-[var(--text-muted)] absolute left-3 top-1/2 -translate-y-1/2" />
-        <input
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Search client, receipt#, order#…"
-          className="w-full sm:w-96 pl-8 pr-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]"
-        />
-      </div>
-
-      <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden shadow-card">
-        <ResponsiveDataView
-          columns={[
-            { key: 'receiptNumber', label: 'Receipt #', primary: true, render: r => <span className="font-mono">{r.receiptNumber}</span> },
-            { key: 'status', label: 'Status', status: true, render: r => <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-700">{r.status}</span> },
-            { key: 'ticketNumber', label: 'Order Ticket', render: r => <span className="font-mono">{r.ticketNumber || '—'}</span> },
-            { key: 'clientName', label: 'Client' },
-            { key: 'amount', label: 'Amount', render: r => <span className="font-semibold">GHS {r.amount.toLocaleString()}</span> },
-            { key: 'paymentMode', label: 'Payment', render: r => `${r.paymentMode} · ${r.paymentType}` },
-            { key: 'recordedBy', label: 'Recorded By', render: r => r.recordedBy || '—' },
-            { key: 'createdAt', label: 'Date', render: r => r.createdAt ? new Date(r.createdAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '—' },
-          ] as DataColumn<typeof receipts[number]>[]}
-          data={filtered}
-          rowKey={r => r.id}
-          loading={loading}
-          emptyTitle="No receipts found."
-          renderActions={r => (
-            <button onClick={() => handlePrintReceipt(r)} className="p-1 hover:bg-[var(--accent-light)] rounded-lg cursor-pointer text-[var(--accent)]" title="Print Receipt">
-              <Download className="w-3.5 h-3.5" />
-            </button>
-          )}
-        />
-      </div>
-
-      {filtered.length === 0 && !loading && (
-        <div className="flex flex-col items-center py-6 text-[var(--text-muted)]">
-          <ReceiptIcon className="w-8 h-8 opacity-30 mb-2" />
-        </div>
-      )}
-    </div>
-  );
+  await Print.printAsync({ html });
 }

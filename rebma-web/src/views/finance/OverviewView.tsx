@@ -285,7 +285,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
     setPaymentPie(Object.entries(modeGroups).map(([k, v]) => ({ name: modeLabels[k] || k, value: Math.round((v / total) * 100), color: modeColors[k] || '#94a3b8' })));
   }, [liveOrders, ordersList]);
 
-  const firstName = currentUser?.fullName?.split(' ')[0] || 'Finance';
+  const firstName = currentUser?.fullName?.split(' ')[0] || 'Account Department';
   const effective = liveOrders.length > 0 ? liveOrders : ordersList;
   const pendingOrders = effective.filter(o => o.status === 'PENDING_FINANCE');
 
@@ -700,7 +700,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
           <div>
             <div className="flex items-center gap-2 mb-1">
               <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--accent)] bg-[var(--accent-light)] px-2 py-0.5 rounded-full">
-                Finance E-Commerce Portal
+                Account Department E-Commerce Portal
               </span>
             </div>
             <h1 className="text-2xl font-bold text-[var(--text-primary)]">{timeGreeting()}, {firstName} 👋</h1>

@@ -130,6 +130,35 @@ export default function BoardroomView({
     setActiveCall({ room: mtg.jitsi_room, title: mtg.title, meetingId: mtg.id, isHost: mtg.organizer_id === myId });
   };
 
+  const [joinCode, setJoinCode] = useState('');
+  const [joiningByCode, setJoiningByCode] = useState(false);
+
+  const handleMeetNow = async () => {
+    try {
+      const m = await meetingsApi.startInstantMeeting(myId);
+      setActiveCall({ room: m.room, title: m.title, meetingId: m.id, isHost: true });
+      loadMeetings();
+    } catch (e: any) {
+      alert(e?.message || 'Could not start the meeting.');
+    }
+  };
+
+  const handleJoinByCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!joinCode.trim() || joiningByCode) return;
+    setJoiningByCode(true);
+    try {
+      const m = await meetingsApi.joinByCode(joinCode);
+      setJoinCode('');
+      setActiveCall({ room: m.room, title: m.title, meetingId: m.id, isHost: false });
+      loadMeetings();
+    } catch (err: any) {
+      alert(err?.message || 'No meeting matches that code. Check it and try again.');
+    } finally {
+      setJoiningByCode(false);
+    }
+  };
+
   const handleRsvp = async (meetingId: string, status: 'ACCEPTED' | 'DECLINED') => {
     await meetingsApi.updateRsvp(meetingId, myId, status);
     loadMeetings();
@@ -355,7 +384,7 @@ export default function BoardroomView({
                       {[
                         { role: 'CEO', name: 'Samuel Remba', status: 'Online' },
                         { role: 'Operations', name: 'Ops Lead Frank', status: 'Online' },
-                        { role: 'Finance', name: 'Finance Controller Ama', status: 'Online' },
+                        { role: 'Account Department', name: 'Account Department Controller Ama', status: 'Online' },
                         { role: 'HR', name: 'HR Manager Derrick', status: 'Away' }
                       ].map((p, idx) => (
                         <div key={idx} className="flex justify-between items-center p-2.5 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs">
@@ -529,6 +558,26 @@ export default function BoardroomView({
 
             {activeSubTab === 'Meetings' && (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Meet Now and Join by code, same as the phone */}
+                <div className="lg:col-span-3 p-4 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)] flex flex-col md:flex-row md:items-center gap-3">
+                  <button type="button" onClick={handleMeetNow}
+                    className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[var(--accent)] text-white text-xs font-bold cursor-pointer hover:opacity-90">
+                    <Video className="w-4 h-4" /> Meet Now
+                  </button>
+                  <form onSubmit={handleJoinByCode} className="flex flex-1 items-center gap-2">
+                    <input
+                      type="text"
+                      value={joinCode}
+                      onChange={(e) => setJoinCode(e.target.value)}
+                      placeholder="Paste or type a meeting code"
+                      className="flex-1 px-3 py-2.5 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
+                    />
+                    <button type="submit" disabled={!joinCode.trim() || joiningByCode}
+                      className="px-4 py-2.5 rounded-xl border border-[var(--border)] text-xs font-bold text-[var(--text-primary)] cursor-pointer hover:bg-[var(--accent-light)] disabled:opacity-50 disabled:cursor-not-allowed">
+                      {joiningByCode ? 'Joining' : 'Join'}
+                    </button>
+                  </form>
+                </div>
                 {/* Scheduler Form */}
                 <div className="p-4 md:p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)] space-y-4">
                   <div className="flex items-center gap-1.5">
@@ -649,6 +698,15 @@ export default function BoardroomView({
                               className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold cursor-pointer transition-all shadow"
                             >
                               <Phone size={12} /> Join
+                            </button>
+                          )}
+                          {mtg.status !== 'CANCELLED' && mtg.status !== 'COMPLETED' && mtg.jitsi_room && (
+                            <button
+                              onClick={() => { navigator.clipboard?.writeText(mtg.jitsi_room); alert('Meeting code copied. Share it so others can join.'); }}
+                              title="Share this code so others can use Join by code"
+                              className="px-3 py-1.5 border border-[var(--border)] rounded-lg text-xs font-semibold text-[var(--text-secondary)] cursor-pointer hover:bg-[var(--accent-light)]"
+                            >
+                              Copy code
                             </button>
                           )}
                         </div>

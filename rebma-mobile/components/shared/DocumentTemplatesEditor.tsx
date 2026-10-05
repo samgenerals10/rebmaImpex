@@ -15,7 +15,7 @@
 // mobile-stacked card instead of web's two-column layout.
 import { useEffect, useState } from 'react';
 import { View, Text, Image } from 'react-native';
-import { Receipt, Ticket, FileText, Image as ImageIcon, MapPin } from 'lucide-react-native';
+import { Receipt, Ticket, FileText, Image as ImageIcon, MapPin, Truck } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { pickOrCaptureImageAsset } from '../../lib/media';
 import { uploadToBucket } from '../../lib/storage';
@@ -26,9 +26,9 @@ import Input, { Field } from '../ui/Input';
 import LocationPicker, { type LocationValue } from './LocationPicker';
 import { SkeletonList } from '../ui/Skeleton';
 
-type DocType = 'RECEIPT' | 'TICKET' | 'INVOICE';
+export type DocType = 'RECEIPT' | 'TICKET' | 'INVOICE' | 'WAYBILL';
 
-interface DocumentTemplate {
+export interface DocumentTemplate {
   docType: DocType;
   logoUrl: string;
   companyName: string;
@@ -43,8 +43,9 @@ interface DocumentTemplate {
 }
 
 const FALLBACKS: Record<DocType, DocumentTemplate> = {
-  RECEIPT: { docType: 'RECEIPT', logoUrl: '', companyName: 'REBMA IMPEX', subtitle: 'Official Payment Receipt', companyAddress: 'Accra Business District, Accra, Ghana', companyLat: null, companyLng: null, companyPhone: '', companyEmail: '', website: 'rebmaimpex.com', footerNote: 'This receipt is issued by REBMA IMPEX Ghana Limited Accounts Department. It confirms payment has been received and recorded against the order referenced above.' },
+  RECEIPT: { docType: 'RECEIPT', logoUrl: '', companyName: 'REBMA IMPEX', subtitle: 'Official Payment Receipt', companyAddress: 'Accra Business District, Accra, Ghana', companyLat: null, companyLng: null, companyPhone: '', companyEmail: '', website: 'rebmaimpex.com', footerNote: 'This receipt is issued by REBMA IMPEX Ghana Limited Account Department. It confirms payment has been received and recorded against the order referenced above.' },
   TICKET: { docType: 'TICKET', logoUrl: '', companyName: 'REBMA IMPEX', subtitle: 'Operations Dispatch Ticket', companyAddress: 'Accra Business District, Accra, Ghana', companyLat: null, companyLng: null, companyPhone: '', companyEmail: '', website: 'rebmaimpex.com', footerNote: 'This ticket is issued by REBMA IMPEX Ghana Limited Operations. It authorises the loading and dispatch of the above goods to the stated destination.' },
+  WAYBILL: { docType: 'WAYBILL', logoUrl: '', companyName: 'REBMA IMPEX', subtitle: 'Waybill', companyAddress: 'Accra Business District, Accra, Ghana', companyLat: null, companyLng: null, companyPhone: '', companyEmail: '', website: 'rebmaimpex.com', footerNote: 'This waybill is issued by REBMA IMPEX Ghana Limited Risk. It travels with the goods and must be shown on request.' },
   INVOICE: { docType: 'INVOICE', logoUrl: '', companyName: 'REBMA IMPEX', subtitle: 'Proforma Invoice, Quote Only', companyAddress: 'Accra Business District, Accra, Ghana', companyLat: null, companyLng: null, companyPhone: '', companyEmail: '', website: 'rebmaimpex.com', footerNote: 'This is a proforma invoice. It is a quotation only, not a demand for payment or a tax invoice.' },
 };
 
@@ -52,6 +53,7 @@ const TABS: { key: DocType; label: string; icon: any }[] = [
   { key: 'RECEIPT', label: 'Receipt', icon: Receipt },
   { key: 'TICKET', label: 'Dispatch Ticket', icon: Ticket },
   { key: 'INVOICE', label: 'Proforma Invoice', icon: FileText },
+  { key: 'WAYBILL', label: 'Waybill', icon: Truck },
 ];
 
 function mapRow(row: any, docType: DocType): DocumentTemplate {
@@ -72,6 +74,17 @@ function mapRow(row: any, docType: DocType): DocumentTemplate {
   };
 }
 
+// For printing: always returns a usable template (built-in one if the row
+// or table isn't there yet).
+export async function getDocumentTemplate(docType: DocType): Promise<DocumentTemplate> {
+  try {
+    const { data } = await supabase.from('document_templates').select('*').eq('doc_type', docType).maybeSingle();
+    return mapRow(data, docType);
+  } catch {
+    return FALLBACKS[docType];
+  }
+}
+
 export default function DocumentTemplatesEditor({ updatedBy }: { updatedBy: string }) {
   const t = useTheme();
   const [activeTab, setActiveTab] = useState<DocType>('RECEIPT');
@@ -90,6 +103,7 @@ export default function DocumentTemplatesEditor({ updatedBy }: { updatedBy: stri
         RECEIPT: mapRow(byType.get('RECEIPT'), 'RECEIPT'),
         TICKET: mapRow(byType.get('TICKET'), 'TICKET'),
         INVOICE: mapRow(byType.get('INVOICE'), 'INVOICE'),
+        WAYBILL: mapRow(byType.get('WAYBILL'), 'WAYBILL'),
       };
       setTemplates(all);
       setDrafts(all);
@@ -218,7 +232,7 @@ export default function DocumentTemplatesEditor({ updatedBy }: { updatedBy: stri
           <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted, marginBottom: t.spacing.sm }}>
             The document number, QR code, and who issued it are always added automatically below this note.
           </Text>
-          <Input value={draft.footerNote} onChangeText={(v) => setField('footerNote', v)} placeholder="e.g. This receipt is issued by REBMA IMPEX Ghana Limited Accounts Department..." multiline numberOfLines={4} style={{ minHeight: 88, textAlignVertical: 'top' }} />
+          <Input value={draft.footerNote} onChangeText={(v) => setField('footerNote', v)} placeholder="e.g. This receipt is issued by REBMA IMPEX Ghana Limited Account Department..." multiline numberOfLines={4} style={{ minHeight: 88, textAlignVertical: 'top' }} />
         </View>
 
         <View style={{ marginTop: t.spacing.lg }}>

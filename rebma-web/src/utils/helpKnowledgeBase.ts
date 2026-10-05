@@ -54,7 +54,7 @@ export interface HelpReply {
 // this came from.
 const DEPARTMENTS: { code: string; label: string; defaultSubTab: string; pages: string[] }[] = [
   { code: 'CEO', label: 'CEO Command', defaultSubTab: 'Overview', pages: ['Dashboard', 'Supplier Orders', 'Transactions', 'Invoices', 'Receipts', 'Price Catalog', 'Wallets', 'Accounts', 'Approvals', 'Price Approvals', 'GPS Tracking', 'Messages & Boardroom', 'Live Users', 'Dept Activity', 'Spreadsheets'] },
-  { code: 'FINANCE', label: 'Finance', defaultSubTab: 'Evaluation', pages: ['Dashboard', 'Orders Queue', 'Payments', 'Receipts', 'Invoices', 'Sales History', 'Price Catalog', 'Wallets', 'Transactions', 'Recurring', 'Credit Management', 'Expenses', 'Tax & VAT', 'Cheques', 'Mobile Money', 'Petty Cash', 'Reports', 'Payroll', 'Spreadsheets'] },
+  { code: 'FINANCE', label: 'Account Department', defaultSubTab: 'Evaluation', pages: ['Dashboard', 'Orders Queue', 'Payments', 'Receipts', 'Invoices', 'Sales History', 'Price Catalog', 'Wallets', 'Transactions', 'Recurring', 'Credit Management', 'Expenses', 'Tax & VAT', 'Cheques', 'Mobile Money', 'Petty Cash', 'Reports', 'Payroll', 'Spreadsheets'] },
   { code: 'RISK', label: 'Risk & Compliance', defaultSubTab: 'RiskOverview', pages: ['Dashboard', 'Approvals', 'Customer Credit', 'Recruitment', 'Dispatch Board', 'Deliveries', 'Drivers', 'GPS Tracking', 'Proof of Delivery', 'Scanner', 'Dept Activity', 'Spreadsheets'] },
   { code: 'MANAGEMENT', label: 'Management', defaultSubTab: 'CargoApproval', pages: ['Dashboard', 'Approvals', 'Transactions', 'Price Setting', 'Invoices', 'Receipts', 'Audit Log', 'Payroll Overview', 'Analytics', 'Stock Management', 'Dept Activity', 'Performance Alerts', 'Spreadsheets'] },
   { code: 'HR', label: 'Human Resources', defaultSubTab: 'Employees', pages: ['Dashboard', 'Staff', 'Attendance', 'Registrations', 'Leave Management', 'Payroll', 'Department Manager', 'Performance Alerts', 'Spreadsheets'] },
@@ -103,12 +103,12 @@ const WORKFLOW_ENTRIES: HelpEntry[] = [
     id: 'wf-order-chain',
     title: 'How an order moves through the company',
     answer:
-      'Marketing creates the order (PENDING_RISK) → Risk does the initial review (PENDING_MANAGEMENT) → Management reviews (PENDING_FINANCE) → Finance reviews, checks stock, deducts it (PENDING_RISK_RELEASE) → Risk gives the final release for warehouse → Admin & Warehouse marks it ready for dispatch → Risk assigns a vehicle/driver and dispatches it → Risk reviews the Proof of Delivery, the only step that ever marks an order DELIVERED.',
+      'Marketing creates the order (PENDING_RISK) → Risk does the initial review (PENDING_MANAGEMENT) → Management reviews (PENDING_FINANCE) → Account Department reviews, checks stock, deducts it (PENDING_RISK_RELEASE) → Risk gives the final release for warehouse → Admin & Warehouse marks it ready for dispatch → Risk assigns a vehicle/driver and dispatches it → Risk reviews the Proof of Delivery, the only step that ever marks an order DELIVERED.',
     steps: [
       'Marketing creates the order — status becomes PENDING_RISK.',
       'Risk does the initial review — approving moves it to PENDING_MANAGEMENT.',
       'Management reviews it — approving moves it to PENDING_FINANCE.',
-      'Finance reviews it, checks stock, and deducts it — approving moves it to PENDING_RISK_RELEASE.',
+      'Account Department reviews it, checks stock, and deducts it — approving moves it to PENDING_RISK_RELEASE.',
       'Risk gives the final release for warehouse.',
       'Admin & Warehouse marks it ready for dispatch.',
       'Risk assigns a vehicle and driver, then dispatches it.',

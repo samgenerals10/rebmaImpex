@@ -13,7 +13,9 @@ interface Props { addNotification: (msg: string) => void }
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-const DEPT_LIST = ['Operations','Finance','Marketing','Dispatch','Production','HR','Reception','Logistics'];
+const DEPT_LIST = ['Operations','Account Department','Marketing','Dispatch','Production','HR','Reception','Logistics'];
+// Audit rows store department codes; the Account Department's code is still FINANCE.
+const deptKey = (label: string) => (label === 'Account Department' ? 'FINANCE' : label.toUpperCase());
 
 const heatColor = (v: number) =>
   v >= 90 ? 'bg-emerald-500/80 text-white' :
@@ -133,7 +135,7 @@ export default function MgmtAnalyticsView({ addNotification }: Props) {
       const opsRev       = (purchasesRes.data ?? []).reduce((s: number, r: any) => s + (Number(r.cost) || 0), 0);
       const depts = [
         { dept: 'Marketing',  revenue: marketingRev },
-        { dept: 'Finance',    revenue: financeRev },
+        { dept: 'Account Department',    revenue: financeRev },
         { dept: 'Operations', revenue: opsRev },
       ].filter(d => d.revenue > 0).sort((a, b) => b.revenue - a.revenue);
       setDeptRevenue(depts.length > 0 ? depts : []);
@@ -169,7 +171,7 @@ export default function MgmtAnalyticsView({ addNotification }: Props) {
       const { data: heatData } = await supabase.from('global_audit_history').select('department, timestamp');
       if (heatData && heatData.length > 0) {
         const deptWeek: Record<string, Record<string, number>> = {};
-        DEPT_LIST.forEach(d => { deptWeek[d.toUpperCase()] = { w1: 0, w2: 0, w3: 0, w4: 0 }; });
+        DEPT_LIST.forEach(d => { deptWeek[deptKey(d)] = { w1: 0, w2: 0, w3: 0, w4: 0 }; });
         heatData.forEach((r: any) => {
           if (!r.timestamp || !r.department) return;
           const dept = String(r.department).toUpperCase();
@@ -184,7 +186,7 @@ export default function MgmtAnalyticsView({ addNotification }: Props) {
         const allCounts = Object.values(deptWeek).flatMap(w => Object.values(w));
         const maxCount = Math.max(...allCounts, 1);
         const heatmap = DEPT_LIST.map(dept => {
-          const w = deptWeek[dept.toUpperCase()];
+          const w = deptWeek[deptKey(dept)];
           const norm = (v: number) => Math.min(100, Math.round((v / maxCount) * 100));
           return { dept, w1: norm(w.w1), w2: norm(w.w2), w3: norm(w.w3), w4: norm(w.w4) };
         }).filter(row => row.w1 + row.w2 + row.w3 + row.w4 > 0);

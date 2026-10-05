@@ -100,7 +100,7 @@ export default function FinanceTaxVATView({ addNotification, currentUser }: Prop
   const nhilAmount = current ? current.grossSales * (rates.nhil / 100) : 0;
 
   function saveRates() {
-    supabase.from('finance_settings').upsert([{ key: 'tax_rates', value: JSON.stringify(rates), updated_by: currentUser?.fullName || 'Finance', updated_at: new Date().toISOString() }]).then(() => {}, () => {});
+    supabase.from('finance_settings').upsert([{ key: 'tax_rates', value: JSON.stringify(rates), updated_by: currentUser?.fullName || 'Account Department', updated_at: new Date().toISOString() }]).then(() => {}, () => {});
     addNotification?.('Tax rates saved successfully');
     setShowRates(false);
   }

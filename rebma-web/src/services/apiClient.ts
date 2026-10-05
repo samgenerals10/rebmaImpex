@@ -507,7 +507,9 @@ export const hr = {
    * Approve or deny a user — calls the serverless endpoint which uses
    * the service_role key to update the profile and send the magic link email.
    */
-  approveUser: async (userId: string, approve: boolean, generatedPassword?: string, _token?: string, remark?: string) => {
+  // issueTemporaryPassword: the server makes a secure temporary password
+  // and returns it once as temporaryPassword (older registrations only).
+  approveUser: async (userId: string, approve: boolean, issueTemporaryPassword?: boolean, _token?: string, remark?: string) => {
     const { data: sessionData } = await supabase.auth.getSession();
     const accessToken = sessionData.session?.access_token;
     if (!accessToken) throw new Error('Not authenticated');
@@ -518,7 +520,7 @@ export const hr = {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${accessToken}`,
       },
-      body: JSON.stringify({ userId, approve, generatedPassword, remark }),
+      body: JSON.stringify({ userId, approve, issueTemporaryPassword: !!issueTemporaryPassword, remark }),
     });
 
     const body = await res.json();
@@ -721,13 +723,7 @@ export const operations = {
     // Stock was already removed when the order was finalized (invoiced) — dispatch
     // just hands the already-committed goods to a vehicle, no further stock change.
 
-    // This is the second of two independent delivery_logs-insert paths in
-    // the app (the other is ApprovedGoodsView.tsx's manual dispatch modal) —
-    // a waybill needs creating here too, or auto-assigned deliveries would
-    // silently never get one.
-    if (delivery && delivery[0]) {
-      try { await dispatch.getOrCreateWaybill(orderId, delivery[0].id); } catch (e) { console.error('Waybill creation failed:', e); }
-    }
+    // The waybill is made and printed by Risk (utils/waybillPrint.ts), not here.
 
     return {
       order: mapOrderToFrontend(order),
@@ -2034,7 +2030,7 @@ export const invoices = {
 // transaction-specific content (customer, amounts, issued-by, the QR code)
 // is untouched by this and stays system-generated at print time.
 export interface DocumentTemplate {
-  docType: 'RECEIPT' | 'TICKET' | 'INVOICE';
+  docType: 'RECEIPT' | 'TICKET' | 'INVOICE' | 'WAYBILL';
   logoUrl: string;
   companyName: string;
   subtitle: string;
@@ -2052,8 +2048,9 @@ export interface DocumentTemplate {
 }
 
 const DOC_TEMPLATE_FALLBACKS: Record<DocumentTemplate['docType'], DocumentTemplate> = {
-  RECEIPT: { docType: 'RECEIPT', logoUrl: '/logo.png', companyName: 'REBMA IMPEX', subtitle: 'Official Payment Receipt', companyAddress: 'Accra Business District, Accra, Ghana', companyLat: null, companyLng: null, companyPhone: '', companyEmail: '', website: 'rebmaimpex.com', footerNote: 'This receipt is issued by REBMA IMPEX Ghana Limited Finance. It confirms payment has been received and recorded against the order referenced above.' },
+  RECEIPT: { docType: 'RECEIPT', logoUrl: '/logo.png', companyName: 'REBMA IMPEX', subtitle: 'Official Payment Receipt', companyAddress: 'Accra Business District, Accra, Ghana', companyLat: null, companyLng: null, companyPhone: '', companyEmail: '', website: 'rebmaimpex.com', footerNote: 'This receipt is issued by REBMA IMPEX Ghana Limited Account Department. It confirms payment has been received and recorded against the order referenced above.' },
   TICKET: { docType: 'TICKET', logoUrl: '/logo.png', companyName: 'REBMA IMPEX', subtitle: 'Operations Dispatch Ticket', companyAddress: 'Accra Business District, Accra, Ghana', companyLat: null, companyLng: null, companyPhone: '', companyEmail: '', website: 'rebmaimpex.com', footerNote: 'This ticket is issued by REBMA IMPEX Ghana Limited Operations. It authorises the loading and dispatch of the above goods to the stated destination.' },
+  WAYBILL: { docType: 'WAYBILL', logoUrl: '/logo.png', companyName: 'REBMA IMPEX', subtitle: 'Waybill', companyAddress: 'Accra Business District, Accra, Ghana', companyLat: null, companyLng: null, companyPhone: '', companyEmail: '', website: 'rebmaimpex.com', footerNote: 'This waybill is issued by REBMA IMPEX Ghana Limited Risk. It travels with the goods and must be shown on request.' },
   INVOICE: { docType: 'INVOICE', logoUrl: '/logo.png', companyName: 'REBMA IMPEX', subtitle: 'Proforma Invoice — Quote Only', companyAddress: 'Accra Business District, Accra, Ghana', companyLat: null, companyLng: null, companyPhone: '', companyEmail: '', website: 'rebmaimpex.com', footerNote: 'This is a proforma invoice, a quotation only, not a demand for payment or a tax invoice.' },
 };
 
@@ -2099,6 +2096,7 @@ export const documentTemplates = {
         RECEIPT: mapDocTemplate(byType.get('RECEIPT'), 'RECEIPT'),
         TICKET: mapDocTemplate(byType.get('TICKET'), 'TICKET'),
         INVOICE: mapDocTemplate(byType.get('INVOICE'), 'INVOICE'),
+        WAYBILL: mapDocTemplate(byType.get('WAYBILL'), 'WAYBILL'),
       };
     } catch {
       return { ...DOC_TEMPLATE_FALLBACKS };
@@ -2126,8 +2124,13 @@ export const documentTemplates = {
 };
 
 // ── Messenger (channels, DMs, reactions, reads, ad-hoc calls) ──────────
+// A meeting code works like an invitation (anyone with it can join a
+// meeting), so the random part comes from the browser's secure generator.
 function slugRoom(prefix: string) {
-  return `Rebma-${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  const bytes = new Uint8Array(6);
+  crypto.getRandomValues(bytes);
+  const rand = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+  return `Rebma-${prefix}-${Date.now().toString(36)}-${rand}`;
 }
 
 export const messenger = {
@@ -2587,6 +2590,27 @@ export const meetingsApi = {
 
   updateRsvp: async (meetingId: string, userId: string, status: 'ACCEPTED' | 'DECLINED') => {
     await supabase.from('meeting_attendees').update({ rsvp_status: status }).eq('meeting_id', meetingId).eq('user_id', userId);
+  },
+
+  // Meet Now: starts a meeting straight away, with the organizer in it.
+  startInstantMeeting: async (userId: string) => {
+    const room = slugRoom('Now');
+    const { data: created, error } = await supabase.from('meetings').insert({
+      title: 'Quick Meeting', description: '', scheduled_at: new Date().toISOString(), duration_minutes: 30,
+      organizer_id: userId, jitsi_room: room, status: 'IN_PROGRESS',
+    }).select();
+    if (error || !created || !created[0]) throw new Error(error?.message || 'Could not start the meeting.');
+    await supabase.from('meeting_attendees').insert({ meeting_id: created[0].id, user_id: userId, rsvp_status: 'ACCEPTED', joined_at: new Date().toISOString() });
+    return { id: created[0].id as string, room, title: created[0].title as string };
+  },
+
+  // Join by code: the code works as the invitation (database function
+  // join_meeting_by_code), so people who weren't invited can still join.
+  joinByCode: async (code: string) => {
+    const { data, error } = await supabase.rpc('join_meeting_by_code', { p_code: code.trim() });
+    const row = Array.isArray(data) ? data[0] : data;
+    if (error || !row) throw new Error(error?.message || 'No meeting matches that code.');
+    return { id: row.meeting_id as string, room: row.room as string, title: row.title as string };
   },
 
   markJoined: async (meetingId: string, userId: string) => {

@@ -253,7 +253,7 @@ export default function PayrollView({ currentUser, staffList, addNotification }:
         </div>
       )}
 
-      {/* Finance: dept totals only */}
+      {/* Account Department: dept totals only */}
       {isFinance && (
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4">
           <h3 className="font-bold text-[var(--text-primary)] text-sm mb-3">Department Payroll Totals — June 2026</h3>

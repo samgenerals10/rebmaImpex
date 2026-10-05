@@ -27,7 +27,7 @@ export interface DirectoryRow {
   fullName: string;
   photo?: string;
   employeeNumber?: string;
-  department: string;       // label, e.g. "Accounts Department"
+  department: string;       // label, e.g. "Account Department"
   departmentCode: string;   // as stored, lower case
   role?: string;
   status: string;           // ACTIVE, SUSPENDED, BLOCKED, TERMINATED, PENDING_APPROVAL, INVITED, EXPIRED
@@ -52,7 +52,7 @@ export interface EnrollmentRow {
 
 const ROLE_TO_DEPT: Record<string, string> = {
   admin_warehouse: 'Admin & Warehouse', operations: 'Admin & Warehouse', dispatch: 'Admin & Warehouse', logistics: 'Admin & Warehouse',
-  finance: 'Accounts Department', hr: 'HR', marketing: 'Marketing', receptionist: 'Reception', production: 'Production',
+  finance: 'Account Department', hr: 'HR', marketing: 'Marketing', receptionist: 'Reception', production: 'Production',
   management: 'Management', risk: 'Risk', ceo: 'CEO',
 };
 export const deptLabel = (code?: string | null) => (code ? ROLE_TO_DEPT[String(code).toLowerCase()] || String(code) : '');
@@ -219,7 +219,7 @@ export const departmentChangeApi = {
 
 // Departments someone can ask to move to (code as the server expects it).
 export const MOVABLE_DEPARTMENTS: { code: string; label: string }[] = [
-  { code: 'admin_warehouse', label: 'Admin & Warehouse' }, { code: 'finance', label: 'Accounts Department' },
+  { code: 'admin_warehouse', label: 'Admin & Warehouse' }, { code: 'finance', label: 'Account Department' },
   { code: 'hr', label: 'HR' }, { code: 'marketing', label: 'Marketing' }, { code: 'receptionist', label: 'Reception' },
   { code: 'production', label: 'Production' }, { code: 'management', label: 'Management' }, { code: 'risk', label: 'Risk' },
 ];

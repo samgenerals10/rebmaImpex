@@ -9,6 +9,16 @@ import { sendApproved, deliverySummary } from './_shared/mailer';
 import { getAppOrigin } from './_shared/settings';
 import { verifyPassword } from './_shared/reauth';
 import { continueWork, describeMoved, notify } from './_shared/termination';
+import { randomInt } from 'crypto';
+
+// A temporary password made on the server with secure randomness. It is
+// returned once to the person approving, never stored anywhere.
+function makeTemporaryPassword(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#';
+  let out = '';
+  for (let i = 0; i < 14; i++) out += chars[randomInt(chars.length)];
+  return out;
+}
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -80,7 +90,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
-  const { userId, approve, generatedPassword, remark } = req.body || {};
+  const { userId, approve, remark } = req.body || {};
+  // New apps ask for a temporary password (issueTemporaryPassword) and the
+  // server makes it. Older installed phone apps still send their own
+  // (generatedPassword); that keeps working until they update.
+  const legacyPassword = typeof req.body?.generatedPassword === 'string' && req.body.generatedPassword.length >= 8 ? req.body.generatedPassword : null;
+  const wantsTemporaryPassword = !!req.body?.issueTemporaryPassword || !!legacyPassword;
   if (!userId) {
     return res.status(400).json({ error: 'userId is required.' });
   }
@@ -122,6 +137,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const choseOwnPassword = !!targetProfile.registered_at;
 
   const status = approve ? 'ACTIVE' : 'REJECTED';
+  let temporaryPassword: string | null = null;
   const updateData: any = { status, updated_at: new Date().toISOString() };
 
   if (approve) {
@@ -130,11 +146,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { error: unbanError } = await supabaseAdmin.auth.admin.updateUserById(userId, { ban_duration: 'none' });
     if (unbanError) return res.status(500).json({ error: `Could not unlock the account: ${unbanError.message}` });
     updateData.requires_password_reset = !choseOwnPassword;
-    if (generatedPassword && !choseOwnPassword) {
-      updateData.password_hash = generatedPassword;
+    // Never keep a password in the profile table.
+    updateData.password_hash = null;
+    if (wantsTemporaryPassword && !choseOwnPassword) {
+      temporaryPassword = legacyPassword || makeTemporaryPassword();
       // Update password and confirm email in Supabase Auth using the admin API
       const { error: authUpdateError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
-        password: generatedPassword,
+        password: temporaryPassword,
         email_confirm: true
       });
       if (authUpdateError) {
@@ -236,5 +254,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     status,
     choseOwnPassword,
     emailSent,
+    // Shown once to the approver so they can pass it on.
+    temporaryPassword,
   });
 }

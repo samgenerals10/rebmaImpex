@@ -278,7 +278,7 @@ export const DEPARTMENT_REGISTRY: Record<string, DepartmentEntry> = {
 
   FINANCE: {
     code: 'FINANCE',
-    label: 'Accounts Department',
+    label: 'Account Department',
     icon: DollarSign,
     defaultSubTab: 'Evaluation',
     subTabs: [

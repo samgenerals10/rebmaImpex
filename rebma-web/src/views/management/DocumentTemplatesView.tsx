@@ -7,7 +7,7 @@
 // per-transaction content — customer, amounts, line items, who issued it,
 // the document number, the QR code — is system-generated and untouched here.
 import { useState, useEffect, useRef } from 'react';
-import { Receipt, Ticket, FileText, Save, Image as ImageIcon, Upload, X, Loader2, MapPin } from 'lucide-react';
+import { Receipt, Ticket, FileText, Save, Image as ImageIcon, Upload, X, Loader2, MapPin, Truck } from 'lucide-react';
 import { documentTemplates, type DocumentTemplate } from '../../services/apiClient';
 import { uploadFile } from '../../utils/uploadFile';
 import DestinationLocator from '../../components/dispatch/DestinationLocator';
@@ -25,6 +25,7 @@ const TABS: { key: DocumentTemplate['docType']; label: string; icon: typeof Rece
   { key: 'RECEIPT', label: 'Receipt', icon: Receipt },
   { key: 'TICKET', label: 'Dispatch Ticket', icon: Ticket },
   { key: 'INVOICE', label: 'Proforma Invoice', icon: FileText },
+  { key: 'WAYBILL', label: 'Waybill', icon: Truck },
 ];
 
 const inputCls = 'w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]';
@@ -108,7 +109,7 @@ export default function DocumentTemplatesView({ addNotification, currentUser, hi
           <h2 className="text-lg font-bold text-[var(--text-primary)]">Document Templates</h2>
           <p className="text-xs text-[var(--text-muted)] mt-0.5">
             Control the header and footer printed on every receipt, dispatch ticket, and proforma invoice.
-            Changes apply to every document of that type going forward. Finance, Operations, and Management can view and issue these documents but not edit them.
+            Changes apply to every document of that type going forward. Account Department, Operations, and Management can view and issue these documents but not edit them.
           </p>
         </div>
       )}
@@ -218,7 +219,7 @@ export default function DocumentTemplatesView({ addNotification, currentUser, hi
               The document number, QR code, and who issued it are always added automatically below this note, and aren't part of what you edit here.
             </p>
             <textarea className={inputCls} rows={5} value={draft.footerNote} onChange={e => setField('footerNote', e.target.value)}
-              placeholder="e.g. This receipt is issued by REBMA IMPEX Ghana Limited Finance..." />
+              placeholder="e.g. This receipt is issued by REBMA IMPEX Ghana Limited Account Department..." />
           </div>
 
           <button onClick={handleSave} disabled={!dirty || saving}

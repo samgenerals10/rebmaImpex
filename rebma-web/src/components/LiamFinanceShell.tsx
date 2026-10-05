@@ -280,7 +280,7 @@ export default function LiamFinanceShell({ activeDepartment, currentUser, childr
 
   const deptLabel: Record<string, string> = {
     CEO: 'Portfolio', MANAGEMENT: 'Cargo Accounts', MARKETING: 'Sales Accounts',
-    HR: 'Payroll Accounts', OPERATIONS: 'Stock Accounts', FINANCE: 'Finance Accounts',
+    HR: 'Payroll Accounts', OPERATIONS: 'Stock Accounts', FINANCE: 'Account Department',
     DISPATCH: 'Fleet Accounts', LOGISTICS: 'Logistics Accounts',
     PRODUCTION: 'Production Accounts', RECEPTION: 'Operations Accounts',
   };

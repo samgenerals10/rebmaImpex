@@ -42,11 +42,6 @@ import DeletionRequestsPanel from '../../components/shared/DeletionRequestsPanel
 import DepartmentChangesPanel from '../../components/shared/DepartmentChangesPanel';
 import { useAuthStore } from '../../store/authStore';
 
-function generateTempPassword(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#';
-  return Array.from({ length: 10 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-}
-
 interface Approval {
   id: string;
   fullName: string;
@@ -142,13 +137,13 @@ export default function ApprovalsScreen() {
     if (submitting) return;
     setSubmitting(true);
     try {
-      // Only older registrations (no registered_at) need a temporary password.
-      const pw = item.registeredAt ? undefined : generateTempPassword();
-      const res: any = await callPrivilegedApi('/api/approve-user', { userId: item.id, approve: true, generatedPassword: pw, remark: note, password });
+      // Only older registrations (no registered_at) need a temporary
+      // password; the server makes it and returns it once.
+      const res: any = await callPrivilegedApi('/api/approve-user', { userId: item.id, approve: true, issueTemporaryPassword: !item.registeredAt, remark: note, password });
       setRows((prev) => prev.filter((r) => r.id !== item.id));
       setSelected(null);
-      if (res?.choseOwnPassword || !pw) Alert.alert('Approved', res?.message || `${item.fullName} can now sign in.`);
-      else setCredPopup({ fullName: item.fullName, password: pw });
+      if (res?.temporaryPassword) setCredPopup({ fullName: item.fullName, password: res.temporaryPassword });
+      else Alert.alert('Approved', res?.message || `${item.fullName} can now sign in.`);
     } catch (e: any) {
       if (e instanceof ApiNotConfiguredError) Alert.alert('Not Configured', e.message);
       else Alert.alert('Approval Failed', e.message || 'Could not approve this registration.');
