@@ -215,8 +215,8 @@ export default function TasksPanel({ currentUser, addNotification }: TasksPanelP
                     <div key={t.id} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-3 shadow-[var(--shadow-card)] relative">
                       {/* Priority + escalated badge */}
                       <div className="flex items-center gap-1.5 mb-2 flex-wrap">
-                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border capitalize ${PRIORITY_STYLES[t.priority]}`}>{t.priority}</span>
-                        {t.escalated && <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 border border-orange-200">Escalated</span>}
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border capitalize ${PRIORITY_STYLES[t.priority]}`}>{t.priority}</span>
+                        {t.escalated && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 border border-orange-200">Escalated</span>}
                       </div>
                       <p className="text-xs font-semibold text-[var(--text-primary)] mb-1 pr-6">{t.title}</p>
                       {t.description && <p className="text-[10px] text-[var(--text-muted)] line-clamp-2 mb-2">{t.description}</p>}

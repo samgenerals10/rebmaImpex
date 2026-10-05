@@ -26,7 +26,7 @@ import ExportSheet from '../../components/shared/ExportSheet';
 import type { ExportColumn } from '../../lib/exportEngine';
 
 const CATEGORIES = ['Rent', 'Utilities', 'Transport', 'Maintenance', 'Admin', 'Other'];
-const MONTHLY_BUDGET = 50000; // Matches web's own hardcoded figure — no real budget setting exists anywhere in the app.
+const MONTHLY_BUDGET = 50000; // Matches web's own hardcoded figure, no real budget setting exists anywhere in the app.
 const STATUS_TONE: Record<string, 'success' | 'danger' | 'warning'> = { Approved: 'success', Rejected: 'danger', Pending: 'warning' };
 
 interface ExpenseRow {

@@ -235,7 +235,7 @@ export default function ApprovedGoodsScreen() {
             return (
               <View style={{ flexDirection: 'row', gap: t.spacing.sm, alignItems: 'center' }}>
                 {/* Direct instruction: tracking should be "horizontal on
-                    every list" — a visible icon right on the row. */}
+                    every list", a visible icon right on the row. */}
                 <IconActionButton icon={History} tone="info" accessibilityLabel="View Timeline" onPress={() => setTimelineTarget(o)} />
                 {isDispatchable && <Button label="Dispatch" size="sm" icon={<Truck size={12} color="#fff" />} onPress={() => openDispatch(o)} />}
                 {isDispatched && <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta10.size, color: t.colors.status.info.text }}>Assigned, awaiting pickup</Text>}

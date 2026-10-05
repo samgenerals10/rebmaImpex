@@ -654,7 +654,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
       render: (item: any) => {
         const val = item[col];
         if (col === 'status' && typeof val === 'object') {
-          return <span className="px-2 py-0.5 rounded-full font-bold text-[9px]" style={{ background: val.bg, color: val.color }}>{val.label}</span>;
+          return <span className="px-2 py-0.5 rounded-full font-bold text-[10px]" style={{ background: val.bg, color: val.color }}>{val.label}</span>;
         }
         let displayed = String(val ?? '—');
         if (['unitPrice', 'totalRevenue', 'sellingVal', 'costVal', 'costPrice'].includes(col)) {
@@ -773,7 +773,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${color}15` }}>
                   <Icon size={17} style={{ color }} />
                 </div>
-                <span className={`flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${up ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'}`}>
+                <span className={`flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${up ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'}`}>
                   {up ? <TrendingUp size={9} /> : <AlertTriangle size={9} />} {change}
                 </span>
               </div>
@@ -981,7 +981,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
                     <button onClick={() => setSelectedLedgerProduct(null)} className="flex items-center gap-1 text-[10px] font-bold text-white/80 hover:text-white mb-2 cursor-pointer">
                       <ArrowLeft className="w-3.5 h-3.5" /> Back
                     </button>
-                    <span className="text-[9px] font-extrabold uppercase tracking-widest bg-white/25 px-2 py-0.5 rounded-full">
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest bg-white/25 px-2 py-0.5 rounded-full">
                       Ledger statement & Audit report
                     </span>
                     <h2 className="font-extrabold text-xl mt-1.5">{productName}</h2>
@@ -998,21 +998,21 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
                 <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-3 text-center">
                   <div className="flex items-center justify-center gap-1 text-[var(--accent)] mb-1">
                     <ArrowDownLeft size={13} />
-                    <span className="text-[9px] font-bold uppercase tracking-wider">Total Received (IN)</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider">Total Received (IN)</span>
                   </div>
                   <p className="text-lg font-extrabold text-[var(--text-primary)] font-mono"><CountUp value={totalIn} /></p>
                 </div>
                 <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-3 text-center">
                   <div className="flex items-center justify-center gap-1 text-red-500 mb-1">
                     <ArrowUpRight size={13} />
-                    <span className="text-[9px] font-bold uppercase tracking-wider">Total Released (OUT)</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider">Total Released (OUT)</span>
                   </div>
                   <p className="text-lg font-extrabold text-[var(--text-primary)] font-mono"><CountUp value={totalOut} /></p>
                 </div>
                 <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-3 text-center">
                   <div className="flex items-center justify-center gap-1 text-emerald-500 mb-1">
                     <Layers size={13} />
-                    <span className="text-[9px] font-bold uppercase tracking-wider">Remaining Stock</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider">Remaining Stock</span>
                   </div>
                   <p className="text-lg font-extrabold text-emerald-500 font-mono"><CountUp value={Number(netQty)} /></p>
                 </div>
@@ -1071,7 +1071,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
               <div className="p-6 min-h-[250px]">
                 <ResponsiveDataView
                   columns={[
-                    { key: 'movement_type', label: 'Movement', primary: true, render: e => <span className={`px-2 py-0.5 rounded text-[8px] uppercase tracking-wide font-bold ${e.movement_type === 'ADD' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-red-500/10 text-red-500'}`}>{e.movement_type}</span> },
+                    { key: 'movement_type', label: 'Movement', primary: true, render: e => <span className={`px-2 py-0.5 rounded text-[10px] uppercase tracking-wide font-bold ${e.movement_type === 'ADD' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-red-500/10 text-red-500'}`}>{e.movement_type}</span> },
                     { key: 'created_at', label: 'Date', render: e => <span className="font-mono">{new Date(e.created_at).toLocaleDateString('en-GB')} {new Date(e.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span> },
                     { key: 'quantity', label: 'Quantity', align: 'right', render: e => <span className={`font-bold font-mono ${e.movement_type === 'ADD' ? 'text-blue-500' : 'text-red-500'}`}>{e.movement_type === 'ADD' ? '+' : '-'}{Number(e.quantity).toLocaleString()}</span> },
                     { key: 'reference', label: 'Reference', render: e => e.reference || '—' },
@@ -1099,7 +1099,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
                 {inventoryItems.length} product{inventoryItems.length !== 1 ? 's' : ''} priced by Management
               </p>
             </div>
-            <button onClick={() => setActiveSubTab?.('PriceCatalog')} className="text-xs font-semibold hover:underline" style={{ color: 'var(--accent)' }}>Manage Prices →</button>
+            <button onClick={() => setActiveSubTab?.('PriceCatalog')} className="text-xs font-semibold hover:underline" style={{ color: 'var(--accent)' }}>Manage Prices</button>
           </div>
           <div className="grid grid-cols-[repeat(auto-fill,minmax(100px,1fr))] gap-2.5">
             {inventoryItems.map((item: any) => (
@@ -1129,7 +1129,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
                 { label: 'Gross Margin', value: totalCost > 0 ? ((totalSell - totalCost) / totalCost) * 100 : null, prefix: '', suffix: '%', decimals: 1, color: 'text-violet-600', bg: 'bg-violet-500/10' },
               ].map(({ label, value, prefix, suffix, decimals, color, bg }) => (
                 <div key={label} className={`rounded-xl p-3 ${bg}`}>
-                  <p className="text-[9px] text-[var(--text-secondary)] uppercase font-bold tracking-wide mb-1">{label}</p>
+                  <p className="text-[10px] text-[var(--text-secondary)] uppercase font-bold tracking-wide mb-1">{label}</p>
                   <p className={`text-lg font-extrabold ${color}`}><CountUp value={value} prefix={prefix} suffix={suffix} decimals={decimals} /></p>
                 </div>
               ))}
@@ -1140,7 +1140,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
                 {
                   key: 'margin', label: 'Margin', status: true, render: (item: any) => {
                     const margin = item.costPrice > 0 ? (((item.unitPrice - item.costPrice) / item.costPrice) * 100).toFixed(0) : '—';
-                    return <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${Number(margin) > 0 ? 'bg-emerald-500/10 text-emerald-600' : 'bg-[var(--bg-input)] text-[var(--text-muted)]'}`}>{margin !== '—' ? `${margin}%` : '—'}</span>;
+                    return <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${Number(margin) > 0 ? 'bg-emerald-500/10 text-emerald-600' : 'bg-[var(--bg-input)] text-[var(--text-muted)]'}`}>{margin !== '—' ? `${margin}%` : '—'}</span>;
                   }
                 },
                 { key: 'qty', label: 'Qty', render: (item: any) => item.qty.toLocaleString() },
@@ -1185,7 +1185,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
                         <div className="flex items-center gap-2">
                           <p className="text-xs font-bold text-[var(--text-primary)] truncate">{item.product_name}</p>
                           {isNew && (
-                            <span className="text-[8px] font-extrabold px-1.5 py-0.5 rounded-full bg-[var(--accent)] text-white uppercase tracking-wide shrink-0">New</span>
+                            <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-[var(--accent)] text-white uppercase tracking-wide shrink-0">New</span>
                           )}
                         </div>
                         <p className="text-[10px] text-[var(--text-muted)] mt-0.5">
@@ -1195,7 +1195,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
                       <div className="text-right shrink-0">
                         <p className="text-sm font-extrabold text-[var(--text-primary)]">{item.currency} <CountUp value={item.unit_price} /></p>
                         {margin && (
-                          <span className={`text-[9px] font-bold ${Number(margin) > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                          <span className={`text-[10px] font-bold ${Number(margin) > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                             {Number(margin) > 0 ? '↑' : '↓'} {margin}% margin
                           </span>
                         )}
@@ -1364,7 +1364,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-xs font-bold text-[var(--text-primary)]">GHS <CountUp value={Number(bill.amount)} /></p>
-                  <span className={`text-[9px] font-bold ${bill.status === 'Overdue' ? 'text-red-500' : bill.status === 'Due Soon' ? 'text-yellow-500' : 'text-[var(--text-muted)]'}`}>{bill.status}</span>
+                  <span className={`text-[10px] font-bold ${bill.status === 'Overdue' ? 'text-red-500' : bill.status === 'Due Soon' ? 'text-yellow-500' : 'text-[var(--text-muted)]'}`}>{bill.status}</span>
                 </div>
               </div>
             ))}
@@ -1449,7 +1449,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
                   </ResponsiveContainer>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
                     <p className="text-lg font-extrabold text-[var(--text-primary)]"><CountUp value={invoiceCount} /></p>
-                    <p className="text-[9px] text-[var(--text-muted)]">Total</p>
+                    <p className="text-[10px] text-[var(--text-muted)]">Total</p>
                   </div>
                 </div>
                 <div className="flex-1 space-y-2">

@@ -47,7 +47,7 @@ export default function DriverAssignmentApprovalsPanel({ addNotification }: Prop
         {requests.map(r => (
           <div key={r.id} className="flex items-center justify-between gap-3 p-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] flex-wrap">
             <div className="min-w-0">
-              <p className="text-sm font-medium text-[var(--text-primary)]">{r.driverName}{r.vehicleId ? ` (${r.vehicleId})` : ''} → {r.customerName}</p>
+              <p className="text-sm font-medium text-[var(--text-primary)]">{r.driverName}{r.vehicleId ? ` (${r.vehicleId})` : ''} to {r.customerName}</p>
               {r.deliveryAddress && (
                 <p className="text-xs text-[var(--text-muted)] flex items-center gap-1 mt-0.5"><MapPin size={11} className="shrink-0" /> {r.deliveryAddress}</p>
               )}

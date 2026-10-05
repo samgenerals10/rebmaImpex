@@ -118,7 +118,7 @@ export default function NotificationsScreen() {
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, marginBottom: t.spacing.lg }}>
         {/* Alerts is a bottom-tab root, not a pushed screen, so there's no
-            native back stack to rely on — falls back to Home the same
+            native back stack to rely on, falls back to Home the same
             way AuthBackButton does for the login/register flow. */}
         <Pressable
           onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('HomeTab'))}
@@ -128,7 +128,7 @@ export default function NotificationsScreen() {
           <ChevronLeft size={19} color={t.colors.accent} />
         </Pressable>
         <View style={{ flex: 1 }}>
-          <PageTitle title={unreadCount > 0 ? `Notifications (${unreadCount})` : 'Notifications'} />
+          <PageTitle title="Notifications" />
         </View>
       </View>
       {(unreadCount > 0 || notifs.length > 0) && (

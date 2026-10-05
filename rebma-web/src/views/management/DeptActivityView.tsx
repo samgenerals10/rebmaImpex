@@ -230,10 +230,10 @@ export default function DeptActivityView({ addNotification, currentUser }: Props
               </div>
               <p className="text-[10px] font-bold text-[var(--text-primary)] uppercase tracking-wide">{ds.dept}</p>
               <p className="text-lg font-extrabold text-[var(--text-primary)]"><CountUp value={ds.count} /></p>
-              <p className="text-[9px] text-[var(--text-muted)] mt-0.5">{ds.lastActivity ?? 'No activity yet'}</p>
+              <p className="text-[10px] text-[var(--text-muted)] mt-0.5">{ds.lastActivity ?? 'No activity yet'}</p>
               <div className="mt-2 space-y-0.5">
                 {recentActivities.map(a => (
-                  <p key={a.id} className="text-[8px] text-[var(--text-muted)] truncate">{a.action}</p>
+                  <p key={a.id} className="text-[10px] text-[var(--text-muted)] truncate">{a.action}</p>
                 ))}
               </div>
             </div>
@@ -297,7 +297,7 @@ export default function DeptActivityView({ addNotification, currentUser }: Props
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${color}`}>{item.department}</span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${color}`}>{item.department}</span>
                     <span className="text-xs font-bold text-[var(--text-primary)]">{item.user}</span>
                     <span className="text-xs text-[var(--text-muted)]">·</span>
                     <span className="text-xs font-semibold text-[var(--text-secondary)]">{item.action}</span>

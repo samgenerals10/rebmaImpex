@@ -180,9 +180,9 @@ export default function StockScreen() {
           value={tab}
           onChange={(v) => setTab(v as Tab)}
           options={[
-            { value: 'CARGO', label: `Port (${cargo.length})` },
-            { value: 'PRODUCTS', label: `Products (${products.length})` },
-            { value: 'GP', label: `Buys (${purchases.length})` },
+            { value: 'CARGO', label: 'Port' },
+            { value: 'PRODUCTS', label: 'Products' },
+            { value: 'GP', label: 'Buys' },
           ]}
         />
       </View>

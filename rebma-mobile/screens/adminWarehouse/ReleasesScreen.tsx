@@ -171,7 +171,7 @@ export default function ReleasesScreen() {
             <View style={{ gap: t.spacing.sm }}>
               {rawMaterialTickets.map((tk) => {
                 const items = Array.isArray(tk.details?.items) ? tk.details.items : [];
-                const summary = items.map((i: any) => `${i.materialName} — ${i.quantity} ${i.unit || 'units'}`).join(', ') || 'Materials';
+                const summary = items.map((i: any) => `${i.materialName}, ${i.quantity} ${i.unit || 'units'}`).join(', ') || 'Materials';
                 return (
                   <View key={tk.id} style={rowStyle(t)}>
                     <View style={{ flex: 1, marginRight: t.spacing.sm }}>

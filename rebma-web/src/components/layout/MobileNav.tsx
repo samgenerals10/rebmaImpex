@@ -66,7 +66,7 @@ export function MobileNav({
         style={{ color: isHome ? iconActive : iconInactive }}
       >
         <Home className="w-5 h-5" />
-        <span className={`text-[9px] mt-1 ${isHome ? 'font-bold' : ''}`}>Home</span>
+        <span className={`text-[10px] mt-1 ${isHome ? 'font-bold' : ''}`}>Home</span>
       </button>
 
       {/* Quick Action (Center) */}
@@ -94,7 +94,7 @@ export function MobileNav({
         style={{ color: isAlerts ? iconActive : iconInactive }}
       >
         <Bell className="w-5 h-5" />
-        <span className={`text-[9px] mt-1 ${isAlerts ? 'font-bold' : ''}`}>Alerts</span>
+        <span className={`text-[10px] mt-1 ${isAlerts ? 'font-bold' : ''}`}>Alerts</span>
       </button>
 
       {/* Profile */}
@@ -109,7 +109,7 @@ export function MobileNav({
         style={{ color: isProfile ? iconActive : iconInactive }}
       >
         <User className="w-5 h-5" />
-        <span className={`text-[9px] mt-1 ${isProfile ? 'font-bold' : ''}`}>Profile</span>
+        <span className={`text-[10px] mt-1 ${isProfile ? 'font-bold' : ''}`}>Profile</span>
       </button>
     </div>
   );

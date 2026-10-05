@@ -54,7 +54,7 @@ export default function HelpAssistantScreen() {
     {
       id: 'welcome',
       from: 'bot',
-      text: 'Ask me anything about the app — a Control Center setting, a department’s pages, or why something got blocked (e.g. "why can’t someone log into mobile").',
+      text: 'Ask me anything about the app, a Control Center setting, a department’s pages, or why something got blocked (e.g. "why can’t someone log into mobile").',
     },
   ]);
 

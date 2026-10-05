@@ -328,7 +328,7 @@ export default function FinanceChequesView({ addNotification, currentUser }: Pro
           ].map(({ label, key, type }) => (
             <div key={key} className="erp-form-group">
               <label className="erp-label">{label}</label>
-              <input type={type || 'text'} value={(form as Record<string, string>)[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} className="erp-input" />
+              <input placeholder={`Enter ${String(label).replace(/\s*\*\s*$/, "").toLowerCase()}`} type={type || 'text'} value={(form as Record<string, string>)[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} className="erp-input" />
             </div>
           ))}
         </div>
@@ -385,7 +385,7 @@ export default function FinanceChequesView({ addNotification, currentUser }: Pro
           ].map(({ label, key, type }) => (
             <div key={key} className="erp-form-group">
               <label className="erp-label">{label}</label>
-              <input type={type || 'text'} value={(editForm as Record<string, string>)[key]} onChange={e => setEditForm(f => ({ ...f, [key]: e.target.value }))} className="erp-input" />
+              <input placeholder={`Enter ${String(label).replace(/\s*\*\s*$/, "").toLowerCase()}`} type={type || 'text'} value={(editForm as Record<string, string>)[key]} onChange={e => setEditForm(f => ({ ...f, [key]: e.target.value }))} className="erp-input" />
             </div>
           ))}
         </div>

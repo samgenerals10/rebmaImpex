@@ -147,7 +147,7 @@ export default function HrQueriesPanel({ currentUser, addNotification }: Props) 
                       </p>
                     </div>
                   </div>
-                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${item.status === 'RESOLVED' ? 'text-emerald-600 bg-emerald-100 border border-emerald-200' : 'text-amber-600 bg-amber-100 border border-amber-200'}`}>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${item.status === 'RESOLVED' ? 'text-emerald-600 bg-emerald-100 border border-emerald-200' : 'text-amber-600 bg-amber-100 border border-amber-200'}`}>
                     {item.status === 'RESOLVED' ? 'Resolved' : 'Open'}
                   </span>
                 </div>

@@ -108,7 +108,7 @@ export default function FinanceTaxVATView({ addNotification, currentUser }: Prop
   function generateReport() {
     if (!getSetting('report_generation_enabled', true)) { addNotification?.('Report generation is currently disabled by the CEO.'); return; }
     exportToPDF(
-      `Tax Report — ${selectedPeriod}`,
+      `Tax Report, ${selectedPeriod}`,
       vatData.filter(v => v.period === selectedPeriod).map(v => ({
         Period: v.period, Invoices: v.invoiceCount, 'Gross Sales': `GHS ${v.grossSales.toLocaleString()}`,
         'VAT Amount': `GHS ${v.vatAmount.toLocaleString()}`, 'Net Sales': `GHS ${v.netSales.toLocaleString()}`, Status: v.status,
@@ -163,7 +163,7 @@ export default function FinanceTaxVATView({ addNotification, currentUser }: Prop
             ].map(({ label, key }) => (
               <div key={key}>
                 <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">{label}</label>
-                <input type="number" step="0.5" value={(rates as Record<string, number | boolean>)[key] as number} onChange={e => setRates(r => ({ ...r, [key]: parseFloat(e.target.value) }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
+                <input placeholder={`Enter ${String(label).replace(/\s*\*\s*$/, "").toLowerCase()}`} type="number" step="0.5" value={(rates as Record<string, number | boolean>)[key] as number} onChange={e => setRates(r => ({ ...r, [key]: parseFloat(e.target.value) }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
               </div>
             ))}
           </div>

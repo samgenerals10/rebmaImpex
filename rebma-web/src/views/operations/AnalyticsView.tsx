@@ -35,7 +35,7 @@ function KpiDetailModal({ title, rows, onClose }: { title: string; rows: CargoRo
                 { key: 'date', label: 'Date' },
                 { key: 'quantity', label: 'Quantity', render: r => <span className="font-mono text-[var(--accent)]">{r.quantity.toLocaleString()}</span> },
                 { key: 'supplier', label: 'Supplier' },
-                { key: 'status', label: 'Status', status: true, render: r => <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${r.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{r.status}</span> },
+                { key: 'status', label: 'Status', status: true, render: r => <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${r.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{r.status}</span> },
               ]}
               data={filtered}
               rowKey={(r) => String(filtered.indexOf(r))}
@@ -397,7 +397,7 @@ export default function AnalyticsView({ addNotification }: AddNotificationProps)
               { key: 'releasedQty', label: 'Total Released', render: row => <span className="font-mono font-bold text-emerald-500">{row.releasedQty.toLocaleString()} <span className="font-normal text-[var(--text-muted)] text-[10px]">(x{row.releasedCount})</span></span> },
               {
                 key: 'status', label: 'Status', status: true, render: row => (
-                  <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                     row.status === 'Healthy' ? 'bg-emerald-500/10 text-emerald-600' :
                     row.status === 'Low Stock' ? 'bg-amber-500/10 text-amber-600' :
                     'bg-rose-500/10 text-rose-600'

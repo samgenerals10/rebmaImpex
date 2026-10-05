@@ -188,16 +188,16 @@ export default function NotesPanel({ currentUser, addNotification }: NotesPanelP
                 <h3 className="text-sm font-bold mt-1 pr-16 leading-snug" style={{ color: c.text }}>{n.title}</h3>
                 <p className="text-[11px] leading-relaxed line-clamp-2" style={{ color: c.text, opacity: 0.85 }}>{n.content || 'No content'}</p>
                 <div className="mt-auto flex items-center justify-between pt-1">
-                  <span className="text-[9px] font-medium opacity-60" style={{ color: c.text }}>
+                  <span className="text-[10px] font-medium opacity-60" style={{ color: c.text }}>
                     {new Date(n.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
                   </span>
                   {n.shared_with_department && (
-                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full opacity-70" style={{ background: c.border, color: c.text }}>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full opacity-70" style={{ background: c.border, color: c.text }}>
                       Shared · {n.department}
                     </span>
                   )}
                   {!isOwn && (
-                    <span className="text-[9px] font-semibold opacity-60" style={{ color: c.text }}>Read only</span>
+                    <span className="text-[10px] font-semibold opacity-60" style={{ color: c.text }}>Read only</span>
                   )}
                 </div>
               </div>

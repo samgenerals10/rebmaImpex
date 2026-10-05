@@ -205,7 +205,7 @@ export default function WipStockScreen() {
               return (
                 <Button
                   key={stage}
-                  label={`${stage} (${count})`}
+                  label={count > 0 ? `${stage}: ${count}` : stage}
                   size="sm"
                   variant={active ? 'primary' : 'ghost'}
                   onPress={() => setStageFilter(active ? 'All' : stage)}

@@ -322,7 +322,7 @@ export default function FinanceExpensesView({ addNotification, currentUser }: Pr
           <div className="grid grid-cols-2 gap-3">
             <div className="erp-form-group">
               <label className="erp-label">Amount (GHS)</label>
-              <input type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} className="erp-input" />
+              <input placeholder="Enter amount" type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} className="erp-input" />
             </div>
             <div className="erp-form-group">
               <label className="erp-label">Date</label>
@@ -338,7 +338,7 @@ export default function FinanceExpensesView({ addNotification, currentUser }: Pr
           </div>
           <div className="erp-form-group">
             <label className="erp-label">Notes</label>
-            <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} className="erp-input resize-none" />
+            <textarea placeholder="Write notes" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} className="erp-input resize-none" />
           </div>
         </div>
       </SidePanel>
@@ -363,12 +363,12 @@ export default function FinanceExpensesView({ addNotification, currentUser }: Pr
           </div>
           <div className="erp-form-group">
             <label className="erp-label">Description</label>
-            <input value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} className="erp-input" />
+            <input placeholder="Enter description" value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} className="erp-input" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="erp-form-group">
               <label className="erp-label">Amount (GHS)</label>
-              <input type="number" value={editForm.amount} onChange={e => setEditForm(f => ({ ...f, amount: e.target.value }))} className="erp-input" />
+              <input placeholder="Enter amount" type="number" value={editForm.amount} onChange={e => setEditForm(f => ({ ...f, amount: e.target.value }))} className="erp-input" />
             </div>
             <div className="erp-form-group">
               <label className="erp-label">Date</label>
@@ -377,7 +377,7 @@ export default function FinanceExpensesView({ addNotification, currentUser }: Pr
           </div>
           <div className="erp-form-group">
             <label className="erp-label">Notes (optional)</label>
-            <textarea value={editForm.notes} onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))} rows={2} className="erp-input resize-none" />
+            <textarea placeholder="Write notes" value={editForm.notes} onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))} rows={2} className="erp-input resize-none" />
           </div>
         </div>
       </SidePanel>

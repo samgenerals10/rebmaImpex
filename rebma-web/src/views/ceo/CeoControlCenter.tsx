@@ -222,7 +222,7 @@ function SettingNumber({ label, description, settingKey, min = 0, max = 999999, 
       </div>
       <div className="flex items-center gap-1 shrink-0">
         {unit && <span className="text-xs text-[var(--text-muted)] font-mono">{unit}</span>}
-        <input
+        <input placeholder="0"
           type="number"
           value={local}
           min={min} max={max}
@@ -1231,7 +1231,7 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
 
       {/* Pending price change approvals live on the CEO's Approvals page
           (ApprovalsView.tsx, "price" tab) alongside every other approval
-          type, not here — Control Center is settings/configuration, not an
+          type, not here, Control Center is settings/configuration, not an
           approvals inbox. */}
 
       {/* Recent Setting Changes — this is exactly what it shows: the last 10
@@ -1266,7 +1266,7 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
 
       {/* ── DOCUMENT TEMPLATES ──────────────────────────────────────────── */}
       {/* Company-wide branding on every receipt, dispatch ticket, and
-          proforma invoice — a CEO-level setting, so it lives here rather
+          proforma invoice, a CEO-level setting, so it lives here rather
           than as its own top-level nav item. Collapsed by default since
           it's a full editor (form + live preview + map picker), not a
           quick toggle like the sections below. */}
@@ -1423,7 +1423,7 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
       </SidePanel>
 
 
-      <Section title="Section 1 — Access Control" icon={Shield}>
+      <Section title="Section 1, Access Control" icon={Shield}>
         {getSchemaSection('access')!.fields.slice(0, 5).map(f => <SettingField key={f.key} field={f} />)}
 
         {/* Invite Staff (visible when invitation_only = true) */}
@@ -1524,7 +1524,7 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
                   { key: 'expires_at', label: 'Expiry', render: inv => <span className="font-mono">{new Date(inv.expires_at).toLocaleDateString()}</span> },
                   {
                     key: 'status', label: 'Status', status: true, render: inv => (
-                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${inv.status === 'pending' ? 'bg-amber-500/10 text-amber-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${inv.status === 'pending' ? 'bg-amber-500/10 text-amber-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
                         {inv.status.toUpperCase()}
                       </span>
                     )
@@ -1621,34 +1621,34 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
       </Section>
 
       {/* ── SECTION 2: FINANCIAL CONTROLS ─────────────────────────────── */}
-      <Section title="Section 2 — Financial Controls" icon={DollarSign}>
+      <Section title="Section 2, Financial Controls" icon={DollarSign}>
         {getSchemaSection('financial')!.fields.map(f => <SettingField key={f.key} field={f} />)}
       </Section>
 
       {/* ── SECTION 3: OPERATIONS CONTROLS ───────────────────────────── */}
-      <Section title="Section 3 — Operations Controls" icon={Package}>
+      <Section title="Section 3, Operations Controls" icon={Package}>
         {getSchemaSection('operations')!.fields.map(f => <SettingField key={f.key} field={f} />)}
       </Section>
 
       {/* ── SECTION 4: DISPATCH CONTROLS ──────────────────────────────── */}
-      <Section title="Section 4 — Dispatch Controls" icon={Truck}>
+      <Section title="Section 4, Dispatch Controls" icon={Truck}>
         {getSchemaSection('dispatch')!.fields.map(f => <SettingField key={f.key} field={f} />)}
       </Section>
 
       {/* ── SECTION 5: DATA CONTROLS ──────────────────────────────────── */}
-      <Section title="Section 5 — Data Controls" icon={Database}>
+      <Section title="Section 5, Data Controls" icon={Database}>
         {getSchemaSection('data')!.fields.map(f => <SettingField key={f.key} field={f} />)}
       </Section>
 
       {/* ── SECTION 6: COMMUNICATION CONTROLS ────────────────────────── */}
-      <Section title="Section 6 — Communication Controls" icon={MessageCircle}>
+      <Section title="Section 6, Communication Controls" icon={MessageCircle}>
         {getSchemaSection('communication')!.fields.slice(0, 7).map(f => <SettingField key={f.key} field={f} />)}
         <MessageExportSection currentUser={currentUser} addNotification={addNotification} />
         {getSchemaSection('communication')!.fields.slice(7).map(f => <SettingField key={f.key} field={f} />)}
       </Section>
 
       {/* ── SECTION 7: SYSTEM CONTROLS ───────────────────────────────── */}
-      <Section title="Section 7 — System Controls" icon={Settings}>
+      <Section title="Section 7, System Controls" icon={Settings}>
         {getSchemaSection('system')!.fields.map(f => <SettingField key={f.key} field={f} />)}
 
         {/* Pending department approvals */}
@@ -1690,7 +1690,7 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
               <div key={dept.id} className="flex items-center justify-between p-3 rounded-xl border border-[var(--border)] bg-[var(--bg)]">
                 {editingDeptId === dept.id ? (
                   <div className="flex items-center gap-2 w-full" onClick={e => e.stopPropagation()}>
-                    <input
+                    <input placeholder="Department name"
                       type="text"
                       value={editingDeptName}
                       onChange={e => setEditingDeptName(e.target.value)}
@@ -1728,31 +1728,31 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
       </Section>
 
       {/* ── SECTION 8: APPROVAL CONTROLS ─────────────────────────────── */}
-      <Section title="Section 8 — Approval Controls" icon={CheckSquare}>
+      <Section title="Section 8, Approval Controls" icon={CheckSquare}>
         {getSchemaSection('approval')!.fields.map(f => <SettingField key={f.key} field={f} />)}
       </Section>
 
       {/* ── SECTION 9: SPREADSHEETS CONTROL ──────────────────────────── */}
-      <Section title="Section 9 — Spreadsheets Control" icon={FileSpreadsheet}>
+      <Section title="Section 9, Spreadsheets Control" icon={FileSpreadsheet}>
         {getSchemaSection('spreadsheets')!.fields.map(f => <SettingField key={f.key} field={f} />)}
       </Section>
 
       {/* ── SECTION 10: RISK CONTROLS ────────────────────────────────────
-          Risk had no toggles of its own at all before this — every other
+          Risk had no toggles of its own at all before this, every other
           department does. What's genuinely safe to offer here, and what
           isn't: Risk's core approval gates (Cargo Intake, Sales Order,
           Proof of Delivery review) are enforced by a database trigger,
-          not the UI — a toggle claiming to turn those off would either do
+          not the UI, a toggle claiming to turn those off would either do
           nothing or need the trigger itself rewritten, so they are
           deliberately NOT here. ceo_cosign_credit_threshold,
           ceo_cosign_order_threshold (Section 8), and
           discrepancy_auto_alert_ceo (Section 3) already give CEO control
           over Risk-adjacent behavior and are not duplicated here. */}
-      <Section title="Section 10 — Risk Controls" icon={AlertTriangle}>
+      <Section title="Section 10, Risk Controls" icon={AlertTriangle}>
         {getSchemaSection('risk')!.fields.map(f => <SettingField key={f.key} field={f} />)}
       </Section>
 
-      <Section title="Section 11 — Birthday Wishes" icon={Cake} defaultOpen={false}>
+      <Section title="Section 11, Birthday Wishes" icon={Cake} defaultOpen={false}>
         {getSchemaSection('birthdays')!.fields.map(f => <SettingField key={f.key} field={f} />)}
       </Section>
 
@@ -1761,7 +1761,7 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
       </Section>
 
       {/* ── SECTION 11: DATA RESET CENTER ────────────────────────────── */}
-      <Section title="Section 10 — Data Reset Center" icon={Trash2} defaultOpen={false}>
+      <Section title="Section 10, Data Reset Center" icon={Trash2} defaultOpen={false}>
         <DataResetSection addNotification={addNotification} />
       </Section>
 
@@ -1791,7 +1791,7 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
                   { key: 'role', label: 'Role', render: s => s.role || '—' },
                   {
                     key: 'status', label: 'Status', status: true, render: s => (
-                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                         s.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-500' :
                         s.status === 'SUSPENDED' ? 'bg-amber-500/10 text-amber-500' :
                         'bg-rose-500/10 text-rose-500'

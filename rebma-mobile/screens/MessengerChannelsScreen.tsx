@@ -498,7 +498,7 @@ export default function MessengerChannelsScreen({ navigation, onOpenBoardroom }:
             </View>
             <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body14.size, color: t.colors.textSecondary, textAlign: 'center' }}>
               {inviteGateFor.status === 'pending'
-                ? 'You already sent an invite — waiting for them to accept.'
+                ? 'You already sent an invite, waiting for them to accept.'
                 : inviteGateFor.status === 'denied'
                 ? 'Your last invite was declined. You can send another one.'
                 : "This person is in a different department. You'll need to send a chat invite, and they'll need to accept it before you can message them."}

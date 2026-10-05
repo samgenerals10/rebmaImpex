@@ -386,7 +386,7 @@ export default function FinReportsScreen() {
       <ExportSheet
         open={exportOpen}
         onClose={() => setExportOpen(false)}
-        title={resultReport ? `${resultReport} — ${periodLabel}` : 'Report'}
+        title={resultReport ? `${resultReport}, ${periodLabel}` : 'Report'}
         data={resultRows}
         columns={exportColumns}
         formats={['csv', 'pdf']}

@@ -301,7 +301,7 @@ export default function InvoicesView({ addNotification, currentUser }: Props) {
               { key: 'proforma_no', label: 'Proforma#', render: row => <span className="font-mono font-semibold text-[var(--accent)]">{row.proforma_no}</span> },
               { key: 'grand_total', label: 'Grand Total', render: row => <span className="font-bold">{row.currency} {Number(row.grand_total).toLocaleString()}</span> },
               { key: 'created_at', label: 'Date', render: row => new Date(row.created_at).toISOString().split('T')[0] },
-              { key: 'status', label: 'Status', status: true, render: row => <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${STATUS_STYLES[row.status]}`}>{row.status}</span> },
+              { key: 'status', label: 'Status', status: true, render: row => <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${STATUS_STYLES[row.status]}`}>{row.status}</span> },
             ]}
             data={filtered}
             rowKey={row => row.id}
@@ -421,7 +421,7 @@ export default function InvoicesView({ addNotification, currentUser }: Props) {
 
         <div className="erp-form-group">
           <label className="erp-label">Notes (optional)</label>
-          <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className="erp-input resize-none" />
+          <textarea placeholder="Write notes" value={notes} onChange={e => setNotes(e.target.value)} rows={2} className="erp-input resize-none" />
         </div>
       </div>
     </SidePanel>

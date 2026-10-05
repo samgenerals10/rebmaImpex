@@ -266,11 +266,11 @@ export default function ProofOfDeliveryView({ addNotification }: Props) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-sm font-bold text-[var(--text-primary)]">{row.customer}</p>
-                    <span className="text-[9px] font-bold text-[var(--text-muted)]">{row.id} ({row.order_id})</span>
-                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${STATUS_STYLES[row.status]}`}>{row.status.replace(/_/g,' ')}</span>
+                    <span className="text-[10px] font-bold text-[var(--text-muted)]">{row.id} ({row.order_id})</span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_STYLES[row.status]}`}>{row.status.replace(/_/g,' ')}</span>
                   </div>
                   <p className="text-[10px] text-[var(--text-muted)] truncate">{row.address} · Driver: {row.driver}</p>
-                  {row.delivered_at && <p className="text-[9px] text-emerald-600 font-semibold">{new Date(row.delivered_at).toLocaleString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}</p>}
+                  {row.delivered_at && <p className="text-[10px] text-emerald-600 font-semibold">{new Date(row.delivered_at).toLocaleString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}</p>}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   {row.proof_url && (

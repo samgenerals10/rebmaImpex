@@ -108,8 +108,8 @@ export default function RecurringView({ currentUser, addNotification }: Props) {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-bold text-[var(--text-primary)]">{row.name}</p>
-                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${row.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{row.status}</span>
-                  <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-[var(--bg-input)] text-[var(--text-muted)]">{FREQ_LABELS[row.frequency]}</span>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${row.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{row.status}</span>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[var(--bg-input)] text-[var(--text-muted)]">{FREQ_LABELS[row.frequency]}</span>
                 </div>
                 <p className="text-[10px] text-[var(--text-muted)]">{row.account} · Next: {row.next_date} · {row.category}</p>
               </div>
@@ -146,7 +146,7 @@ export default function RecurringView({ currentUser, addNotification }: Props) {
           <div className="grid grid-cols-2 gap-3">
             <div className="erp-form-group">
               <label className="erp-label">Amount (GHS)</label>
-              <input type="number" value={modal.amount} onChange={e => setModal(m => ({ ...m, amount: e.target.value }))} className="erp-input" />
+              <input placeholder="Enter amount" type="number" value={modal.amount} onChange={e => setModal(m => ({ ...m, amount: e.target.value }))} className="erp-input" />
             </div>
             <div className="erp-form-group">
               <label className="erp-label">Frequency</label>

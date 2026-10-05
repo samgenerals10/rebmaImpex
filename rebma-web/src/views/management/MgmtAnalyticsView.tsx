@@ -426,10 +426,10 @@ export default function MgmtAnalyticsView({ addNotification }: Props) {
             columns={[
               { key: 'description', label: 'Description', primary: true },
               { key: 'date', label: 'Date' },
-              { key: 'type', label: 'Type', render: row => <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-blue-500/10 text-blue-600">{row.type}</span> },
+              { key: 'type', label: 'Type', render: row => <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-600">{row.type}</span> },
               {
                 key: 'decision', label: 'Decision', status: true, render: row => (
-                  <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${row.decision === 'Approved' || row.decision === 'Actioned' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-rose-500/10 text-rose-600'}`}>{row.decision}</span>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${row.decision === 'Approved' || row.decision === 'Actioned' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-rose-500/10 text-rose-600'}`}>{row.decision}</span>
                 )
               },
               { key: 'outcome', label: 'Outcome' },

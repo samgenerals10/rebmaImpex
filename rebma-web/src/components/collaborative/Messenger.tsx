@@ -1023,7 +1023,7 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
                   <button onClick={() => setShowInvites(true)} className="relative p-1.5 rounded-lg hover:bg-[var(--accent-light)] text-[var(--accent)] cursor-pointer" title="Chat invites">
                     <UserPlus size={16} />
                     {pendingInvites.length > 0 && (
-                      <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] px-0.5 rounded-full bg-rose-500 text-white text-[8px] font-bold flex items-center justify-center">{pendingInvites.length}</span>
+                      <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] px-0.5 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center">{pendingInvites.length}</span>
                     )}
                   </button>
                   <button onClick={() => setShowNewChannel(true)} className="p-1.5 rounded-lg hover:bg-[var(--accent-light)] text-[var(--accent)] cursor-pointer" title="New group channel">
@@ -1074,7 +1074,7 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
                   />
                 )}
                 {departmentChatEnabled && groupChannels.some(ch => channelVisible(ch.id)) && (
-                  <p className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-muted)] px-2.5 pt-3 pb-1">Groups</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] px-2.5 pt-3 pb-1">Groups</p>
                 )}
                 {departmentChatEnabled && [...groupChannels].filter(ch => channelVisible(ch.id)).sort((a, b) => Number(pinnedChannelIds.has(b.id)) - Number(pinnedChannelIds.has(a.id))).map(ch => (
                   <SidebarRow
@@ -1102,7 +1102,7 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
                     onClearHistory={() => clearChannelHistory(ch.id)}
                   />
                 ))}
-                {directMessagesEnabled && <p className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-muted)] px-2.5 pt-3 pb-1">People</p>}
+                {directMessagesEnabled && <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] px-2.5 pt-3 pb-1">People</p>}
                 {directMessagesEnabled && [...filteredContacts].sort((a, b) => {
                   const da = dmChannelByUser[a.id], db = dmChannelByUser[b.id];
                   return Number(db && pinnedChannelIds.has(db.id)) - Number(da && pinnedChannelIds.has(da.id));
@@ -1161,7 +1161,7 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
                       {pinnedMessages.length > 0 && (
                         <button onClick={() => setShowPinnedList(true)} className="p-2 rounded-lg hover:bg-[var(--accent-light)] text-[var(--accent)] cursor-pointer relative" title="Pinned messages">
                           <Pin size={16} />
-                          <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] px-0.5 rounded-full bg-[var(--accent)] text-white text-[8px] font-bold flex items-center justify-center">{pinnedMessages.length}</span>
+                          <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] px-0.5 rounded-full bg-[var(--accent)] text-white text-[10px] font-bold flex items-center justify-center">{pinnedMessages.length}</span>
                         </button>
                       )}
                       <button onClick={() => setStarredOnly(v => !v)} className={`p-2 rounded-lg hover:bg-[var(--accent-light)] cursor-pointer ${starredOnly ? 'text-amber-500' : 'text-[var(--text-muted)]'}`} title="Starred only">
@@ -1234,9 +1234,9 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
                   return (
                     <div key={msg.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
                       <div className="max-w-[70%]">
-                        {!mine && activeChannel?.type !== 'dm' && <p className="text-[9px] font-bold text-[var(--text-muted)] mb-0.5 ml-1">{msg.sender}</p>}
+                        {!mine && activeChannel?.type !== 'dm' && <p className="text-[10px] font-bold text-[var(--text-muted)] mb-0.5 ml-1">{msg.sender}</p>}
                         {msg.forwarded_from_id && (
-                          <p className={`text-[9px] italic mb-0.5 flex items-center gap-1 ${mine ? 'justify-end' : ''} text-[var(--text-muted)]`}><Forward size={9} /> Forwarded</p>
+                          <p className={`text-[10px] italic mb-0.5 flex items-center gap-1 ${mine ? 'justify-end' : ''} text-[var(--text-muted)]`}><Forward size={9} /> Forwarded</p>
                         )}
                         {quoted && !isDeleted && (
                           <div className="mb-1 px-2.5 py-1.5 rounded-lg bg-[var(--bg-input)] border-l-2 border-[var(--accent)] text-[10px] text-[var(--text-muted)] truncate">
@@ -1283,8 +1283,8 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
                           <div className="flex items-center gap-1 justify-end mt-0.5">
                             {isPinned && <Pin size={9} className={mine ? 'text-white/70' : 'text-[var(--text-muted)]'} />}
                             {isStarred && <Star size={9} fill="currentColor" className="text-amber-400" />}
-                            {msg.edited_at && !isDeleted && <span className={`text-[9px] ${mine ? 'text-white/70' : 'text-[var(--text-muted)]'}`}>(edited)</span>}
-                            <span className={`text-[9px] ${mine ? 'text-white/70' : 'text-[var(--text-muted)]'}`}>{msg.time}</span>
+                            {msg.edited_at && !isDeleted && <span className={`text-[10px] ${mine ? 'text-white/70' : 'text-[var(--text-muted)]'}`}>(edited)</span>}
+                            <span className={`text-[10px] ${mine ? 'text-white/70' : 'text-[var(--text-muted)]'}`}>{msg.time}</span>
                             {mine && (
                               <button onClick={() => setReadListFor(readListFor === msg.id ? null : msg.id)} className="cursor-pointer" title="Who's read this">
                                 {readByOthers ? <CheckCheck size={11} className="text-white/90" /> : <Check size={11} className="text-white/70" />}
@@ -1293,7 +1293,7 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
                           </div>
                           {readListFor === msg.id && (
                             <div className={`absolute top-full mt-1 ${mine ? 'right-0' : 'left-0'} bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-card z-10 min-w-[160px] p-2`}>
-                              <p className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-1">Read by</p>
+                              <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-1">Read by</p>
                               {(reads[msg.id] || []).filter(uid => uid !== myId).length === 0 ? (
                                 <p className="text-[10px] text-[var(--text-muted)]">No one yet</p>
                               ) : (reads[msg.id] || []).filter(uid => uid !== myId).map(uid => (
@@ -1380,7 +1380,7 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
                 <div className="flex items-center gap-2 p-3 border-t border-[var(--border)] shrink-0">
                   {editingMessage ? (
                     <>
-                      <input
+                      <input placeholder="Edit your message"
                         type="text" value={editText} autoFocus
                         onChange={e => setEditText(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && saveEdit()}
@@ -1584,10 +1584,10 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
                 ) : (
                   <div className="w-16 h-16 rounded-full bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center text-lg font-bold">{initials(activeChannel.name || 'GC')}</div>
                 )}
-                <span className="absolute bottom-0 right-0 w-5 h-5 rounded-full bg-[var(--accent)] text-white flex items-center justify-center text-[9px]">✎</span>
+                <span className="absolute bottom-0 right-0 w-5 h-5 rounded-full bg-[var(--accent)] text-white flex items-center justify-center text-[10px]">✎</span>
               </button>
               <div className="flex items-center gap-2 w-full">
-                <input value={groupNameEdit} onChange={e => setGroupNameEdit(e.target.value)} className="flex-1 px-3 py-1.5 text-sm text-center bg-[var(--bg-input)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]" />
+                <input placeholder="Group name" value={groupNameEdit} onChange={e => setGroupNameEdit(e.target.value)} className="flex-1 px-3 py-1.5 text-sm text-center bg-[var(--bg-input)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]" />
                 {groupNameEdit.trim() !== activeChannel.name && (
                   <button onClick={saveGroupName} disabled={savingGroupInfo} className="px-3 py-1.5 text-xs font-bold text-white rounded-xl cursor-pointer" style={{ background: 'var(--accent)' }}>Save</button>
                 )}
@@ -1595,7 +1595,7 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
             </div>
 
             <div className="flex items-center justify-between">
-              <p className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-muted)]">{groupMembers.length} Members</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">{groupMembers.length} Members</p>
               <button onClick={() => setAddingGroupMembers(true)} className="text-xs font-semibold text-[var(--accent)] cursor-pointer flex items-center gap-1"><Plus size={12} /> Add</button>
             </div>
             <div className="space-y-1">
@@ -1672,7 +1672,7 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
                 <button key={m.id} onClick={() => { if (ch) setActiveChannel(ch); setShowGlobalSearch(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-[var(--accent-light)] cursor-pointer">
                   <div className="flex items-center justify-between">
                     <p className="text-[10px] font-bold text-[var(--accent)]">{chLabel}</p>
-                    <p className="text-[9px] text-[var(--text-muted)]">{new Date(m.created_at).toLocaleDateString()}</p>
+                    <p className="text-[10px] text-[var(--text-muted)]">{new Date(m.created_at).toLocaleDateString()}</p>
                   </div>
                   <p className="text-xs text-[var(--text-primary)] truncate"><span className="font-semibold">{m.sender}:</span> {m.content}</p>
                 </button>

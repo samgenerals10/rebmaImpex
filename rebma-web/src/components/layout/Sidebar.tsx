@@ -319,7 +319,7 @@ export default function Sidebar({
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             <Icon style={{ width: 18, height: 18, color: isActive ? '#fff' : 'var(--text-secondary)' }} />
-            {badge > 0 && tab.id !== 'SetPrices' && <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white text-[8px] font-bold flex items-center justify-center animate-[badge-pulse_1.4s_ease-in-out_infinite]">{badge > 9 ? '9+' : badge}</span>}
+            {badge > 0 && tab.id !== 'SetPrices' && <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center animate-[badge-pulse_1.4s_ease-in-out_infinite]">{badge > 9 ? '9+' : badge}</span>}
           </span>
           {!lfCollapsed && (
             <span className="nav-label truncate text-xs font-semibold" style={{ color: isActive ? 'var(--accent)' : 'var(--text-secondary)' }}>
@@ -340,18 +340,18 @@ export default function Sidebar({
       >
         <span className={`nav-icon flex-shrink-0 relative ${tab.id === 'SetPrices' && badge > 0 ? 'red-pilot' : ''}`}>
           <Icon className="w-4 h-4" style={{ color: isActive ? '#ffffff' : undefined }} />
-          {badge > 0 && tab.id !== 'SetPrices' && <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full bg-rose-500 text-white text-[8px] font-bold flex items-center justify-center animate-[badge-pulse_1.4s_ease-in-out_infinite]">{badge > 9 ? '9+' : badge}</span>}
+          {badge > 0 && tab.id !== 'SetPrices' && <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center animate-[badge-pulse_1.4s_ease-in-out_infinite]">{badge > 9 ? '9+' : badge}</span>}
         </span>
         <span className={`nav-label truncate transition-all duration-300 ${isActualCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>{tab.label}</span>
         {badge > 0 && !isActualCollapsed && !isActive && (
-          <span className="ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-rose-500 text-white animate-[badge-pulse_1.4s_ease-in-out_infinite]">{badge > 9 ? '9+' : badge}</span>
+          <span className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-rose-500 text-white animate-[badge-pulse_1.4s_ease-in-out_infinite]">{badge > 9 ? '9+' : badge}</span>
         )}
       </button>
     );
   };
 
   const sectionLabel = (label: string) => (
-    <div className={`text-[9px] uppercase text-[var(--text-muted)] tracking-widest font-bold px-4 mb-1.5 mt-3 transition-all duration-300 ${isActualCollapsed ? 'opacity-0 h-0 overflow-hidden' : ''}`}>
+    <div className={`text-[10px] uppercase text-[var(--text-muted)] tracking-widest font-bold px-4 mb-1.5 mt-3 transition-all duration-300 ${isActualCollapsed ? 'opacity-0 h-0 overflow-hidden' : ''}`}>
       {label}
     </div>
   );
@@ -378,7 +378,7 @@ export default function Sidebar({
               <img src="/logo.png" className="w-8 h-8 object-contain rounded bg-bg-card/20 p-0.5" alt="REBMA IMPEX Logo" />
               <div>
                 <h2 className="font-extrabold text-xs tracking-wider leading-tight text-[var(--text-primary)]">REBMA IMPEX</h2>
-                <span className="text-[9px] uppercase text-[var(--accent,#068d5c)] font-mono tracking-widest leading-none">GHANA</span>
+                <span className="text-[10px] uppercase text-[var(--accent,#068d5c)] font-mono tracking-widest leading-none">GHANA</span>
               </div>
             </div>
             {onClose && (
@@ -405,7 +405,7 @@ export default function Sidebar({
           {/* Channels */}
           <div className="flex-1 overflow-y-auto pt-4 space-y-4">
             <div>
-              <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest px-2 mb-1.5">Channels</p>
+              <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest px-2 mb-1.5">Channels</p>
               <div className="space-y-1">
                 {availableDepts.map(dept => {
                   const isSelected = dept.value === activeDepartment;
@@ -458,7 +458,7 @@ export default function Sidebar({
 
           {/* Department Switcher */}
           <div className="mb-3 px-1 relative shrink-0">
-            <label className={`block text-[9px] font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-1 transition-all duration-300 ${isActualCollapsed ? 'opacity-0 h-0 overflow-hidden' : ''}`}>Switch Department</label>
+            <label className={`block text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-1 transition-all duration-300 ${isActualCollapsed ? 'opacity-0 h-0 overflow-hidden' : ''}`}>Switch Department</label>
             <button type="button" onClick={() => setIsSwitcherOpen(prev => !prev)}
               className={`w-full flex items-center ${isActualCollapsed ? 'justify-center py-2 px-0' : 'justify-between py-2 px-3'} bg-[var(--bg)] hover:bg-[var(--accent-light)] border border-[var(--border)] text-[var(--text-primary)] rounded-xl text-xs focus:outline-none transition-all cursor-pointer font-semibold`}
               title="Switch Department">
@@ -468,7 +468,7 @@ export default function Sidebar({
                   {allDepts.find(d => d.value === activeDepartment)?.label || activeDepartment}
                 </span>
               </div>
-              <span className={`text-[9px] text-[var(--text-secondary)] opacity-75 transition-all duration-300 ${isActualCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>▼</span>
+              <span className={`text-[10px] text-[var(--text-secondary)] opacity-75 transition-all duration-300 ${isActualCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>▼</span>
             </button>
             {isSwitcherOpen && (
               <>
@@ -489,7 +489,7 @@ export default function Sidebar({
                           <span>{dept.label}</span>
                           {hasAlert && !isSelected && <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0" />}
                           {pendingCount > 0 && (
-                            <span className={`min-w-[16px] h-4 px-1 rounded-full text-[9px] font-bold flex items-center justify-center animate-[badge-pulse_1.4s_ease-in-out_infinite] ${isSelected ? 'bg-white text-[var(--accent)]' : 'bg-rose-500 text-white'}`}>
+                            <span className={`min-w-[16px] h-4 px-1 rounded-full text-[10px] font-bold flex items-center justify-center animate-[badge-pulse_1.4s_ease-in-out_infinite] ${isSelected ? 'bg-white text-[var(--accent)]' : 'bg-rose-500 text-white'}`}>
                               {pendingCount > 9 ? '9+' : pendingCount}
                             </span>
                           )}
@@ -509,7 +509,7 @@ export default function Sidebar({
               </>
             )}
             {!isSuperAdmin && (isAdmin || isManagement) && activeDepartment !== userDept && activeDepartment !== 'SETTINGS' && (
-              <div className={`mt-1 px-2 py-0.5 bg-amber-500/15 border border-amber-500/35 rounded-lg text-[9px] text-amber-700 font-semibold text-center transition-all duration-300 ${isActualCollapsed ? 'opacity-0 h-0 py-0 border-none overflow-hidden' : ''}`}>
+              <div className={`mt-1 px-2 py-0.5 bg-amber-500/15 border border-amber-500/35 rounded-lg text-[10px] text-amber-700 font-semibold text-center transition-all duration-300 ${isActualCollapsed ? 'opacity-0 h-0 py-0 border-none overflow-hidden' : ''}`}>
                 👁 VIEW ONLY — {isAdmin ? 'CEO' : 'MANAGEMENT'} ACCESS
               </div>
             )}

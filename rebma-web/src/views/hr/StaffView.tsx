@@ -1355,7 +1355,7 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
             ] as const).map(([field, label]) => (
               <div key={field}>
                 <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>{label}</label>
-                <input
+                <input placeholder="0 to 100"
                   type="number" min={0} max={100}
                   value={perfDraft[field]}
                   onChange={e => setPerfDraft(p => ({ ...p, [field]: e.target.value }))}
@@ -1365,7 +1365,7 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
             ))}
             <div>
               <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Review Notes</label>
-              <textarea
+              <textarea placeholder="Write review notes"
                 value={perfDraft.notes}
                 onChange={e => setPerfDraft(p => ({ ...p, notes: e.target.value }))}
                 rows={4}

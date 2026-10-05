@@ -592,7 +592,7 @@ export default function OperationsDashboard({
             })));
           }
         }
-      } catch { /* table may not exist yet — silently ignore */ }
+      } catch { /* table may not exist yet, silently ignore */ }
     };
     loadIncoming();
   }, []);
@@ -798,7 +798,7 @@ export default function OperationsDashboard({
             onClick={() => setActiveMobileDetail(null)}
             className="px-3 py-1.5 bg-bg-card dark:bg-slate-850 border border-[var(--border)] dark:border-slate-800 rounded-full text-xs font-bold text-text-secondary dark:text-slate-350 cursor-pointer shadow-card"
           >
-            ← Back
+            Back
           </button>
           <h2 className="text-sm font-bold">Record Details</h2>
         </div>
@@ -815,7 +815,7 @@ export default function OperationsDashboard({
                 <div>
                   <h3 className="text-base font-bold text-text-primary dark:text-slate-200">{order.clientName}</h3>
                   <p className="text-xs text-text-muted font-mono mt-0.5">{order.id}</p>
-                  <span className="inline-block mt-2 px-2.5 py-0.5 bg-blue-500/10 text-blue-500 rounded-full text-[9px] font-bold uppercase tracking-wider">{order.productName || 'Unnamed Product'}</span>
+                  <span className="inline-block mt-2 px-2.5 py-0.5 bg-blue-500/10 text-blue-500 rounded-full text-[10px] font-bold uppercase tracking-wider">{order.productName || 'Unnamed Product'}</span>
                 </div>
               </div>
 
@@ -835,7 +835,7 @@ export default function OperationsDashboard({
                 </div>
                 <div className="py-3 flex justify-between items-center text-xs">
                   <span className="text-text-muted font-medium">Status</span>
-                  <span className={`px-2.5 py-0.5 rounded text-[9px] font-bold ${statusBadge(order.status)}`}>{order.status.replace(/_/g, ' ')}</span>
+                  <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold ${statusBadge(order.status)}`}>{order.status.replace(/_/g, ' ')}</span>
                 </div>
               </div>
 
@@ -909,7 +909,7 @@ export default function OperationsDashboard({
                 </div>
                 <div className="py-3 flex justify-between items-center text-xs">
                   <span className="text-text-muted font-medium">Status</span>
-                  <span className={`px-2.5 py-0.5 rounded text-[9px] font-bold ${statusBadge(cargo.status)}`}>{cargo.status.replace(/_/g, ' ')}</span>
+                  <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold ${statusBadge(cargo.status)}`}>{cargo.status.replace(/_/g, ' ')}</span>
                 </div>
               </div>
 
@@ -1050,7 +1050,7 @@ export default function OperationsDashboard({
                           </div>
                         </div>
                         <p className="text-lg sm:text-xl font-bold text-[var(--text-primary)] font-mono"><CountUp value={stat.value} decimals={stat.decimals} suffix={stat.suffix} /></p>
-                        <p className="text-[9px] text-[var(--text-muted)] mt-1">{stat.sub}</p>
+                        <p className="text-[10px] text-[var(--text-muted)] mt-1">{stat.sub}</p>
                       </div>
                     );
                   })}
@@ -1068,8 +1068,8 @@ export default function OperationsDashboard({
                     <p className="text-lg sm:text-xl font-bold text-[var(--text-primary)] font-mono">
                       <CountUp value={totalStockQty} /> <span className="text-xs font-normal text-[var(--text-muted)]">units</span>
                     </p>
-                    <p className="text-[9px] text-[var(--text-muted)] mt-1">Port + Products + Purchases</p>
-                    <span className="absolute bottom-3 right-3 text-[9px] font-bold text-[var(--accent)] opacity-0 group-hover:opacity-100 transition-opacity">View Stock →</span>
+                    <p className="text-[10px] text-[var(--text-muted)] mt-1">Port + Products + Purchases</p>
+                    <span className="absolute bottom-3 right-3 text-[10px] font-bold text-[var(--accent)] opacity-0 group-hover:opacity-100 transition-opacity">View Stock</span>
                   </div>
                 </div>
 
@@ -1122,7 +1122,7 @@ export default function OperationsDashboard({
                           </div>
                           <div className="text-right flex-shrink-0 ml-2">
                             <p className="font-bold font-mono text-[var(--text-primary)]">{item.weight}T</p>
-                            <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold ${statusBadge(item.status)}`}>
+                            <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${statusBadge(item.status)}`}>
                               {item.status.replace(/_/g, ' ')}
                             </span>
                           </div>
@@ -1158,7 +1158,7 @@ export default function OperationsDashboard({
                             <button
                               type="button"
                               onClick={() => onReleaseToDispatch(order.id)}
-                              className="mt-1 px-2 py-0.5 bg-[var(--accent)] text-white font-bold rounded text-[9px] hover:opacity-90 transition-opacity cursor-pointer border-none"
+                              className="mt-1 px-2 py-0.5 bg-[var(--accent)] text-white font-bold rounded text-[10px] hover:opacity-90 transition-opacity cursor-pointer border-none"
                             >
                               Release
                             </button>
@@ -1309,7 +1309,7 @@ export default function OperationsDashboard({
                     <div className="flex gap-4 flex-wrap mt-2">
                       {imagePreview && (
                         <div className="relative">
-                          <p className="text-[9px] text-[var(--text-muted)] mb-1">Uploaded Image</p>
+                          <p className="text-[10px] text-[var(--text-muted)] mb-1">Uploaded Image</p>
                           <img src={imagePreview} alt="Preview" className="w-16 h-16 object-cover rounded-lg border border-[var(--border)]" />
                           <button type="button" onClick={() => setImagePreview('')} className="absolute top-4 right-0.5 w-5 h-5 bg-rose-500 text-white rounded-full text-[10px] flex items-center justify-center cursor-pointer">✕</button>
                         </div>
@@ -1317,7 +1317,7 @@ export default function OperationsDashboard({
 
                       {cameraPreview && (
                         <div className="relative">
-                          <p className="text-[9px] text-[var(--text-muted)] mb-1">Camera Photo</p>
+                          <p className="text-[10px] text-[var(--text-muted)] mb-1">Camera Photo</p>
                           <img src={cameraPreview} alt="Camera Preview" className="w-16 h-16 object-cover rounded-lg border border-[var(--border)]" />
                           <button type="button" onClick={() => setCameraPreview('')} className="absolute top-4 right-0.5 w-5 h-5 bg-rose-500 text-white rounded-full text-[10px] flex items-center justify-center cursor-pointer">✕</button>
                         </div>
@@ -1430,7 +1430,7 @@ export default function OperationsDashboard({
                         <div className="flex items-center gap-2">
                           <p className="text-xs font-bold text-[var(--text-primary)]">Order: {order.id}</p>
                           {order.ticketNumber && (
-                            <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 rounded text-[9px] font-bold">🎫 {order.ticketNumber}</span>
+                            <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 rounded text-[10px] font-bold">🎫 {order.ticketNumber}</span>
                           )}
                         </div>
                         <p className="text-[10px] text-[var(--text-muted)] mt-0.5">Client: <strong>{order.clientName}</strong> | Products: <strong className="text-[var(--text-primary)]">{getOrderProductsDisplay(order)}</strong></p>
@@ -1478,7 +1478,7 @@ export default function OperationsDashboard({
                 <div className="divide-y divide-[var(--border)]">
                   {rawMaterialTickets.map(ticket => {
                     const items = Array.isArray(ticket.details?.items) ? ticket.details.items : [];
-                    const summary = items.map((i: any) => `${i.materialName} — ${i.quantity} ${i.unit || 'units'}`).join(', ') || 'Materials';
+                    const summary = items.map((i: any) => `${i.materialName}, ${i.quantity} ${i.unit || 'units'}`).join(', ') || 'Materials';
                     return (
                       <div key={ticket.id} className="py-4 flex items-center justify-between">
                         <div className="text-[var(--text-primary)]">
@@ -1575,7 +1575,7 @@ export default function OperationsDashboard({
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${statusBadge(item.status)}`}>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${statusBadge(item.status)}`}>
                             {item.status.replace(/_/g, ' ')}
                           </span>
                           <ChevronRight className="w-4 h-4 text-[var(--text-muted)]" />
@@ -1604,61 +1604,61 @@ export default function OperationsDashboard({
                           <th onClick={() => handleSort('id', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
                             <div className="flex items-center gap-1">
                               <span>Cargo ID</span>
-                              <span className="text-[9px] opacity-70">{cargoSortField === 'id' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                              <span className="text-[10px] opacity-70">{cargoSortField === 'id' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                             </div>
                           </th>
                           <th onClick={() => handleSort('productName', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
                             <div className="flex items-center gap-1">
                               <span>Product</span>
-                              <span className="text-[9px] opacity-70">{cargoSortField === 'productName' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                              <span className="text-[10px] opacity-70">{cargoSortField === 'productName' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                             </div>
                           </th>
                           <th onClick={() => handleSort('createdAt', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden lg:table-cell text-[var(--text-primary)]">
                             <div className="flex items-center gap-1">
                               <span>Timestamp</span>
-                              <span className="text-[9px] opacity-70">{cargoSortField === 'createdAt' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                              <span className="text-[10px] opacity-70">{cargoSortField === 'createdAt' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                             </div>
                           </th>
                           <th onClick={() => handleSort('country', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden md:table-cell text-[var(--text-primary)]">
                             <div className="flex items-center gap-1">
                               <span>Origin</span>
-                              <span className="text-[9px] opacity-70">{cargoSortField === 'country' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                              <span className="text-[10px] opacity-70">{cargoSortField === 'country' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                             </div>
                           </th>
                           <th onClick={() => handleSort('company', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden md:table-cell text-[var(--text-primary)]">
                             <div className="flex items-center gap-1">
                               <span>Carrier</span>
-                              <span className="text-[9px] opacity-70">{cargoSortField === 'company' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                              <span className="text-[10px] opacity-70">{cargoSortField === 'company' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                             </div>
                           </th>
                           <th onClick={() => handleSort('destination', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden lg:table-cell text-[var(--text-primary)]">
                             <div className="flex items-center gap-1">
                               <span>Destination</span>
-                              <span className="text-[9px] opacity-70">{cargoSortField === 'destination' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                              <span className="text-[10px] opacity-70">{cargoSortField === 'destination' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                             </div>
                           </th>
                           <th onClick={() => handleSort('quantity', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 text-right whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
                             <div className="flex items-center justify-end gap-1">
                               <span>Qty</span>
-                              <span className="text-[9px] opacity-70">{cargoSortField === 'quantity' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                              <span className="text-[10px] opacity-70">{cargoSortField === 'quantity' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                             </div>
                           </th>
                           <th onClick={() => handleSort('weight', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 text-right whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
                             <div className="flex items-center justify-end gap-1">
                               <span>Weight</span>
-                              <span className="text-[9px] opacity-70">{cargoSortField === 'weight' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                              <span className="text-[10px] opacity-70">{cargoSortField === 'weight' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                             </div>
                           </th>
                           <th onClick={() => handleSort('discrepancies', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden sm:table-cell text-[var(--text-primary)]">
                             <div className="flex items-center gap-1">
                               <span>Discrepancies</span>
-                              <span className="text-[9px] opacity-70">{cargoSortField === 'discrepancies' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                              <span className="text-[10px] opacity-70">{cargoSortField === 'discrepancies' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                             </div>
                           </th>
                           <th onClick={() => handleSort('status', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 text-center whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
                             <div className="flex items-center justify-center gap-1">
                               <span>Status</span>
-                              <span className="text-[9px] opacity-70">{cargoSortField === 'status' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                              <span className="text-[10px] opacity-70">{cargoSortField === 'status' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                             </div>
                           </th>
                           <th className="py-3 px-5 text-center whitespace-nowrap text-[var(--text-primary)]">Actions</th>
@@ -1686,7 +1686,7 @@ export default function OperationsDashboard({
                             </td>
                             <td className="py-3 px-2">
                               <p className="font-mono font-bold text-[var(--text-primary)]">CARGO-{item.id}</p>
-                              {item.goodsCode && <p className="text-[9px] text-[var(--text-muted)]">{item.goodsCode}</p>}
+                              {item.goodsCode && <p className="text-[10px] text-[var(--text-muted)]">{item.goodsCode}</p>}
                             </td>
                             <td className="py-3 px-2 font-medium text-[13px]">{item.productName || '—'}</td>
                             <td className="py-3 px-2 text-[var(--text-muted)] font-mono text-[10px] whitespace-nowrap hidden lg:table-cell">{item.createdAt || 'N/A'}</td>
@@ -1697,7 +1697,7 @@ export default function OperationsDashboard({
                             <td className="py-3 px-2 text-right font-mono font-bold text-[13px]">{item.weight}T</td>
                             <td className="py-3 px-2 text-rose-500 font-semibold hidden sm:table-cell">{item.discrepancies}</td>
                             <td className="py-3 px-2 text-center">
-                              <span className={`px-2.5 py-0.5 rounded font-bold text-[9px] ${statusBadge(item.status)}`}>
+                              <span className={`px-2.5 py-0.5 rounded font-bold text-[10px] ${statusBadge(item.status)}`}>
                                 {item.status.replace(/_/g, ' ')}
                               </span>
                             </td>
@@ -1796,7 +1796,7 @@ export default function OperationsDashboard({
                       { key: 'country', label: 'Origin', render: item => `${item.country} / ${item.company}` },
                       { key: 'destination', label: 'Destination', render: item => item.destination || '—' },
                       { key: 'createdAt', label: 'Logged At', render: item => <span className="font-mono text-[10px]">{item.createdAt || 'N/A'}</span> },
-                      { key: 'status', label: 'Status', status: true, render: item => <span className={`px-2 py-0.5 rounded font-bold text-[9px] ${statusBadge(item.status)}`}>{item.status.replace(/_/g, ' ')}</span> },
+                      { key: 'status', label: 'Status', status: true, render: item => <span className={`px-2 py-0.5 rounded font-bold text-[10px] ${statusBadge(item.status)}`}>{item.status.replace(/_/g, ' ')}</span> },
                       {
                         key: 'rejectionReason', label: 'Reason', render: item => (
                           (item.status === 'REJECTED' || item.status === 'RETURNED_FOR_CORRECTION') && item.rejectionReason
@@ -1902,7 +1902,7 @@ export default function OperationsDashboard({
               </div>
               <button onClick={() => setActiveSubTab?.('ApprovedGoods')}
                 className="flex items-center gap-1.5 px-4 py-2 bg-[var(--accent)] text-white text-xs font-bold rounded-xl hover:opacity-90 cursor-pointer whitespace-nowrap">
-                View All →
+                View All
               </button>
             </div>
           )}
@@ -1948,7 +1948,7 @@ export default function OperationsDashboard({
                 <AlertTriangle className="w-4 h-4 text-amber-500" />
                 <h3 className="text-sm font-bold text-[var(--text-primary)]">Low Stock Alerts</h3>
               </div>
-              <button onClick={() => setActiveSubTab?.('Stock')} className="text-xs text-[var(--accent)] hover:underline font-semibold cursor-pointer bg-transparent border-none">View All →</button>
+              <button onClick={() => setActiveSubTab?.('Stock')} className="text-xs text-[var(--accent)] hover:underline font-semibold cursor-pointer bg-transparent border-none">View All</button>
             </div>
             <div className="space-y-3 max-h-[290px] overflow-y-auto pr-1">
               {lowStockItems.length > 0 ? (
@@ -2083,12 +2083,12 @@ export default function OperationsDashboard({
             </div>
             <div>
               <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Client Name</label>
-              <input value={editForm.clientName} onChange={e => setEditForm(f => ({ ...f, clientName: e.target.value }))}
+              <input placeholder="Enter client name" value={editForm.clientName} onChange={e => setEditForm(f => ({ ...f, clientName: e.target.value }))}
                 className="w-full px-3 py-2 bg-[var(--bg)] text-[var(--text-primary)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl text-xs focus:outline-none" />
             </div>
             <div>
               <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Destination</label>
-              <input value={editForm.destination} onChange={e => setEditForm(f => ({ ...f, destination: e.target.value }))}
+              <input placeholder="Enter destination" value={editForm.destination} onChange={e => setEditForm(f => ({ ...f, destination: e.target.value }))}
                 className="w-full px-3 py-2 bg-[var(--bg)] text-[var(--text-primary)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl text-xs focus:outline-none" />
             </div>
           </div>

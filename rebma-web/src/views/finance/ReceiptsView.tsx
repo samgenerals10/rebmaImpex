@@ -96,7 +96,7 @@ export async function printReceipt(r: ReceiptRow, lineItems: OrderLineItem[] | n
         `Receipt: ${r.receiptNumber}`,
         `Client: ${r.clientName}`,
         `Amount: GHS ${r.amount.toLocaleString()}`,
-        `Payment: ${r.paymentMode} — ${r.paymentType}`,
+        `Payment: ${r.paymentMode}, ${r.paymentType}`,
         `Recorded by: ${recordedByForQr}`,
         `Status: ${r.status}`,
       ].join('\n'),
@@ -225,7 +225,7 @@ export async function printReceipt(r: ReceiptRow, lineItems: OrderLineItem[] | n
           </div>
         </div>
 
-        <div class="verified">✓ Payment Verified — ${r.status}</div>
+        <div class="verified">✓ Payment Verified, ${r.status}</div>
 
         <div class="perf">
           <div class="perf-circle"></div>
@@ -383,7 +383,7 @@ export default function FinanceReceiptsView({ addNotification }: Props) {
         <ResponsiveDataView
           columns={[
             { key: 'receiptNumber', label: 'Receipt #', primary: true, render: r => <span className="font-mono">{r.receiptNumber}</span> },
-            { key: 'status', label: 'Status', status: true, render: r => <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-700">{r.status}</span> },
+            { key: 'status', label: 'Status', status: true, render: r => <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">{r.status}</span> },
             { key: 'ticketNumber', label: 'Order Ticket', render: r => <span className="font-mono">{r.ticketNumber || '—'}</span> },
             { key: 'clientName', label: 'Client' },
             { key: 'amount', label: 'Amount', render: r => <span className="font-semibold">GHS {r.amount.toLocaleString()}</span> },

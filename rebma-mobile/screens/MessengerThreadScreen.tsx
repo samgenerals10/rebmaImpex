@@ -944,6 +944,8 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
               <TextInput
                 autoFocus
                 value={editText}
+                placeholder="Edit your message"
+                placeholderTextColor={t.colors.textMuted}
                 onChangeText={setEditText}
                 style={{ flex: 1, backgroundColor: t.colors.bgInput, borderWidth: 1, borderColor: '#f59e0b', borderRadius: t.radius.pill, paddingHorizontal: t.spacing.lg, paddingVertical: t.spacing.smd, fontFamily: t.font.regular, fontSize: t.type.body14.size, color: t.colors.textPrimary }}
                 onSubmitEditing={saveEdit}
@@ -1044,7 +1046,7 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
           history) moved in here. */}
       <Sheet open={threadMenuOpen} onClose={() => setThreadMenuOpen(false)} title="Conversation" side="bottom">
         <View style={{ paddingBottom: t.spacing.sm }}>
-          <ActionRow icon={<Pin size={16} color={t.colors.textPrimary} />} label={pinnedMessages.length > 0 ? `Pinned Messages (${pinnedMessages.length})` : 'Pinned Messages'} onPress={() => { setThreadMenuOpen(false); setShowPinned(true); }} />
+          <ActionRow icon={<Pin size={16} color={t.colors.textPrimary} />} label="Pinned Messages" onPress={() => { setThreadMenuOpen(false); setShowPinned(true); }} />
           <ActionRow icon={<Star size={16} color={starredOnly ? '#f59e0b' : t.colors.textPrimary} />} label={starredOnly ? 'Showing Starred Only' : 'Show Starred Only'} onPress={() => { setThreadMenuOpen(false); setStarredOnly((v) => !v); }} />
           {muted ? (
             <ActionRow icon={<Bell size={16} color={t.colors.textPrimary} />} label="Unmute" onPress={() => { setThreadMenuOpen(false); toggleMute(); }} />
@@ -1188,6 +1190,8 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
             <TextInput
               value={groupNameEdit}
               onChangeText={setGroupNameEdit}
+              placeholder="Group name"
+              placeholderTextColor={t.colors.textMuted}
               style={{ flex: 1, textAlign: 'center', backgroundColor: t.colors.bgInput, borderWidth: 1, borderColor: t.colors.border, borderRadius: t.radius.pill, paddingHorizontal: t.spacing.lg, paddingVertical: t.spacing.smd, fontFamily: t.font.regular, fontSize: t.type.body14.size, color: t.colors.textPrimary }}
             />
             {groupNameEdit.trim() !== groupName && (

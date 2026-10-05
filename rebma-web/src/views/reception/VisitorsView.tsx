@@ -42,7 +42,7 @@ const VISITOR_PASS_HTML = (v: VisitorRecord) => `
     @media print { body { padding: 0; } }
   </style></head>
   <body><div class="badge">
-    <div class="label">REBMA IMPEX — VISITOR PASS</div>
+    <div class="label">REBMA IMPEX, VISITOR PASS</div>
     <div class="badge-num">${v.badgeNumber}</div>
     <hr/>
     <div class="label">Name</div>
@@ -178,7 +178,7 @@ export default function VisitorsView({ addNotification }: Props) {
           read: false,
           created_at: new Date().toISOString(),
         }]);
-        addNotification(`Visitor ${form.fullName} checked in — Badge: ${newVisitor.badgeNumber}`);
+        addNotification(`Visitor ${form.fullName} checked in, Badge: ${newVisitor.badgeNumber}`);
         setShowAdd(false);
         setForm({ fullName: '', company: '', purpose: 'Business Meeting', hostName: '', expectedTime: '', idType: 'Ghana Card', idNumber: '', notes: '' });
       } else {
@@ -434,7 +434,7 @@ export default function VisitorsView({ addNotification }: Props) {
               </div>
               <div>
                 <label className="block text-[10px] text-[var(--text-secondary)] font-semibold uppercase mb-1">Notes</label>
-                <textarea value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} rows={2}
+                <textarea placeholder="Write notes" value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} rows={2}
                   className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-xs outline-none resize-none" />
               </div>
         </div>
@@ -525,12 +525,12 @@ export default function VisitorsView({ addNotification }: Props) {
             <div className="space-y-3">
               <div>
                 <label className="block text-xs text-[var(--text-secondary)] mb-1 font-semibold">Full Name</label>
-                <input value={editForm.fullName} onChange={e => setEditForm({ ...editForm!, fullName: e.target.value })}
+                <input placeholder="Enter full name" value={editForm.fullName} onChange={e => setEditForm({ ...editForm!, fullName: e.target.value })}
                   className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-sm outline-none" />
               </div>
               <div>
                 <label className="block text-xs text-[var(--text-secondary)] mb-1 font-semibold">Company</label>
-                <input value={editForm.company || ''} onChange={e => setEditForm({ ...editForm!, company: e.target.value })}
+                <input placeholder="Enter company" value={editForm.company || ''} onChange={e => setEditForm({ ...editForm!, company: e.target.value })}
                   className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-sm outline-none" />
               </div>
               <div>
@@ -539,7 +539,7 @@ export default function VisitorsView({ addNotification }: Props) {
               </div>
               <div>
                 <label className="block text-xs text-[var(--text-secondary)] mb-1 font-semibold">Host Name</label>
-                <input value={editForm.hostName} onChange={e => setEditForm({ ...editForm!, hostName: e.target.value })}
+                <input placeholder="Enter host name" value={editForm.hostName} onChange={e => setEditForm({ ...editForm!, hostName: e.target.value })}
                   className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-sm outline-none" />
               </div>
               <div>
@@ -554,7 +554,7 @@ export default function VisitorsView({ addNotification }: Props) {
               </div>
               <div>
                 <label className="block text-xs text-[var(--text-secondary)] mb-1 font-semibold">Notes</label>
-                <textarea value={editForm.notes || ''} onChange={e => setEditForm({ ...editForm!, notes: e.target.value })} rows={2}
+                <textarea placeholder="Write notes" value={editForm.notes || ''} onChange={e => setEditForm({ ...editForm!, notes: e.target.value })} rows={2}
                   className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-sm outline-none resize-none" />
               </div>
             </div>

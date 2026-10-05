@@ -162,7 +162,7 @@ export default function PersistentIconRow({ topInset }: Props) {
                   <Bell size={18} color="#FFFFFF" />
                 </Animated.View>
                 {/* Direct correction: solely the bell carries "needs
-                    attention" now — a real count, not a plain dot. "1"
+                    attention" now, a real count, not a plain dot. "1"
                     on the first notification, going up from there;
                     capped at "9+" past single digits so it never breaks
                     the circle's own layout. */}

@@ -75,10 +75,10 @@ const NON_SCHEMA_CONTROL_CENTER_ENTRIES: HelpEntry[] = [
   {
     id: 'cc-document_templates',
     title: 'Document Templates',
-    answer: 'Document Templates is a Control Center section (collapsed by default) for editing the branded letterhead used on receipts, invoices, and waybills — logo, company info, footer note.',
+    answer: 'Document Templates is a Control Center section (collapsed by default) for editing the branded letterhead used on receipts, invoices, and waybills, logo, company info, footer note.',
     steps: [
-      'Open Control Center (your avatar menu, or Settings → Control Center).',
-      'Tap "Document Templates" (collapsed by default — tap it to expand).',
+      'Open Control Center (your avatar menu, or Settings, then Control Center).',
+      'Tap "Document Templates" (collapsed by default, tap it to expand).',
       'Edit the logo, company name, address, phone, email, or footer note, then save.',
     ],
     keywords: ['document', 'templates', 'letterhead', 'logo', 'receipt', 'invoice', 'waybill', 'branding'],
@@ -103,16 +103,16 @@ const WORKFLOW_ENTRIES: HelpEntry[] = [
     id: 'wf-order-chain',
     title: 'How an order moves through the company',
     answer:
-      'Marketing creates the order (PENDING_RISK) → Risk does the initial review (PENDING_MANAGEMENT) → Management reviews (PENDING_FINANCE) → Account Department reviews, checks stock, deducts it (PENDING_RISK_RELEASE) → Risk gives the final release for warehouse → Admin & Warehouse marks it ready for dispatch → Risk assigns a vehicle/driver and dispatches it → Risk reviews the Proof of Delivery, the only step that ever marks an order DELIVERED.',
+      'Marketing creates the order (PENDING_RISK), then Risk does the initial review (PENDING_MANAGEMENT), then Management reviews (PENDING_FINANCE), then Account Department reviews, checks stock, deducts it (PENDING_RISK_RELEASE), then Risk gives the final release for warehouse, then Admin & Warehouse marks it ready for dispatch, then Risk assigns a vehicle/driver and dispatches it, then Risk reviews the Proof of Delivery, the only step that ever marks an order DELIVERED.',
     steps: [
-      'Marketing creates the order — status becomes PENDING_RISK.',
-      'Risk does the initial review — approving moves it to PENDING_MANAGEMENT.',
-      'Management reviews it — approving moves it to PENDING_FINANCE.',
-      'Account Department reviews it, checks stock, and deducts it — approving moves it to PENDING_RISK_RELEASE.',
+      'Marketing creates the order, status becomes PENDING_RISK.',
+      'Risk does the initial review, approving moves it to PENDING_MANAGEMENT.',
+      'Management reviews it, approving moves it to PENDING_FINANCE.',
+      'Account Department reviews it, checks stock, and deducts it, approving moves it to PENDING_RISK_RELEASE.',
       'Risk gives the final release for warehouse.',
       'Admin & Warehouse marks it ready for dispatch.',
       'Risk assigns a vehicle and driver, then dispatches it.',
-      'Risk reviews the Proof of Delivery — this is the only step that marks an order DELIVERED.',
+      'Risk reviews the Proof of Delivery, this is the only step that marks an order DELIVERED.',
     ],
     keywords: ['order', 'workflow', 'approval', 'chain', 'risk', 'management', 'finance', 'dispatch', 'delivery', 'delivered', 'pending'],
     navigateTo: { department: 'MARKETING', subTab: 'CreateOrder' },
@@ -121,9 +121,9 @@ const WORKFLOW_ENTRIES: HelpEntry[] = [
     id: 'wf-cargo-chain',
     title: 'How cargo intake is approved',
     answer:
-      'Admin & Warehouse logs the cargo at Stock Intake (status PENDING_RISK_APPROVAL) → Risk approves, rejects, or returns it for correction under Approvals. On approval, stock and the stock ledger update automatically.',
+      'Admin & Warehouse logs the cargo at Stock Intake (status PENDING_RISK_APPROVAL), then Risk approves, rejects, or returns it for correction under Approvals. On approval, stock and the stock ledger update automatically.',
     steps: [
-      'Admin & Warehouse logs the cargo at Stock Intake — status becomes PENDING_RISK_APPROVAL.',
+      'Admin & Warehouse logs the cargo at Stock Intake, status becomes PENDING_RISK_APPROVAL.',
       'Risk reviews it under Approvals and chooses Approve, Reject, or Return for Correction.',
       'On approval, stock and the stock ledger update automatically. No manual entry needed elsewhere.',
     ],
@@ -134,13 +134,13 @@ const WORKFLOW_ENTRIES: HelpEntry[] = [
     id: 'wf-mobile-access',
     title: 'Why someone can’t log into the mobile app',
     answer:
-      'Check Control Center → Section 1 — Access Control → "Mobile App Access". This ONLY blocks the mobile app — it never affects logging into the web app, so if web works but mobile doesn’t for the same account, this switch (or a per-email exception right below it) is almost always why.',
+      'Check Control Center, then Section 1, Access Control "Mobile App Access". This ONLY blocks the mobile app, it never affects logging into the web app, so if web works but mobile doesn’t for the same account, this switch (or a per-email exception right below it) is almost always why.',
     steps: [
-      "Have them sign into the web app first — this setting never blocks web, only mobile.",
-      'Open Control Center → Section 1, Access Control.',
-      'Check "Mobile App Access" — if the master switch is off, turn it on.',
+      "Have them sign into the web app first, this setting never blocks web, only mobile.",
+      'Open Control Center, then Section 1, Access Control.',
+      'Check "Mobile App Access", if the master switch is off, turn it on.',
       "If it's already on, scroll to the email exception list right below it and check whether that person's email is listed as blocked. Remove or flip that exception if so.",
-      "Have them try signing into the mobile app again — it's checked on every login attempt, so it takes effect immediately.",
+      "Have them try signing into the mobile app again, it's checked on every login attempt, so it takes effect immediately.",
     ],
     keywords: ['mobile', 'login', 'sign in', 'access', 'disabled', 'blocked', 'app access', 'cant log in', "can't log in", 'web works'],
     navigateTo: { department: 'SETTINGS', subTab: 'ControlCenter' },
@@ -149,11 +149,11 @@ const WORKFLOW_ENTRIES: HelpEntry[] = [
     id: 'wf-messaging-access',
     title: 'Why someone can’t send messages',
     answer:
-      'Check Control Center → Section 6 — Communication Controls → "Messaging Access", plus Global Chat / Department Chat / Direct Messages Enabled. A per-email exception can also override the master switch.',
+      'Check Control Center, then Section 6, Communication Controls "Messaging Access", plus Global Chat / Department Chat / Direct Messages Enabled. A per-email exception can also override the master switch.',
     steps: [
-      'Open Control Center → Section 6, Communication Controls.',
+      'Open Control Center, then Section 6, Communication Controls.',
       'Check "Messaging Access" is turned on.',
-      'Also check Global Chat / Department Chat / Direct Messages Enabled — whichever type of message they\'re trying to send needs its own toggle on too.',
+      'Also check Global Chat / Department Chat / Direct Messages Enabled, whichever type of message they\'re trying to send needs its own toggle on too.',
       'Check the email exception list under "Messaging Access" for a blocked entry for that person.',
     ],
     keywords: ['message', 'messaging', 'chat', 'cant send', "can't send", 'blocked', 'boardroom'],
@@ -165,7 +165,7 @@ const WORKFLOW_ENTRIES: HelpEntry[] = [
  *  schema field, so a setting's "how to change it" steps can never drift
  *  from where it actually lives in Control Center. */
 function stepsForField(sectionTitle: string, f: SettingFieldSpec): string[] {
-  const openSteps = ['Open Control Center (your avatar menu, or Settings → Control Center).', `Tap "${sectionTitle}".`];
+  const openSteps = ['Open Control Center (your avatar menu, or Settings, then Control Center).', `Tap "${sectionTitle}".`];
   switch (f.kind) {
     case 'toggle':
       return [...openSteps, `Find "${f.label}" and switch it on or off.`];
@@ -347,7 +347,7 @@ export function getHelpReply(query: string): HelpReply {
 
   const words = toQueryWords(query);
   if (words.length === 0) {
-    return { kind: 'unsure', message: "I didn't catch a question there — could you type what you're looking for?" };
+    return { kind: 'unsure', message: "I didn't catch a question there, could you type what you're looking for?" };
   }
 
   if (!cache) cache = build();

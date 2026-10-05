@@ -442,7 +442,7 @@ export default function HrOverviewView({ currentUser, addNotification, setActive
         {/* Leave Calendar */}
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="font-bold text-[var(--text-primary)] text-sm">Upcoming Leave — Next 7 Days</h3>
+            <h3 className="font-bold text-[var(--text-primary)] text-sm">Upcoming Leave, Next 7 Days</h3>
             <button onClick={() => setActiveSubTab('LeaveManagement')} className="text-xs text-[var(--accent)] font-semibold hover:opacity-80 cursor-pointer flex items-center gap-1">
               Calendar <ChevronRight className="w-3 h-3" />
             </button>
@@ -498,7 +498,7 @@ export default function HrOverviewView({ currentUser, addNotification, setActive
                       <p className="text-xs font-semibold text-[var(--text-primary)]">{alert.name} <span className="font-normal text-[var(--text-muted)]">· {alert.dept}</span></p>
                       <p className="text-[11px] text-[var(--text-muted)] mt-0.5">{alert.issue}</p>
                     </div>
-                    <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded shrink-0" style={{ background: `${levelColor}20`, color: levelColor }}>
+                    <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded shrink-0" style={{ background: `${levelColor}20`, color: levelColor }}>
                       {alert.level}
                     </span>
                   </div>

@@ -248,7 +248,7 @@ function FreeSheetEditor({ sheet, onSave, onBack, currentUser }: {
           <ArrowLeft size={14} /> Back
         </button>
         <div className="h-4 w-px bg-[var(--border)]" />
-        <input
+        <input placeholder="Sheet name"
           value={title}
           onChange={e => setTitle(e.target.value)}
           className="text-sm font-semibold bg-transparent border-b border-transparent hover:border-[var(--border)] focus:border-[var(--accent)] focus:outline-none text-[var(--text-primary)] min-w-[120px] max-w-[280px]"
@@ -336,7 +336,7 @@ function FreeSheetEditor({ sheet, onSave, onBack, currentUser }: {
                       }}
                     >
                       {isEditing ? (
-                        <input
+                        <input placeholder="Type a value or =formula"
                           ref={cellInputRef}
                           value={editValue}
                           onChange={e => setEditValue(e.target.value)}
@@ -543,7 +543,7 @@ function DataSheetEditor({ tableName, tableLabel, onBack, addNotification }: {
                         }}
                       >
                         {isEdit ? (
-                          <input
+                          <input placeholder="Type a value"
                             autoFocus
                             value={editValue}
                             onChange={e => setEditValue(e.target.value)}
@@ -802,7 +802,7 @@ export default function SpreadsheetView({ currentUser, department, addNotificati
             <h2 className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-wide">Free Sheets</h2>
           </div>
           <p className="text-xs text-[var(--text-muted)]">
-            Blank spreadsheets with full formula support — SUM, AVERAGE, COUNT, IF, VLOOKUP and more.
+            Blank spreadsheets with full formula support, SUM, AVERAGE, COUNT, IF, VLOOKUP and more.
           </p>
 
           {loadingSheets ? (

@@ -489,9 +489,9 @@ export default function ManagementDashboard({
             <div key={i} className="mobile-stat-card">
               <div className="mobile-stat-icon" style={{ background: s.bg }}><Icon className="w-5 h-5" style={{ color: s.color }} /></div>
               <div className="min-w-0">
-                <p className="text-[9px] text-text-muted uppercase font-bold tracking-wider">{s.label}</p>
+                <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider">{s.label}</p>
                 <p className="text-sm font-bold text-text-primary mt-0.5"><CountUp value={s.value} prefix={s.prefix} /></p>
-                <p className="text-[9px] text-text-muted">{s.sub}</p>
+                <p className="text-[10px] text-text-muted">{s.sub}</p>
               </div>
             </div>
           ); })}
@@ -631,7 +631,7 @@ export default function ManagementDashboard({
         <div className="p-5 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)] space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-[var(--text-primary)]">Pending Approvals</h3>
-            <button onClick={() => setActiveSubTab?.('CargoApproval')} className="text-xs text-[var(--accent)] font-semibold hover:underline cursor-pointer">View All →</button>
+            <button onClick={() => setActiveSubTab?.('CargoApproval')} className="text-xs text-[var(--accent)] font-semibold hover:underline cursor-pointer">View All</button>
           </div>
           {localGoods.filter(g => g.status === 'PENDING_RISK_APPROVAL').length === 0 && pendingGeneralPurchases.length === 0 && localOrders.filter(o => o.status === 'PENDING_MANAGEMENT').length === 0 ? (
             <p className="text-xs text-emerald-600 font-semibold py-4 text-center">No pending approvals 🎉</p>
@@ -681,7 +681,7 @@ export default function ManagementDashboard({
         <div className="p-5 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)] space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-[var(--text-primary)]">Stock Alerts</h3>
-            <button onClick={() => setActiveSubTab?.('DeptActivity')} className="text-xs text-[var(--accent)] font-semibold hover:underline cursor-pointer">View Activity →</button>
+            <button onClick={() => setActiveSubTab?.('DeptActivity')} className="text-xs text-[var(--accent)] font-semibold hover:underline cursor-pointer">View Activity</button>
           </div>
           <div className="space-y-3">
             {stockAlerts.length === 0 && <p className="text-xs text-[var(--text-muted)] text-center py-4">No stock items found</p>}
@@ -772,7 +772,7 @@ export default function ManagementDashboard({
                     <div className="flex-1 space-y-1 w-full text-[var(--text-primary)]">
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-xs font-bold text-[var(--text-primary)]">{item.productName || 'Unnamed Product'}</span>
-                        <span className="px-2 py-0.5 bg-amber-500/10 text-amber-600 rounded font-bold text-[9px] shrink-0">Awaiting Pricing</span>
+                        <span className="px-2 py-0.5 bg-amber-500/10 text-amber-600 rounded font-bold text-[10px] shrink-0">Awaiting Pricing</span>
                       </div>
                       <p className="text-[10px] text-[var(--text-muted)] font-mono">Code: <code className="bg-[var(--bg-card)] px-1 rounded border border-[var(--border)] text-[var(--text-primary)]">{item.goodsCode || `CARGO-${item.id}`}</code></p>
                       <p className="text-[10px] text-[var(--text-muted)]">Origin: <strong>{item.country}</strong> via <strong>{item.company}</strong></p>
@@ -837,7 +837,7 @@ export default function ManagementDashboard({
                     <div className="flex-1 space-y-1 w-full text-[var(--text-primary)]">
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-xs font-bold text-[var(--text-primary)]">{gp.itemName}</span>
-                        <span className="px-2 py-0.5 bg-amber-500/10 text-amber-600 rounded font-bold text-[9px] shrink-0">Awaiting Approval</span>
+                        <span className="px-2 py-0.5 bg-amber-500/10 text-amber-600 rounded font-bold text-[10px] shrink-0">Awaiting Approval</span>
                       </div>
                       <p className="text-[10px] text-[var(--text-muted)] font-mono">Code: <code className="bg-[var(--bg-card)] px-1 rounded border border-[var(--border)] text-[var(--text-primary)]">{gp.itemCode}</code></p>
                       <p className="text-[10px] text-[var(--text-muted)]">Category: <strong>{gp.category}</strong></p>
@@ -944,7 +944,7 @@ export default function ManagementDashboard({
                                     <div key={idx} className="flex justify-between items-center text-[10px] text-[var(--text-muted)] border-b border-[var(--border)] py-1">
                                       <span><code>{h.orderId}</code> — {h.date}</span>
                                       <span className="font-bold text-[var(--text-primary)]">GHS {h.amount.toLocaleString()}</span>
-                                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${h.status === 'PAID' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'}`}>{h.status}</span>
+                                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${h.status === 'PAID' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'}`}>{h.status}</span>
                                     </div>
                                   ))}
                                 </div>
@@ -1054,31 +1054,31 @@ export default function ManagementDashboard({
                     <th onClick={() => handleSort('timestamp', ledgerSortField, setLedgerSortField, ledgerSortDir, setLedgerSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden md:table-cell text-[var(--text-primary)]">
                       <div className="flex items-center gap-1">
                         <span>Timestamp</span>
-                        <span className="text-[9px] opacity-70">{ledgerSortField === 'timestamp' ? (ledgerSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                        <span className="text-[10px] opacity-70">{ledgerSortField === 'timestamp' ? (ledgerSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
                     <th onClick={() => handleSort('department', ledgerSortField, setLedgerSortField, ledgerSortDir, setLedgerSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
                       <div className="flex items-center gap-1">
                         <span>Department</span>
-                        <span className="text-[9px] opacity-70">{ledgerSortField === 'department' ? (ledgerSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                        <span className="text-[10px] opacity-70">{ledgerSortField === 'department' ? (ledgerSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
                     <th onClick={() => handleSort('performedBy', ledgerSortField, setLedgerSortField, ledgerSortDir, setLedgerSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden sm:table-cell text-[var(--text-primary)]">
                       <div className="flex items-center gap-1">
                         <span>Performed By</span>
-                        <span className="text-[9px] opacity-70">{ledgerSortField === 'performedBy' ? (ledgerSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                        <span className="text-[10px] opacity-70">{ledgerSortField === 'performedBy' ? (ledgerSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
                     <th onClick={() => handleSort('action', ledgerSortField, setLedgerSortField, ledgerSortDir, setLedgerSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
                       <div className="flex items-center gap-1">
                         <span>Action</span>
-                        <span className="text-[9px] opacity-70">{ledgerSortField === 'action' ? (ledgerSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                        <span className="text-[10px] opacity-70">{ledgerSortField === 'action' ? (ledgerSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
                     <th onClick={() => handleSort('details', ledgerSortField, setLedgerSortField, ledgerSortDir, setLedgerSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
                       <div className="flex items-center gap-1">
                         <span>Details</span>
-                        <span className="text-[9px] opacity-70">{ledgerSortField === 'details' ? (ledgerSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                        <span className="text-[10px] opacity-70">{ledgerSortField === 'details' ? (ledgerSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
                     <th className="py-3 px-5 text-center whitespace-nowrap text-[var(--text-primary)]">Actions</th>
@@ -1097,7 +1097,7 @@ export default function ManagementDashboard({
                       </td>
                       <td className="py-3.5 px-3 text-[var(--text-muted)] whitespace-nowrap font-mono text-[10px] hidden md:table-cell">{entry.timestamp}</td>
                       <td className="py-3.5 px-3">
-                        <span className="px-2 py-0.5 bg-[var(--accent-light)] text-[var(--accent)] rounded-full text-[9px] font-bold">{entry.department}</span>
+                        <span className="px-2 py-0.5 bg-[var(--accent-light)] text-[var(--accent)] rounded-full text-[10px] font-bold">{entry.department}</span>
                       </td>
                       <td className="py-3.5 px-3 font-semibold text-[13px] text-[var(--text-primary)] hidden sm:table-cell">{entry.performedBy}</td>
                       <td className="py-3.5 px-3 font-bold text-[var(--text-primary)]">{entry.action}</td>
@@ -1221,7 +1221,7 @@ export default function ManagementDashboard({
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-[var(--accent)] text-sm font-mono">{gp.currency} {gp.unitPrice.toLocaleString()}</p>
-                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                         gp.category === 'NEW_GOODS' ? 'bg-[var(--accent-light)] text-[var(--accent)]' :
                         gp.category === 'INCOMING_GOODS' ? 'bg-amber-500/10 text-amber-600' :
                         'bg-bg-input text-text-secondary'
@@ -1302,37 +1302,37 @@ export default function ManagementDashboard({
                     <th onClick={() => handleSort('id', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
                       <div className="flex items-center gap-1">
                         <span>Order / Cargo ID</span>
-                        <span className="text-[9px] opacity-70">{historySortField === 'id' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                        <span className="text-[10px] opacity-70">{historySortField === 'id' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
                     <th onClick={() => handleSort('type', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
                       <div className="flex items-center gap-1">
                         <span>Type</span>
-                        <span className="text-[9px] opacity-70">{historySortField === 'type' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                        <span className="text-[10px] opacity-70">{historySortField === 'type' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
                     <th onClick={() => handleSort('clientProduct', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
                       <div className="flex items-center gap-1">
                         <span>Client / Product</span>
-                        <span className="text-[9px] opacity-70">{historySortField === 'clientProduct' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                        <span className="text-[10px] opacity-70">{historySortField === 'clientProduct' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
                     <th onClick={() => handleSort('amount', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 text-right whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
                       <div className="flex items-center justify-end gap-1">
                         <span>Amount</span>
-                        <span className="text-[9px] opacity-70">{historySortField === 'amount' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                        <span className="text-[10px] opacity-70">{historySortField === 'amount' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
                     <th onClick={() => handleSort('status', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 text-center whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
                       <div className="flex items-center justify-center gap-1">
                         <span>Decision</span>
-                        <span className="text-[9px] opacity-70">{historySortField === 'status' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                        <span className="text-[10px] opacity-70">{historySortField === 'status' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
                     <th onClick={() => handleSort('date', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
                       <div className="flex items-center gap-1">
                         <span>Date</span>
-                        <span className="text-[9px] opacity-70">{historySortField === 'date' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                        <span className="text-[10px] opacity-70">{historySortField === 'date' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
                     <th className="py-3 px-5 text-center whitespace-nowrap text-[var(--text-primary)]">Actions</th>
@@ -1351,7 +1351,7 @@ export default function ManagementDashboard({
                       </td>
                       <td className="py-3.5 px-3 font-mono font-bold text-[var(--text-primary)]">{item.displayId}</td>
                       <td className="py-3.5 px-3">
-                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                           item.type === 'CARGO' ? 'bg-[var(--accent-light)] text-[var(--accent)]' :
                           item.type === 'PURCHASE' ? 'bg-indigo-500/10 text-indigo-600' :
                           'bg-purple-500/10 text-purple-600'
@@ -1360,7 +1360,7 @@ export default function ManagementDashboard({
                       <td className="py-3.5 px-3 font-medium text-[13px] text-[var(--text-primary)]">{item.clientProduct} {item.origin !== 'Sales Order Portal' && item.type !== 'PURCHASE' && <span className="text-[10px] text-[var(--text-muted)] font-normal font-sans">({item.origin})</span>}</td>
                       <td className="py-3.5 px-3 text-right font-mono font-bold text-[13px] text-emerald-600">{item.amount}</td>
                       <td className="py-3.5 px-3 text-center">
-                        <span className={`px-2.5 py-0.5 rounded text-[9px] font-bold ${statusBadge(item.status)}`}>{item.status.replace(/_/g, ' ')}</span>
+                        <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold ${statusBadge(item.status)}`}>{item.status.replace(/_/g, ' ')}</span>
                       </td>
                       <td className="py-3.5 px-3 text-[var(--text-muted)] font-mono text-[10px] whitespace-nowrap">{item.date}</td>
                       <td className="py-3.5 px-5 text-center relative" onClick={(e) => e.stopPropagation()}>

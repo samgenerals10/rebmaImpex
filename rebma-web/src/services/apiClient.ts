@@ -883,7 +883,7 @@ async function autoGenerateReceiptAndTicket(order: any, reference: string) {
       } else {
         // Give every department that needs visibility into a confirmed sale a
         // copy of the receipt notification — not just Finance who recorded it.
-        const receiptMsg = `${invoiceNumber} — ${clientName}, GHS ${totalAmount.toLocaleString()} (${order.ticket_number || order.ticketNumber || orderId})`;
+        const receiptMsg = `${invoiceNumber}, ${clientName}, GHS ${totalAmount.toLocaleString()} (${order.ticket_number || order.ticketNumber || orderId})`;
         for (const dept of ['FINANCE', 'CEO', 'MARKETING', 'MANAGEMENT']) {
           sendNotification({
             recipientDepartment: dept,
@@ -2051,7 +2051,7 @@ const DOC_TEMPLATE_FALLBACKS: Record<DocumentTemplate['docType'], DocumentTempla
   RECEIPT: { docType: 'RECEIPT', logoUrl: '/logo.png', companyName: 'REBMA IMPEX', subtitle: 'Official Payment Receipt', companyAddress: 'Accra Business District, Accra, Ghana', companyLat: null, companyLng: null, companyPhone: '', companyEmail: '', website: 'rebmaimpex.com', footerNote: 'This receipt is issued by REBMA IMPEX Ghana Limited Account Department. It confirms payment has been received and recorded against the order referenced above.' },
   TICKET: { docType: 'TICKET', logoUrl: '/logo.png', companyName: 'REBMA IMPEX', subtitle: 'Operations Dispatch Ticket', companyAddress: 'Accra Business District, Accra, Ghana', companyLat: null, companyLng: null, companyPhone: '', companyEmail: '', website: 'rebmaimpex.com', footerNote: 'This ticket is issued by REBMA IMPEX Ghana Limited Operations. It authorises the loading and dispatch of the above goods to the stated destination.' },
   WAYBILL: { docType: 'WAYBILL', logoUrl: '/logo.png', companyName: 'REBMA IMPEX', subtitle: 'Waybill', companyAddress: 'Accra Business District, Accra, Ghana', companyLat: null, companyLng: null, companyPhone: '', companyEmail: '', website: 'rebmaimpex.com', footerNote: 'This waybill is issued by REBMA IMPEX Ghana Limited Risk. It travels with the goods and must be shown on request.' },
-  INVOICE: { docType: 'INVOICE', logoUrl: '/logo.png', companyName: 'REBMA IMPEX', subtitle: 'Proforma Invoice — Quote Only', companyAddress: 'Accra Business District, Accra, Ghana', companyLat: null, companyLng: null, companyPhone: '', companyEmail: '', website: 'rebmaimpex.com', footerNote: 'This is a proforma invoice, a quotation only, not a demand for payment or a tax invoice.' },
+  INVOICE: { docType: 'INVOICE', logoUrl: '/logo.png', companyName: 'REBMA IMPEX', subtitle: 'Proforma Invoice, Quote Only', companyAddress: 'Accra Business District, Accra, Ghana', companyLat: null, companyLng: null, companyPhone: '', companyEmail: '', website: 'rebmaimpex.com', footerNote: 'This is a proforma invoice, a quotation only, not a demand for payment or a tax invoice.' },
 };
 
 function mapDocTemplate(row: any, docType: DocumentTemplate['docType']): DocumentTemplate {

@@ -69,7 +69,7 @@ function fieldDescription(f: SettingField): string {
  *  field, so a setting's "how to change it" steps can never drift from
  *  where it actually lives in Control Center. */
 function stepsForField(sectionTitle: string, f: SettingField): string[] {
-  const openSteps = ['Open Settings → Control Center.', `Tap the "${sectionTitle}" section.`];
+  const openSteps = ['Open Settings, then Control Center.', `Tap the "${sectionTitle}" section.`];
   switch (f.kind) {
     case 'bool':
       return [...openSteps, `Find "${f.label}" and switch it on or off.`];
@@ -88,7 +88,7 @@ function buildControlCenterEntries(): HelpEntry[] {
       id: `cc-${f.key}`,
       title: f.label,
       answer: [
-        `"${f.label}" is a Control Center setting under Section — ${section.title}.`,
+        `"${f.label}" is a Control Center setting in "${section.title}".`,
         fieldDescription(f),
       ].filter(Boolean).join(' '),
       steps: stepsForField(section.title, f),
@@ -131,16 +131,16 @@ const WORKFLOW_ENTRIES: HelpEntry[] = [
     id: 'wf-order-chain',
     title: 'How an order moves through the company',
     answer:
-      'Marketing creates the order (PENDING_RISK) → Risk does the initial review (PENDING_MANAGEMENT) → Management reviews (PENDING_FINANCE) → Account Department reviews, checks stock, deducts it (PENDING_RISK_RELEASE) → Risk gives the final release for warehouse → Admin & Warehouse marks it ready for dispatch → Risk assigns a vehicle/driver and dispatches it → Risk reviews the Proof of Delivery, which is the only step that ever marks an order DELIVERED.',
+      'Marketing creates the order (PENDING_RISK), then Risk does the initial review (PENDING_MANAGEMENT), then Management reviews (PENDING_FINANCE), then Account Department reviews, checks stock, deducts it (PENDING_RISK_RELEASE), then Risk gives the final release for warehouse, then Admin & Warehouse marks it ready for dispatch, then Risk assigns a vehicle/driver and dispatches it, then Risk reviews the Proof of Delivery, which is the only step that ever marks an order DELIVERED.',
     steps: [
-      'Marketing creates the order — status becomes PENDING_RISK.',
-      'Risk does the initial review — approving moves it to PENDING_MANAGEMENT.',
-      'Management reviews it — approving moves it to PENDING_FINANCE.',
-      'Account Department reviews it, checks stock, and deducts it — approving moves it to PENDING_RISK_RELEASE.',
+      'Marketing creates the order, status becomes PENDING_RISK.',
+      'Risk does the initial review, approving moves it to PENDING_MANAGEMENT.',
+      'Management reviews it, approving moves it to PENDING_FINANCE.',
+      'Account Department reviews it, checks stock, and deducts it, approving moves it to PENDING_RISK_RELEASE.',
       'Risk gives the final release for warehouse.',
       'Admin & Warehouse marks it ready for dispatch.',
       'Risk assigns a vehicle and driver, then dispatches it.',
-      'Risk reviews the Proof of Delivery — this is the only step that marks an order DELIVERED.',
+      'Risk reviews the Proof of Delivery, this is the only step that marks an order DELIVERED.',
     ],
     keywords: ['order', 'workflow', 'approval', 'chain', 'risk', 'management', 'finance', 'accounts', 'dispatch', 'delivery', 'delivered', 'pending'],
     navigateTo: { department: 'MARKETING', subTab: 'CreateOrder' },
@@ -149,9 +149,9 @@ const WORKFLOW_ENTRIES: HelpEntry[] = [
     id: 'wf-cargo-chain',
     title: 'How cargo intake is approved',
     answer:
-      'Admin & Warehouse logs the cargo at Stock Intake (status PENDING_RISK_APPROVAL) → Risk approves, rejects, or returns it for correction under Approvals. On approval, stock and the stock ledger update automatically.',
+      'Admin & Warehouse logs the cargo at Stock Intake (status PENDING_RISK_APPROVAL), then Risk approves, rejects, or returns it for correction under Approvals. On approval, stock and the stock ledger update automatically.',
     steps: [
-      'Admin & Warehouse logs the cargo at Stock Intake — status becomes PENDING_RISK_APPROVAL.',
+      'Admin & Warehouse logs the cargo at Stock Intake, status becomes PENDING_RISK_APPROVAL.',
       'Risk reviews it under Approvals and chooses Approve, Reject, or Return for Correction.',
       'On approval, stock and the stock ledger update automatically. No manual entry needed elsewhere.',
     ],
@@ -162,13 +162,13 @@ const WORKFLOW_ENTRIES: HelpEntry[] = [
     id: 'wf-mobile-access',
     title: 'Why someone can’t log into the mobile app',
     answer:
-      'Check Control Center → Section 1 — Access Control → "Mobile App Access Allowed". This ONLY blocks the mobile app — it never affects logging into the web app, so if web works but mobile doesn’t for the same account, this switch (or a per-email exception, set on web only) is almost always why.',
+      'Check Control Center, then Section 1, Access Control "Mobile App Access Allowed". This ONLY blocks the mobile app, it never affects logging into the web app, so if web works but mobile doesn’t for the same account, this switch (or a per-email exception, set on web only) is almost always why.',
     steps: [
-      'Have them sign into the web app first — this setting never blocks web, only mobile.',
-      'Open Settings → Control Center → Access Control.',
-      'Check "Mobile App Access Allowed" — if it\'s off, turn it on.',
+      'Have them sign into the web app first, this setting never blocks web, only mobile.',
+      'Open Settings, then Control Center, then Access Control.',
+      'Check "Mobile App Access Allowed", if it\'s off, turn it on.',
       "If it's already on, a per-email block could be set on web (Control Center's exception list is web-only) — ask someone with web access to check it.",
-      "Have them try signing into the mobile app again — it's checked on every login attempt, so it takes effect immediately.",
+      "Have them try signing into the mobile app again, it's checked on every login attempt, so it takes effect immediately.",
     ],
     keywords: ['mobile', 'login', 'sign in', 'access', 'disabled', 'blocked', 'app access', 'cant log in', "can't log in"],
     navigateTo: { department: 'SETTINGS', subTab: 'ControlCenter' },
@@ -177,11 +177,11 @@ const WORKFLOW_ENTRIES: HelpEntry[] = [
     id: 'wf-messaging-access',
     title: 'Why someone can’t send messages',
     answer:
-      'Check Control Center → Section 6 — Communication Controls → "Messaging Access Allowed", plus Global Chat / Department Chat / Direct Messages Enabled. A per-email exception can also override the master switch, set on web only.',
+      'Check Control Center, then Section 6, Communication Controls "Messaging Access Allowed", plus Global Chat / Department Chat / Direct Messages Enabled. A per-email exception can also override the master switch, set on web only.',
     steps: [
-      'Open Settings → Control Center → Communication Controls.',
+      'Open Settings, then Control Center, then Communication Controls.',
       'Check "Messaging Access Allowed" is turned on.',
-      'Also check Global Chat / Department Chat / Direct Messages Enabled — whichever type of message they\'re trying to send needs its own toggle on too.',
+      'Also check Global Chat / Department Chat / Direct Messages Enabled, whichever type of message they\'re trying to send needs its own toggle on too.',
       "A per-email block could also be set on web (the exception list is web-only) — ask someone with web access to check it.",
     ],
     keywords: ['message', 'messaging', 'chat', 'cant send', "can't send", 'blocked', 'viber'],
@@ -334,7 +334,7 @@ export function getHelpReply(query: string, registry: Record<string, DepartmentE
 
   const words = toQueryWords(query);
   if (words.length === 0) {
-    return { kind: 'unsure', message: "I didn't catch a question there — could you type what you're looking for?" };
+    return { kind: 'unsure', message: "I didn't catch a question there, could you type what you're looking for?" };
   }
 
   const entries = ensureCache(registry);

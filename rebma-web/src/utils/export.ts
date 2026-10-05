@@ -262,7 +262,7 @@ export async function exportToPDFWithWatermark(
     doc.setFontSize(7);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(148, 163, 184);
-    doc.text(t.footerNote || `${t.companyName} Ghana Limited — Confidential`, pW / 2, pH - 8, { align: 'center' });
+    doc.text(t.footerNote || `${t.companyName} Ghana Limited, Confidential`, pW / 2, pH - 8, { align: 'center' });
     doc.setTextColor(...BRAND.green);
     doc.text(t.website || 'rebmaimpex.com', 14, pH - 8);
   }
@@ -351,7 +351,7 @@ export function exportToDOC(
     </tbody>
   </table>
   <div class="footer">
-    <span>${t.footerNote || `${t.companyName} Ghana Limited — Confidential internal document.`}</span>
+    <span>${t.footerNote || `${t.companyName} Ghana Limited, Confidential internal document.`}</span>
     <span class="watermark-note">${t.website || 'rebmaimpex.com'}</span>
   </div>
 </div>

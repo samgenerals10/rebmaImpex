@@ -282,7 +282,7 @@ export default function FoodieShell({ activeDepartment, currentUser, children }:
 
           const mappedRecent = (recDel ?? []).map(d => ({
             id: d.id,
-            item: `${d.driver_name || 'Driver'} — ${d.vehicle_id || 'Truck'}`,
+            item: `${d.driver_name || 'Driver'}, ${d.vehicle_id || 'Truck'}`,
             status: d.status === 'DELIVERED' ? 'Delivered' : d.status === 'ASSIGNED' ? 'Processing' : 'Cancelled',
             time: new Date(d.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             amount: d.status
@@ -574,7 +574,7 @@ export default function FoodieShell({ activeDepartment, currentUser, children }:
                     <p className="text-[10px] text-[var(--text-muted)]">{item.id} · {item.time}</p>
                   </div>
                   <div className="flex flex-col items-end gap-1 shrink-0">
-                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${statusColor[item.status] || 'bg-gray-100 text-gray-600'}`}>{item.status}</span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${statusColor[item.status] || 'bg-gray-100 text-gray-600'}`}>{item.status}</span>
                     <span className="text-[11px] font-bold text-[var(--text-primary)]">{item.amount}</span>
                   </div>
                 </div>

@@ -340,7 +340,8 @@ export default function MgmtApprovalsScreen() {
           onChange={(v) => setActiveTab(v as 'All' | ItemType)}
           options={TABS.map((tab) => ({
             value: tab,
-            label: `${tab}${tab !== 'All' ? ` (${items.filter((i) => i.type === tab).length})` : ''}`,
+            label: tab,
+            badge: tab !== 'All' ? items.filter((i) => i.type === tab).length : undefined,
           }))}
         />
 

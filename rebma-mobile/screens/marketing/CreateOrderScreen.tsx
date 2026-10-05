@@ -225,7 +225,7 @@ export default function CreateOrderScreen() {
           department: 'MARKETING',
           action: `ORDER CREATED: ${inserted.ticket_number || inserted.id} for ${clientName.trim()}`,
           performedBy: performedByName,
-          details: `${paymentMode} order, GHS ${orderTotal.toLocaleString()} — ${productDisplay}`,
+          details: `${paymentMode} order, GHS ${orderTotal.toLocaleString()}, ${productDisplay}`,
         });
       } catch { /* non-critical, order already created successfully */ }
     }

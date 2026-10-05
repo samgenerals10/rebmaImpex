@@ -322,7 +322,7 @@ export default function OutputRecordingView({ addNotification }: Props) {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
               <div style={{ gridColumn: 'span 2' }}>
                 <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Product</label>
-                <input value={editForm.product} onChange={e => setEditForm({ ...editForm, product: e.target.value })} style={inputStyle} />
+                <input placeholder="Enter product" value={editForm.product} onChange={e => setEditForm({ ...editForm, product: e.target.value })} style={inputStyle} />
               </div>
               <div>
                 <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Date</label>
@@ -330,7 +330,7 @@ export default function OutputRecordingView({ addNotification }: Props) {
               </div>
               <div>
                 <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Goods Received</label>
-                <input type="number" value={editForm.received} onChange={e => setEditForm({ ...editForm, received: Number(e.target.value) })} style={inputStyle} />
+                <input placeholder="Enter goods received" type="number" value={editForm.received} onChange={e => setEditForm({ ...editForm, received: Number(e.target.value) })} style={inputStyle} />
               </div>
               <div>
                 <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Unit</label>
@@ -338,11 +338,11 @@ export default function OutputRecordingView({ addNotification }: Props) {
               </div>
               <div>
                 <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Boxes Produced</label>
-                <input type="number" value={editForm.boxes} onChange={e => setEditForm({ ...editForm, boxes: Number(e.target.value) })} style={inputStyle} />
+                <input placeholder="Enter boxes produced" type="number" value={editForm.boxes} onChange={e => setEditForm({ ...editForm, boxes: Number(e.target.value) })} style={inputStyle} />
               </div>
               <div>
                 <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Sachets Produced</label>
-                <input type="number" value={editForm.sachets} onChange={e => setEditForm({ ...editForm, sachets: Number(e.target.value) })} style={inputStyle} />
+                <input placeholder="Enter sachets produced" type="number" value={editForm.sachets} onChange={e => setEditForm({ ...editForm, sachets: Number(e.target.value) })} style={inputStyle} />
               </div>
               <div style={{ gridColumn: 'span 2' }}>
                 <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Quality Check</label>

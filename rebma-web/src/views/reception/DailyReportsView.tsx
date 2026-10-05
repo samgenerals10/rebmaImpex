@@ -220,12 +220,12 @@ export default function DailyReportsView({ addNotification }: Props) {
   const attendanceRate = totalStaff > 0 ? Math.round((totalPresent / totalStaff) * 100) : 0;
 
   const handleExportPDF = () => {
-    exportToPDF(`Daily Report — ${selectedDate}`, visitorsToday, ['id','name','company','purpose','host','in','out']);
+    exportToPDF(`Daily Report, ${selectedDate}`, visitorsToday, ['id','name','company','purpose','host','in','out']);
     addNotification('Daily report exported as PDF.');
   };
 
   const handleOpenEmailModal = () => {
-    setEmailSubject(`Daily Reception Report — ${selectedDate}`);
+    setEmailSubject(`Daily Reception Report, ${selectedDate}`);
     setEmailMessage(`Hello,\n\nPlease find today's reception summary:\n\n• Total Visitors: ${visitorsToday.length}\n• Staff Present: ${totalPresent}/${totalStaff} (${attendanceRate}%)\n• Check-outs: ${visitorsToday.filter((v: VisitorToday) => v.out).length}\n\nThis report was generated automatically by REBMA IMPEX ERP.\n\nReception Team`);
     setEmailModal(true);
   };
@@ -377,7 +377,7 @@ export default function DailyReportsView({ addNotification }: Props) {
         <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-xs text-emerald-700 font-semibold mb-3">
           No incidents reported today.
         </div>
-        <label className="block text-[9px] font-semibold text-[var(--text-secondary)] uppercase mb-1">Receptionist Notes</label>
+        <label className="block text-[10px] font-semibold text-[var(--text-secondary)] uppercase mb-1">Receptionist Notes</label>
         <textarea value={notes} onChange={e => setNotes(e.target.value)}
           placeholder="Add daily notes here…" rows={3}
           className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)] resize-none" />
@@ -393,7 +393,7 @@ export default function DailyReportsView({ addNotification }: Props) {
       {/* Past Reports - Better Table */}
       <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)] overflow-hidden">
         <div className="px-4 py-3 border-b border-[var(--border)] flex items-center justify-between">
-          <h3 className="text-sm font-bold text-[var(--text-primary)]">Past Reports — Last 7 Days</h3>
+          <h3 className="text-sm font-bold text-[var(--text-primary)]">Past Reports, Last 7 Days</h3>
         </div>
         <div className="p-3">
           <ResponsiveDataView<typeof pastReports[number]>
@@ -467,12 +467,12 @@ export default function DailyReportsView({ addNotification }: Props) {
           </div>
           <div>
             <label className="block text-[10px] text-[var(--text-secondary)] font-semibold uppercase mb-1">Subject</label>
-            <input value={emailSubject} onChange={e => setEmailSubject(e.target.value)}
+            <input placeholder="Enter subject" value={emailSubject} onChange={e => setEmailSubject(e.target.value)}
               className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] outline-none" />
           </div>
           <div>
             <label className="block text-[10px] text-[var(--text-secondary)] font-semibold uppercase mb-1">Message</label>
-            <textarea value={emailMessage} onChange={e => setEmailMessage(e.target.value)} rows={5}
+            <textarea placeholder="Write message" value={emailMessage} onChange={e => setEmailMessage(e.target.value)} rows={5}
               className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] outline-none resize-none" />
           </div>
         </div>
@@ -493,22 +493,22 @@ export default function DailyReportsView({ addNotification }: Props) {
           <div className="space-y-3">
             <div>
               <label className="block text-[10px] text-[var(--text-secondary)] font-semibold uppercase mb-1">Visitor Name</label>
-              <input value={editingVisitor.fullName} onChange={e => setEditingVisitor({ ...editingVisitor, fullName: e.target.value })}
+              <input placeholder="Enter visitor name" value={editingVisitor.fullName} onChange={e => setEditingVisitor({ ...editingVisitor, fullName: e.target.value })}
                 className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] outline-none" />
             </div>
             <div>
               <label className="block text-[10px] text-[var(--text-secondary)] font-semibold uppercase mb-1">Company</label>
-              <input value={editingVisitor.company} onChange={e => setEditingVisitor({ ...editingVisitor, company: e.target.value })}
+              <input placeholder="Enter company" value={editingVisitor.company} onChange={e => setEditingVisitor({ ...editingVisitor, company: e.target.value })}
                 className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] outline-none" />
             </div>
             <div>
               <label className="block text-[10px] text-[var(--text-secondary)] font-semibold uppercase mb-1">Purpose</label>
-              <input value={editingVisitor.purpose} onChange={e => setEditingVisitor({ ...editingVisitor, purpose: e.target.value })}
+              <input placeholder="Enter purpose" value={editingVisitor.purpose} onChange={e => setEditingVisitor({ ...editingVisitor, purpose: e.target.value })}
                 className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] outline-none" />
             </div>
             <div>
               <label className="block text-[10px] text-[var(--text-secondary)] font-semibold uppercase mb-1">Host Name</label>
-              <input value={editingVisitor.hostName} onChange={e => setEditingVisitor({ ...editingVisitor, hostName: e.target.value })}
+              <input placeholder="Enter host name" value={editingVisitor.hostName} onChange={e => setEditingVisitor({ ...editingVisitor, hostName: e.target.value })}
                 className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] outline-none" />
             </div>
             <div className="grid grid-cols-2 gap-3">

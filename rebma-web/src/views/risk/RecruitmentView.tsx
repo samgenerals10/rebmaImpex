@@ -60,7 +60,7 @@ export default function RiskRecruitmentView({ addNotification }: Props) {
     return (
       <div style={{ padding: '1.5rem', maxWidth: 800, margin: '0 auto' }}>
         <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', marginBottom: '1rem', fontSize: 14 }}>
-          ← Back to Recruitment
+          Back to Recruitment
         </button>
         <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, padding: '1.5rem' }}>
           <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center', marginBottom: '1.25rem' }}>

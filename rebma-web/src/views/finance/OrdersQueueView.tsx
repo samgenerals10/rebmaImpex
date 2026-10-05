@@ -473,7 +473,7 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Amount Received (GHS)</label>
-                    <input
+                    <input placeholder="Enter amount received"
                       type="number"
                       value={payForm.amountReceived}
                       onChange={e => setPayForm(f => ({ ...f, amountReceived: e.target.value }))}
@@ -496,9 +496,9 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
                     </div>
                   </div>
                   <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Date Received</label><input type="date" value={payForm.dateReceived} onChange={e => setPayForm(f => ({ ...f, dateReceived: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" /></div>
-                  <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Receipt Number</label><input value={payForm.receiptNumber} readOnly className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-muted)]" /></div>
-                  <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Received By</label><input value={currentUser?.fullName || 'Account Department'} readOnly className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-muted)]" /></div>
-                  <div className="col-span-full"><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Notes</label><textarea value={payForm.notes} onChange={e => setPayForm(f => ({ ...f, notes: e.target.value }))} rows={2} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] resize-none" /></div>
+                  <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Receipt Number</label><input placeholder="Enter receipt number" value={payForm.receiptNumber} readOnly className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-muted)]" /></div>
+                  <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Received By</label><input placeholder="Enter received by" value={currentUser?.fullName || 'Account Department'} readOnly className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-muted)]" /></div>
+                  <div className="col-span-full"><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Notes</label><textarea placeholder="Write notes" value={payForm.notes} onChange={e => setPayForm(f => ({ ...f, notes: e.target.value }))} rows={2} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] resize-none" /></div>
                 </div>
               )}
 
@@ -516,7 +516,7 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
                   ].map(({ label, key, type }) => (
                     <div key={key}>
                       <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">{label}</label>
-                      <input
+                      <input placeholder={`Enter ${String(label).replace(/\s*\*\s*$/, "").toLowerCase()}`}
                         type={type}
                         value={(payForm as Record<string, string>)[key]}
                         onChange={e => setPayForm(f => ({ ...f, [key]: e.target.value }))}
@@ -553,7 +553,7 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
                   <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Network</label><SearchableDropdown value={payForm.network} onChange={v => setPayForm(f => ({ ...f, network: v }))} options={['MTN', 'Vodafone', 'AirtelTigo'].map(n => ({ value: n, label: n }))} /></div>
                   <div>
                     <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Amount Received (GHS)</label>
-                    <input
+                    <input placeholder="Enter amount received"
                       type="number"
                       value={payForm.amountReceived}
                       onChange={e => setPayForm(f => ({ ...f, amountReceived: e.target.value }))}
@@ -580,7 +580,7 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
                     { label: 'Account Name *', key: 'momoAccountName' },
                     { label: 'Transaction ID *', key: 'transactionId' },
                   ].map(({ label, key }) => (
-                    <div key={key}><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">{label}</label><input value={(payForm as Record<string, string>)[key]} onChange={e => setPayForm(f => ({ ...f, [key]: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" /></div>
+                    <div key={key}><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">{label}</label><input placeholder={`Enter ${String(label).replace(/\s*\*\s*$/, "").toLowerCase()}`} value={(payForm as Record<string, string>)[key]} onChange={e => setPayForm(f => ({ ...f, [key]: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" /></div>
                   ))}
                   <div className="col-span-full">
                     <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Screenshot Upload</label>
@@ -606,8 +606,8 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Ghana Card Number</label><input value={payForm.ghanaCardNumber} onChange={e => setPayForm(f => ({ ...f, ghanaCardNumber: e.target.value }))} placeholder="GHA-XXXXXXXXX-X" className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" /></div>
                     <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Due Date *</label><input type="date" value={payForm.dueDate} onChange={e => setPayForm(f => ({ ...f, dueDate: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" /></div>
-                    <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Payment Terms</label><input value={payForm.paymentTerms} onChange={e => setPayForm(f => ({ ...f, paymentTerms: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" /></div>
-                    <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Credit Amount (GHS)</label><input type="number" value={payForm.creditAmount || String(selected.totalAmount)} onChange={e => setPayForm(f => ({ ...f, creditAmount: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" /></div>
+                    <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Payment Terms</label><input placeholder="Enter payment terms" value={payForm.paymentTerms} onChange={e => setPayForm(f => ({ ...f, paymentTerms: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" /></div>
+                    <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Credit Amount (GHS)</label><input placeholder="Enter credit amount" type="number" value={payForm.creditAmount || String(selected.totalAmount)} onChange={e => setPayForm(f => ({ ...f, creditAmount: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" /></div>
                     {[
                       { label: 'Ghana Card Front', accept: 'image/*' },
                       { label: 'Ghana Card Back', accept: 'image/*' },

@@ -448,11 +448,11 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
                 </div>
                 {uploadingPhoto && (
                   <div className="absolute inset-0 rounded-full bg-black/60 flex items-center justify-center">
-                    <span className="text-[8px] text-white font-semibold">Uploading…</span>
+                    <span className="text-[10px] text-white font-semibold">Uploading…</span>
                   </div>
                 )}
               </div>
-              <span className="text-[9px] text-[var(--text-muted)]">Click to update</span>
+              <span className="text-[10px] text-[var(--text-muted)]">Click to update</span>
               <input ref={photoInputRef} type="file" accept="image/*" className="hidden"
                 onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) handlePhotoUpload(f); }} />
             </div>
@@ -549,7 +549,7 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
           <div className="rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] p-4 shadow-[var(--box-shadow)]">
             <p className="text-xs text-[var(--text-muted)] mb-1">Rating — {rating.grade}</p>
             <p className="text-xl font-bold" style={{ color: rating.color }}><CountUp value={rating.score} /><span className="text-xs text-[var(--text-muted)] font-normal">/100</span></p>
-            <p className="text-[9px] text-[var(--text-muted)] mt-1">Consistency {rating.consistencyScore} · Volume {rating.volumeScore}</p>
+            <p className="text-[10px] text-[var(--text-muted)] mt-1">Consistency {rating.consistencyScore} · Volume {rating.volumeScore}</p>
           </div>
         </div>
 

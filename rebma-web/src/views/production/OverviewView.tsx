@@ -381,7 +381,7 @@ export default function ProductionOverviewView({ currentUser, productionRequests
                   {(() => {
                     const disp = getDisplayStatus(order, wip);
                     return (
-                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${disp.style}`}>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${disp.style}`}>
                         {disp.text}
                       </span>
                     );
@@ -427,7 +427,7 @@ export default function ProductionOverviewView({ currentUser, productionRequests
               <div key={item.id} className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-semibold text-[var(--text-primary)] truncate flex-1 mr-2">{item.productName}</span>
-                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${stageBadge(item.stage)}`}>{item.stage}</span>
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${stageBadge(item.stage)}`}>{item.stage}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="flex-1 h-2 bg-[var(--bg-input)] rounded-full overflow-hidden">
@@ -493,8 +493,8 @@ export default function ProductionOverviewView({ currentUser, productionRequests
                   <p className="text-xs font-semibold text-[var(--text-primary)] truncate">{r.items.map(i => i.materialName).join(', ') || r.id}</p>
                   <p className="text-[10px] text-[var(--text-muted)]">ID: {r.id} · {r.createdAt?.slice(0, 10) || ''}</p>
                 </div>
-                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${priorityBadge('Normal')}`}>Normal</span>
-                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${statusBadge(r.status)}`}>{r.status.replace(/_/g, ' ')}</span>
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${priorityBadge('Normal')}`}>Normal</span>
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${statusBadge(r.status)}`}>{r.status.replace(/_/g, ' ')}</span>
               </div>
             ))}
             {productionRequests.length === 0 && (
@@ -512,7 +512,7 @@ export default function ProductionOverviewView({ currentUser, productionRequests
       <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4">
         <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
           <div>
-            <h3 className="font-bold text-[var(--text-primary)] text-sm">Production Volume — Weekly</h3>
+            <h3 className="font-bold text-[var(--text-primary)] text-sm">Production Volume, Weekly</h3>
             <p className="text-xs text-[var(--text-muted)]">Boxes and sachets produced per day</p>
           </div>
           <button onClick={() => exportToCSV(outputChartData, ['day','boxes','sachets'], 'production_volume')}

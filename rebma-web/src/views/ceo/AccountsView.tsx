@@ -151,7 +151,7 @@ export default function AccountsView({ setActiveSubTab }: AccountsViewProps) {
           <p className="text-xs font-semibold text-amber-700">
             Credit outstanding: <span className="font-extrabold">GHS {creditOutstanding.toLocaleString()}</span> from credit orders not yet delivered
           </p>
-          <button onClick={() => setActiveSubTab?.('Transactions')} className="ml-auto text-xs text-amber-700 underline cursor-pointer whitespace-nowrap">View →</button>
+          <button onClick={() => setActiveSubTab?.('Transactions')} className="ml-auto text-xs text-amber-700 underline cursor-pointer whitespace-nowrap">View</button>
         </div>
       )}
 
@@ -277,7 +277,7 @@ export default function AccountsView({ setActiveSubTab }: AccountsViewProps) {
       <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 shadow-[var(--box-shadow)]">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-bold text-[var(--text-primary)]">Recent Payments</h3>
-          <button onClick={() => setActiveSubTab?.('Transactions')} className="text-xs font-semibold text-[var(--accent)] hover:underline cursor-pointer">View All →</button>
+          <button onClick={() => setActiveSubTab?.('Transactions')} className="text-xs font-semibold text-[var(--accent)] hover:underline cursor-pointer">View All</button>
         </div>
         {loading
           ? <div className="space-y-2">{Array.from({length:5}).map((_,i)=><div key={i} className="animate-pulse h-10 bg-[var(--bg-input)] rounded-xl"/>)}</div>

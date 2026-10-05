@@ -143,7 +143,7 @@ export default function SalesHistoryScreen() {
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <View style={{ flexDirection: 'row', backgroundColor: t.colors.bgInput, borderRadius: t.radius.md, padding: 3 }}>
             {(['sales', 'credit'] as const).map((k) => (
-              <Button key={k} label={k === 'sales' ? 'Sales History' : `Credit (${creditOrders.length})`} size="sm" variant={tab === k ? 'primary' : 'ghost'} onPress={() => setTab(k)} style={{ borderWidth: 0 }} />
+              <Button key={k} label={k === 'sales' ? 'Sales History' : 'Credit'} size="sm" variant={tab === k ? 'primary' : 'ghost'} onPress={() => setTab(k)} style={{ borderWidth: 0 }} />
             ))}
           </View>
           {tab === 'sales' && <Button label="Export CSV" size="sm" variant="ghost" icon={<Download size={13} color={t.colors.textSecondary} />} onPress={() => setExportOpen(true)} />}

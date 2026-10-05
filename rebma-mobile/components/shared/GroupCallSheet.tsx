@@ -1089,7 +1089,7 @@ export default function GroupCallSheet({ room, title, meetingId, isHost = false,
               ) : myBreakoutIndex == null ? (
                 <>
                   <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: 'rgba(255,255,255,0.6)', marginBottom: t.spacing.lg }}>
-                    Splits everyone currently in the call evenly across the rooms below. Each breakout is a real, separate call — you can float between them.
+                    Splits everyone currently in the call evenly across the rooms below. Each breakout is a real, separate call, you can float between them.
                   </Text>
                   <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta10.size, color: 'rgba(255,255,255,0.6)', marginBottom: t.spacing.sm }}>Number of Rooms</Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.md, marginBottom: t.spacing.xl }}>

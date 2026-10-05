@@ -472,12 +472,12 @@ export default function SettingsDashboard({
 
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Full Name</label>
-                <input type="text" value={displayName} onChange={e => setDisplayName(e.target.value)} required className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
+                <input placeholder="Enter full name" type="text" value={displayName} onChange={e => setDisplayName(e.target.value)} required className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Email Address</label>
-                <input type="email" value={displayEmail} onChange={e => setDisplayEmail(e.target.value)} required className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
+                <input placeholder="Enter email address" type="email" value={displayEmail} onChange={e => setDisplayEmail(e.target.value)} required className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
               </div>
 
               <div className="p-3 bg-[var(--bg)] border border-[var(--border)] rounded-xl space-y-1.5 text-[10px] text-[var(--text-muted)]">
@@ -531,7 +531,7 @@ export default function SettingsDashboard({
                     </div>
                     <div className="grid grid-cols-2 gap-1">
                       {strength.checks.map((c, i) => (
-                        <div key={i} className={`flex items-center gap-1 text-[9px] ${c.pass ? 'text-emerald-500' : 'text-[var(--text-muted)]'}`}>
+                        <div key={i} className={`flex items-center gap-1 text-[10px] ${c.pass ? 'text-emerald-500' : 'text-[var(--text-muted)]'}`}>
                           <span>{c.pass ? '✓' : '○'}</span><span>{c.label}</span>
                         </div>
                       ))}
@@ -607,7 +607,7 @@ export default function SettingsDashboard({
                   >
                     {/* Coming Soon badge */}
                     {t.comingSoon && (
-                      <span className="absolute top-1.5 right-1.5 z-10 text-[8px] font-extrabold px-1.5 py-0.5 rounded-full bg-amber-400/90 text-amber-900 leading-none">
+                      <span className="absolute top-1.5 right-1.5 z-10 text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-amber-400/90 text-amber-900 leading-none">
                         Coming Soon
                       </span>
                     )}
@@ -637,9 +637,9 @@ export default function SettingsDashboard({
                         <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: t.accent }} />
                         <span className="text-[11px] font-semibold text-[var(--text-primary)] leading-none">{t.label}</span>
                       </div>
-                      <p className="text-[9px] text-[var(--text-muted)] leading-none">{t.desc}</p>
+                      <p className="text-[10px] text-[var(--text-muted)] leading-none">{t.desc}</p>
                       {!t.comingSoon && theme === t.id && (
-                        <span className="mt-1 inline-flex items-center gap-1 text-[8px] font-extrabold px-1.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 w-fit">
+                        <span className="mt-1 inline-flex items-center gap-1 text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 w-fit">
                           <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
                           ACTIVE
                         </span>
@@ -710,7 +710,7 @@ export default function SettingsDashboard({
                           : 'border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--accent)]'
                       }`}
                     >
-                      <div className="px-3 py-0.5 bg-[var(--accent)] text-white text-[9px] font-bold" style={{ borderRadius: b.r }}>Btn</div>
+                      <div className="px-3 py-0.5 bg-[var(--accent)] text-white text-[10px] font-bold" style={{ borderRadius: b.r }}>Btn</div>
                       {b.label}
                     </button>
                   ))}
@@ -857,7 +857,7 @@ export default function SettingsDashboard({
                       <div className="w-14 h-14 rounded-full border-4 border-[var(--border)] shadow-card cursor-pointer hover:scale-105 transition-transform"
                         style={{ backgroundColor: draftAccentSolid }} />
                     </label>
-                    <input
+                    <input placeholder="#22c55e"
                       type="text"
                       value={draftAccentSolid}
                       onChange={e => { if (/^#[0-9a-fA-F]{0,6}$/.test(e.target.value)) setDraftAccentSolid(e.target.value); }}
@@ -899,7 +899,7 @@ export default function SettingsDashboard({
                         <input type="color" value={draftGradC1} onChange={e => setDraftGradC1(e.target.value)} className="sr-only" />
                         <div className="w-12 h-12 rounded-full border-2 border-[var(--border)] shadow hover:scale-105 transition-transform cursor-pointer" style={{ backgroundColor: draftGradC1 }} />
                       </label>
-                      <input
+                      <input placeholder="#22c55e"
                         type="text"
                         value={draftGradC1}
                         onChange={e => { if (/^#[0-9a-fA-F]{0,6}$/.test(e.target.value)) setDraftGradC1(e.target.value); }}
@@ -913,7 +913,7 @@ export default function SettingsDashboard({
                         <input type="color" value={draftGradC2} onChange={e => setDraftGradC2(e.target.value)} className="sr-only" />
                         <div className="w-12 h-12 rounded-full border-2 border-[var(--border)] shadow hover:scale-105 transition-transform cursor-pointer" style={{ backgroundColor: draftGradC2 }} />
                       </label>
-                      <input
+                      <input placeholder="#16a34a"
                         type="text"
                         value={draftGradC2}
                         onChange={e => { if (/^#[0-9a-fA-F]{0,6}$/.test(e.target.value)) setDraftGradC2(e.target.value); }}
@@ -928,7 +928,7 @@ export default function SettingsDashboard({
                           <input type="color" value={draftGradC3} onChange={e => setDraftGradC3(e.target.value)} className="sr-only" />
                           <div className="w-12 h-12 rounded-full border-2 border-[var(--border)] shadow hover:scale-105 transition-transform cursor-pointer" style={{ backgroundColor: draftGradC3 }} />
                         </label>
-                        <input
+                        <input placeholder="#15803d"
                           type="text"
                           value={draftGradC3}
                           onChange={e => { if (/^#[0-9a-fA-F]{0,6}$/.test(e.target.value)) setDraftGradC3(e.target.value); }}
@@ -1011,7 +1011,7 @@ export default function SettingsDashboard({
                       }`}
                     >
                       <div className="w-6 h-6 rounded-full border border-slate-300 shadow-sm" style={{ backgroundColor: p.hex }} />
-                      <span className="text-[9px] font-semibold text-[var(--text-secondary)] truncate w-full text-center">{p.label}</span>
+                      <span className="text-[10px] font-semibold text-[var(--text-secondary)] truncate w-full text-center">{p.label}</span>
                     </button>
                   ))}
                 </div>
@@ -1183,7 +1183,7 @@ export default function SettingsDashboard({
                 <div className="space-y-4">
                   <div>
                     <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">CEO Whitelisted Emails</label>
-                    <textarea
+                    <textarea placeholder="Write CEO whitelisted emails"
                       rows={2}
                       value={whitelistedCeos}
                       onChange={e => setWhitelistedCeos(e.target.value)}
@@ -1204,7 +1204,7 @@ export default function SettingsDashboard({
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">GPS Ping Interval (seconds)</label>
-                    <input type="number" value={gpsInterval} onChange={e => setGpsInterval(parseInt(e.target.value))} min={5} max={60} className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
+                    <input placeholder="Enter GPS ping interval" type="number" value={gpsInterval} onChange={e => setGpsInterval(parseInt(e.target.value))} min={5} max={60} className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
                   </div>
                   <div className="flex justify-between items-center p-3 bg-[var(--bg)] border border-[var(--border)] rounded-xl">
                     <div>

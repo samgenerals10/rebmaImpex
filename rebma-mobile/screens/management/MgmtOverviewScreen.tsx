@@ -88,7 +88,7 @@ export default function MgmtOverviewScreen() {
                 actionable next step once cargo's approved: setting its
                 selling price. SetPricesScreen already computes
                 unpricedGoods (APPROVED cargo vs. goods_prices) and shows
-                a live "N approved products need a price" banner — that's
+                a live "N approved products need a price" banner, that's
                 the real destination, not a passive log. */}
             <MetricCard
               emphasis="primary"
@@ -161,7 +161,7 @@ export default function MgmtOverviewScreen() {
 
         {totalApprovals > 0 && (
           <Button
-            label={`Review ${totalApprovals} Executive Approvals →`}
+            label={`Review ${totalApprovals} Executive Approvals`}
             onPress={() => navigation.navigate('CreditApproval')}
             fullWidth
           />

@@ -119,7 +119,7 @@ async function checkFinanceAlerts(): Promise<PerformanceAlert[]> {
           alert_type: 'finance_low',
           department: 'FINANCE',
           severity: 'medium',
-          description: `Account Department — Low Revenue Today (GHS ${total.toLocaleString()}): below the expected minimum of GHS ${FINANCE_LOW_THRESHOLD.toLocaleString()}.`,
+          description: `Account Department, Low Revenue Today (GHS ${total.toLocaleString()}): below the expected minimum of GHS ${FINANCE_LOW_THRESHOLD.toLocaleString()}.`,
           status: 'open',
         });
       }
@@ -128,7 +128,7 @@ async function checkFinanceAlerts(): Promise<PerformanceAlert[]> {
           alert_type: 'finance_high',
           department: 'FINANCE',
           severity: 'low',
-          description: `Account Department — High Revenue Day (GHS ${total.toLocaleString()}): exceeds the high-value threshold. Consider end-of-day reconciliation.`,
+          description: `Account Department, High Revenue Day (GHS ${total.toLocaleString()}): exceeds the high-value threshold. Consider end-of-day reconciliation.`,
           status: 'open',
         });
       }

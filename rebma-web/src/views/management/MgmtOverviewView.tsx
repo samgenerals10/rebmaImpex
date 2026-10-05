@@ -678,7 +678,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
           >
             <p className="text-xs text-[var(--text-secondary)] font-semibold mb-1 flex items-center justify-between">
               <span>{label}</span>
-              {(isClickable || linkTab) && <span className="text-[9px] text-[var(--accent)] font-semibold font-mono bg-[var(--accent-light)] px-1 py-0.5 rounded">{isClickable ? 'Drill down →' : 'View →'}</span>}
+              {(isClickable || linkTab) && <span className="text-[10px] text-[var(--accent)] font-semibold font-mono bg-[var(--accent-light)] px-1 py-0.5 rounded">{isClickable ? 'Drill down' : 'View'}</span>}
             </p>
             <p className="text-3xl font-bold text-[var(--text-primary)]"><CountUp value={value} prefix={prefix} suffix={suffix} /></p>
             <div className="flex items-center gap-1 mt-1">
@@ -722,7 +722,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
                 {inventoryItems.length} product{inventoryItems.length !== 1 ? 's' : ''} priced by Management
               </p>
             </div>
-            <button onClick={() => setActiveSubTab?.('SetPrices')} className="text-xs font-semibold hover:underline" style={{ color: 'var(--accent)' }}>Manage Prices →</button>
+            <button onClick={() => setActiveSubTab?.('SetPrices')} className="text-xs font-semibold hover:underline" style={{ color: 'var(--accent)' }}>Manage Prices</button>
           </div>
           <div className="grid grid-cols-[repeat(auto-fill,minmax(100px,1fr))] gap-2.5">
             {inventoryItems.map((item: any) => (
@@ -742,7 +742,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
               </h3>
               <p className="text-xs text-[var(--text-muted)] mt-0.5">Approved cargo only · {goodsPrices.length} priced product{goodsPrices.length !== 1 ? 's' : ''} · updates as sales are made</p>
             </div>
-            <button onClick={() => setActiveSubTab?.('SetPrices')} className="text-xs font-semibold hover:underline" style={{ color: 'var(--accent)' }}>Manage Prices →</button>
+            <button onClick={() => setActiveSubTab?.('SetPrices')} className="text-xs font-semibold hover:underline" style={{ color: 'var(--accent)' }}>Manage Prices</button>
           </div>
           <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-4">
             <div className="rounded-xl p-4 bg-amber-500/10">

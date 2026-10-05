@@ -84,7 +84,7 @@ export default function PriceApprovalsView({ currentUser, addNotification }: Pro
       }).eq('id', req.id);
       if (decideErr) throw decideErr;
 
-      const details = `${req.product_name} → ${req.currency} ${Number(req.unit_price).toLocaleString()}${note ? `: ${note}` : ''}`;
+      const details = `${req.product_name} to ${req.currency} ${Number(req.unit_price).toLocaleString()}${note ? `: ${note}` : ''}`;
       const { error: auditErr } = await supabase.from('global_audit_history').insert({
         action: `${approve ? 'Approved' : 'Rejected'} price request`,
         department: 'MANAGEMENT',
@@ -98,7 +98,7 @@ export default function PriceApprovalsView({ currentUser, addNotification }: Pro
       // either way — only Marketing/Finance ever saw the resulting price
       // change (or didn't, on reject) with no explanation.
       const { error: notifErr } = await supabase.from('supplier_order_notifications').insert([{
-        message: `Price change ${approve ? 'APPROVED' : 'REJECTED'} by CEO: ${req.product_name} → ${req.currency} ${Number(req.unit_price).toLocaleString()}${note ? `: ${note}` : ''}`,
+        message: `Price change ${approve ? 'APPROVED' : 'REJECTED'} by CEO: ${req.product_name} to ${req.currency} ${Number(req.unit_price).toLocaleString()}${note ? `: ${note}` : ''}`,
         notified_department: 'MANAGEMENT',
         read: false,
       }]);
@@ -205,11 +205,11 @@ export default function PriceApprovalsView({ currentUser, addNotification }: Pro
                   <p className="text-xs font-semibold text-[var(--text-primary)] truncate">
                     {req.product_name} — {req.currency} {Number(req.unit_price).toLocaleString()}
                   </p>
-                  <p className="text-[9px] text-[var(--text-muted)]">
+                  <p className="text-[10px] text-[var(--text-muted)]">
                     {req.requested_by_name || 'Management'}
                   </p>
                 </div>
-                <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full capitalize ${req.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-600'}`}>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${req.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-600'}`}>
                   {req.status.toLowerCase()}
                 </span>
               </div>

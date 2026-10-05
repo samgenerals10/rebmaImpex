@@ -315,7 +315,7 @@ const MAP_HTML = `<!DOCTYPE html>
     }
 
     /* Tooltips, both the default (place-name) style and the dark info
-       style — roughly half the padding/font-size of Leaflet's own
+       style, roughly half the padding/font-size of Leaflet's own
        default, so a label reads as a small compact chip, not a big box. */
     .leaflet-tooltip {
       padding: 3px 6px;
@@ -873,7 +873,7 @@ async function fetchSpeedLimitKmh(lat: number, lng: number): Promise<number | nu
     if (mphMatch) return Math.round(parseFloat(mphMatch[1]) * 1.60934);
     const numeric = /^(\d+)(\s*km\/?h)?$/i.exec(raw);
     if (numeric) return parseInt(numeric[1], 10);
-    return null; // e.g. "national", "walk", "none" — no numeric limit to compare against
+    return null; // e.g. "national", "walk", "none", no numeric limit to compare against
   } catch {
     return null;
   }
@@ -1715,7 +1715,7 @@ export default function FleetMap({ onSelectedChange }: FleetMapProps = {}) {
       </View>
 
       {/* Search, basemap toggle, fit-all, fullscreen, and structures/
-          places — a small vertical column of icon controls, kept clear
+          places, a small vertical column of icon controls, kept clear
           of the Fleet Speed Limit banner above it. Places needs a
           selected driver (it queries around that position), so it's
           greyed out and inert until one is tapped. */}
@@ -1948,7 +1948,7 @@ export default function FleetMap({ onSelectedChange }: FleetMapProps = {}) {
 
           {/* The round speedometer now lives in TrackingScreen's own bar,
               always visible above both tabs, not just inside this
-              tap-to-open panel — per direct correction. This row keeps
+              tap-to-open panel, per direct correction. This row keeps
               just the context text (over-limit / road's own legal
               limit), since that's still worth a line here. */}
           <View

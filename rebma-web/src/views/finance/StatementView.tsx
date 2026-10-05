@@ -148,7 +148,7 @@ export default function StatementView({ addNotification }: Props) {
         <ResponsiveDataView
           columns={[
             { key: 'productName', label: 'Product', primary: true },
-            { key: 'status', label: 'Status', status: true, render: row => <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${STATUS_STYLES[row.status] || 'bg-gray-100 text-gray-600'}`}>{row.status.replace(/_/g, ' ')}</span> },
+            { key: 'status', label: 'Status', status: true, render: row => <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${STATUS_STYLES[row.status] || 'bg-gray-100 text-gray-600'}`}>{row.status.replace(/_/g, ' ')}</span> },
             { key: 'date', label: 'Date/Time', render: row => new Date(row.date).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) },
             { key: 'quantity', label: 'Qty', render: row => `×${row.quantity}` },
             { key: 'clientName', label: 'Purchased By' },
@@ -157,7 +157,7 @@ export default function StatementView({ addNotification }: Props) {
             {
               key: 'stockRemaining', label: 'Stock Left', render: row => row.stockRemaining !== null ? (
                 row.stockRemaining < 0 ? (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-rose-100 text-rose-700" title="Stock went negative, more was sold or released than was ever recorded as in stock. Investigate this product's ledger.">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700" title="Stock went negative, more was sold or released than was ever recorded as in stock. Investigate this product's ledger.">
                     OVERSOLD ({row.stockRemaining.toLocaleString()})
                   </span>
                 ) : (

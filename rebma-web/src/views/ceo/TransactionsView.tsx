@@ -98,7 +98,7 @@ export default function TransactionsView({ addNotification }: Props) {
         txns.push({
           id: `ord-${o.id}`,
           date: (o.created_at || '').slice(0, 10),
-          description: `Order ${o.ticket_number || o.id} — ${o.client_name || ''}`,
+          description: `Order ${o.ticket_number || o.id}, ${o.client_name || ''}`,
           department: 'MARKETING',
           amount: Number(o.total_amount || 0),
           type: 'in',
@@ -259,7 +259,7 @@ export default function TransactionsView({ addNotification }: Props) {
             columns={[
               { key: 'description', label: 'Description', primary: true },
               { key: 'date', label: 'Date', render: row => <span className="font-mono">{row.date}</span> },
-              { key: 'department', label: 'Department', render: row => <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[var(--accent-light)] text-[var(--accent)]">{row.department}</span> },
+              { key: 'department', label: 'Department', render: row => <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[var(--accent-light)] text-[var(--accent)]">{row.department}</span> },
               { key: 'source', label: 'Source', render: row => <span className="text-[10px]">{row.source}</span> },
               {
                 key: 'amount', label: 'Amount', render: row => (
@@ -270,7 +270,7 @@ export default function TransactionsView({ addNotification }: Props) {
               },
               {
                 key: 'type', label: 'Type', render: row => (
-                  <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[9px] font-bold ${row.type === 'in' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-600'}`}>
+                  <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold ${row.type === 'in' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-600'}`}>
                     {row.type === 'in' ? <ArrowDownLeft className="w-2.5 h-2.5" /> : <ArrowUpRight className="w-2.5 h-2.5" />}
                     {row.type === 'in' ? 'In' : 'Out'}
                   </span>
@@ -279,7 +279,7 @@ export default function TransactionsView({ addNotification }: Props) {
               { key: 'account', label: 'Account' },
               {
                 key: 'status', label: 'Status', status: true, render: row => (
-                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold capitalize ${STATUS_STYLES[row.status] || 'bg-slate-100 text-slate-500'}`}>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold capitalize ${STATUS_STYLES[row.status] || 'bg-slate-100 text-slate-500'}`}>
                     {row.status}
                   </span>
                 )

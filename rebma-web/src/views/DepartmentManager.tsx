@@ -150,8 +150,8 @@ export default function DepartmentManager({ currentUser, addNotification }: Depa
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-bold text-[var(--text-primary)] truncate">{dept.name}</p>
-                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[var(--accent-light)] text-[var(--accent)]">{dept.code}</span>
-                    {!dept.active && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-600">Inactive</span>}
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[var(--accent-light)] text-[var(--accent)]">{dept.code}</span>
+                    {!dept.active && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-600">Inactive</span>}
                   </div>
                   <p className="text-[10px] text-[var(--text-muted)] truncate mt-0.5">{dept.description || 'No description'}</p>
                 </div>

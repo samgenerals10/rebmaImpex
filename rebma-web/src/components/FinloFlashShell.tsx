@@ -31,7 +31,7 @@ interface FinloFlashShellProps {
 const getUpcomingBills = (dept: string) => {
   const common = [
     { Icon: Ship,         iconBg: '#dbeafe', iconColor: '#1d4ed8', name: 'GPHA Port Levy',            date: 'Jun 28, 2026', amount: '₵8,400.00'  },
-    { Icon: ShieldCheck,  iconBg: '#dcfce7', iconColor: '#16a34a', name: 'Customs Duty — Batch 14',   date: 'Jun 30, 2026', amount: '₵12,500.00' },
+    { Icon: ShieldCheck,  iconBg: '#dcfce7', iconColor: '#16a34a', name: 'Customs Duty, Batch 14',   date: 'Jun 30, 2026', amount: '₵12,500.00' },
     { Icon: Truck,        iconBg: '#fee2e2', iconColor: '#dc2626', name: 'Freight Forwarding Fee',    date: 'Jul 4, 2026',  amount: '₵5,200.00'  },
   ];
   const finance = [

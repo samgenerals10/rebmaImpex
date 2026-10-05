@@ -275,7 +275,7 @@ export default function Header({
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-xs font-extrabold text-text-primary">{currentUser?.fullName}</p>
                       {isSuperAdmin && (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-700 border border-amber-300 uppercase tracking-wide">
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-300 uppercase tracking-wide">
                           SUPER ADMIN
                         </span>
                       )}
@@ -284,7 +284,7 @@ export default function Header({
                   </div>
                   
                   <div className="max-h-52 overflow-y-auto py-2">
-                    <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest px-4 py-1">Departments</p>
+                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest px-4 py-1">Departments</p>
                     {availableDepts.map(d => {
                       const isActive = d.value === activeDepartment;
                       const IconComponent = d.icon;
@@ -507,7 +507,7 @@ export default function Header({
             <div className="absolute left-0 right-0 top-full mt-2 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-xl z-[100] max-h-[350px] overflow-y-auto p-2 space-y-1">
               <div className="px-3 py-1.5 text-[10px] font-bold text-[var(--text-muted)] border-b border-[var(--border)] flex justify-between items-center bg-[var(--bg-input)] rounded-t-xl">
                 <span>{isAdmin ? 'GLOBAL SEARCH RESULTS' : `${dept} SEARCH RESULTS`}</span>
-                <span className="bg-[var(--accent)] text-white px-1.5 py-0.5 rounded text-[8px] font-bold">{searchResults.length} matches</span>
+                <span className="bg-[var(--accent)] text-white px-1.5 py-0.5 rounded text-[10px] font-bold">{searchResults.length} matches</span>
               </div>
               <div className="divide-y divide-[var(--border)] text-[var(--text-primary)]">
                 {searchResults.map((res) => {
@@ -524,7 +524,7 @@ export default function Header({
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between">
                           <p className="text-xs font-bold text-[var(--text-primary)] truncate">{res.title}</p>
-                          <span className="text-[8px] bg-[var(--bg-input)] text-[var(--text-muted)] font-bold px-1.5 py-0.5 rounded uppercase font-mono tracking-wider">{res.category}</span>
+                          <span className="text-[10px] bg-[var(--bg-input)] text-[var(--text-muted)] font-bold px-1.5 py-0.5 rounded uppercase font-mono tracking-wider">{res.category}</span>
                         </div>
                         <p className="text-[10px] text-[var(--text-secondary)] truncate mt-0.5">{res.subtitle}</p>
                       </div>
@@ -576,7 +576,7 @@ export default function Header({
             >
               <Bell className="w-4 h-4" />
               {notifications.length > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] bg-rose-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center border-2 border-[var(--bg-card)] px-0.5">
+                <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-[var(--bg-card)] px-0.5">
                   {notifications.length > 9 ? '9+' : <CountUp value={notifications.length} />}
                 </span>
               )}
@@ -598,7 +598,7 @@ export default function Header({
                       <Bell className="w-4 h-4 text-[var(--accent)]" />
                       <span className="text-xs font-bold text-[var(--text-primary)]">Notifications</span>
                       {notifications.length > 0 && (
-                        <span className="px-1.5 py-0.5 bg-rose-100 text-rose-700 text-[8px] font-bold rounded-full">{notifications.length}</span>
+                        <span className="px-1.5 py-0.5 bg-rose-100 text-rose-700 text-[10px] font-bold rounded-full">{notifications.length}</span>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
@@ -660,7 +660,7 @@ export default function Header({
                 {currentUser?.fullName || 'User'}
               </span>
               {isSuperAdmin && (
-                <span className="hidden xl:inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-700 border border-amber-300 uppercase tracking-wide whitespace-nowrap">
+                <span className="hidden xl:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-300 uppercase tracking-wide whitespace-nowrap">
                   SUPER ADMIN
                 </span>
               )}
@@ -683,7 +683,7 @@ export default function Header({
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-xs font-bold text-[var(--text-primary)]">{currentUser?.fullName}</p>
                         {isSuperAdmin && (
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-700 border border-amber-300 uppercase tracking-wide">
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-300 uppercase tracking-wide">
                             SUPER ADMIN
                           </span>
                         )}
@@ -692,7 +692,7 @@ export default function Header({
                     </div>
 
                     <div className="max-h-52 overflow-y-auto py-2">
-                      <p className="text-[9px] font-bold text-[var(--text-secondary)] uppercase tracking-widest px-4 py-1">Departments</p>
+                      <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest px-4 py-1">Departments</p>
                       {availableDepts.map(d => {
                         const isActive = d.value === activeDepartment;
                         const IconComponent = d.icon;

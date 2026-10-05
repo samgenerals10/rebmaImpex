@@ -143,16 +143,16 @@ export default function PayrollPanel({ currentUser, addNotification }: PayrollPa
       const rows = batchItems.map(i => ({ Name: i.employee_name, Dept: i.department, Gross: i.gross_amount, Deductions: i.deductions, Net: i.net_amount }));
       exportToCSV(rows, ['Name','Dept','Gross','Deductions','Net'], `payroll_${batch.name}`);
     } else {
-      const rows = [{ Batch: batch.name, Period: `${batch.period_start} — ${batch.period_end}`, Total: batch.total_amount, Status: batch.status }];
+      const rows = [{ Batch: batch.name, Period: `${batch.period_start} to ${batch.period_end}`, Total: batch.total_amount, Status: batch.status }];
       exportToCSV(rows, ['Batch','Period','Total','Status'], `payroll_summary_${batch.name}`);
     }
     addNotification('Payroll exported.');
   };
 
   const statusBadge = (s: string) => {
-    if (s === 'paid') return <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">PAID</span>;
-    if (s === 'approved') return <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">APPROVED</span>;
-    return <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">DRAFT</span>;
+    if (s === 'paid') return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">PAID</span>;
+    if (s === 'approved') return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">APPROVED</span>;
+    return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">DRAFT</span>;
   };
 
   // Staff view — own payslips only
@@ -334,12 +334,12 @@ export default function PayrollPanel({ currentUser, addNotification }: PayrollPa
           className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)] mb-3" />
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-[9px] font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-1">Period Start</label>
+            <label className="block text-[10px] font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-1">Period Start</label>
             <input type="date" value={batchModal.period_start} onChange={e => setBatchModal(m => ({ ...m, period_start: e.target.value }))}
               className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]" />
           </div>
           <div>
-            <label className="block text-[9px] font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-1">Period End</label>
+            <label className="block text-[10px] font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-1">Period End</label>
             <input type="date" value={batchModal.period_end} onChange={e => setBatchModal(m => ({ ...m, period_end: e.target.value }))}
               className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]" />
           </div>
@@ -367,13 +367,13 @@ export default function PayrollPanel({ currentUser, addNotification }: PayrollPa
           className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)] mb-3" />
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-[9px] font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-1">Gross (GHS)</label>
-            <input type="number" value={itemModal.gross_amount} onChange={e => setItemModal(m => ({ ...m, gross_amount: e.target.value }))}
+            <label className="block text-[10px] font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-1">Gross (GHS)</label>
+            <input placeholder="Enter gross" type="number" value={itemModal.gross_amount} onChange={e => setItemModal(m => ({ ...m, gross_amount: e.target.value }))}
               className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]" />
           </div>
           <div>
-            <label className="block text-[9px] font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-1">Deductions (GHS)</label>
-            <input type="number" value={itemModal.deductions} onChange={e => setItemModal(m => ({ ...m, deductions: e.target.value }))}
+            <label className="block text-[10px] font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-1">Deductions (GHS)</label>
+            <input placeholder="Enter deductions" type="number" value={itemModal.deductions} onChange={e => setItemModal(m => ({ ...m, deductions: e.target.value }))}
               className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]" />
           </div>
         </div>

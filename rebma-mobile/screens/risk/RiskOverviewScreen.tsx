@@ -211,7 +211,7 @@ export default function RiskOverviewScreen() {
         {/* Quick CTA */}
         {totalPending > 0 && (
           <Button
-            label={`Review ${totalPending} Pending Approvals →`}
+            label={`Review ${totalPending} Pending Approvals`}
             onPress={() => navigation.navigate('RiskApprovals')}
             fullWidth
           />

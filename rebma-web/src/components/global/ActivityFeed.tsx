@@ -183,9 +183,9 @@ export default function ActivityFeed({ departments, limit = 30, compact = false,
               <div className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0" style={{ background: dc.dot }} />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 mb-0.5">
-                  <span className="text-[9px] font-bold uppercase tracking-wide" style={{ color: dc.dot }}>{e.department}</span>
-                  <span className="text-[9px] text-[var(--text-muted)]">·</span>
-                  <span className="text-[9px] text-[var(--text-muted)]">{fmtAgo(e.timestamp)}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wide" style={{ color: dc.dot }}>{e.department}</span>
+                  <span className="text-[10px] text-[var(--text-muted)]">·</span>
+                  <span className="text-[10px] text-[var(--text-muted)]">{fmtAgo(e.timestamp)}</span>
                 </div>
                 <p className="text-[11px] text-[var(--text-secondary)] truncate">{e.details}</p>
                 <p className="text-[10px] text-[var(--text-muted)] flex items-center gap-1 mt-0.5">
@@ -260,14 +260,14 @@ export default function ActivityFeed({ departments, limit = 30, compact = false,
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
                       style={{ background: dc.bg, color: dc.text }}>
                       {e.department}
                     </span>
                     <span className="text-[10px] font-semibold text-[var(--text-secondary)]">
                       {e.action.replace(/_/g, ' ')}
                     </span>
-                    <span className="text-[9px] text-[var(--text-muted)] ml-auto flex items-center gap-1">
+                    <span className="text-[10px] text-[var(--text-muted)] ml-auto flex items-center gap-1">
                       <Clock size={8} />{fmtAgo(e.timestamp)}
                     </span>
                   </div>

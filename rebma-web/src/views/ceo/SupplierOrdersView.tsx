@@ -486,12 +486,12 @@ function NewOrderForm({ orders, currentUser, addNotification, onClose, onSave }:
 
   const buildWhatsAppMessage = (order: SupplierOrder) => {
     const lines = [
-      `*New Purchase Order — REBMA IMPEX Ghana Limited*`,
+      `*New Purchase Order, REBMA IMPEX Ghana Limited*`,
       `Order #: ${order.order_number}`,
       `Date: ${new Date(order.created_at).toLocaleDateString()}`,
       ``,
       `*Products:*`,
-      ...order.products.map(p => `• ${p.product_name} — ${p.quantity} ${p.unit} @ ${p.currency} ${p.unit_price}/unit = ${p.currency} ${p.total_price.toLocaleString()}`),
+      ...order.products.map(p => `• ${p.product_name}, ${p.quantity} ${p.unit} @ ${p.currency} ${p.unit_price}/unit = ${p.currency} ${p.total_price.toLocaleString()}`),
       ``,
       `Total: ${order.currency} ${order.total_amount.toLocaleString()} (approx GHS ${(order.total_amount_ghs || 0).toLocaleString()})`,
       `Port of Entry: ${order.port_of_entry}`,
@@ -715,7 +715,7 @@ function NewOrderForm({ orders, currentUser, addNotification, onClose, onSave }:
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-sm text-[var(--text-muted)] flex-1">Exchange Rate (GHS)</span>
-                <input value={exchangeRate} onChange={e => setExchangeRate(Number(e.target.value))}
+                <input placeholder="0.00" value={exchangeRate} onChange={e => setExchangeRate(Number(e.target.value))}
                   type="number" step="0.01" className="w-24 px-2 py-1 rounded-lg border border-[var(--border)] bg-[var(--bg-card)] text-sm text-right text-[var(--text-primary)]" />
               </div>
               <div className="flex justify-between text-sm font-bold border-t border-[var(--border)] pt-2">
@@ -1006,7 +1006,7 @@ function PaymentAuthModal({ order, currentUser, onClose, onAuthorise }: {
           </div>
           <div>
             <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Notes</label>
-            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className={`${inputCls} resize-none`} />
+            <textarea placeholder="Write notes" value={notes} onChange={e => setNotes(e.target.value)} rows={2} className={`${inputCls} resize-none`} />
           </div>
 
           <label className="flex items-start gap-3 cursor-pointer">
@@ -1030,7 +1030,7 @@ function NotifyOperationsModal({ order, onClose, currentUser, onSend }: {
   currentUser: { fullName: string; department: string } | null;
   onSend: (msg: string, dept: string, userId: string | null) => void;
 }) {
-  const defaultMsg = `Incoming goods from ${order.supplier_name} (${order.supplier_country}).\nProducts: ${order.products.map(p => `${p.product_name} — ${p.quantity} ${p.unit}`).join(', ')}.\nExpected: ${order.expected_delivery_date || 'TBD'}.\nOrder Ref: ${order.order_number}.\nPlease prepare to receive.`;
+  const defaultMsg = `Incoming goods from ${order.supplier_name} (${order.supplier_country}).\nProducts: ${order.products.map(p => `${p.product_name}, ${p.quantity} ${p.unit}`).join(', ')}.\nExpected: ${order.expected_delivery_date || 'TBD'}.\nOrder Ref: ${order.order_number}.\nPlease prepare to receive.`;
   const [msg, setMsg] = useState(defaultMsg);
   const [dept, setDept] = useState('MANAGEMENT');
   const [staffList, setStaffList] = useState<Array<{ id: string; full_name: string; department: string }>>([]);
@@ -1081,7 +1081,7 @@ function NotifyOperationsModal({ order, onClose, currentUser, onSend }: {
 
           <div>
             <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Message</label>
-            <textarea value={msg} onChange={e => setMsg(e.target.value)} rows={5} className={`${inputCls} resize-none`} />
+            <textarea placeholder="Write message" value={msg} onChange={e => setMsg(e.target.value)} rows={5} className={`${inputCls} resize-none`} />
           </div>
         </div>
     </SidePanel>

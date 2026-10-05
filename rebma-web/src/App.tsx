@@ -747,7 +747,7 @@ export default function App() {
           <p className="text-xs text-text-secondary leading-relaxed">
             {promptModal.message}
           </p>
-          <input
+          <input placeholder="Type your answer"
             type="text"
             value={promptInputValue}
             onChange={(e) => setPromptInputValue(e.target.value)}
@@ -1388,7 +1388,7 @@ export default function App() {
       // Safety net: never stay on loading screen beyond 8 s
       const authTimeout = setTimeout(() => {
         if (isMounted) {
-          console.warn('Auth init timed out — forcing login screen');
+          console.warn('Auth init timed out, forcing login screen');
           setIsAuthenticated(false);
           setCurrentUser(null);
           setCurrentDriver(null);
@@ -1590,7 +1590,7 @@ export default function App() {
             } else if (payload.eventType === 'UPDATE') {
               const status = newRecord.status;
               if (status === 'OUT_FOR_DELIVERY' || status === 'APPROVED') {
-                addNotification(`Order ${newRecord.ticket_number || ''} → ${status.replace(/_/g, ' ')}`, { dept: 'ADMIN_WAREHOUSE', tab: 'ApprovedGoods' });
+                addNotification(`Order ${newRecord.ticket_number || ''} is now ${status.replace(/_/g, ' ').toLowerCase()}`, { dept: 'ADMIN_WAREHOUSE', tab: 'ApprovedGoods' });
                 addTabAlert('ADMIN_WAREHOUSE');
               }
             }
@@ -2284,7 +2284,7 @@ export default function App() {
 
             {/* Full Name Input */}
             <div className="space-y-1">
-              <label className="block text-[9px] font-bold text-text-muted uppercase tracking-wider">Full Name</label>
+              <label className="block text-[10px] font-bold text-text-muted uppercase tracking-wider">Full Name</label>
               <div className="flex items-center gap-2 border-b border-[var(--border)] focus-within:border-emerald-600 pb-1.5 transition-colors">
                 <User className="w-4 h-4 text-text-muted" />
                 <input 
@@ -2300,7 +2300,7 @@ export default function App() {
 
             {/* Email Input */}
             <div className="space-y-1">
-              <label className="block text-[9px] font-bold text-text-muted uppercase tracking-wider">Email Address</label>
+              <label className="block text-[10px] font-bold text-text-muted uppercase tracking-wider">Email Address</label>
               <div className="flex items-center gap-2 border-b border-[var(--border)] focus-within:border-emerald-600 pb-1.5 transition-colors">
                 <Mail className="w-4 h-4 text-text-muted" />
                 <input 
@@ -2316,7 +2316,7 @@ export default function App() {
 
             {/* Password Input */}
             <div className="space-y-1">
-              <label className="block text-[9px] font-bold text-text-muted uppercase tracking-wider">Password</label>
+              <label className="block text-[10px] font-bold text-text-muted uppercase tracking-wider">Password</label>
               <div className="flex items-center gap-2 border-b border-[var(--border)] focus-within:border-emerald-600 pb-1.5 transition-colors">
                 <Lock className="w-4 h-4 text-text-muted" />
                 <input 
@@ -2339,7 +2339,7 @@ export default function App() {
 
             {/* Confirm Password Input */}
             <div className="space-y-1">
-              <label className="block text-[9px] font-bold text-text-muted uppercase tracking-wider">Confirm Password</label>
+              <label className="block text-[10px] font-bold text-text-muted uppercase tracking-wider">Confirm Password</label>
               <div className="flex items-center gap-2 border-b border-[var(--border)] focus-within:border-emerald-600 pb-1.5 transition-colors">
                 <Lock className="w-4 h-4 text-text-muted" />
                 <input 
@@ -2355,7 +2355,7 @@ export default function App() {
 
             {/* Access Role Dropdown */}
             <div className="space-y-1">
-              <label className="block text-[9px] font-bold text-text-muted uppercase tracking-wider">Access Role</label>
+              <label className="block text-[10px] font-bold text-text-muted uppercase tracking-wider">Access Role</label>
               <select 
                 value={privRole}
                 onChange={(e) => setPrivRole(e.target.value)}
@@ -2735,7 +2735,7 @@ export default function App() {
                 }}
                 className="text-accent hover:underline font-bold text-xs mt-3 block mx-auto cursor-pointer"
               >
-                ← Back to Login
+                Back to Login
               </button>
             </div>
           ) : (
@@ -2905,7 +2905,7 @@ export default function App() {
               </div>
               <div className="grid grid-cols-2 gap-1">
                 {strength.checks.map((c, i) => (
-                  <div key={i} className={`flex items-center gap-1 text-[9px] ${c.pass ? 'text-emerald-600' : 'text-text-muted'}`}>
+                  <div key={i} className={`flex items-center gap-1 text-[10px] ${c.pass ? 'text-emerald-600' : 'text-text-muted'}`}>
                     <span>{c.pass ? '✓' : '○'}</span><span>{c.label}</span>
                   </div>
                 ))}
@@ -2943,7 +2943,7 @@ export default function App() {
           onClick={() => setAuthScreen('login')}
           className="w-full py-2.5 bg-gradient-to-r from-[#5ce1ab] to-[#34d399] hover:from-[#4fd69e] hover:to-[#059669] rounded-full text-xs font-bold text-text-primary shadow-card hover:shadow-lg transition-all cursor-pointer text-center"
         >
-          ← Return to Login
+          Return to Login
         </button>
       </motion.div>
     );
@@ -2965,7 +2965,7 @@ export default function App() {
           onClick={() => setAuthScreen('login')}
           className="w-full py-2.5 bg-gradient-to-r from-[#5ce1ab] to-[#34d399] hover:from-[#4fd69e] hover:to-[#059669] rounded-full text-xs font-bold text-text-primary shadow-card hover:shadow-lg transition-all cursor-pointer text-center"
         >
-          ← Return to Login
+          Return to Login
         </button>
       </motion.div>
     );
@@ -2995,8 +2995,8 @@ export default function App() {
           <div className="absolute right-2 bottom-1 text-2xl select-none">🏢</div>
           <div className="absolute left-2 bottom-1 text-2xl select-none">🏗️</div>
           <div className="z-10 ml-auto text-right pr-1">
-            <p className="text-[8px] uppercase tracking-widest text-text-muted font-bold font-mono">Logistics Pipeline</p>
-            <p className="text-[9px] font-semibold text-sky-650 mt-0.5">Accra ➔ Tema Port</p>
+            <p className="text-[10px] uppercase tracking-widest text-text-muted font-bold font-mono">Logistics Pipeline</p>
+            <p className="text-[10px] font-semibold text-sky-650 mt-0.5">Accra to Tema Port</p>
           </div>
         </div>
 
@@ -3101,7 +3101,7 @@ export default function App() {
             />
             <div className="flex flex-col select-none">
               <span className="font-extrabold text-xl sm:text-2xl tracking-wider leading-none text-slate-900">REBMA</span>
-              <span className="font-bold text-[9px] sm:text-[10px] uppercase tracking-widest mt-0.5 text-emerald-600">IMPEX GHANA</span>
+              <span className="font-bold text-[10px] sm:text-[10px] uppercase tracking-widest mt-0.5 text-emerald-600">IMPEX GHANA</span>
             </div>
           </div>
 
@@ -3906,7 +3906,7 @@ export default function App() {
           <div className="w-full">
             {isEditingProfileName ? (
               <div className="flex items-center justify-center gap-2">
-                <input 
+                <input placeholder="Enter your full name" 
                   type="text" 
                   value={profileTempName}
                   onChange={e => setProfileTempName(e.target.value)}
@@ -4052,7 +4052,7 @@ export default function App() {
               <div key={date} className="space-y-3.5">
                 {/* Date marker */}
                 <div className="flex justify-center my-2">
-                  <span className="bg-slate-200 dark:bg-slate-850 px-2.5 py-0.5 rounded-full text-[9px] font-mono text-text-secondary dark:text-text-muted">{date}</span>
+                  <span className="bg-slate-200 dark:bg-slate-850 px-2.5 py-0.5 rounded-full text-[10px] font-mono text-text-secondary dark:text-text-muted">{date}</span>
                 </div>
                 {msgs.map(m => {
                   const isSelf = m.sender === currentUser.fullName || m.sender === 'Self';
@@ -4071,10 +4071,10 @@ export default function App() {
                           : 'bg-bg-card dark:bg-slate-900 border border-[var(--border)] dark:border-slate-800 text-text-primary dark:text-text-muted rounded-tl-none'
                       }`}>
                         {!isSelf && (
-                          <p className="text-[9px] font-extrabold text-text-secondary dark:text-text-muted uppercase tracking-wide leading-none mb-1">{m.sender}</p>
+                          <p className="text-[10px] font-extrabold text-text-secondary dark:text-text-muted uppercase tracking-wide leading-none mb-1">{m.sender}</p>
                         )}
                         <p className="leading-relaxed leading-normal">{m.content}</p>
-                        <p className={`text-[8px] mt-1 text-right ${isSelf ? 'text-white/60' : 'text-text-muted font-mono'}`}>{m.time}</p>
+                        <p className={`text-[10px] mt-1 text-right ${isSelf ? 'text-white/60' : 'text-text-muted font-mono'}`}>{m.time}</p>
                       </div>
 
                       {/* Self Avatar */}
@@ -4478,7 +4478,7 @@ function AppInner({
                     <p className="text-xs text-white leading-relaxed">{n.msg}</p>
                     <div className="flex items-center gap-2 mt-1">
                       <p className="text-[10px] text-text-muted">{n.time}</p>
-                      {n.linkTab && <p className="text-[10px] text-blue-400 font-semibold">View →</p>}
+                      {n.linkTab && <p className="text-[10px] text-blue-400 font-semibold">View</p>}
                     </div>
                   </div>
                   <button

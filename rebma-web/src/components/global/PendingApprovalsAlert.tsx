@@ -230,7 +230,7 @@ export default function PendingApprovalsAlert({ department, onNavigate, addNotif
         </p>
       </div>
       <div className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 bg-amber-500 text-white rounded-lg text-[11px] font-bold group-hover:bg-amber-600 transition-colors">
-        Review →
+        Review
       </div>
     </div>
   );

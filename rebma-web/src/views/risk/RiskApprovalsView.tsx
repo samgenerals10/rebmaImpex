@@ -213,7 +213,7 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
       }));
 
       const mappedCargo: ApprovalItem[] = (cargoData || []).map((row: any) => {
-        const baseDesc = `${row.product_name || 'Goods'} — ${row.qty_received || row.quantity || 0} ${row.goods_type || 'units'} from ${row.company || 'supplier'}`;
+        const baseDesc = `${row.product_name || 'Goods'}, ${row.qty_received || row.quantity || 0} ${row.goods_type || 'units'} from ${row.company || 'supplier'}`;
         const description = row.discrepancies && row.discrepancies.trim() !== ''
           ? `${baseDesc} (Discrepancy: ${row.discrepancies})`
           : baseDesc;
@@ -250,7 +250,7 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
         id: row.id,
         requestId: `POD-${row.id.slice(-6).toUpperCase()}`,
         type: 'Proof of Delivery' as const,
-        description: `Delivery for ${row.orders?.client_name || row.customer_name || 'Customer'} — ${row.orders?.destination || row.delivery_address || 'destination unknown'}`,
+        description: `Delivery for ${row.orders?.client_name || row.customer_name || 'Customer'}, ${row.orders?.destination || row.delivery_address || 'destination unknown'}`,
         department: 'DISPATCH',
         amount: row.orders?.total_amount ? Number(row.orders.total_amount) : null,
         date: row.created_at?.slice(0, 10) || '',
@@ -355,7 +355,7 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
         const verbLabel = action === 'approve' ? 'APPROVED' : action === 'return' ? 'RETURNED FOR CORRECTION' : 'REJECTED';
         await notifyDecision({
           title: `Cargo Intake ${verbLabel}`,
-          message: `Cargo intake ${verbLabel} by Risk: ${selectedItem.description} — ${modalNote}`,
+          message: `Cargo intake ${verbLabel} by Risk: ${selectedItem.description}, ${modalNote}`,
           department: 'ADMIN_WAREHOUSE',
           personId: cargoRow.handled_by_id || cargoRow.logged_by_id || null,
         });
@@ -384,7 +384,7 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
         const verbLabel = action === 'approve' ? 'APPROVED (forwarded to Management)' : action === 'return' ? 'RETURNED FOR CORRECTION' : 'REJECTED';
         await notifyDecision({
           title: `Sales Order ${verbLabel}`,
-          message: `Order ${verbLabel} by Risk: ${selectedItem.description} — ${modalNote}`,
+          message: `Order ${verbLabel} by Risk: ${selectedItem.description}, ${modalNote}`,
           department: 'MARKETING',
           personId: orderRow.handled_by_id || orderRow.created_by || null,
         });
@@ -414,7 +414,7 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
         const verbLabel = action === 'approve' ? 'RELEASED to warehouse' : action === 'return' ? 'RETURNED FOR CORRECTION' : 'REJECTED';
         await notifyDecision({
           title: `Order Final Release ${verbLabel}`,
-          message: `Order ${verbLabel} by Risk at final release: ${selectedItem.description} — ${modalNote}`,
+          message: `Order ${verbLabel} by Risk at final release: ${selectedItem.description}, ${modalNote}`,
           department: 'MARKETING',
           personId: (selectedItem.raw as any).handled_by_id || (selectedItem.raw as any).created_by || null,
         });
@@ -428,7 +428,7 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
         const verbLabel = action === 'approve' ? 'APPROVED' : action === 'return' ? 'RETURNED FOR CORRECTION' : 'REJECTED';
         await notifyDecision({
           title: `Customer Verification ${verbLabel}`,
-          message: `Customer ${verbLabel} by Risk: ${selectedItem.description} — ${modalNote}`,
+          message: `Customer ${verbLabel} by Risk: ${selectedItem.description}, ${modalNote}`,
           department: 'MARKETING',
           personId: (selectedItem.raw as any).handled_by_id || (selectedItem.raw as any).registered_by_id || null,
         });
@@ -454,7 +454,7 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
         const driverUserId = (selectedItem.raw as any).drivers?.user_id || null;
         await notifyDecision({
           title: `Proof of Delivery ${verbLabel}`,
-          message: `Proof of delivery ${verbLabel} by Risk: ${selectedItem.description} — ${modalNote}`,
+          message: `Proof of delivery ${verbLabel} by Risk: ${selectedItem.description}, ${modalNote}`,
           personId: driverUserId,
         });
       }
@@ -687,7 +687,7 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Total Pending', value: counts.pending, icon: FileText, color: 'var(--accent)', filter: 'Pending', title: 'Everything currently awaiting your review, across all types' },
-          { label: 'All Decisions', value: counts.total, icon: Clock, color: '#f59e0b', filter: 'All', title: 'Every item on record — pending, approved, rejected, returned, escalated' },
+          { label: 'All Decisions', value: counts.total, icon: Clock, color: '#f59e0b', filter: 'All', title: 'Every item on record, pending, approved, rejected, returned, escalated' },
           { label: 'Approved Today', value: todayApproved, icon: CheckCircle, color: '#10b981', filter: 'Approved', title: 'Items you approved today' },
           { label: 'Rejected Today', value: todayRejected, icon: XCircle, color: '#ef4444', filter: 'Rejected', title: 'Items you rejected today' },
         ].map(({ label, value, icon: Icon, color, filter, title }) => (

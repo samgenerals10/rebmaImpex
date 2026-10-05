@@ -59,7 +59,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await supabaseAdmin.from('notifications').insert({
       recipient_department: 'CEO', type: 'approval', read: false, created_at: new Date().toISOString(),
       title: 'CEO removal requested',
-      message: `${myName} has asked to remove ${target.full_name} as CEO. Another CEO must approve it in Control Center → CEO Account.`,
+      message: `${myName} has asked to remove ${target.full_name} as CEO. Another CEO must approve it in Control Center, then CEO Account.`,
     });
     await audit('CEO_REMOVAL_REQUESTED', myName, me, created.id, `Removal of ${target.full_name} as CEO requested.${reason ? ` Reason: ${reason}` : ''}`);
     return res.status(200).json({ message: `Removal request sent. Another CEO must approve it before ${target.full_name} is removed.` });

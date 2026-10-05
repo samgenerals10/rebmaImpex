@@ -40,6 +40,7 @@ import {
   openRoomChannel, ICE_SERVERS, shouldOfferTo, candidateToJson,
   type SignalMessage, type RoomChannel, type RoomPresenceEntry,
 } from '../../lib/webrtcSignaling';
+import CountBadge from '../../components/ui/CountBadge';
 
 interface Props {
   room: string;
@@ -611,7 +612,7 @@ export default function WebGroupCallModal({ room, title, myId, myName, meetingId
     );
   }
 
-  const sidePanel = (heading: string, body: React.ReactNode, footer?: React.ReactNode) => (
+  const sidePanel = (heading: React.ReactNode, body: React.ReactNode, footer?: React.ReactNode) => (
     <div className="absolute top-0 right-0 bottom-0 w-full sm:w-80 bg-[#15151c] flex flex-col z-10">
       <div className="flex items-center justify-between px-4 py-3">
         <p className="text-sm font-bold text-white">{heading}</p>
@@ -718,14 +719,14 @@ export default function WebGroupCallModal({ room, title, myId, myName, meetingId
         {isHost && waitingRoom.length > 0 && (
           <button onClick={() => setPanel('waiting')} title="Waiting room" className={`${ctrl} bg-amber-500 relative`}>
             <Users size={18} />
-            <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-[9px] font-bold flex items-center justify-center">{waitingRoom.length}</span>
+            <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-[10px] font-bold flex items-center justify-center">{waitingRoom.length}</span>
           </button>
         )}
         {isHost && <button onClick={requestMuteAll} title="Mute everyone" className={soft}><Volume2 size={18} /></button>}
         <button onClick={isHost ? endMeetingForEveryone : onClose} title={isHost ? 'End meeting for everyone' : 'Leave'} className="w-14 h-14 rounded-full bg-red-500 text-white flex items-center justify-center cursor-pointer"><PhoneOff size={22} /></button>
       </div>
 
-      {panel === 'participants' && sidePanel(`Participants (${participantCount})`, (
+      {panel === 'participants' && sidePanel(<>Participants<CountBadge count={participantCount} /></>, (
         <>
           <div className="flex items-center justify-between py-2">
             <p className="text-xs font-semibold text-white">{myName} (You)</p>
@@ -739,7 +740,7 @@ export default function WebGroupCallModal({ room, title, myId, myName, meetingId
               </div>
               <div className="flex items-center gap-2">
                 {isHost && isRecording && recordConsent[peer.userId] !== undefined && (
-                  <span className={`text-[9px] font-semibold ${recordConsent[peer.userId] ? 'text-green-500' : 'text-amber-400'}`}>{recordConsent[peer.userId] ? 'Agreed' : 'Declined'}</span>
+                  <span className={`text-[10px] font-semibold ${recordConsent[peer.userId] ? 'text-green-500' : 'text-amber-400'}`}>{recordConsent[peer.userId] ? 'Agreed' : 'Declined'}</span>
                 )}
                 <button onClick={() => setPinnedUserId(pinnedUserId === peer.userId ? null : peer.userId)} title="Pin" className="cursor-pointer">
                   <Pin size={14} className={pinnedUserId === peer.userId ? 'text-[var(--accent)]' : 'text-white/60'} />
@@ -751,7 +752,7 @@ export default function WebGroupCallModal({ room, title, myId, myName, meetingId
         </>
       ))}
 
-      {panel === 'waiting' && sidePanel(`Waiting Room (${waitingRoom.length})`, (
+      {panel === 'waiting' && sidePanel(<>Waiting Room<CountBadge count={waitingRoom.length} /></>, (
         waitingRoom.length === 0
           ? <p className="text-xs text-white/50 text-center mt-8">No one is waiting.</p>
           : waitingRoom.map((p) => (

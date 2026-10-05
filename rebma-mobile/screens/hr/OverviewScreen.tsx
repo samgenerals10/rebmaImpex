@@ -134,7 +134,7 @@ export default function OverviewScreen() {
 
         {pendingRegistrations > 0 && (
           <Button
-            label={`Review ${pendingRegistrations} Staff Registration${pendingRegistrations !== 1 ? 's' : ''} →`}
+            label={`Review ${pendingRegistrations} Staff Registration${pendingRegistrations !== 1 ? 's' : ''}`}
             onPress={() => navigation.navigate('Registrations')}
             fullWidth
           />

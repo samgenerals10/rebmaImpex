@@ -256,7 +256,7 @@ export default function PayrollView({ currentUser, staffList, addNotification }:
       {/* Account Department: dept totals only */}
       {isFinance && (
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4">
-          <h3 className="font-bold text-[var(--text-primary)] text-sm mb-3">Department Payroll Totals — June 2026</h3>
+          <h3 className="font-bold text-[var(--text-primary)] text-sm mb-3">Department Payroll Totals, June 2026</h3>
           <div className="space-y-2">
             {Object.entries(deptTotals).map(([dept, total]) => (
               <div key={dept} className="flex items-center justify-between py-2 border-b border-[var(--border)] last:border-0">
@@ -339,7 +339,7 @@ export default function PayrollView({ currentUser, staffList, addNotification }:
           <div className="flex items-center gap-3">
             <button onClick={() => setActiveBatch(null)}
               className="text-xs text-[var(--accent)] font-semibold hover:opacity-80 cursor-pointer">
-              ← Back to Batches
+              Back to Batches
             </button>
             <h3 className="font-bold text-[var(--text-primary)]">{activeBatch.period} — Payroll Entries</h3>
             <span className="ml-auto flex gap-2">
@@ -401,7 +401,7 @@ export default function PayrollView({ currentUser, staffList, addNotification }:
       {/* Own salary view for regular staff */}
       {canSeeOwnSalary && (
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
-          <h3 className="font-bold text-[var(--text-primary)] mb-3">Your Salary — June 2026</h3>
+          <h3 className="font-bold text-[var(--text-primary)] mb-3">Your Salary, June 2026</h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
               { label: 'Base Salary', value: 6500, color: 'var(--accent)' },

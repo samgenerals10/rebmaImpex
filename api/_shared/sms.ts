@@ -42,7 +42,7 @@ export async function isSmsConfigured(supabaseAdmin: SupabaseClient): Promise<bo
 export async function sendSms(supabaseAdmin: SupabaseClient, phone: string | null | undefined, text: string): Promise<SendResult> {
   const s = await getSettings(supabaseAdmin, ['sms_gateway_username', 'sms_gateway_password', 'sms_gateway_url', 'sms_default_country_code']);
   if (!s.sms_gateway_username || !s.sms_gateway_password) {
-    return { sent: false, reason: 'SMS is not set up yet (Control Center → API Keys → SMS Gateway).' };
+    return { sent: false, reason: 'SMS is not set up yet (Control Center, then API Keys, then SMS Gateway).' };
   }
   const number = toInternational(phone || '', (s.sms_default_country_code || '233').replace(/\D/g, '') || '233');
   if (!number) return { sent: false, reason: 'No usable phone number on file.' };

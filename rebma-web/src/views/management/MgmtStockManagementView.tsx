@@ -120,7 +120,7 @@ export default function MgmtStockManagementView({ addNotification, currentUser }
         action: `CORRECT_CARGO: ${correctionTarget.goods_code || correctionTarget.id} — ${correctionTarget.product_name}`,
         department: 'MANAGEMENT',
         performed_by: performedBy,
-        details: `Corrected cargo entry. Qty ${oldQty} → ${newQty}${delta !== 0 ? ` (stock adjusted by ${delta > 0 ? '+' : ''}${delta})` : ''}. Reason: ${correctionForm.note.trim()}`,
+        details: `Corrected cargo entry. Qty ${oldQty} to ${newQty}${delta !== 0 ? ` (stock adjusted by ${delta > 0 ? '+' : ''}${delta})` : ''}. Reason: ${correctionForm.note.trim()}`,
         timestamp: new Date().toISOString(),
       });
 
@@ -470,27 +470,27 @@ export default function MgmtStockManagementView({ addNotification, currentUser }
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Quantity</label>
-                <input type="number" value={correctionForm.quantity} onChange={e => setCorrectionForm(f => ({ ...f, quantity: e.target.value }))}
+                <input placeholder="Enter quantity" type="number" value={correctionForm.quantity} onChange={e => setCorrectionForm(f => ({ ...f, quantity: e.target.value }))}
                   className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Weight (tons)</label>
-                <input type="number" step="0.001" value={correctionForm.weight} onChange={e => setCorrectionForm(f => ({ ...f, weight: e.target.value }))}
+                <input placeholder="Enter weight" type="number" step="0.001" value={correctionForm.weight} onChange={e => setCorrectionForm(f => ({ ...f, weight: e.target.value }))}
                   className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Country</label>
-                <input value={correctionForm.country} onChange={e => setCorrectionForm(f => ({ ...f, country: e.target.value }))}
+                <input placeholder="Enter country" value={correctionForm.country} onChange={e => setCorrectionForm(f => ({ ...f, country: e.target.value }))}
                   className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Company / Carrier</label>
-                <input value={correctionForm.company} onChange={e => setCorrectionForm(f => ({ ...f, company: e.target.value }))}
+                <input placeholder="Enter company / carrier" value={correctionForm.company} onChange={e => setCorrectionForm(f => ({ ...f, company: e.target.value }))}
                   className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
               </div>
               <div className="col-span-2">
                 <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Destination</label>
-                <input value={correctionForm.destination} onChange={e => setCorrectionForm(f => ({ ...f, destination: e.target.value }))}
+                <input placeholder="Enter destination" value={correctionForm.destination} onChange={e => setCorrectionForm(f => ({ ...f, destination: e.target.value }))}
                   className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
               </div>
               <div className="col-span-2">
@@ -501,7 +501,7 @@ export default function MgmtStockManagementView({ addNotification, currentUser }
               </div>
               <div className="col-span-2">
                 <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Unit Cost (GHS)</label>
-                <input type="number" step="0.01" value={correctionForm.unitPrice} onChange={e => setCorrectionForm(f => ({ ...f, unitPrice: e.target.value }))}
+                <input placeholder="Enter unit cost" type="number" step="0.01" value={correctionForm.unitPrice} onChange={e => setCorrectionForm(f => ({ ...f, unitPrice: e.target.value }))}
                   className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
               </div>
             </div>

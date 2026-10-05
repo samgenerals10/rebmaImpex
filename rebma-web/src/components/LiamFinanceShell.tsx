@@ -176,16 +176,16 @@ const overviewData = [
 /* ── Budget data per dept ── */
 const getBudget = (dept: string) => {
   const map: Record<string, { limit: string; spent: string; spentNum: number; totalNum: number; period: string }> = {
-    CEO:        { limit: '₵120,000', spent: '₵98,400',  spentNum: 98400,  totalNum: 120000, period: 'Jun 1 – Jun 30, 2026' },
-    MANAGEMENT: { limit: '₵60,000',  spent: '₵48,200',  spentNum: 48200,  totalNum: 60000,  period: 'Jun 1 – Jun 30, 2026' },
-    MARKETING:  { limit: '₵24,000',  spent: '₵18,600',  spentNum: 18600,  totalNum: 24000,  period: 'Jun 1 – Jun 30, 2026' },
-    FINANCE:    { limit: '₵80,000',  spent: '₵62,400',  spentNum: 62400,  totalNum: 80000,  period: 'Jun 1 – Jun 30, 2026' },
-    HR:         { limit: '₵40,000',  spent: '₵34,800',  spentNum: 34800,  totalNum: 40000,  period: 'Jun 1 – Jun 30, 2026' },
-    OPERATIONS: { limit: '₵90,000',  spent: '₵72,000',  spentNum: 72000,  totalNum: 90000,  period: 'Jun 1 – Jun 30, 2026' },
-    DISPATCH:   { limit: '₵12,000',  spent: '₵9,800',   spentNum: 9800,   totalNum: 12000,  period: 'Jun 1 – Jun 30, 2026' },
-    LOGISTICS:  { limit: '₵20,000',  spent: '₵16,400',  spentNum: 16400,  totalNum: 20000,  period: 'Jun 1 – Jun 30, 2026' },
-    PRODUCTION: { limit: '₵48,000',  spent: '₵38,200',  spentNum: 38200,  totalNum: 48000,  period: 'Jun 1 – Jun 30, 2026' },
-    RECEPTION:  { limit: '₵4,000',   spent: '₵2,800',   spentNum: 2800,   totalNum: 4000,   period: 'Jun 1 – Jun 30, 2026' },
+    CEO:        { limit: '₵120,000', spent: '₵98,400',  spentNum: 98400,  totalNum: 120000, period: 'Jun 1 to Jun 30, 2026' },
+    MANAGEMENT: { limit: '₵60,000',  spent: '₵48,200',  spentNum: 48200,  totalNum: 60000,  period: 'Jun 1 to Jun 30, 2026' },
+    MARKETING:  { limit: '₵24,000',  spent: '₵18,600',  spentNum: 18600,  totalNum: 24000,  period: 'Jun 1 to Jun 30, 2026' },
+    FINANCE:    { limit: '₵80,000',  spent: '₵62,400',  spentNum: 62400,  totalNum: 80000,  period: 'Jun 1 to Jun 30, 2026' },
+    HR:         { limit: '₵40,000',  spent: '₵34,800',  spentNum: 34800,  totalNum: 40000,  period: 'Jun 1 to Jun 30, 2026' },
+    OPERATIONS: { limit: '₵90,000',  spent: '₵72,000',  spentNum: 72000,  totalNum: 90000,  period: 'Jun 1 to Jun 30, 2026' },
+    DISPATCH:   { limit: '₵12,000',  spent: '₵9,800',   spentNum: 9800,   totalNum: 12000,  period: 'Jun 1 to Jun 30, 2026' },
+    LOGISTICS:  { limit: '₵20,000',  spent: '₵16,400',  spentNum: 16400,  totalNum: 20000,  period: 'Jun 1 to Jun 30, 2026' },
+    PRODUCTION: { limit: '₵48,000',  spent: '₵38,200',  spentNum: 38200,  totalNum: 48000,  period: 'Jun 1 to Jun 30, 2026' },
+    RECEPTION:  { limit: '₵4,000',   spent: '₵2,800',   spentNum: 2800,   totalNum: 4000,   period: 'Jun 1 to Jun 30, 2026' },
   };
   return map[dept] || map.CEO;
 };
@@ -202,7 +202,7 @@ const getTransactions = (dept: string) => {
       ];
     case 'MARKETING':
       return [
-        { name: 'Bulk Order — Accra Mart', date: 'Jun 10.06.2026', amount: '₵12,400.00', account: 'Sales Acct...3341' },
+        { name: 'Bulk Order, Accra Mart', date: 'Jun 10.06.2026', amount: '₵12,400.00', account: 'Sales Acct...3341' },
         { name: 'Ad Campaign Spend',       date: 'Jun 08.06.2026', amount: '₵3,200.00',  account: 'Mktg Acct...9921' },
         { name: 'Corporate Deal',          date: 'Jun 06.06.2026', amount: '₵14,200.00', account: 'Main Acct...1124' },
       ];
@@ -478,7 +478,7 @@ export default function LiamFinanceShell({ activeDepartment, currentUser, childr
           </div>
           <div className="space-y-0">
             {/* Header row */}
-            <div className="grid grid-cols-4 gap-2 pb-2 border-b border-[var(--border)] text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
+            <div className="grid grid-cols-4 gap-2 pb-2 border-b border-[var(--border)] text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
               <span>Description</span>
               <span>Date</span>
               <span className="text-right">Amount</span>

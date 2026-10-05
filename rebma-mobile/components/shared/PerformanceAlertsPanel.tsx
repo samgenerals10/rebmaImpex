@@ -72,7 +72,7 @@ export default function PerformanceAlertsPanel() {
               }}
             >
               <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta11.size, color: filter === v ? t.colors.onAccent : t.colors.textSecondary }}>
-                {v === 'unresolved' ? `Unresolved${unresolvedCount > 0 ? ` (${unresolvedCount})` : ''}` : 'All'}
+                {v === 'unresolved' ? 'Unresolved' : 'All'}
               </Text>
             </Pressable>
           ))}

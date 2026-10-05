@@ -186,7 +186,7 @@ export default function MarketingAnalyticsView({ addNotification, currentUser }:
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">Marketing Analytics</h1>
-          <p className="text-sm text-[var(--text-secondary)]">Sales performance and trends — live from Supabase</p>
+          <p className="text-sm text-[var(--text-secondary)]">Sales performance and trends, live from Supabase</p>
         </div>
       </div>
 

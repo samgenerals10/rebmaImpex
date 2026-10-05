@@ -295,7 +295,7 @@ export default function AnalyticsView({ addNotification }: Props) {
 
       {/* Row 4: Peak Hours Heatmap */}
       <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4">
-        <h3 className="font-bold text-[var(--text-primary)] text-sm mb-4">Peak Hours Heatmap — Visitors per Hour per Day (last 4 weeks)</h3>
+        <h3 className="font-bold text-[var(--text-primary)] text-sm mb-4">Peak Hours Heatmap, Visitors per Hour per Day (last 4 weeks)</h3>
         <div>
           <ResponsiveDataView<string>
             columns={[
@@ -345,7 +345,7 @@ export default function AnalyticsView({ addNotification }: Props) {
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-sm font-bold text-[var(--accent)]">{v.visits}</p>
-                  <p className="text-[9px] text-[var(--text-muted)]">visits</p>
+                  <p className="text-[10px] text-[var(--text-muted)]">visits</p>
                 </div>
               </div>
             ))}
@@ -369,7 +369,7 @@ export default function AnalyticsView({ addNotification }: Props) {
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-sm font-bold text-[var(--text-primary)]">{s.visits}</p>
-                  <p className="text-[9px] text-[var(--text-muted)]">visitors</p>
+                  <p className="text-[10px] text-[var(--text-muted)]">visitors</p>
                 </div>
               </div>
             ))}

@@ -309,7 +309,7 @@ export default function CustomersScreen() {
           <Field label="Ghana Card" hint="Optional"><Input value={form.ghanaCard} onChangeText={(v) => setForm((f) => ({ ...f, ghanaCard: v }))} placeholder="GHA-000000000-0" /></Field>
           <Field label="Second Ghana Card" hint="Optional"><Input value={form.ghanaCard2} onChangeText={(v) => setForm((f) => ({ ...f, ghanaCard2: v }))} placeholder="GHA-000000000-0" /></Field>
           <Field label="Partner / Second Customer Name" hint="Optional"><Input value={form.partnerName} onChangeText={(v) => setForm((f) => ({ ...f, partnerName: v }))} placeholder="Partner name" /></Field>
-          <Field label="Date of Birth" hint="For birthday SMS greetings — YYYY-MM-DD"><Input value={form.dateOfBirth} onChangeText={(v) => setForm((f) => ({ ...f, dateOfBirth: v }))} placeholder="1990-05-21" /></Field>
+          <Field label="Date of Birth" hint="For birthday SMS greetings, YYYY-MM-DD"><Input value={form.dateOfBirth} onChangeText={(v) => setForm((f) => ({ ...f, dateOfBirth: v }))} placeholder="1990-05-21" /></Field>
         </SheetSection>
 
         <SheetSection label="Address & Location">
@@ -377,7 +377,7 @@ export default function CustomersScreen() {
                   onPress={() => Linking.openURL(`https://www.google.com/maps?q=${detail.gps_lat},${detail.gps_lng}`)}
                   style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.accent }}
                 >
-                  View on map →
+                  View on map
                 </Text>
               </SheetSection>
             )}
@@ -390,7 +390,7 @@ export default function CustomersScreen() {
                     onPress={() => viewBusinessCertificate(detail.business_certificate_url!)}
                     style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.accent }}
                   >
-                    View Certificate →
+                    View Certificate
                   </Text>
                 </View>
               </SheetSection>
@@ -402,7 +402,7 @@ export default function CustomersScreen() {
               </SheetSection>
             )}
 
-            <SheetSection label={`Order History (${detailOrders.length})`}>
+            <SheetSection label="Order History">
               <DataList collapsible columns={orderColumns} data={detailOrders} rowKey={(o) => o.id || Math.random().toString()} emptyTitle="No orders yet" />
             </SheetSection>
 

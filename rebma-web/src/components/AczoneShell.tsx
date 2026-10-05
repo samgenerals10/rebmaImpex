@@ -530,7 +530,7 @@ export default function AczoneShell({ activeDepartment, currentUser, children }:
                     <p className="text-[10px] text-[var(--text-muted)]">{order.id}</p>
                   </div>
                   <div className="flex flex-col items-end gap-1 shrink-0">
-                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${statusStyle[order.status] || ''}`}>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${statusStyle[order.status] || ''}`}>
                       {order.status}
                     </span>
                     <span className="text-[10px] text-[var(--text-muted)]">{order.time}</span>

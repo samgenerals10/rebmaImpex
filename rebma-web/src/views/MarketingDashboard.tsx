@@ -386,7 +386,7 @@ export default function MarketingDashboard({
             onClick={() => setActiveMobileDetail(null)}
             className="px-3 py-1.5 bg-bg-card dark:bg-slate-800 border border-[var(--border)] dark:border-slate-700 rounded-full text-xs font-bold text-text-secondary cursor-pointer shadow-card"
           >
-            ← Back
+            Back
           </button>
           <h2 className="text-sm font-bold">Record Details</h2>
         </div>
@@ -406,7 +406,7 @@ export default function MarketingDashboard({
                 <div>
                   <h3 className="text-base font-bold">{cust.name}</h3>
                   <p className="text-xs text-text-muted font-mono mt-0.5">{cust.id}</p>
-                  <span className="inline-block mt-2 px-2.5 py-0.5 bg-blue-500/10 text-blue-500 rounded-full text-[9px] font-bold uppercase">{cust.companyName}</span>
+                  <span className="inline-block mt-2 px-2.5 py-0.5 bg-blue-500/10 text-blue-500 rounded-full text-[10px] font-bold uppercase">{cust.companyName}</span>
                 </div>
               </div>
               <div className="bg-bg-card dark:bg-slate-800 rounded-2xl p-4 shadow-card border border-[var(--border)] dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-700">
@@ -521,9 +521,9 @@ export default function MarketingDashboard({
                   <Icon className="w-5 h-5" style={{ color: s.color }} />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[9px] text-text-muted uppercase font-bold tracking-wider truncate">{s.label}</p>
+                  <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider truncate">{s.label}</p>
                   <p className="text-sm font-bold text-text-primary mt-0.5"><CountUp value={s.value} /></p>
-                  <p className="text-[9px] text-text-muted truncate">{s.sub}</p>
+                  <p className="text-[10px] text-text-muted truncate">{s.sub}</p>
                 </div>
               </div>
             );
@@ -787,7 +787,7 @@ export default function MarketingDashboard({
                     <span className="font-mono text-[var(--text-primary)]">{o.id}</span>
                     <span className="text-[var(--text-muted)]">{o.productName || '—'}</span>
                     <span className="font-bold font-mono text-[var(--text-primary)]">GHS {o.totalAmount.toLocaleString()}</span>
-                    <span className={`px-1.5 py-0.5 rounded font-bold text-[8px] ${statusColor(o.status)}`}>{o.status.replace(/_/g, ' ')}</span>
+                    <span className={`px-1.5 py-0.5 rounded font-bold text-[10px] ${statusColor(o.status)}`}>{o.status.replace(/_/g, ' ')}</span>
                   </div>
                 ))}
               </div>
@@ -1002,38 +1002,38 @@ export default function MarketingDashboard({
                 <th onClick={() => handleSort('name', customerSortField, setCustomerSortField, customerSortDir, setCustomerSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
                   <div className="flex items-center gap-1">
                     <span>Name</span>
-                    <span className="text-[9px] opacity-70">{customerSortField === 'name' ? (customerSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                    <span className="text-[10px] opacity-70">{customerSortField === 'name' ? (customerSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                   </div>
                 </th>
                 <th onClick={() => handleSort('companyName', customerSortField, setCustomerSortField, customerSortDir, setCustomerSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden sm:table-cell text-[var(--text-primary)]">
                   <div className="flex items-center gap-1">
                     <span>Company</span>
-                    <span className="text-[9px] opacity-70">{customerSortField === 'companyName' ? (customerSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                    <span className="text-[10px] opacity-70">{customerSortField === 'companyName' ? (customerSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                   </div>
                 </th>
                 <th onClick={() => handleSort('phone', customerSortField, setCustomerSortField, customerSortDir, setCustomerSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
                   <div className="flex items-center gap-1">
                     <span>Phone</span>
-                    <span className="text-[9px] opacity-70">{customerSortField === 'phone' ? (customerSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                    <span className="text-[10px] opacity-70">{customerSortField === 'phone' ? (customerSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                   </div>
                 </th>
                 <th onClick={() => handleSort('location', customerSortField, setCustomerSortField, customerSortDir, setCustomerSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden sm:table-cell text-[var(--text-primary)]">
                   <div className="flex items-center gap-1">
                     <span>Location</span>
-                    <span className="text-[9px] opacity-70">{customerSortField === 'location' ? (customerSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                    <span className="text-[10px] opacity-70">{customerSortField === 'location' ? (customerSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                   </div>
                 </th>
                 <th onClick={() => handleSort('ghanaCard', customerSortField, setCustomerSortField, customerSortDir, setCustomerSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden md:table-cell text-[var(--text-primary)]">
                   <div className="flex items-center gap-1">
                     <span>Ghana Card</span>
-                    <span className="text-[9px] opacity-70">{customerSortField === 'ghanaCard' ? (customerSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                    <span className="text-[10px] opacity-70">{customerSortField === 'ghanaCard' ? (customerSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                   </div>
                 </th>
                 <th className="py-3 px-3 text-center whitespace-nowrap text-[var(--text-primary)]">Orders</th>
                 <th onClick={() => handleSort('registeredAt', customerSortField, setCustomerSortField, customerSortDir, setCustomerSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden lg:table-cell text-[var(--text-primary)]">
                   <div className="flex items-center gap-1">
                     <span>Registered</span>
-                    <span className="text-[9px] opacity-70">{customerSortField === 'registeredAt' ? (customerSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                    <span className="text-[10px] opacity-70">{customerSortField === 'registeredAt' ? (customerSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                   </div>
                 </th>
                 <th className="py-3 px-5 text-center whitespace-nowrap text-[var(--text-primary)]">Actions</th>
@@ -1065,7 +1065,7 @@ export default function MarketingDashboard({
                   <td className="py-3.5 px-3 text-[var(--text-muted)] hidden sm:table-cell">{cust.location}</td>
                   <td className="py-3.5 px-3 font-mono text-[10px] text-[var(--text-muted)] hidden md:table-cell">{cust.ghanaCard || '—'}</td>
                   <td className="py-3.5 px-3 text-center">
-                    <span className="px-2.5 py-0.5 bg-[var(--accent-light)] text-[var(--accent)] rounded-full text-[9px] font-bold">{customerOrders(cust).length}</span>
+                    <span className="px-2.5 py-0.5 bg-[var(--accent-light)] text-[var(--accent)] rounded-full text-[10px] font-bold">{customerOrders(cust).length}</span>
                   </td>
                   <td className="py-3.5 px-3 text-[var(--text-muted)] font-mono text-[10px] hidden lg:table-cell">{cust.registeredAt}</td>
                   <td className="py-3.5 px-5 text-center relative" onClick={(e) => e.stopPropagation()}>
@@ -1166,7 +1166,7 @@ export default function MarketingDashboard({
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${statusColor(order.status)}`}>{order.status.replace(/_/g, ' ')}</span>
+                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${statusColor(order.status)}`}>{order.status.replace(/_/g, ' ')}</span>
                 <ChevronRight className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
               </div>
             </div>
@@ -1192,55 +1192,55 @@ export default function MarketingDashboard({
                 <th onClick={() => handleSort('ticketNumber', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden sm:table-cell text-[var(--text-primary)]">
                   <div className="flex items-center gap-1">
                     <span>Ticket #</span>
-                    <span className="text-[9px] opacity-70">{ordersSortField === 'ticketNumber' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                    <span className="text-[10px] opacity-70">{ordersSortField === 'ticketNumber' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                   </div>
                 </th>
                 <th onClick={() => handleSort('id', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden md:table-cell text-[var(--text-primary)]">
                   <div className="flex items-center gap-1">
                     <span>Order ID</span>
-                    <span className="text-[9px] opacity-70">{ordersSortField === 'id' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                    <span className="text-[10px] opacity-70">{ordersSortField === 'id' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                   </div>
                 </th>
                 <th onClick={() => handleSort('clientName', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
                   <div className="flex items-center gap-1">
                     <span>Client</span>
-                    <span className="text-[9px] opacity-70">{ordersSortField === 'clientName' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                    <span className="text-[10px] opacity-70">{ordersSortField === 'clientName' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                   </div>
                 </th>
                 <th onClick={() => handleSort('productName', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
                   <div className="flex items-center gap-1">
                     <span>Product</span>
-                    <span className="text-[9px] opacity-70">{ordersSortField === 'productName' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                    <span className="text-[10px] opacity-70">{ordersSortField === 'productName' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                   </div>
                 </th>
                 <th onClick={() => handleSort('destination', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden md:table-cell text-[var(--text-primary)]">
                   <div className="flex items-center gap-1">
                     <span>Destination</span>
-                    <span className="text-[9px] opacity-70">{ordersSortField === 'destination' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                    <span className="text-[10px] opacity-70">{ordersSortField === 'destination' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                   </div>
                 </th>
                 <th onClick={() => handleSort('paymentMode', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
                   <div className="flex items-center gap-1">
                     <span>Mode</span>
-                    <span className="text-[9px] opacity-70">{ordersSortField === 'paymentMode' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                    <span className="text-[10px] opacity-70">{ordersSortField === 'paymentMode' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                   </div>
                 </th>
                 <th onClick={() => handleSort('totalAmount', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 text-right whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
                   <div className="flex items-center justify-end gap-1">
                     <span>Amount</span>
-                    <span className="text-[9px] opacity-70">{ordersSortField === 'totalAmount' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                    <span className="text-[10px] opacity-70">{ordersSortField === 'totalAmount' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                   </div>
                 </th>
                 <th onClick={() => handleSort('status', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 text-center whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
                   <div className="flex items-center justify-center gap-1">
                     <span>Status</span>
-                    <span className="text-[9px] opacity-70">{ordersSortField === 'status' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                    <span className="text-[10px] opacity-70">{ordersSortField === 'status' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                   </div>
                 </th>
                 <th onClick={() => handleSort('createdAt', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden lg:table-cell text-[var(--text-primary)]">
                   <div className="flex items-center gap-1">
                     <span>Submitted</span>
-                    <span className="text-[9px] opacity-70">{ordersSortField === 'createdAt' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                    <span className="text-[10px] opacity-70">{ordersSortField === 'createdAt' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                   </div>
                 </th>
                 <th className="py-3 px-5 text-center whitespace-nowrap text-[var(--text-primary)]">Actions</th>
@@ -1263,11 +1263,11 @@ export default function MarketingDashboard({
                   <td className="py-3.5 px-3 text-[var(--text-secondary)]">{order.productName || '—'}</td>
                   <td className="py-3.5 px-3 text-[var(--text-muted)] hidden md:table-cell">{order.destination || '—'}</td>
                   <td className="py-3.5 px-3">
-                    <span className={`px-2.5 py-0.5 rounded text-[9px] font-bold ${order.paymentMode === 'CREDIT' ? 'bg-amber-500/10 text-amber-500' : order.paymentMode === 'CASH' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-blue-500/10 text-blue-500'}`}>{order.paymentMode}</span>
+                    <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold ${order.paymentMode === 'CREDIT' ? 'bg-amber-500/10 text-amber-500' : order.paymentMode === 'CASH' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-blue-500/10 text-blue-500'}`}>{order.paymentMode}</span>
                   </td>
                   <td className="py-3.5 px-3 text-right font-bold font-mono text-[13px] text-[var(--text-primary)]">GHS {order.totalAmount.toLocaleString()}</td>
                   <td className="py-3.5 px-3 text-center">
-                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${statusColor(order.status)}`}>{order.status.replace(/_/g, ' ')}</span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${statusColor(order.status)}`}>{order.status.replace(/_/g, ' ')}</span>
                   </td>
                   <td className="py-3.5 px-3 text-[var(--text-muted)] font-mono text-[10px] hidden lg:table-cell">{order.createdAt}</td>
                   <td className="py-3.5 px-5 text-center relative" onClick={(e) => e.stopPropagation()}>

@@ -71,7 +71,7 @@ export default function TransactionsGrid() {
     const paymentOrderIds = new Set((paymentsRes.data || []).map((p: any) => p.order_id).filter(Boolean));
     for (const o of ordersRes.data || []) {
       if (paymentOrderIds.has(o.id)) continue;
-      rows.push({ id: `ord-${o.id}`, date: (o.created_at || '').slice(0, 10), description: `Order ${o.ticket_number || o.id} — ${o.client_name || ''}`, department: 'MARKETING', amount: Number(o.total_amount || 0), type: 'in', account: (o.payment_mode || 'CASH').replace(/_/g, ' '), status: o.status === 'DELIVERED' ? 'completed' : 'pending', source: 'Orders' });
+      rows.push({ id: `ord-${o.id}`, date: (o.created_at || '').slice(0, 10), description: `Order ${o.ticket_number || o.id}, ${o.client_name || ''}`, department: 'MARKETING', amount: Number(o.total_amount || 0), type: 'in', account: (o.payment_mode || 'CASH').replace(/_/g, ' '), status: o.status === 'DELIVERED' ? 'completed' : 'pending', source: 'Orders' });
     }
     for (const e of expensesRes.data || []) {
       rows.push({ id: `exp-${e.id}`, date: (e.created_at || '').slice(0, 10), description: e.description || e.category || 'Expense', department: 'FINANCE', amount: Number(e.amount || 0), type: 'out', account: e.category || 'Expense', status: normaliseStatus(e.status || 'pending'), source: 'Expenses' });

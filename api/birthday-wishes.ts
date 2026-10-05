@@ -59,7 +59,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await supabaseAdmin.from('notifications').insert({
       recipient_department: 'HR', type: 'birthday', read: false, created_at: now.toISOString(),
       title: `Birthday${tomorrows.length > 1 ? 's' : ''} tomorrow`,
-      message: `${listNames(tomorrows)}. Open HR → Birthdays to prepare a message.`,
+      message: `${listNames(tomorrows)}. Open HR, then Birthdays to prepare a message.`,
     });
     notices.push('tomorrow');
   }
@@ -67,7 +67,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await supabaseAdmin.from('notifications').insert({
       recipient_department: 'HR', type: 'birthday', read: false, created_at: now.toISOString(),
       title: `Birthday${todays.length > 1 ? 's' : ''} today`,
-      message: `${listNames(todays)}. Open HR → Birthdays to send a wish.`,
+      message: `${listNames(todays)}. Open HR, then Birthdays to send a wish.`,
     });
     notices.push('today');
   }
@@ -111,7 +111,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await supabaseAdmin.from('notifications').insert({
         recipient_department: 'HR', type: 'birthday', read: false, created_at: now.toISOString(),
         title: 'Birthday wish not sent automatically',
-        message: 'Some birthday wishes could not go out automatically because no default template is set. Open HR → Birthday Templates and mark one as default.',
+        message: 'Some birthday wishes could not go out automatically because no default template is set. Open HR, then Birthday Templates and mark one as default.',
       });
     }
   }

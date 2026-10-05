@@ -102,13 +102,13 @@ function CalendarView({ leaves }: { leaves: LeaveRequest[] }) {
               <div className={`text-right font-bold mb-0.5 ${isToday ? 'text-[var(--accent)]' : 'text-[var(--text-muted)]'}`}>{day}</div>
               <div className="space-y-0.5">
                 {dayLeaves.slice(0, 2).map((l, li) => (
-                  <div key={li} className="text-[9px] font-semibold px-1 py-0.5 rounded truncate"
+                  <div key={li} className="text-[10px] font-semibold px-1 py-0.5 rounded truncate"
                     style={{ background: `${typeColor[l.leaveType] || 'var(--accent)'}20`, color: typeColor[l.leaveType] || 'var(--accent)' }}>
                     {l.employeeName.split(' ')[0]}
                   </div>
                 ))}
                 {dayLeaves.length > 2 && (
-                  <div className="text-[9px] text-[var(--text-muted)] px-1">+{dayLeaves.length - 2}</div>
+                  <div className="text-[10px] text-[var(--text-muted)] px-1">+{dayLeaves.length - 2}</div>
                 )}
               </div>
             </div>
@@ -373,7 +373,7 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
                   <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginBottom: 8 }}>
                     <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
                       <Calendar size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />
-                      {leave.startDate} → {leave.endDate}
+                      {leave.startDate} to {leave.endDate}
                     </span>
                     <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{leave.days} day{leave.days !== 1 ? 's' : ''}</span>
                   </div>
@@ -517,7 +517,7 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
             <div style={{ display: 'grid', gap: '0.75rem' }}>
               <div>
                 <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Employee Name</label>
-                <input value={form.employeeName} onChange={e => setForm(p => ({ ...p, employeeName: e.target.value }))}
+                <input placeholder="Enter employee name" value={form.employeeName} onChange={e => setForm(p => ({ ...p, employeeName: e.target.value }))}
                   style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }} />
               </div>
               <div>
@@ -542,7 +542,7 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Reason</label>
-                <textarea value={form.reason} onChange={e => setForm(p => ({ ...p, reason: e.target.value }))} rows={3}
+                <textarea placeholder="Write reason" value={form.reason} onChange={e => setForm(p => ({ ...p, reason: e.target.value }))} rows={3}
                   style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: 14, resize: 'vertical', boxSizing: 'border-box' }} />
               </div>
             </div>
@@ -563,7 +563,7 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
             <div style={{ display: 'grid', gap: '0.75rem' }}>
               <div>
                 <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Employee Name</label>
-                <input value={editForm.employeeName} onChange={e => setEditForm(p => p ? ({ ...p, employeeName: e.target.value }) : null)}
+                <input placeholder="Enter employee name" value={editForm.employeeName} onChange={e => setEditForm(p => p ? ({ ...p, employeeName: e.target.value }) : null)}
                   style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }} />
               </div>
               <div>
@@ -588,7 +588,7 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Reason</label>
-                <textarea value={editForm.reason} onChange={e => setEditForm(p => p ? ({ ...p, reason: e.target.value }) : null)} rows={3}
+                <textarea placeholder="Write reason" value={editForm.reason} onChange={e => setEditForm(p => p ? ({ ...p, reason: e.target.value }) : null)} rows={3}
                   style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: 14, resize: 'vertical', boxSizing: 'border-box' }} />
               </div>
               <div>
@@ -598,7 +598,7 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
               {editForm.status === 'REJECTED' && (
                 <div>
                   <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Rejection Reason</label>
-                  <textarea value={editForm.rejectionReason || ''} onChange={e => setEditForm(p => p ? ({ ...p, rejectionReason: e.target.value }) : null)} rows={2}
+                  <textarea placeholder="Write rejection reason" value={editForm.rejectionReason || ''} onChange={e => setEditForm(p => p ? ({ ...p, rejectionReason: e.target.value }) : null)} rows={2}
                     style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: 14, resize: 'vertical', boxSizing: 'border-box' }} />
                 </div>
               )}

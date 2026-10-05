@@ -443,7 +443,7 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
           <div style={{ display: 'flex', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, padding: 3, gap: 3, boxShadow: 'var(--box-shadow)' }}>
             {[
               { key: 'APPROVED_CARGO' as ActiveTab, label: 'Port-Approved Goods', count: cargoTotalIn },
-              { key: 'PRODUCTS' as ActiveTab, label: 'Company Products — Finished Goods', count: productsRemaining },
+              { key: 'PRODUCTS' as ActiveTab, label: 'Company Products, Finished Goods', count: productsRemaining },
               { key: 'GENERAL_PURCHASES' as ActiveTab, label: 'General Purchased Items', count: gpTotalIn },
             ].map(btn => {
               const isSelected = activeTab === btn.key;
@@ -630,7 +630,7 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
           </>
         ) : activeTab === 'PRODUCTS' ? (
           <>
-            <h2 style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>Company Products — Finished Goods</h2>
+            <h2 style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>Company Products, Finished Goods</h2>
             <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--text-muted)' }}>Goods produced by the company and added to stock. Click a row for full movement history.</p>
             {/* Stock level bars */}
             {filteredStock.length > 0 && (
@@ -743,7 +743,7 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
         return (
           <EntityDetailPanel
             title={selectedCargo.productName}
-            subtitle={`${selectedCargo.portOfOrigin} → ${selectedCargo.destination}`}
+            subtitle={`${selectedCargo.portOfOrigin} to ${selectedCargo.destination}`}
             badgeText="PORT APPROVED"
             badgeStyle={{ background: '#dbeafe', color: '#1e40af' }}
             fields={[

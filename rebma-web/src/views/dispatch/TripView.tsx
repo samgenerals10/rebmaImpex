@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { MapPin, Navigation, Package, Wifi, WifiOff, RefreshCw, ExternalLink, CheckCircle2, Phone, CreditCard, Camera } from 'lucide-react';
 import { compressImageToDataUrl } from '../../utils/compressImage';
+import CountBadge from '../../components/ui/CountBadge';
 
 interface TripViewProps {
   token: string;
@@ -251,7 +252,7 @@ export default function TripView({ token }: TripViewProps) {
           <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
             <div className="flex items-center justify-between mb-3">
               <p className="text-xs font-extrabold text-text-primary flex items-center gap-2">
-                <Package className="w-4 h-4" /> Today's Stops {stops.length > 0 && `(${stops.length})`}
+                <Package className="w-4 h-4" /> Today's Stops<CountBadge count={stops.length} />
               </p>
               <button type="button" onClick={loadStops} className="text-text-muted hover:text-text-primary">
                 <RefreshCw className="w-3.5 h-3.5" />

@@ -180,7 +180,7 @@ export async function registerForPushNotifications(userId: string): Promise<Push
 
   const projectId = (Constants.expoConfig?.extra as any)?.eas?.projectId;
   if (!projectId) {
-    return { token: null, reason: 'No EAS projectId configured yet — run `eas init` under a logged-in Expo account, then add extra.eas.projectId to app.json (D130 blocker #1).' };
+    return { token: null, reason: 'No EAS projectId configured yet, run `eas init` under a logged-in Expo account, then add extra.eas.projectId to app.json (D130 blocker #1).' };
   }
 
   const Notifications = await loadNotifications();

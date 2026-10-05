@@ -275,7 +275,7 @@ export default function BoardroomView({
                     </div>
                     <div>
                       <p className="text-xs font-bold text-text-primary">{mtg.title}</p>
-                      <p className="text-[9px] text-text-muted font-mono">{mtg.date} at {mtg.time}</p>
+                      <p className="text-[10px] text-text-muted font-mono">{mtg.date} at {mtg.time}</p>
                     </div>
                   </div>
                   <button onClick={() => setActiveCall({ room: BOARDROOM_ROOM, title: 'Executive Boardroom' })} className="px-2 py-1 bg-emerald-50 text-emerald-700 rounded text-[10px] font-bold cursor-pointer">
@@ -299,7 +299,7 @@ export default function BoardroomView({
                 <div key={msg.id} className="text-xs">
                   <div className="flex items-center gap-1.5 font-bold text-[10px] text-text-secondary">
                     <span>{msg.sender}</span>
-                    <span className="font-normal text-[9px] text-text-muted">• {msg.time}</span>
+                    <span className="font-normal text-[10px] text-text-muted">• {msg.time}</span>
                   </div>
                   <p className="text-text-primary mt-0.5 bg-bg-page rounded-lg p-2">{msg.content}</p>
                 </div>
@@ -392,7 +392,7 @@ export default function BoardroomView({
                             <span className="font-semibold text-[var(--text-primary)]">{p.name}</span>
                             <p className="text-[10px] text-[var(--text-muted)] font-medium">{p.role}</p>
                           </div>
-                          <span className={`px-2 py-0.5 rounded text-[9px] font-bold border ${
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
                             p.status === 'Online' 
                               ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' 
                               : 'bg-slate-500/10 text-text-secondary border-slate-500/20'
@@ -487,7 +487,7 @@ export default function BoardroomView({
                     >
                       <span>{dept}</span>
                       {dept === userRole && (
-                        <span className="text-[8px] bg-[var(--accent-light)] text-[var(--accent)] px-1 py-0.5 rounded uppercase ml-1.5 md:ml-0">You</span>
+                        <span className="text-[10px] bg-[var(--accent-light)] text-[var(--accent)] px-1 py-0.5 rounded uppercase ml-1.5 md:ml-0">You</span>
                       )}
                     </button>
                   ))}
@@ -522,7 +522,7 @@ export default function BoardroomView({
                               <span className={`font-bold ${isSentByMe ? 'text-white' : 'text-[var(--text-primary)]'}`}>
                                 {isSentByMe ? 'You' : msg.sender}
                               </span>
-                              <span className={`text-[9px] ${isSentByMe ? 'text-white/60' : 'text-[var(--text-muted)]'}`}>
+                              <span className={`text-[10px] ${isSentByMe ? 'text-white/60' : 'text-[var(--text-muted)]'}`}>
                                 {msg.time}
                               </span>
                             </div>
@@ -620,7 +620,7 @@ export default function BoardroomView({
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Duration (minutes)</label>
-                      <input
+                      <input placeholder="Enter duration"
                         type="number" min={5} step={5} value={meetingDuration}
                         onChange={(e) => setMeetingDuration(Number(e.target.value) || 30)}
                         className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
@@ -662,7 +662,7 @@ export default function BoardroomView({
                       <div key={mtg.id} className="p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 hover:scale-101 transition-all">
                         <div className="space-y-1 flex-1">
                           <div className="flex items-center gap-2">
-                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded uppercase ${
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
                               mtg.status === 'COMPLETED' ? 'bg-slate-500/10 text-text-secondary'
                               : mtg.status === 'CANCELLED' ? 'bg-red-500/10 text-red-600'
                               : mtg.status === 'IN_PROGRESS' ? 'bg-emerald-500/10 text-emerald-600'

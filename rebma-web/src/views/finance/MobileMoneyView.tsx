@@ -335,7 +335,7 @@ export default function FinanceMobileMoneyView({ addNotification, currentUser }:
           <div className="grid grid-cols-2 gap-3">
             <div className="erp-form-group">
               <label className="erp-label">Transaction ID</label>
-              <input value={editForm.transactionId} onChange={e => setEditForm(f => ({ ...f, transactionId: e.target.value }))} className="erp-input" />
+              <input placeholder="Enter transaction ID" value={editForm.transactionId} onChange={e => setEditForm(f => ({ ...f, transactionId: e.target.value }))} className="erp-input" />
             </div>
             <div className="erp-form-group">
               <label className="erp-label">Network</label>
@@ -344,16 +344,16 @@ export default function FinanceMobileMoneyView({ addNotification, currentUser }:
           </div>
           <div className="erp-form-group">
             <label className="erp-label">Customer Name</label>
-            <input value={editForm.customerName} onChange={e => setEditForm(f => ({ ...f, customerName: e.target.value }))} className="erp-input" />
+            <input placeholder="Enter customer name" value={editForm.customerName} onChange={e => setEditForm(f => ({ ...f, customerName: e.target.value }))} className="erp-input" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="erp-form-group">
               <label className="erp-label">MoMo Number</label>
-              <input value={editForm.momoNumber} onChange={e => setEditForm(f => ({ ...f, momoNumber: e.target.value }))} className="erp-input" />
+              <input placeholder="Enter MoMo number" value={editForm.momoNumber} onChange={e => setEditForm(f => ({ ...f, momoNumber: e.target.value }))} className="erp-input" />
             </div>
             <div className="erp-form-group">
               <label className="erp-label">Amount (GHS)</label>
-              <input type="number" value={editForm.amount} onChange={e => setEditForm(f => ({ ...f, amount: e.target.value }))} className="erp-input" />
+              <input placeholder="Enter amount" type="number" value={editForm.amount} onChange={e => setEditForm(f => ({ ...f, amount: e.target.value }))} className="erp-input" />
             </div>
           </div>
           <div className="erp-form-group">

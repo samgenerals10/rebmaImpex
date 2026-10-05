@@ -71,7 +71,7 @@ export const API_KEY_DEFS: ApiKeyDef[] = [
   {
     key: 'api_key_attendance_webhook_secret',
     label: 'Attendance Webhook Secret (fallback)',
-    description: 'Only for a device that was never added under HR → Attendance → Add Device. Every added device gets its own secret there, which always takes priority. Most setups can leave this empty.',
+    description: 'Only for a device that was never added under HR, then Attendance, then Add Device. Every added device gets its own secret there, which always takes priority. Most setups can leave this empty.',
     placeholder: 'Paste the webhook secret',
   },
   {

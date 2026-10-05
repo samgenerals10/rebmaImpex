@@ -205,7 +205,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
       ]);
 
       const mappedCargo: ApprovalItem[] = (cargoData || []).map((row: any) => {
-        const baseDesc = `${row.product_name || 'Goods'} — ${row.qty_received || row.quantity || 0} ${row.goods_type || 'units'} from ${row.company || 'supplier'}`;
+        const baseDesc = `${row.product_name || 'Goods'}, ${row.qty_received || row.quantity || 0} ${row.goods_type || 'units'} from ${row.company || 'supplier'}`;
         const description = row.discrepancies && row.discrepancies.trim() !== ''
           ? `${baseDesc} (Discrepancy: ${row.discrepancies})`
           : baseDesc;
@@ -242,7 +242,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
         id: row.id,
         requestId: `PROD-${row.id.slice(-6).toUpperCase()}`,
         type: 'Production Request' as const,
-        description: `${row.product_name || row.productName || 'Product'} — ${row.quantity || 0} ${row.unit || 'units'}`,
+        description: `${row.product_name || row.productName || 'Product'}, ${row.quantity || 0} ${row.unit || 'units'}`,
         department: 'PRODUCTION',
         amount: null,
         date: row.created_at?.slice(0, 10) || '',
@@ -256,7 +256,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
         id: row.id,
         requestId: `PURCH-${row.id.slice(-6).toUpperCase()}`,
         type: 'General Purchase' as const,
-        description: `${row.item_name || row.itemName || 'Item'} — ${row.quantity || 0} units`,
+        description: `${row.item_name || row.itemName || 'Item'}, ${row.quantity || 0} units`,
         department: row.department || 'OPERATIONS',
         amount: row.cost ? Number(row.cost) : null,
         date: row.created_at?.slice(0, 10) || '',
@@ -270,7 +270,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
         id: row.id,
         requestId: `FLOAT-${row.id.slice(-6).toUpperCase()}`,
         type: 'Float Request' as const,
-        description: `Float replenishment: GHS ${Number(row.amount || 0).toLocaleString()} — ${row.reason || 'No reason given'}`,
+        description: `Float replenishment: GHS ${Number(row.amount || 0).toLocaleString()}, ${row.reason || 'No reason given'}`,
         department: row.department || 'FINANCE',
         amount: Number(row.amount || 0),
         date: row.created_at?.slice(0, 10) || '',
@@ -649,13 +649,13 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
                               const qtyChanged = draft.quantity !== '' && Number(draft.quantity) !== Number(it.quantity);
                               return (
                                 <>
-                                  <input
+                                  <input placeholder="Quantity"
                                     type="number" min={0}
                                     value={draft.quantity}
                                     onChange={e => setOrderEdits(prev => { const next = [...prev]; next[idx] = { ...(next[idx] || draft), quantity: e.target.value }; return next; })}
                                     className="w-16 px-2 py-1 rounded-lg bg-[var(--bg-input)] border border-[var(--border)] text-xs font-mono text-center text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
                                   />
-                                  {qtyChanged && <span className="block text-[9px] text-amber-600 mt-0.5">was {it.quantity}</span>}
+                                  {qtyChanged && <span className="block text-[10px] text-amber-600 mt-0.5">was {it.quantity}</span>}
                                 </>
                               );
                             }
@@ -667,13 +667,13 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
                               const priceChanged = draft.unitPrice !== '' && Number(draft.unitPrice) !== Number(it.unitPrice);
                               return (
                                 <>
-                                  <input
+                                  <input placeholder="Unit price"
                                     type="number" min={0}
                                     value={draft.unitPrice}
                                     onChange={e => setOrderEdits(prev => { const next = [...prev]; next[idx] = { ...(next[idx] || draft), unitPrice: e.target.value }; return next; })}
                                     className="w-24 px-2 py-1 rounded-lg bg-[var(--bg-input)] border border-[var(--border)] text-xs font-mono text-right text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
                                   />
-                                  {priceChanged && <span className="block text-[9px] text-amber-600 mt-0.5">was GHS {Number(it.unitPrice).toLocaleString()}</span>}
+                                  {priceChanged && <span className="block text-[10px] text-amber-600 mt-0.5">was GHS {Number(it.unitPrice).toLocaleString()}</span>}
                                 </>
                               );
                             }
@@ -923,25 +923,25 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
                     {/* Quantity summary */}
                     <div className="grid grid-cols-3 gap-2">
                       <div className="bg-[var(--bg-input)] rounded-xl p-2.5 text-center">
-                        <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-1">Total Received</span>
+                        <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-1">Total Received</span>
                         <span className="text-xs font-bold text-[var(--text-primary)] font-mono">
                           {Number((selectedItem.raw as any)?.quantity || (selectedItem.raw as any)?.qty_received || 0).toLocaleString()}
                         </span>
-                        <span className="text-[8px] text-[var(--text-muted)] block mt-0.5">units</span>
+                        <span className="text-[10px] text-[var(--text-muted)] block mt-0.5">units</span>
                       </div>
                       <div className="bg-rose-500/5 border border-rose-500/10 rounded-xl p-2.5 text-center">
-                        <span className="text-[9px] font-bold text-rose-700 uppercase tracking-wider block mb-1">Confirmed Damaged</span>
+                        <span className="text-[10px] font-bold text-rose-700 uppercase tracking-wider block mb-1">Confirmed Damaged</span>
                         <span className="text-xs font-bold text-rose-700 font-mono">
                           {confirmedDamages.toLocaleString()}
                         </span>
-                        <span className="text-[8px] text-rose-600 block mt-0.5">excluded</span>
+                        <span className="text-[10px] text-rose-600 block mt-0.5">excluded</span>
                       </div>
                       <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-2.5 text-center">
-                        <span className="text-[9px] font-bold text-emerald-700 uppercase tracking-wider block mb-1">Net to Stock</span>
+                        <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider block mb-1">Net to Stock</span>
                         <span className="text-xs font-bold text-emerald-700 font-mono">
                           {Math.max(0, Number((selectedItem.raw as any)?.quantity || (selectedItem.raw as any)?.qty_received || 0) - confirmedDamages).toLocaleString()}
                         </span>
-                        <span className="text-[8px] text-emerald-600 block mt-0.5">approved qty</span>
+                        <span className="text-[10px] text-emerald-600 block mt-0.5">approved qty</span>
                       </div>
                     </div>
 
@@ -965,7 +965,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
                           max={Number((selectedItem.raw as any)?.quantity || (selectedItem.raw as any)?.qty_received || 0)}
                           className="w-full px-3 py-1.5 bg-[var(--bg-input)] border border-[var(--border)] rounded-xl text-xs font-mono text-[var(--text-primary)] focus:outline-none focus:border-rose-500"
                         />
-                        <p className="text-[9px] text-[var(--text-muted)] mt-1">These units are excluded from stock</p>
+                        <p className="text-[10px] text-[var(--text-muted)] mt-1">These units are excluded from stock</p>
                       </div>
                       <div>
                         <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1 block">Damage Cost (per unit)</label>
@@ -976,7 +976,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
                           placeholder="Unit cost"
                           className="w-full px-3 py-1.5 bg-[var(--bg-input)] border border-[var(--border)] rounded-xl text-xs font-mono text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
                         />
-                        <p className="text-[9px] text-[var(--text-muted)] mt-1">Used to log the financial loss</p>
+                        <p className="text-[10px] text-[var(--text-muted)] mt-1">Used to log the financial loss</p>
                       </div>
                     </div>
 
@@ -1040,7 +1040,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
                       <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Order Total (as adjusted)</span>
                       <span className="text-sm font-bold" style={{ color: 'var(--accent)' }}>GHS {adjustedTotal.toLocaleString()}</span>
                     </div>
-                    <p className="text-[9px] text-[var(--text-muted)]">Approving forwards this to Account Department for payment processing at the quantities/prices shown on the order breakdown.</p>
+                    <p className="text-[10px] text-[var(--text-muted)]">Approving forwards this to Account Department for payment processing at the quantities/prices shown on the order breakdown.</p>
                   </div>
                 );
               })()}
@@ -1051,14 +1051,14 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
                     <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Approved Quantity</label>
                     <span className="text-[10px] text-[var(--text-muted)]">Requested: {Number((selectedItem.raw as any)?.quantity ?? 0).toLocaleString()} {(selectedItem.raw as any)?.unit || 'units'}</span>
                   </div>
-                  <input
+                  <input placeholder="Enter approved quantity"
                     type="number"
                     min={0}
                     value={approvedQty}
                     onChange={e => setApprovedQty(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm font-mono text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
                   />
-                  <p className="text-[9px] text-[var(--text-muted)]">This is what gets added to stock and issued on the fulfillment ticket. Adjust it if the requested amount isn't what should actually be released.</p>
+                  <p className="text-[10px] text-[var(--text-muted)]">This is what gets added to stock and issued on the fulfillment ticket. Adjust it if the requested amount isn't what should actually be released.</p>
                 </div>
               )}
 

@@ -397,7 +397,7 @@ export default function FinanceCreditMgmtView({ addNotification, currentUser }: 
             <button key={t} onClick={() => setReminderType(t)} className={`flex-1 py-2 rounded-xl text-sm font-medium capitalize ${reminderType === t ? 'text-white' : 'border border-[var(--border)] text-[var(--text-secondary)]'}`} style={reminderType === t ? { background: 'var(--accent)' } : {}}>{t === 'whatsapp' ? '📱 WhatsApp' : '📧 Email'}</button>
           ))}
         </div>
-        <textarea value={reminderMsg} onChange={e => setReminderMsg(e.target.value)} rows={6} className="erp-input resize-none" />
+        <textarea placeholder="Write the reminder message" value={reminderMsg} onChange={e => setReminderMsg(e.target.value)} rows={6} className="erp-input resize-none" />
       </SidePanel>
 
       <SidePanel
@@ -436,16 +436,16 @@ export default function FinanceCreditMgmtView({ addNotification, currentUser }: 
         <div className="flex flex-col gap-4">
           <div className="erp-form-group">
             <label className="erp-label">Customer Name</label>
-            <input value={editForm.clientName} onChange={e => setEditForm(f => ({ ...f, clientName: e.target.value }))} className="erp-input" />
+            <input placeholder="Enter customer name" value={editForm.clientName} onChange={e => setEditForm(f => ({ ...f, clientName: e.target.value }))} className="erp-input" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="erp-form-group">
               <label className="erp-label">Total Amount (GHS)</label>
-              <input type="number" value={editForm.totalAmount} onChange={e => setEditForm(f => ({ ...f, totalAmount: e.target.value }))} className="erp-input" />
+              <input placeholder="Enter total amount" type="number" value={editForm.totalAmount} onChange={e => setEditForm(f => ({ ...f, totalAmount: e.target.value }))} className="erp-input" />
             </div>
             <div className="erp-form-group">
               <label className="erp-label">Amount Paid (GHS)</label>
-              <input type="number" value={editForm.amountPaid} onChange={e => setEditForm(f => ({ ...f, amountPaid: e.target.value }))} className="erp-input" />
+              <input placeholder="Enter amount paid" type="number" value={editForm.amountPaid} onChange={e => setEditForm(f => ({ ...f, amountPaid: e.target.value }))} className="erp-input" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -455,7 +455,7 @@ export default function FinanceCreditMgmtView({ addNotification, currentUser }: 
             </div>
             <div className="erp-form-group">
               <label className="erp-label">Phone Number</label>
-              <input value={editForm.phone} onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))} className="erp-input" />
+              <input placeholder="Enter phone number" value={editForm.phone} onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))} className="erp-input" />
             </div>
           </div>
         </div>

@@ -168,7 +168,7 @@ export default function PayrollScreen() {
   const batchColumns: DataColumn<PayrollBatch>[] = [
     { key: 'name', label: 'Batch', primary: true },
     { key: 'status', label: 'Status', status: true, render: (b) => <Badge tone={STATUS_TONE[b.status] || 'muted'} label={b.status.toUpperCase()} size="xs" /> },
-    { key: 'period', label: 'Period', render: (b) => `${b.period_start} — ${b.period_end}` },
+    { key: 'period', label: 'Period', render: (b) => `${b.period_start} to ${b.period_end}` },
     { key: 'total_amount', label: 'Total', render: (b) => `GHS ${Number(b.total_amount ?? 0).toLocaleString()}` },
     { key: 'item_count', label: 'Staff', render: (b) => `${b.item_count} staff` },
   ];
@@ -203,7 +203,7 @@ export default function PayrollScreen() {
         open={!!expanded}
         onClose={() => setExpanded(null)}
         title={expanded?.name}
-        subtitle={expanded ? `${expanded.period_start} — ${expanded.period_end}` : undefined}
+        subtitle={expanded ? `${expanded.period_start} to ${expanded.period_end}` : undefined}
         badge={expanded ? <Badge tone={STATUS_TONE[expanded.status] || 'muted'} label={expanded.status.toUpperCase()} size="xs" /> : undefined}
         side="bottom"
         maxHeight={640}

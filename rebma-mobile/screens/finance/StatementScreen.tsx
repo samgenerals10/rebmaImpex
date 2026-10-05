@@ -132,7 +132,7 @@ export default function StatementScreen() {
     if (!detail) return;
     setRowExporting(true);
     try {
-      await exportFieldValueDocument('pdf', `Statement — ${detail.productName}`, {
+      await exportFieldValueDocument('pdf', `Statement, ${detail.productName}`, {
         'Ticket': detail.ticketNumber || '—',
         'Product': detail.productName,
         'Client': detail.clientName,

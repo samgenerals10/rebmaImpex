@@ -138,7 +138,7 @@ export default function MaterialRequisitionsPanel({ addNotification, currentUser
                   return (
                     <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', flex: 1, minWidth: 0 }}>{item.materialName}</span>
-                      <input
+                      <input placeholder="Quantity"
                         type="number"
                         min={0}
                         value={draft !== undefined ? draft : String(item.quantity ?? '')}

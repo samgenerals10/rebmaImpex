@@ -238,8 +238,8 @@ export default function SupplierOrdersScreen() {
 
       if (sendWhatsapp && whatsappNumber.trim()) {
         const lines2 = [
-          `*New Purchase Order — REBMA IMPEX Ghana Limited*`, `Order #: ${newOrder.order_number}`, ``,
-          `*Products:*`, ...products.map((p) => `• ${p.product_name} — ${p.quantity} ${p.unit} @ ${p.currency} ${p.unit_price}/unit = ${p.currency} ${p.total_price.toLocaleString()}`),
+          `*New Purchase Order, REBMA IMPEX Ghana Limited*`, `Order #: ${newOrder.order_number}`, ``,
+          `*Products:*`, ...products.map((p) => `• ${p.product_name}, ${p.quantity} ${p.unit} @ ${p.currency} ${p.unit_price}/unit = ${p.currency} ${p.total_price.toLocaleString()}`),
           ``, `Total: ${currency} ${totalAmount.toLocaleString()} (approx GHS ${totalGhs.toLocaleString()})`,
           `Port of Entry: ${portOfEntry}`, `Expected Delivery: ${expectedDate || 'TBD'}`, ``,
           `Please confirm receipt and proceed as agreed.`, `Regards, ${profile?.fullName || 'CEO'} | REBMA IMPEX`,

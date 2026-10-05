@@ -14,6 +14,7 @@ import { newRequestKey } from '../../utils/requestKey';
 import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 import RequestTimelinePanel from '../../components/global/RequestTimelinePanel';
 import DateRangeField from '../../components/ui/DateRangeField';
+import CountBadge from '../../components/ui/CountBadge';
 
 
 const STATUS_STYLES: Record<Order['status'], string> = {
@@ -502,7 +503,7 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
               <>
                 <button disabled={submitting} onClick={() => setShowNewModal(false)} className="erp-btn erp-btn-ghost disabled:opacity-50">Cancel</button>
                 <button disabled={submitting} onClick={handleSave} className="erp-btn erp-btn-primary disabled:opacity-50">
-                  {submitting ? 'Saving...' : `Save Order${lineItems.filter(i => i.productName).length > 1 ? `s (${lineItems.filter(i => i.productName).length})` : ''}`}
+                  {submitting ? 'Saving...' : (lineItems.filter(i => i.productName).length > 1 ? `Save ${lineItems.filter(i => i.productName).length} Orders` : 'Save Order')}
                 </button>
               </>
             }
@@ -590,7 +591,7 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
                           )}
                         </div>
                         <div className="w-24 shrink-0">
-                          <input type="number" min="1" value={item.quantity} onChange={e => updateLineItem(index, 'quantity', Math.max(1, parseInt(e.target.value) || 1))}
+                          <input placeholder="Qty" type="number" min="1" value={item.quantity} onChange={e => updateLineItem(index, 'quantity', Math.max(1, parseInt(e.target.value) || 1))}
                             className={`w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border text-[var(--text-primary)] focus:outline-none text-center ${exceedsStock ? 'border-rose-400 focus:border-rose-500' : 'border-[var(--border)] focus:border-[var(--accent)]'}`} />
                         </div>
                         {lineItems.length > 1 && (
@@ -683,7 +684,7 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
                 {/* Line items table */}
                 <div>
                   <p className="text-xs font-semibold text-[var(--text-muted)] mb-2">
-                    {lineItems && lineItems.length > 0 ? `Order Items (${lineItems.length})` : 'Product'}
+                    {lineItems && lineItems.length > 0 ? <>Order Items<CountBadge count={lineItems.length} /></> : 'Product'}
                   </p>
                   {lineItems && lineItems.length > 0 ? (
                     <div className="rounded-xl border border-[var(--border)] overflow-hidden">

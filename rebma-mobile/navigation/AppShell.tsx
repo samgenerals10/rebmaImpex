@@ -202,7 +202,7 @@ export default function AppShell() {
                 {/* AlertsTab and ProfileTab both stay registered (reachable via
                     the header bell / Account sheet's "Profile & Preferences" row)
                     even though AppTabBar no longer renders bottom-tab buttons for
-                    them — DashboardTab took Profile's old bottom-nav slot per
+                    them, DashboardTab took Profile's old bottom-nav slot per
                     direct correction, same "still a real route, just header-only
                     access now" treatment AlertsTab already got a round earlier. */}
                 <Tab.Screen name="AlertsTab" component={NotificationsScreen} />

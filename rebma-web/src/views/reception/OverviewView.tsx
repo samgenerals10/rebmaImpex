@@ -306,7 +306,7 @@ export default function ReceptionOverviewView({ visitorsList, onAddVisitor, onCh
               <div className="space-y-1.5">
                 {currentlyIn.slice(0, 3).map(v => (
                   <div key={v.id} className="flex items-center gap-2 text-xs">
-                    <div className="w-6 h-6 rounded-full bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center text-[9px] font-bold shrink-0">
+                    <div className="w-6 h-6 rounded-full bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center text-[10px] font-bold shrink-0">
                       {v.fullName[0]}
                     </div>
                     <span className="text-[var(--text-primary)] font-medium truncate flex-1">{v.fullName}</span>
@@ -348,8 +348,8 @@ export default function ReceptionOverviewView({ visitorsList, onAddVisitor, onCh
                       <p className="text-[10px] text-[var(--text-muted)] truncate">{v.hostName}</p>
                     </div>
                     <div className="flex flex-col items-end gap-1 shrink-0">
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: pc.bg, color: pc.color }}>{v.purpose}</span>
-                      <span className="text-[9px] text-[var(--text-muted)]">{duration(v.checkInTime)}</span>
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: pc.bg, color: pc.color }}>{v.purpose}</span>
+                      <span className="text-[10px] text-[var(--text-muted)]">{duration(v.checkInTime)}</span>
                     </div>
                     <div className="relative shrink-0" onClick={e => e.stopPropagation()}>
                       <button onClick={() => setMenuOpen(menuOpen === v.id ? null : v.id)}
@@ -394,7 +394,7 @@ export default function ReceptionOverviewView({ visitorsList, onAddVisitor, onCh
                     <p className="text-xs font-semibold text-[var(--text-primary)] truncate">{a.fullName}</p>
                     <p className="text-[10px] text-[var(--text-muted)] font-mono">{a.checkInTime}</p>
                   </div>
-                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0 ${a.status === 'PRESENT' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${a.status === 'PRESENT' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}>
                     {a.status === 'PRESENT' ? 'On Time' : 'Late'}
                   </span>
                 </div>
@@ -425,7 +425,7 @@ export default function ReceptionOverviewView({ visitorsList, onAddVisitor, onCh
                   <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: d.color }} />
                   <div>
                     <p className="text-[10px] font-semibold text-[var(--text-primary)]">{d.value}%</p>
-                    <p className="text-[9px] text-[var(--text-muted)]">{d.name}</p>
+                    <p className="text-[10px] text-[var(--text-muted)]">{d.name}</p>
                   </div>
                 </div>
               ))}

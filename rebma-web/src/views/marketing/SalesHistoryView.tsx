@@ -12,6 +12,7 @@ import { usePaginatedQuery } from '../../hooks/usePaginatedQuery';
 import SidePanel from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
 import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
+import CountBadge from '../../components/ui/CountBadge';
 
 const STATUS_STYLES: Record<string, string> = {
   PENDING_FINANCE:     'bg-amber-100 text-amber-700',
@@ -196,7 +197,7 @@ export default function SalesHistoryView({ ordersList, addNotification }: Props)
             {(['sales', 'credit'] as const).map(t => (
               <button key={t} onClick={() => setTab(t)}
                 className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors cursor-pointer ${tab === t ? 'bg-[var(--accent)] text-white shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
-                {t === 'sales' ? 'Sales History' : `Credit (${creditOrders.length})`}
+                {t === 'sales' ? 'Sales History' : <>Credit<CountBadge count={creditOrders.length} /></>}
               </button>
             ))}
           </div>

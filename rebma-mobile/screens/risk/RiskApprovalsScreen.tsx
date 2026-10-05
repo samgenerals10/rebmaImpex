@@ -106,7 +106,7 @@ export default function RiskApprovalsScreen() {
         amount: null, date: row.registered_at?.slice(0, 10) || '', raw: row,
       }));
       const mappedCargo: ApprovalItem[] = (cargoData || []).map((row: any) => {
-        const baseDesc = `${row.product_name || 'Goods'} — ${row.qty_received || row.quantity || 0} ${row.goods_type || 'units'} from ${row.company || 'supplier'}`;
+        const baseDesc = `${row.product_name || 'Goods'}, ${row.qty_received || row.quantity || 0} ${row.goods_type || 'units'} from ${row.company || 'supplier'}`;
         return {
           id: row.id, requestId: `CARGO-${row.id.slice(-6).toUpperCase()}`, type: 'Cargo Intake',
           description: row.discrepancies?.trim() ? `${baseDesc} (Discrepancy: ${row.discrepancies})` : baseDesc,
@@ -121,7 +121,7 @@ export default function RiskApprovalsScreen() {
       }));
       const mappedPod: ApprovalItem[] = (podData || []).map((row: any) => ({
         id: row.id, requestId: `POD-${row.id.slice(-6).toUpperCase()}`, type: 'Proof of Delivery',
-        description: `Delivery for ${row.orders?.client_name || row.customer_name || 'Customer'} — ${row.orders?.destination || row.delivery_address || 'destination unknown'}`,
+        description: `Delivery for ${row.orders?.client_name || row.customer_name || 'Customer'}, ${row.orders?.destination || row.delivery_address || 'destination unknown'}`,
         amount: row.orders?.total_amount ? Number(row.orders.total_amount) : null, date: row.created_at?.slice(0, 10) || '', raw: row,
       }));
       const mappedFinalRelease: ApprovalItem[] = (finalReleaseData || []).map((row: any) => ({
@@ -193,7 +193,7 @@ export default function RiskApprovalsScreen() {
         const verbLabel = action === 'approve' ? 'APPROVED' : action === 'return' ? 'RETURNED FOR CORRECTION' : 'REJECTED';
         await notifyDecision({
           title: `Cargo Intake ${verbLabel}`,
-          message: `Cargo intake ${verbLabel} by Risk: ${selected.description} — ${modalNote}`,
+          message: `Cargo intake ${verbLabel} by Risk: ${selected.description}, ${modalNote}`,
           department: 'ADMIN_WAREHOUSE',
           personId: cargoRow.handled_by_id || cargoRow.logged_by_id || null,
         });
@@ -216,7 +216,7 @@ export default function RiskApprovalsScreen() {
         const verbLabel = action === 'approve' ? 'APPROVED (forwarded to Management)' : action === 'return' ? 'RETURNED FOR CORRECTION' : 'REJECTED';
         await notifyDecision({
           title: `Sales Order ${verbLabel}`,
-          message: `Order ${verbLabel} by Risk: ${selected.description} — ${modalNote}`,
+          message: `Order ${verbLabel} by Risk: ${selected.description}, ${modalNote}`,
           department: 'MARKETING',
           personId: orderRow.handled_by_id || orderRow.created_by || null,
         });
@@ -241,7 +241,7 @@ export default function RiskApprovalsScreen() {
         const verbLabel = action === 'approve' ? 'RELEASED to warehouse' : action === 'return' ? 'RETURNED FOR CORRECTION' : 'REJECTED';
         await notifyDecision({
           title: `Order Final Release ${verbLabel}`,
-          message: `Order ${verbLabel} by Risk at final release: ${selected.description} — ${modalNote}`,
+          message: `Order ${verbLabel} by Risk at final release: ${selected.description}, ${modalNote}`,
           department: 'MARKETING',
           personId: selected.raw.handled_by_id || selected.raw.created_by || null,
         });
@@ -253,7 +253,7 @@ export default function RiskApprovalsScreen() {
         const verbLabel = action === 'approve' ? 'APPROVED' : action === 'return' ? 'RETURNED FOR CORRECTION' : 'REJECTED';
         await notifyDecision({
           title: `Customer Verification ${verbLabel}`,
-          message: `Customer ${verbLabel} by Risk: ${selected.description} — ${modalNote}`,
+          message: `Customer ${verbLabel} by Risk: ${selected.description}, ${modalNote}`,
           department: 'MARKETING',
           personId: selected.raw.handled_by_id || selected.raw.registered_by_id || null,
         });
@@ -274,7 +274,7 @@ export default function RiskApprovalsScreen() {
         const verbLabel = action === 'approve' ? 'APPROVED, delivery closed out' : 'REJECTED';
         await notifyDecision({
           title: `Proof of Delivery ${verbLabel}`,
-          message: `Proof of delivery ${verbLabel} by Risk: ${selected.description} — ${modalNote}`,
+          message: `Proof of delivery ${verbLabel} by Risk: ${selected.description}, ${modalNote}`,
           personId: selected.raw.drivers?.user_id || null,
         });
       }
@@ -349,7 +349,8 @@ export default function RiskApprovalsScreen() {
           onChange={(v) => setActiveTab(v as 'All' | ItemType)}
           options={TABS.map((tab) => ({
             value: tab,
-            label: `${tab}${tab !== 'All' ? ` (${items.filter((i) => i.type === tab).length})` : ''}`,
+            label: tab,
+            badge: tab !== 'All' ? items.filter((i) => i.type === tab).length : undefined,
           }))}
         />
 

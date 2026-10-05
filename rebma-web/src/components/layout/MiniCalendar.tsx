@@ -128,7 +128,7 @@ export default function MiniCalendar({ isCollapsed }: { isCollapsed?: boolean })
         {/* Day headers */}
         <div className="grid grid-cols-7 text-center">
           {['S','M','T','W','T','F','S'].map((d, i) => (
-            <span key={i} className="text-[9px] font-bold text-[var(--text-muted)]">{d}</span>
+            <span key={i} className="text-[10px] font-bold text-[var(--text-muted)]">{d}</span>
           ))}
         </div>
 
@@ -158,7 +158,7 @@ export default function MiniCalendar({ isCollapsed }: { isCollapsed?: boolean })
         {/* Add reminder for selected date */}
         {addingFor && (
           <div className="space-y-1.5">
-            <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase">Reminder for {addingFor}</p>
+            <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase">Reminder for {addingFor}</p>
             <div className="flex gap-1">
               <input
                 value={reminderText}
@@ -180,7 +180,7 @@ export default function MiniCalendar({ isCollapsed }: { isCollapsed?: boolean })
         {/* Today's reminders */}
         {todayReminders.length > 0 && (
           <div className="space-y-1">
-            <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase flex items-center gap-1">
+            <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase flex items-center gap-1">
               <Bell className="w-2.5 h-2.5 text-amber-400" /> Today
             </p>
             {todayReminders.map((r, i) => (
@@ -195,7 +195,7 @@ export default function MiniCalendar({ isCollapsed }: { isCollapsed?: boolean })
         )}
 
         {/* Clock in selected TZ */}
-        <p className="text-[9px] text-[var(--text-muted)] text-center font-mono">
+        <p className="text-[10px] text-[var(--text-muted)] text-center font-mono">
           {new Date().toLocaleTimeString('en-US', { timeZone: tz, hour: '2-digit', minute: '2-digit' })} · {TZ_OPTIONS.find(o => o.tz === tz)?.label.split(' ')[0] ?? 'Local'}
         </p>
       </div>

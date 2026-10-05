@@ -376,23 +376,23 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
       }
 
       if (broadcastFinance) {
-        await supabase.from('supplier_order_notifications').insert([{ message: `Price update: ${form.productName} → ${form.currency} ${unitPrice}`, notified_department: 'FINANCE', read: false }]);
+        await supabase.from('supplier_order_notifications').insert([{ message: `Price update: ${form.productName} to ${form.currency} ${unitPrice}`, notified_department: 'FINANCE', read: false }]);
       }
       if (broadcastMarketing) {
-        await supabase.from('supplier_order_notifications').insert([{ message: `Price update: ${form.productName} → ${form.currency} ${unitPrice}`, notified_department: 'MARKETING', read: false }]);
+        await supabase.from('supplier_order_notifications').insert([{ message: `Price update: ${form.productName} to ${form.currency} ${unitPrice}`, notified_department: 'MARKETING', read: false }]);
       }
       if (broadcastCeo) {
-        await supabase.from('supplier_order_notifications').insert([{ message: `Price update: ${form.productName} → ${form.currency} ${unitPrice}`, notified_department: 'CEO', read: false }]);
+        await supabase.from('supplier_order_notifications').insert([{ message: `Price update: ${form.productName} to ${form.currency} ${unitPrice}`, notified_department: 'CEO', read: false }]);
       }
 
       await supabase.from('global_audit_history').insert([{
         department: 'MANAGEMENT',
-        action: `Price ${editing ? 'updated' : 'set'}: ${form.productName} → ${form.currency} ${unitPrice}/unit`,
+        action: `Price ${editing ? 'updated' : 'set'}: ${form.productName} to ${form.currency} ${unitPrice}/unit`,
         performed_by: currentUser?.fullName || 'Management',
         timestamp: new Date().toISOString(),
       }]);
 
-      addNotification?.(`Price ${editing ? 'updated' : 'set'}: ${form.productName} → ${form.currency} ${unitPrice}`);
+      addNotification?.(`Price ${editing ? 'updated' : 'set'}: ${form.productName} to ${form.currency} ${unitPrice}`);
       loadPrices();
       setImagePreview('');
       setCameraPreview('');
@@ -645,7 +645,7 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
                   return (
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <div className="flex items-center gap-1">
-                        <input
+                        <input placeholder="0"
                           type="number" min={0} max={100} step={1}
                           value={draft !== undefined ? draft : String(c.discountPercent)}
                           onChange={e => setDiscountDraft(prev => ({ ...prev, [c.id]: e.target.value }))}
@@ -657,7 +657,7 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
                         <button
                           onClick={() => setDiscountDraft(prev => ({ ...prev, [c.id]: String(suggested) }))}
                           title={`Based on their ${rating.grade} rating (${rating.score}/100)`}
-                          className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-[var(--bg-input)] text-[var(--text-muted)] hover:bg-[var(--accent-light)] hover:text-[var(--accent)] cursor-pointer whitespace-nowrap"
+                          className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[var(--bg-input)] text-[var(--text-muted)] hover:bg-[var(--accent-light)] hover:text-[var(--accent)] cursor-pointer whitespace-nowrap"
                         >
                           Suggest {suggested}%
                         </button>
@@ -821,16 +821,16 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
                 <div className="flex flex-wrap gap-3 mt-2">
                   {imagePreview && (
                     <div className="relative">
-                      <p className="text-[9px] text-[var(--text-muted)] mb-1">Image Preview</p>
+                      <p className="text-[10px] text-[var(--text-muted)] mb-1">Image Preview</p>
                       <img src={imagePreview} alt="Image Upload" className="w-12 h-12 object-cover rounded-lg border border-[var(--border)]" />
-                      <button type="button" onClick={() => setImagePreview('')} className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-rose-500 text-white rounded-full text-[9px] flex items-center justify-center">✕</button>
+                      <button type="button" onClick={() => setImagePreview('')} className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-rose-500 text-white rounded-full text-[10px] flex items-center justify-center">✕</button>
                     </div>
                   )}
                   {cameraPreview && (
                     <div className="relative">
-                      <p className="text-[9px] text-[var(--text-muted)] mb-1">Camera Preview</p>
+                      <p className="text-[10px] text-[var(--text-muted)] mb-1">Camera Preview</p>
                       <img src={cameraPreview} alt="Camera Upload" className="w-12 h-12 object-cover rounded-lg border border-[var(--border)]" />
-                      <button type="button" onClick={() => setCameraPreview('')} className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-rose-500 text-white rounded-full text-[9px] flex items-center justify-center">✕</button>
+                      <button type="button" onClick={() => setCameraPreview('')} className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-rose-500 text-white rounded-full text-[10px] flex items-center justify-center">✕</button>
                     </div>
                   )}
                   {docName && (
@@ -839,7 +839,7 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
                       <div className="text-[10px]">
                         <p className="font-semibold truncate max-w-[100px]">{docName}</p>
                       </div>
-                      <button type="button" onClick={() => { setDocName(''); setDocBase64(''); }} className="w-4 h-4 bg-rose-500 text-white rounded-full text-[9px] flex items-center justify-center">✕</button>
+                      <button type="button" onClick={() => { setDocName(''); setDocBase64(''); }} className="w-4 h-4 bg-rose-500 text-white rounded-full text-[10px] flex items-center justify-center">✕</button>
                     </div>
                   )}
                 </div>

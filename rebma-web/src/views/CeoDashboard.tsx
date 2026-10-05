@@ -473,7 +473,7 @@ export default function CeoDashboard({
               <MobileSectionHeader
                 title="Products Available to Sell"
                 icon={<CheckCircle size={14} className="text-emerald-500" />}
-                badge={<span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 text-[9px] font-bold">{inventoryItems.length} priced</span>}
+                badge={<span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 text-[10px] font-bold">{inventoryItems.length} priced</span>}
               />
               <div className="space-y-2">
                 {inventoryItems.map((item: any) => (
@@ -483,7 +483,7 @@ export default function CeoDashboard({
                       <p className="text-[10px] text-text-muted mt-0.5">Price: <strong className="text-emerald-600 font-mono">{item.currency} {item.unitPrice.toLocaleString()}</strong></p>
                     </div>
                     <div className="text-right shrink-0">
-                      <span className={`text-[9px] font-semibold px-2 py-0.5 rounded-full block mb-1 ${item.qty > 0 ? 'bg-emerald-500/10 text-emerald-600' : 'bg-gray-500/10 text-text-muted'}`}>
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full block mb-1 ${item.qty > 0 ? 'bg-emerald-500/10 text-emerald-600' : 'bg-gray-500/10 text-text-muted'}`}>
                         {item.qty > 0 ? 'In Stock' : 'Out of Stock'}
                       </span>
                       <p className="text-[10px] text-text-secondary font-semibold font-mono">Sold: {item.soldQty.toLocaleString()} · Left: {item.qty.toLocaleString()}</p>
@@ -496,7 +496,7 @@ export default function CeoDashboard({
 
         {/* Mobile Inventory & Asset Oversight Panel */}
         <div className="bg-bg-card rounded-2xl border border-[var(--border)] shadow-card p-4 space-y-3">
-          <MobileSectionHeader title="Inventory & Assets Oversight" badge={<span className="text-[9px] text-text-muted font-mono">Live</span>} />
+          <MobileSectionHeader title="Inventory & Assets Oversight" badge={<span className="text-[10px] text-text-muted font-mono">Live</span>} />
           <div className="space-y-2">
             {[
               { label: 'Finished Goods', value: `${totalFinishedGoods.toLocaleString()} Units`, sub: `Valued GHS ${finishedGoodsVal.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, icon: Package },
@@ -510,7 +510,7 @@ export default function CeoDashboard({
                   </div>
                   <div>
                     <p className="text-[10px] font-bold text-text-primary">{item.label}</p>
-                    <p className="text-[9px] text-text-muted">{item.sub}</p>
+                    <p className="text-[10px] text-text-muted">{item.sub}</p>
                   </div>
                 </div>
                 <span className="text-xs font-bold text-text-primary font-mono">{item.value}</span>
@@ -546,7 +546,7 @@ export default function CeoDashboard({
 
         {/* Fleet GPS mini card */}
         <div className="bg-bg-card rounded-2xl border border-[var(--border)] shadow-card p-4 space-y-3">
-          <MobileSectionHeader title="Live Fleet Tracking" badge={<span className="text-[9px] text-text-muted font-mono">Refresh: {gpsInterval}s</span>} />
+          <MobileSectionHeader title="Live Fleet Tracking" badge={<span className="text-[10px] text-text-muted font-mono">Refresh: {gpsInterval}s</span>} />
           <DispatchMap
             deliveries={transitVehicles.map(v => ({ id: v.id, driverId: v.driver_id, driverName: v.driver_name, vehicleId: v.vehicle_id, status: v.status, active_coordinates: v.active_coordinates }))}
             height={128}
@@ -560,7 +560,7 @@ export default function CeoDashboard({
           <MobileSectionHeader
             title="Discrepancies"
             icon={<AlertCircle size={14} className="text-red-500" />}
-            badge={<span className="px-1.5 py-0.5 rounded bg-red-500/10 text-red-500 text-[9px] font-bold">Loss: GHS {cargoDiscrepancies.reduce((s, d) => s + d.costLoss, 0).toLocaleString()}</span>}
+            badge={<span className="px-1.5 py-0.5 rounded bg-red-500/10 text-red-500 text-[10px] font-bold">Loss: GHS {cargoDiscrepancies.reduce((s, d) => s + d.costLoss, 0).toLocaleString()}</span>}
           />
           {cargoDiscrepancies.length === 0 ? (
             <MobileEmptyState icon={<CheckCircle className="w-5 h-5" />} title="No discrepancies" description="Approved cargo discrepancies will appear here." />

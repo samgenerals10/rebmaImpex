@@ -74,7 +74,7 @@ export default function Screen({ children, scroll = true, refreshing, onRefresh,
       <View style={{ flex: 1, backgroundColor: t.colors.bgPage }}>
         {/* Without this, a focused input anywhere on a dashboard screen
             (Create Order's form, a search box, etc.) had no compensation
-            at all when the keyboard opened — nothing scrolled it back
+            at all when the keyboard opened, nothing scrolled it back
             into view, so it just sat hidden behind the keyboard. Same
             fix as Sheet.tsx's own KeyboardAvoidingView, per direct
             correction. */}

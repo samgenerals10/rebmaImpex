@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300..800&family=Poppins:wght@300..800&family=DM+Sans:wght@300..800&family=Nunito:wght@300..800&family=Outfit:wght@300..800&family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap');
+/* Fonts are loaded once, in index.html (this file used to load them a second time). */
 @import "tailwindcss";
 
 /* ─── TAILWIND v4 THEME TOKENS ─── */

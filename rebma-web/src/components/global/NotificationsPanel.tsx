@@ -266,7 +266,7 @@ export default function NotificationsPanel({ notifications = [], onNavigate, onC
                 <p className="text-xs text-[var(--text-secondary)] leading-relaxed pt-0.5">{n.msg}</p>
                 <div className="flex items-center gap-2 mt-1">
                   <p className="text-[10px] text-[var(--text-muted)]">{n.time}</p>
-                  {n.linkTab && <p className="text-[10px] text-[var(--accent)] font-semibold">View →</p>}
+                  {n.linkTab && <p className="text-[10px] text-[var(--accent)] font-semibold">View</p>}
                 </div>
               </div>
             </div>

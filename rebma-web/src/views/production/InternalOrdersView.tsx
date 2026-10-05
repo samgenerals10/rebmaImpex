@@ -661,17 +661,17 @@ export default function InternalOrdersView({ productionRequests, addNotification
             <div style={{ display: 'grid', gap: '16px', marginBottom: '24px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Product Name</label>
-                <input value={editForm.productName} onChange={e => setEditForm({ ...editForm, productName: e.target.value })} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }} />
+                <input placeholder="Enter product name" value={editForm.productName} onChange={e => setEditForm({ ...editForm, productName: e.target.value })} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }} />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Quantity</label>
-                  <input type="number" value={editForm.quantity || ''} onChange={e => setEditForm({ ...editForm, quantity: Number(e.target.value) })} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }} />
+                  <input placeholder="Enter quantity" type="number" value={editForm.quantity || ''} onChange={e => setEditForm({ ...editForm, quantity: Number(e.target.value) })} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }} />
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Unit</label>
-                  <input value={editForm.unit} onChange={e => setEditForm({ ...editForm, unit: e.target.value })} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }} />
+                  <input placeholder="Enter unit" value={editForm.unit} onChange={e => setEditForm({ ...editForm, unit: e.target.value })} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }} />
                 </div>
               </div>
 
@@ -696,7 +696,7 @@ export default function InternalOrdersView({ productionRequests, addNotification
 
               <div>
                 <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Purpose</label>
-                <input value={editForm.purpose || ''} onChange={e => setEditForm({ ...editForm, purpose: e.target.value })} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }} />
+                <input placeholder="Enter purpose" value={editForm.purpose || ''} onChange={e => setEditForm({ ...editForm, purpose: e.target.value })} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }} />
               </div>
 
               <div>
@@ -717,13 +717,13 @@ export default function InternalOrdersView({ productionRequests, addNotification
               {editForm.status === 'REJECTED' && (
                 <div>
                   <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Rejection Reason</label>
-                  <textarea value={editForm.rejectionReason || ''} onChange={e => setEditForm({ ...editForm, rejectionReason: e.target.value })} rows={2} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, resize: 'vertical', boxSizing: 'border-box' }} />
+                  <textarea placeholder="Write rejection reason" value={editForm.rejectionReason || ''} onChange={e => setEditForm({ ...editForm, rejectionReason: e.target.value })} rows={2} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, resize: 'vertical', boxSizing: 'border-box' }} />
                 </div>
               )}
 
               <div>
                 <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Notes</label>
-                <textarea value={editForm.notes || ''} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} rows={3} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, resize: 'vertical', boxSizing: 'border-box' }} />
+                <textarea placeholder="Write notes" value={editForm.notes || ''} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} rows={3} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, resize: 'vertical', boxSizing: 'border-box' }} />
               </div>
             </div>
         )}
@@ -751,7 +751,7 @@ export default function InternalOrdersView({ productionRequests, addNotification
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div>
                   <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Quantity</label>
-                  <input type="number" value={materialForm.quantity || ''} onChange={e => setMaterialForm(prev => ({ ...prev, quantity: Number(e.target.value) }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }} />
+                  <input placeholder="Enter quantity" type="number" value={materialForm.quantity || ''} onChange={e => setMaterialForm(prev => ({ ...prev, quantity: Number(e.target.value) }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }} />
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Unit</label>

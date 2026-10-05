@@ -178,7 +178,7 @@ export default function WipStockView({ addNotification }: Props) {
       <html><head><title>WIP Stock Record</title>
       <style>body{font-family:sans-serif;padding:32px;color:#111;} h1{font-size:22px;margin:0 0 4px;} .badge{padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;background:#d1fae5;color:#065f46;} table{width:100%;border-collapse:collapse;margin-top:16px;} th,td{padding:10px 12px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:14px;} th{color:#6b7280;font-size:12px;font-weight:600;} .footer{margin-top:32px;font-size:11px;color:#9ca3af;border-top:1px solid #e5e7eb;padding-top:12px;}</style>
       </head><body>
-      <p style="font-size:11px;color:#888;margin:0 0 12px;">REBMA IMPEX — WIP Stock Record</p>
+      <p style="font-size:11px;color:#888;margin:0 0 12px;">REBMA IMPEX, WIP Stock Record</p>
       <h1>${item.productName}</h1>
       <p style="margin:4px 0 12px;color:#6b7280;font-size:13px;">${item.batchRef || '—'} · Updated: ${item.updatedAt}</p>
       <span class="badge">${item.stage}</span>
@@ -438,7 +438,7 @@ export default function WipStockView({ addNotification }: Props) {
                     <React.Fragment key={stage}>
                       <div className={`flex flex-col items-center`}>
                         <div className={`w-3 h-3 rounded-full ${i <= current ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'}`} />
-                        <span className={`text-[8px] mt-0.5 font-semibold ${i <= current ? 'text-[var(--accent)]' : 'text-[var(--text-muted)]'}`}>{stage.split(' ')[0]}</span>
+                        <span className={`text-[10px] mt-0.5 font-semibold ${i <= current ? 'text-[var(--accent)]' : 'text-[var(--text-muted)]'}`}>{stage.split(' ')[0]}</span>
                       </div>
                       {i < STAGES.length - 1 && <div className={`flex-1 h-0.5 mb-3 ${i < current ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'}`} />}
                     </React.Fragment>

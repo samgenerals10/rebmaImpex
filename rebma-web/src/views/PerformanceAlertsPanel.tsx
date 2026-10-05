@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { AlertCircle, AlertTriangle, RefreshCw, Check, Info } from 'lucide-react';
 import { fetchPerformanceAlerts, runPerformanceAlerts, resolveAlert, type PerformanceAlert } from '../utils/performanceAlerts';
 import type { CurrentUser } from '../types/erp';
+import CountBadge from '../components/ui/CountBadge';
 
 interface Props {
   currentUser: CurrentUser | null;
@@ -65,7 +66,7 @@ export default function PerformanceAlertsPanel({ currentUser, addNotification }:
             {([['unresolved','Unresolved'],['all','All']] as const).map(([v,l]) => (
               <button key={v} onClick={() => setFilter(v)}
                 className={`px-3 py-1.5 cursor-pointer transition-colors ${filter === v ? 'bg-[var(--accent)] text-white' : 'text-[var(--text-secondary)] hover:bg-[var(--accent-light)]'}`}>
-                {l} {v === 'unresolved' && unresolvedCount > 0 && `(${unresolvedCount})`}
+                {l}{v === 'unresolved' && <CountBadge count={unresolvedCount} />}
               </button>
             ))}
           </div>
@@ -100,12 +101,12 @@ export default function PerformanceAlertsPanel({ currentUser, addNotification }:
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${sev.bg} ${sev.color}`}>{sev.label}</span>
-                      <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-[var(--bg-card)] border border-[var(--border)] text-[var(--text-muted)]">{alert.department}</span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${sev.bg} ${sev.color}`}>{sev.label}</span>
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[var(--bg-card)] border border-[var(--border)] text-[var(--text-muted)]">{alert.department}</span>
                     </div>
                     <p className="text-xs text-[var(--text-secondary)] leading-relaxed">{alert.description}</p>
                     {alert.created_at && (
-                      <p className="text-[9px] text-[var(--text-muted)] mt-1">
+                      <p className="text-[10px] text-[var(--text-muted)] mt-1">
                         {new Date(alert.created_at).toLocaleString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}
                       </p>
                     )}
@@ -116,7 +117,7 @@ export default function PerformanceAlertsPanel({ currentUser, addNotification }:
                       <Check className="w-3 h-3" /> Resolve
                     </button>
                   )}
-                  {isResolved(alert) && <span className="text-[9px] font-bold text-emerald-600 shrink-0">Resolved</span>}
+                  {isResolved(alert) && <span className="text-[10px] font-bold text-emerald-600 shrink-0">Resolved</span>}
                 </div>
               </div>
             );

@@ -132,7 +132,7 @@ export default function AttendanceView({ addNotification }: Props) {
         .single();
       if (error) throw error;
       setRows(prev => [mapRowToUI(inserted), ...prev]);
-      addNotification(`${form.fullName} checked in${isLate ? ' (late)' : ''} — ${type}`);
+      addNotification(`${form.fullName} checked in${isLate ? ' (late)' : ''}, ${type}`);
       setForm({ fullName: '', department: 'HR', virtual: false });
       setGpsStatus('idle');
       setGpsDistance(null);
@@ -244,7 +244,7 @@ export default function AttendanceView({ addNotification }: Props) {
                 {
                   key: 'fullName', label: 'Name', primary: true, render: r => (
                     <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-full bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center text-[9px] font-bold shrink-0">
+                      <div className="w-7 h-7 rounded-full bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center text-[10px] font-bold shrink-0">
                         {r.fullName.split(' ').map(n => n[0]).join('').slice(0, 2)}
                       </div>
                       {r.fullName}
@@ -268,7 +268,7 @@ export default function AttendanceView({ addNotification }: Props) {
                 },
                 {
                   key: 'status', label: 'Status', status: true, render: r => (
-                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${r.status === 'PRESENT' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${r.status === 'PRESENT' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
                       {r.status}
                     </span>
                   )
@@ -344,12 +344,12 @@ export default function AttendanceView({ addNotification }: Props) {
       >
         <div className="space-y-3">
           <div>
-            <label className="block text-[9px] font-semibold text-[var(--text-secondary)] uppercase mb-1">Employee Name *</label>
+            <label className="block text-[10px] font-semibold text-[var(--text-secondary)] uppercase mb-1">Employee Name *</label>
             <input value={form.fullName} onChange={e => setForm(f => ({ ...f, fullName: e.target.value }))} placeholder="Full name..."
               className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]" />
           </div>
           <div>
-            <label className="block text-[9px] font-semibold text-[var(--text-secondary)] uppercase mb-1">Department</label>
+            <label className="block text-[10px] font-semibold text-[var(--text-secondary)] uppercase mb-1">Department</label>
             <SearchableDropdown
               value={form.department}
               onChange={v => setForm(f => ({ ...f, department: v }))}

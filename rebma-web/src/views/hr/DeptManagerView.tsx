@@ -294,7 +294,7 @@ export default function DeptManagerView({ staffList, addNotification }: Props) {
               ].map(field => (
                 <div key={field.key}>
                   <label className="block text-xs text-[var(--text-secondary)] mb-1">{field.label}</label>
-                  <input type={field.type} value={editForm[field.key]} disabled={submitting}
+                  <input placeholder={`Enter ${String(field.label).replace(/\s*\*\s*$/, "").toLowerCase()}`} type={field.type} value={editForm[field.key]} disabled={submitting}
                     onChange={e => setEditForm(p => ({ ...p, [field.key]: field.type === 'number' ? parseInt(e.target.value) || 0 : e.target.value }))}
                     className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-sm outline-none disabled:opacity-50" />
                 </div>

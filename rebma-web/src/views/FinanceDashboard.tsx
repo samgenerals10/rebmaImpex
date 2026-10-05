@@ -609,7 +609,7 @@ export default function FinanceDashboard({
             onClick={() => setActiveMobileDetail(null)}
             className="px-3 py-1.5 bg-bg-card dark:bg-slate-850 border border-[var(--border)] dark:border-slate-800 rounded-full text-xs font-bold text-text-secondary dark:text-slate-350 cursor-pointer shadow-card"
           >
-            ← Back
+            Back
           </button>
           <h2 className="text-sm font-bold">Record Details</h2>
         </div>
@@ -637,7 +637,7 @@ export default function FinanceDashboard({
                 </div>
                 <div className="py-3 flex justify-between items-center text-xs">
                   <span className="text-text-muted font-medium">Type</span>
-                  <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${pay.paymentType === 'DIRECT' ? 'bg-blue-500/10 text-blue-400' : 'bg-purple-500/10 text-purple-400'}`}>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${pay.paymentType === 'DIRECT' ? 'bg-blue-500/10 text-blue-400' : 'bg-purple-500/10 text-purple-400'}`}>
                     {pay.paymentType === 'DIRECT' ? 'Direct' : 'Credit Settle'}
                   </span>
                 </div>
@@ -721,7 +721,7 @@ export default function FinanceDashboard({
                 </div>
                 <div className="py-3 flex justify-between items-center text-xs">
                   <span className="text-text-muted font-medium">Status</span>
-                  <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                     req.status === 'TICKETS_ISSUED' || req.status === 'COMPLETED' ? 'bg-emerald-500/10 text-emerald-450' :
                     req.status === 'APPROVED' ? 'bg-blue-500/10 text-blue-450' :
                     'bg-amber-500/10 text-amber-450'
@@ -798,9 +798,9 @@ export default function FinanceDashboard({
             <div key={i} className="mobile-stat-card">
               <div className="mobile-stat-icon" style={{ background: s.bg }}><Icon className="w-5 h-5" style={{ color: s.color }} /></div>
               <div className="min-w-0">
-                <p className="text-[9px] text-text-muted uppercase font-bold tracking-wider">{s.label}</p>
+                <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider">{s.label}</p>
                 <p className="text-sm font-bold text-text-primary mt-0.5"><CountUp value={s.value} prefix={s.prefix} /></p>
-                <p className="text-[9px] text-text-muted">{s.sub}</p>
+                <p className="text-[10px] text-text-muted">{s.sub}</p>
               </div>
             </div>
           ); })}
@@ -1088,7 +1088,7 @@ export default function FinanceDashboard({
                           <div className="flex items-center gap-2 flex-wrap">
                             <p className="text-xs font-bold text-[var(--text-primary)]">{order.clientName}</p>
                             {order.ticketNumber && (
-                              <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-450 rounded text-[9px] font-bold">🎫 {order.ticketNumber}</span>
+                              <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-450 rounded text-[10px] font-bold">🎫 {order.ticketNumber}</span>
                             )}
                           </div>
                           <p className="text-[10px] text-[var(--text-secondary)] font-mono">Order ID: <code>{order.id}</code></p>
@@ -1211,43 +1211,43 @@ export default function FinanceDashboard({
                         <th onClick={() => handleSort('id', paymentsSortField, setPaymentsSortField, paymentsSortDir, setPaymentsSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none">
                           <div className="flex items-center gap-1">
                             <span>Receipt #</span>
-                            <span className="text-[9px] opacity-70">{paymentsSortField === 'id' ? (paymentsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                            <span className="text-[10px] opacity-70">{paymentsSortField === 'id' ? (paymentsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                           </div>
                         </th>
                         <th onClick={() => handleSort('clientName', paymentsSortField, setPaymentsSortField, paymentsSortDir, setPaymentsSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none">
                           <div className="flex items-center gap-1">
                             <span>Client</span>
-                            <span className="text-[9px] opacity-70">{paymentsSortField === 'clientName' ? (paymentsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                            <span className="text-[10px] opacity-70">{paymentsSortField === 'clientName' ? (paymentsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                           </div>
                         </th>
                         <th onClick={() => handleSort('paymentType', paymentsSortField, setPaymentsSortField, paymentsSortDir, setPaymentsSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden sm:table-cell">
                           <div className="flex items-center gap-1">
                             <span>Type</span>
-                            <span className="text-[9px] opacity-70">{paymentsSortField === 'paymentType' ? (paymentsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                            <span className="text-[10px] opacity-70">{paymentsSortField === 'paymentType' ? (paymentsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                           </div>
                         </th>
                         <th onClick={() => handleSort('paymentMode', paymentsSortField, setPaymentsSortField, paymentsSortDir, setPaymentsSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden md:table-cell">
                           <div className="flex items-center gap-1">
                             <span>Mode</span>
-                            <span className="text-[9px] opacity-70">{paymentsSortField === 'paymentMode' ? (paymentsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                            <span className="text-[10px] opacity-70">{paymentsSortField === 'paymentMode' ? (paymentsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                           </div>
                         </th>
                         <th onClick={() => handleSort('orderId', paymentsSortField, setPaymentsSortField, paymentsSortDir, setPaymentsSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden lg:table-cell">
                           <div className="flex items-center gap-1">
                             <span>Settled Order</span>
-                            <span className="text-[9px] opacity-70">{paymentsSortField === 'orderId' ? (paymentsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                            <span className="text-[10px] opacity-70">{paymentsSortField === 'orderId' ? (paymentsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                           </div>
                         </th>
                         <th onClick={() => handleSort('amount', paymentsSortField, setPaymentsSortField, paymentsSortDir, setPaymentsSortDir)} className="py-3 px-3 text-right whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none">
                           <div className="flex items-center justify-end gap-1">
                             <span>Amount</span>
-                            <span className="text-[9px] opacity-70">{paymentsSortField === 'amount' ? (paymentsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                            <span className="text-[10px] opacity-70">{paymentsSortField === 'amount' ? (paymentsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                           </div>
                         </th>
                         <th onClick={() => handleSort('createdAt', paymentsSortField, setPaymentsSortField, paymentsSortDir, setPaymentsSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden sm:table-cell">
                           <div className="flex items-center gap-1">
                             <span>Date</span>
-                            <span className="text-[9px] opacity-70">{paymentsSortField === 'createdAt' ? (paymentsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                            <span className="text-[10px] opacity-70">{paymentsSortField === 'createdAt' ? (paymentsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                           </div>
                         </th>
                         <th className="py-3 px-5 text-center whitespace-nowrap">Actions</th>
@@ -1271,7 +1271,7 @@ export default function FinanceDashboard({
                           <td className="py-3.5 px-3 font-mono font-bold text-[var(--accent)]">{pay.id}</td>
                           <td className="py-3.5 px-3 font-semibold text-[13px]">{pay.clientName}</td>
                           <td className="py-3.5 px-3 hidden sm:table-cell">
-                            <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${pay.paymentType === 'DIRECT' ? 'bg-blue-500/10 text-blue-450' : 'bg-purple-500/10 text-purple-450'}`}>
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${pay.paymentType === 'DIRECT' ? 'bg-blue-500/10 text-blue-450' : 'bg-purple-500/10 text-purple-450'}`}>
                               {pay.paymentType === 'DIRECT' ? 'Direct' : 'Credit Settle'}
                             </span>
                           </td>
@@ -1408,7 +1408,7 @@ export default function FinanceDashboard({
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                           req.status === 'TICKETS_ISSUED' || req.status === 'COMPLETED' ? 'bg-emerald-500/10 text-emerald-450' :
                           req.status === 'APPROVED' ? 'bg-blue-500/10 text-blue-450' :
                           'bg-amber-500/10 text-amber-450'
@@ -1438,31 +1438,31 @@ export default function FinanceDashboard({
                         <th onClick={() => handleSort('id', warehouseSortField, setWarehouseSortField, warehouseSortDir, setWarehouseSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none">
                           <div className="flex items-center gap-1">
                             <span>Requisition ID</span>
-                            <span className="text-[9px] opacity-70">{warehouseSortField === 'id' ? (warehouseSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                            <span className="text-[10px] opacity-70">{warehouseSortField === 'id' ? (warehouseSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                           </div>
                         </th>
                         <th onClick={() => handleSort('materialName', warehouseSortField, setWarehouseSortField, warehouseSortDir, setWarehouseSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none">
                           <div className="flex items-center gap-1">
                             <span>Materials</span>
-                            <span className="text-[9px] opacity-70">{warehouseSortField === 'materialName' ? (warehouseSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                            <span className="text-[10px] opacity-70">{warehouseSortField === 'materialName' ? (warehouseSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                           </div>
                         </th>
                         <th onClick={() => handleSort('quantity', warehouseSortField, setWarehouseSortField, warehouseSortDir, setWarehouseSortDir)} className="py-3 px-3 text-right whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none">
                           <div className="flex items-center justify-end gap-1">
                             <span>Total Units</span>
-                            <span className="text-[9px] opacity-70">{warehouseSortField === 'quantity' ? (warehouseSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                            <span className="text-[10px] opacity-70">{warehouseSortField === 'quantity' ? (warehouseSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                           </div>
                         </th>
                         <th onClick={() => handleSort('status', warehouseSortField, setWarehouseSortField, warehouseSortDir, setWarehouseSortDir)} className="py-3 px-3 text-center whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none">
                           <div className="flex items-center justify-center gap-1">
                             <span>Status</span>
-                            <span className="text-[9px] opacity-70">{warehouseSortField === 'status' ? (warehouseSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                            <span className="text-[10px] opacity-70">{warehouseSortField === 'status' ? (warehouseSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                           </div>
                         </th>
                         <th onClick={() => handleSort('createdAt', warehouseSortField, setWarehouseSortField, warehouseSortDir, setWarehouseSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden sm:table-cell">
                           <div className="flex items-center gap-1">
                             <span>Date</span>
-                            <span className="text-[9px] opacity-70">{warehouseSortField === 'createdAt' ? (warehouseSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                            <span className="text-[10px] opacity-70">{warehouseSortField === 'createdAt' ? (warehouseSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                           </div>
                         </th>
                         <th className="py-3 px-5 text-center whitespace-nowrap">Actions</th>
@@ -1487,7 +1487,7 @@ export default function FinanceDashboard({
                           </td>
                           <td className="py-3.5 px-3 text-right font-bold font-mono text-[13px]">{req.items.reduce((s, i) => s + i.quantity, 0).toLocaleString()}</td>
                           <td className="py-3.5 px-3 text-center">
-                            <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                               req.status === 'TICKETS_ISSUED' || req.status === 'COMPLETED' ? 'bg-emerald-500/10 text-emerald-450' :
                               req.status === 'APPROVED' ? 'bg-blue-500/10 text-blue-450' :
                               'bg-amber-500/10 text-amber-450'
@@ -1701,7 +1701,7 @@ export default function FinanceDashboard({
                         onClick={() => setSelectedCatalogProduct(null)}
                         className="flex items-center gap-2 px-4 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold rounded-xl border border-slate-100 transition-colors"
                       >
-                        ← Back to Catalog Storefront
+                        Back to Catalog Storefront
                       </button>
                       <span className="text-xs font-bold text-slate-400 font-mono">Product Details Dashboard</span>
                     </div>
@@ -1722,13 +1722,13 @@ export default function FinanceDashboard({
                       {/* Financial info summary columns */}
                       <div className="grid grid-cols-2 gap-4 border-t md:border-t-0 md:border-x border-slate-200/60 px-0 md:px-6 py-4 md:py-0">
                         <div>
-                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide block">Selling Price</span>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block">Selling Price</span>
                           <span className="text-lg font-extrabold text-slate-900">{selectedCatalogProduct.currency} <CountUp value={Number(selectedCatalogProduct.unit_price || 0)} /></span>
                         </div>
                         <div>
-                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide block">Cost Price</span>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block">Cost Price</span>
                           <span className="text-sm font-semibold text-slate-600 block mt-0.5">{selectedCatalogProduct.currency} <CountUp value={Number(selectedCatalogProduct.cost_price || 0)} /></span>
-                          <span className="text-[9px] text-emerald-500 font-black"><CountUp value={Number(selectedCatalogProduct.margin)} prefix="+" suffix="% margin" /></span>
+                          <span className="text-[10px] text-emerald-500 font-black"><CountUp value={Number(selectedCatalogProduct.margin)} prefix="+" suffix="% margin" /></span>
                         </div>
                       </div>
 
@@ -1754,7 +1754,7 @@ export default function FinanceDashboard({
                       <div className="overflow-x-auto border border-slate-100 rounded-2xl bg-white shadow-sm">
                         <table className="w-full text-xs text-left">
                           <thead>
-                            <tr className="bg-slate-50 border-b border-slate-100 text-slate-400 uppercase font-semibold text-[9px] tracking-wider">
+                            <tr className="bg-slate-50 border-b border-slate-100 text-slate-400 uppercase font-semibold text-[10px] tracking-wider">
                               <th className="py-3 px-4">Date / Time</th>
                               <th className="py-3 px-4">Event Type</th>
                               <th className="py-3 px-4">Description</th>
@@ -1777,7 +1777,7 @@ export default function FinanceDashboard({
                                     {log.date !== 'N/A' ? new Date(log.date).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A'}
                                   </td>
                                   <td className="py-3 px-4">
-                                    <span className={`px-2 py-0.5 rounded-full text-[8px] font-black tracking-wider ${
+                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black tracking-wider ${
                                       log.type === 'INTAKE' ? 'bg-amber-100 text-amber-700' :
                                       log.type === 'SALE' ? 'bg-emerald-100 text-emerald-700' :
                                       'bg-sky-100 text-sky-700'
@@ -1797,7 +1797,7 @@ export default function FinanceDashboard({
                                   </td>
                                   <td className="py-3 px-4 text-slate-500">{log.user}</td>
                                   <td className="py-3 px-4">
-                                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
+                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                                       log.status === 'APPROVED' || log.status === 'DELIVERED' || log.status === 'Active' ? 'bg-emerald-500/10 text-emerald-600' :
                                       log.status === 'PENDING' || log.status.startsWith('PENDING') ? 'bg-amber-500/10 text-amber-600' :
                                       'bg-slate-100 text-slate-500'
@@ -1842,7 +1842,7 @@ export default function FinanceDashboard({
                       </button>
                       <div className="relative cursor-pointer p-2 hover:bg-slate-50 rounded-full transition-colors">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                        <span className="absolute top-1 right-1 w-4 h-4 bg-orange-500 text-white text-[9px] font-black rounded-full flex items-center justify-center border border-white">
+                        <span className="absolute top-1 right-1 w-4 h-4 bg-orange-500 text-white text-[10px] font-black rounded-full flex items-center justify-center border border-white">
                           {goodsPrices.length}
                         </span>
                       </div>
@@ -1946,7 +1946,7 @@ export default function FinanceDashboard({
                             className="bg-white border border-slate-100 rounded-3xl p-5 hover:shadow-xl transition-all group relative flex flex-col justify-between cursor-pointer"
                           >
                             {/* Bestseller Badge */}
-                            <span className="absolute top-4 left-4 text-[8px] font-black px-2.5 py-1 bg-amber-500 text-white uppercase rounded-md tracking-wider">
+                            <span className="absolute top-4 left-4 text-[10px] font-black px-2.5 py-1 bg-amber-500 text-white uppercase rounded-md tracking-wider">
                               BESTSELLER
                             </span>
                             {/* Like / Heart Icon */}
@@ -1986,12 +1986,12 @@ export default function FinanceDashboard({
                         <div className="space-y-2 z-10 text-left">
                           <h3 className="text-lg font-black leading-tight">MacBook Air</h3>
                           <p className="text-[10px] text-sky-100 uppercase tracking-widest font-extrabold">WITH M1 CHIP & LIQUID RETINA DISPLAY</p>
-                          <p className="text-[9px] text-sky-50 opacity-90 leading-relaxed pt-2">Sipping at GHS 950. High logistics speed and custom fleet delivery configurations.</p>
+                          <p className="text-[10px] text-sky-50 opacity-90 leading-relaxed pt-2">Sipping at GHS 950. High logistics speed and custom fleet delivery configurations.</p>
                         </div>
 
                         {/* Valuation info */}
                         <div className="space-y-2 pt-4 z-10 text-left">
-                          <p className="text-[9px] text-sky-200 uppercase tracking-wider font-extrabold">Fulfillment Valuation</p>
+                          <p className="text-[10px] text-sky-200 uppercase tracking-wider font-extrabold">Fulfillment Valuation</p>
                           <p className="text-3xl font-black">GHS <CountUp value={Number(sortedCatalogItems.reduce((s,i)=>s+i.sellingValue, 0))} /></p>
                         </div>
                       </div>
@@ -2031,7 +2031,7 @@ export default function FinanceDashboard({
                               </div>
                               <div className="text-left space-y-1">
                                 <h4 className="text-[10px] font-black text-slate-800 truncate">{name}</h4>
-                                <p className="text-[9px] text-slate-400 uppercase font-semibold">{cat}</p>
+                                <p className="text-[10px] text-slate-400 uppercase font-semibold">{cat}</p>
                                 <p className="text-xs font-black text-slate-900">{gp.currency || 'GHS'} <CountUp value={price} /></p>
                               </div>
                             </div>
@@ -2043,7 +2043,7 @@ export default function FinanceDashboard({
                       <div className="bg-gradient-to-br from-indigo-500 to-indigo-700 text-white rounded-3xl p-6 flex flex-col justify-between shadow-lg relative overflow-hidden min-h-[200px]">
                         <div className="space-y-1 text-left z-10">
                           <h3 className="text-base font-black">Save up to 35%</h3>
-                          <p className="text-[9px] text-indigo-200">on Weekly Logistics Discounts</p>
+                          <p className="text-[10px] text-indigo-200">on Weekly Logistics Discounts</p>
                         </div>
                         <button className="z-10 w-fit px-4 py-1.5 bg-white text-indigo-700 text-[10px] font-bold rounded-full shadow hover:opacity-90 transition-opacity mt-4">
                           SHOP NOW ›
@@ -2065,7 +2065,7 @@ export default function FinanceDashboard({
                           <h3 className="text-sm font-black">{banner.title}</h3>
                           <p className="text-[10px] text-white/80">{banner.sub}</p>
                         </div>
-                        <span className="text-[9px] font-black uppercase tracking-wider cursor-pointer underline mt-3 block">SHOP NOW ›</span>
+                        <span className="text-[10px] font-black uppercase tracking-wider cursor-pointer underline mt-3 block">SHOP NOW ›</span>
                       </div>
                     ))}
                   </div>

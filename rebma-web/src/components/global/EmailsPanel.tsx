@@ -209,7 +209,7 @@ export default function EmailsPanel({ currentUser, addNotification, onUnreadCoun
               className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium cursor-pointer transition-colors ${folder === id ? 'bg-[var(--accent)] text-white' : 'text-[var(--text-secondary)] hover:bg-[var(--accent-light)]'}`}>
               <Icon className="w-3.5 h-3.5 flex-shrink-0" />
               <span className="flex-1 text-left">{label}</span>
-              {count > 0 && <span className={`text-[9px] font-bold px-1.5 rounded-full ${folder === id ? 'bg-white/30 text-white' : 'bg-[var(--accent)] text-white'}`}>{count}</span>}
+              {count > 0 && <span className={`text-[10px] font-bold px-1.5 rounded-full ${folder === id ? 'bg-white/30 text-white' : 'bg-[var(--accent)] text-white'}`}>{count}</span>}
             </button>
           ))}
         </div>
@@ -238,7 +238,7 @@ export default function EmailsPanel({ currentUser, addNotification, onUnreadCoun
                       <p className="text-[10px] text-[var(--text-muted)] truncate mt-0.5">{e.body.slice(0, 60)}</p>
                     </div>
                     <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                      <span className="text-[9px] text-[var(--text-muted)] whitespace-nowrap">{new Date(e.created_at).toLocaleDateString('en-GB', { day:'numeric', month:'short' })}</span>
+                      <span className="text-[10px] text-[var(--text-muted)] whitespace-nowrap">{new Date(e.created_at).toLocaleDateString('en-GB', { day:'numeric', month:'short' })}</span>
                       <button onClick={ev => toggleStar(e, ev)} className="cursor-pointer">
                         <Star className={`w-3 h-3 ${currentUser && isStarred(e, currentUser.id) ? 'fill-amber-400 text-amber-400' : 'text-[var(--text-muted)]'}`} />
                       </button>

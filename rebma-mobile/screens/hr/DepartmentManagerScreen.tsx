@@ -145,14 +145,14 @@ export default function DepartmentManagerScreen() {
         {selected && (
           <View style={{ gap: t.spacing.lg }}>
             <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>{selected.description || 'No description'}</Text>
-            <SheetSection label={`Nav Items (${selected.nav_items?.length || 0})`}>
+            <SheetSection label="Nav Items">
               {selected.nav_items?.length ? (
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.xs }}>
                   {selected.nav_items.map((n, i) => <Badge key={i} tone="info" label={n} size="xs" />)}
                 </View>
               ) : <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted, fontStyle: 'italic' }}>No nav items configured</Text>}
             </SheetSection>
-            <SheetSection label={`Workflows (${selected.workflows?.length || 0})`}>
+            <SheetSection label="Workflows">
               {selected.workflows?.length ? (
                 selected.workflows.map((w, i) => <Text key={i} style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>• {w}</Text>)
               ) : <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted, fontStyle: 'italic' }}>No workflows configured</Text>}

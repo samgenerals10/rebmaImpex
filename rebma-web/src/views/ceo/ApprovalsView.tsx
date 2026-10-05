@@ -23,6 +23,7 @@ import type { CurrentUser } from '../../types/erp';
 import { exportToCSV } from '../../utils/export';
 import DeletionRequestsPanel from '../../components/hr/DeletionRequestsPanel';
 import DepartmentChangesPanel from '../../components/hr/DepartmentChangesPanel';
+import CountBadge from '../../components/ui/CountBadge';
 
 interface Approval {
   id: string;
@@ -242,7 +243,7 @@ export default function ApprovalsView({ currentUser, addNotification }: Props) {
         {TABS.map(t => (
           <button key={t} onClick={() => setTab(t)}
             className={`px-3 py-1.5 text-[10px] font-bold rounded-lg capitalize cursor-pointer transition-colors ${tab === t ? 'bg-[var(--accent)] text-white' : 'text-[var(--text-secondary)] hover:bg-[var(--accent-light)]'}`}>
-            {t === 'all' ? `All (${rows.length})` : `${t} (${rows.filter(r => r.type === t).length})`}
+            {t === 'all' ? 'All' : t}<CountBadge count={t === 'all' ? rows.length : rows.filter(r => r.type === t).length} />
           </button>
         ))}
       </div>
@@ -262,12 +263,12 @@ export default function ApprovalsView({ currentUser, addNotification }: Props) {
             <div key={item.id} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 flex items-center gap-4 shadow-[var(--box-shadow)]">
               <button type="button" onClick={() => openReview(item)} className="flex-1 min-w-0 text-left cursor-pointer" title="Review full details">
                 <div className="flex items-center gap-2 flex-wrap mb-1">
-                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full capitalize ${TYPE_STYLES[item.type] || 'bg-slate-100 text-slate-700'}`}>{item.type}</span>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${TYPE_STYLES[item.type] || 'bg-slate-100 text-slate-700'}`}>{item.type}</span>
                   {item.expired
-                    ? <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700">EXPIRED</span>
-                    : approvalTimeLeft(item.registeredAt) && <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">{approvalTimeLeft(item.registeredAt)}</span>}
-                  <span className="text-[9px] font-semibold text-[var(--text-muted)]">{item.department}</span>
-                  <span className="text-[9px] text-[var(--text-muted)]">{item.date_submitted}</span>
+                    ? <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700">EXPIRED</span>
+                    : approvalTimeLeft(item.registeredAt) && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">{approvalTimeLeft(item.registeredAt)}</span>}
+                  <span className="text-[10px] font-semibold text-[var(--text-muted)]">{item.department}</span>
+                  <span className="text-[10px] text-[var(--text-muted)]">{item.date_submitted}</span>
                 </div>
                 <p className="text-sm font-bold text-[var(--text-primary)]">{item.requester}</p>
                 <p className="text-xs text-[var(--text-secondary)] truncate">{item.description}</p>
@@ -314,9 +315,9 @@ export default function ApprovalsView({ currentUser, addNotification }: Props) {
                 }
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-semibold text-[var(--text-primary)] truncate">{item.requester} — {item.description}</p>
-                  <p className="text-[9px] text-[var(--text-muted)]">{item.department} · {item.date_submitted}</p>
+                  <p className="text-[10px] text-[var(--text-muted)]">{item.department} · {item.date_submitted}</p>
                 </div>
-                <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full capitalize ${item.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-600'}`}>{item.status}</span>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${item.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-600'}`}>{item.status}</span>
               </div>
             ))}
           </div>

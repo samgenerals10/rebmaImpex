@@ -117,7 +117,7 @@ export default function ScannerView({ addNotification }: Props) {
             try {
               const parsed = JSON.parse(code.data);
               if (parsed && parsed.waybillNumber) waybillNumber = parsed.waybillNumber;
-            } catch { /* not JSON — treat the raw scanned text as the waybill number */ }
+            } catch { /* not JSON, treat the raw scanned text as the waybill number */ }
             stopCamera();
             lookupWaybill(waybillNumber);
             return;

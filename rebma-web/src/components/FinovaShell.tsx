@@ -310,7 +310,7 @@ export default function FinovaShell({ activeDepartment, currentUser, children }:
             icon: Truck,
             iconBg: '#fee2e2',
             iconColor: '#dc2626',
-            name: `${d.driver_name || 'Driver'} — ${d.vehicle_id || 'Truck'}`,
+            name: `${d.driver_name || 'Driver'}, ${d.vehicle_id || 'Truck'}`,
             date: `${new Date(d.created_at).toLocaleDateString('en-GB')} • ${new Date(d.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
             amount: d.status,
             positive: false
@@ -495,7 +495,7 @@ export default function FinovaShell({ activeDepartment, currentUser, children }:
                   <div className="w-11 h-11 rounded-full bg-[var(--bg-page)] group-hover:bg-[rgba(59,130,246,0.1)] flex items-center justify-center transition-colors border border-[var(--border)]">
                     <Icon className="w-4 h-4 text-[var(--text-secondary)] group-hover:text-[#3b82f6] transition-colors" />
                   </div>
-                  <span className="text-[9px] text-[var(--text-muted)] font-medium text-center leading-tight">{action.label}</span>
+                  <span className="text-[10px] text-[var(--text-muted)] font-medium text-center leading-tight">{action.label}</span>
                 </div>
               );
             })}
@@ -589,7 +589,7 @@ export default function FinovaShell({ activeDepartment, currentUser, children }:
                 {/* Center label */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                   <p className="text-lg font-extrabold text-[var(--text-primary)]">{summary.totalSpend}</p>
-                  <p className="text-[9px] text-[var(--text-muted)]">Total Spend</p>
+                  <p className="text-[10px] text-[var(--text-muted)]">Total Spend</p>
                 </div>
               </div>
               <div className="mt-2 space-y-1.5">
@@ -663,7 +663,7 @@ export default function FinovaShell({ activeDepartment, currentUser, children }:
               <p className="text-[11px] font-mono text-white/60 mb-1">•••• •••• •••• 4567</p>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-[9px] text-white/50">Available Limit</p>
+                  <p className="text-[10px] text-white/50">Available Limit</p>
                   <p className="text-sm font-bold text-white">₵48,320 / ₵80,000</p>
                 </div>
                 <MoreHorizontal className="w-4 h-4 text-white/60" />
@@ -685,7 +685,7 @@ export default function FinovaShell({ activeDepartment, currentUser, children }:
                   <div className="w-9 h-9 rounded-xl bg-[var(--bg-page)] group-hover:bg-[rgba(59,130,246,0.1)] flex items-center justify-center transition-colors">
                     <Icon className="w-3.5 h-3.5 text-[var(--text-secondary)] group-hover:text-[#3b82f6] transition-colors" />
                   </div>
-                  <span className="text-[8px] text-[var(--text-muted)] font-medium text-center leading-tight">{action.label}</span>
+                  <span className="text-[10px] text-[var(--text-muted)] font-medium text-center leading-tight">{action.label}</span>
                 </div>
               );
             })}
@@ -701,7 +701,7 @@ export default function FinovaShell({ activeDepartment, currentUser, children }:
           <div className="flex items-center justify-between mb-4">
             <div>
               <p className="text-sm font-bold text-[var(--text-primary)]">Financial Overview</p>
-              <p className="text-[11px] text-[var(--text-muted)]">Income vs Expenses — Last 6 months</p>
+              <p className="text-[11px] text-[var(--text-muted)]">Income vs Expenses, Last 6 months</p>
             </div>
             <div className="flex items-center gap-3 text-[10px]">
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#3b82f6] inline-block" />Income</span>

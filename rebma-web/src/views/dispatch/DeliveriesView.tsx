@@ -759,7 +759,7 @@ export default function DeliveriesView({ addNotification, currentUser, setActive
                       <button onClick={() => { setEditingDelivery({ ...d }); setShowEdit(true); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><Edit size={11} /> Edit Delivery Log</button>
                       <button onClick={() => { handleDeleteDelivery(d.id); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-xs text-rose-500 hover:bg-[var(--bg-input)] flex items-center gap-2"><Trash2 size={11} /> Delete Delivery Log</button>
                       <div className="h-px bg-[var(--border)] mx-2 my-1" />
-                      <button onClick={() => { exportToPDF(`Delivery Note — ${d.id}`, [d], ['id', 'orderId', 'clientName', 'destination', 'driverName', 'status']); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><Download size={11} /> Export Delivery Note PDF</button>
+                      <button onClick={() => { exportToPDF(`Delivery Note, ${d.id}`, [d], ['id', 'orderId', 'clientName', 'destination', 'driverName', 'status']); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><Download size={11} /> Export Delivery Note PDF</button>
                     </div>
                   )}
                 </div>
@@ -800,15 +800,15 @@ export default function DeliveriesView({ addNotification, currentUser, setActive
           <div className="flex flex-col gap-4">
               <div className="erp-form-group">
                 <label className="erp-label">Customer Name</label>
-                <input value={editingDelivery.clientName} onChange={e => setEditingDelivery((prev: any) => ({ ...prev, clientName: e.target.value }))} className="erp-input" />
+                <input placeholder="Enter customer name" value={editingDelivery.clientName} onChange={e => setEditingDelivery((prev: any) => ({ ...prev, clientName: e.target.value }))} className="erp-input" />
               </div>
               <div className="erp-form-group">
                 <label className="erp-label">Order ID</label>
-                <input value={editingDelivery.orderId} onChange={e => setEditingDelivery((prev: any) => ({ ...prev, orderId: e.target.value }))} className="erp-input" />
+                <input placeholder="Enter order ID" value={editingDelivery.orderId} onChange={e => setEditingDelivery((prev: any) => ({ ...prev, orderId: e.target.value }))} className="erp-input" />
               </div>
               <div className="erp-form-group">
                 <label className="erp-label">Destination / Delivery Address</label>
-                <input value={editingDelivery.destination} onChange={e => setEditingDelivery((prev: any) => ({ ...prev, destination: e.target.value }))} className="erp-input" />
+                <input placeholder="Enter destination / delivery address" value={editingDelivery.destination} onChange={e => setEditingDelivery((prev: any) => ({ ...prev, destination: e.target.value }))} className="erp-input" />
               </div>
               <div className="erp-form-group">
                 <label className="erp-label">Driver ID / Name</label>
@@ -835,7 +835,7 @@ export default function DeliveriesView({ addNotification, currentUser, setActive
               </div>
               <div className="erp-form-group">
                 <label className="erp-label">Notes / Special Instructions</label>
-                <textarea value={editingDelivery.deliveryNotes || ''} onChange={e => setEditingDelivery((prev: any) => ({ ...prev, deliveryNotes: e.target.value }))} rows={2}
+                <textarea placeholder="Write notes / special instructions" value={editingDelivery.deliveryNotes || ''} onChange={e => setEditingDelivery((prev: any) => ({ ...prev, deliveryNotes: e.target.value }))} rows={2}
                   className="erp-input resize-none" />
               </div>
           </div>

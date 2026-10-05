@@ -179,7 +179,7 @@ export default function WalletsView({ setActiveSubTab }: WalletsViewProps) {
             <RefreshCw className="w-3.5 h-3.5" /> Refresh
           </button>
           <button onClick={() => setActiveSubTab?.('Transactions')} className="flex items-center gap-1 px-3 py-1.5 bg-[var(--accent)] text-white text-xs font-semibold rounded-xl cursor-pointer hover:opacity-90">
-            All Transactions →
+            All Transactions
           </button>
         </div>
       </div>
@@ -250,7 +250,7 @@ export default function WalletsView({ setActiveSubTab }: WalletsViewProps) {
                     <div className="absolute -top-4 -right-4 w-16 h-16 rounded-full bg-white/10" />
                     <div className="flex items-center justify-between mb-2">
                       <Icon className="w-4 h-4 text-white/80" />
-                      {activeCard === i && <span className="text-[8px] font-bold text-white/60 uppercase tracking-widest">Selected</span>}
+                      {activeCard === i && <span className="text-[10px] font-bold text-white/60 uppercase tracking-widest">Selected</span>}
                     </div>
                     <p className="text-[10px] text-white/60 font-semibold uppercase tracking-wide mb-1">{MODE_LABEL[w.mode] || w.mode}</p>
                     <p className="text-lg font-extrabold text-white leading-tight">GHS {w.amount.toLocaleString()}</p>
@@ -292,7 +292,7 @@ export default function WalletsView({ setActiveSubTab }: WalletsViewProps) {
         {/* Bar chart — In vs Out */}
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 shadow-[var(--box-shadow)]">
           <h3 className="text-sm font-bold text-[var(--text-primary)] mb-1">Money In vs Out</h3>
-          <p className="text-[10px] text-[var(--text-muted)] mb-4">Last 6 months — GHS</p>
+          <p className="text-[10px] text-[var(--text-muted)] mb-4">Last 6 months, GHS</p>
           {loading
             ? <div className="animate-pulse h-44 bg-[var(--bg-input)] rounded-xl" />
             : <ResponsiveContainer width="100%" height={180}>
@@ -340,7 +340,7 @@ export default function WalletsView({ setActiveSubTab }: WalletsViewProps) {
             <p className="text-[10px] text-[var(--text-muted)]">Payments, expenses &amp; purchases</p>
           </div>
           <button onClick={() => setActiveSubTab?.('Transactions')} className="text-xs text-[var(--accent)] font-semibold hover:underline cursor-pointer">
-            View All →
+            View All
           </button>
         </div>
         {loading ? (

@@ -170,7 +170,7 @@ export const SECTIONS: Section[] = [
   // verbatim from web's own <SettingToggle> descriptions.
   {
     id: 'birthdays', title: 'Birthday Wishes', fields: [
-      { key: 'birthday_wishes_enabled', label: 'Birthday Wishes Allowed', description: 'Master switch. When off, no birthday wishes go out at all, automatic or by hand. HR writes the messages and runs the sending under HR → Birthdays.', kind: 'bool', defaultOn: true },
+      { key: 'birthday_wishes_enabled', label: 'Birthday Wishes Allowed', description: 'Master switch. When off, no birthday wishes go out at all, automatic or by hand. HR writes the messages and runs the sending under HR, then Birthdays.', kind: 'bool', defaultOn: true },
     ],
   },
   {
@@ -324,13 +324,13 @@ const API_KEY_DEFS: { key: string; label: string; description: string; placehold
   {
     key: 'api_key_connector',
     label: 'Attendance Connector Key',
-    description: 'A password you make up for the connector program that runs on the office PC next to SDK and pull-mode attendance devices. Put the same value in its config.json as connectorKey. It lets the connector fetch the device list from the app, so devices you add under HR → Attendance are picked up automatically.',
+    description: 'A password you make up for the connector program that runs on the office PC next to SDK and pull-mode attendance devices. Put the same value in its config.json as connectorKey. It lets the connector fetch the device list from the app, so devices you add under HR, then Attendance are picked up automatically.',
     placeholder: 'Make up a long random value and paste it here',
   },
   {
     key: 'api_key_attendance_webhook_secret',
     label: 'Attendance Webhook Secret (fallback)',
-    description: 'Only for a device that was never added under HR → Attendance → Add Device. Every added device gets its own secret there, which always takes priority. Most setups can leave this empty.',
+    description: 'Only for a device that was never added under HR, then Attendance, then Add Device. Every added device gets its own secret there, which always takes priority. Most setups can leave this empty.',
     placeholder: 'Paste the webhook secret',
   },
   {
@@ -1034,9 +1034,9 @@ export default function ControlCenterScreen() {
             { id: 'ceo', title: 'CEO Account' },
             ...SECTIONS.map((s) => ({ id: s.id, title: s.title })),
             { id: 'staff', title: 'Staff' },
-            { id: 'departments', title: `Departments${departments.length ? ` (${departments.length})` : ''}` },
-            { id: 'invites', title: `Invite Links${invites.length ? ` (${invites.length})` : ''}` },
-            { id: 'delegates', title: `Delegated Access${delegates.length ? ` (${delegates.length})` : ''}` },
+            { id: 'departments', title: 'Departments' },
+            { id: 'invites', title: 'Invite Links' },
+            { id: 'delegates', title: 'Delegated Access' },
             { id: 'keys', title: `API Keys${API_KEY_DEFS.filter((d) => !apiKeys[d.key]).length ? ` (${API_KEY_DEFS.filter((d) => !apiKeys[d.key]).length} empty)` : ''}` },
             { id: 'templates', title: 'Document Templates' },
             { id: 'messages', title: 'Message Export' },
@@ -1287,7 +1287,7 @@ export default function ControlCenterScreen() {
       ) : activeSection === 'keys' ? (
         <View style={{ gap: t.spacing.md }}>
           <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted, lineHeight: 16 }}>
-            Every external key or secret the app can use, in one place — the same kind of "enter your API key" screen you'd see on any other platform. Empty rows fall back to their existing free or manual behavior; a saved key takes effect immediately, the next time that feature is used.
+            Every external key or secret the app can use, in one place, the same kind of "enter your API key" screen you'd see on any other platform. Empty rows fall back to their existing free or manual behavior; a saved key takes effect immediately, the next time that feature is used.
           </Text>
           {API_KEY_DEFS.map((def) => {
             const saved = apiKeys[def.key] || '';

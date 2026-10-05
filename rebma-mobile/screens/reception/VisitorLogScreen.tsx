@@ -195,7 +195,7 @@ export default function VisitorLogScreen() {
             <Input value={purpose} onChangeText={setPurpose} placeholder="Purpose of visit (e.g. Sales, Interview, Delivery)" />
             <Input value={hostName} onChangeText={setHostName} placeholder="Host / Person to visit *" />
             <Button
-              label={submitting ? 'Registering Guest…' : 'Check In Visitor →'}
+              label={submitting ? 'Registering Guest…' : 'Check In Visitor'}
               onPress={handleCheckIn}
               disabled={submitting}
               loading={submitting}
@@ -206,7 +206,7 @@ export default function VisitorLogScreen() {
 
         {/* Currently On Site */}
         <View style={{ gap: t.spacing.sm }}>
-          <SectionHeader title={`Currently On Site (${stillIn.length})`} subtitle="Visitors with open check-in badges" />
+          <SectionHeader title="Currently On Site" subtitle="Visitors with open check-in badges" badge={stillIn.length > 0 ? <Badge tone="info" label={String(stillIn.length)} size="xs" /> : undefined} />
           {loading ? (
             <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textMuted }}>Loading…</Text>
           ) : stillIn.length === 0 ? (

@@ -174,12 +174,12 @@ export default function SetPricesScreen() {
       const { error: upsertError } = await supabase.from('goods_prices').upsert([upsertPayload], { onConflict: 'product_name' });
       if (upsertError) { Alert.alert('Save Failed', upsertError.message); return; }
 
-      if (broadcastFinance) await supabase.from('supplier_order_notifications').insert([{ message: `Price update: ${form.productName} → ${form.currency} ${unitPrice}`, notified_department: 'FINANCE', read: false }]);
-      if (broadcastMarketing) await supabase.from('supplier_order_notifications').insert([{ message: `Price update: ${form.productName} → ${form.currency} ${unitPrice}`, notified_department: 'MARKETING', read: false }]);
-      if (broadcastCeo) await supabase.from('supplier_order_notifications').insert([{ message: `Price update: ${form.productName} → ${form.currency} ${unitPrice}`, notified_department: 'CEO', read: false }]);
+      if (broadcastFinance) await supabase.from('supplier_order_notifications').insert([{ message: `Price update: ${form.productName} to ${form.currency} ${unitPrice}`, notified_department: 'FINANCE', read: false }]);
+      if (broadcastMarketing) await supabase.from('supplier_order_notifications').insert([{ message: `Price update: ${form.productName} to ${form.currency} ${unitPrice}`, notified_department: 'MARKETING', read: false }]);
+      if (broadcastCeo) await supabase.from('supplier_order_notifications').insert([{ message: `Price update: ${form.productName} to ${form.currency} ${unitPrice}`, notified_department: 'CEO', read: false }]);
 
       await supabase.from('global_audit_history').insert([{
-        department: 'MANAGEMENT', action: `Price ${editing ? 'updated' : 'set'}: ${form.productName} → ${form.currency} ${unitPrice}/unit`,
+        department: 'MANAGEMENT', action: `Price ${editing ? 'updated' : 'set'}: ${form.productName} to ${form.currency} ${unitPrice}/unit`,
         performed_by: profile?.fullName || 'Management', timestamp: new Date().toISOString(),
       }]);
 

@@ -51,7 +51,7 @@ export const CEO_SETTINGS_SCHEMA: SettingSection[] = [
     // this knowledge base (built from a partial read) had only 6 of
     // these 8, silently missing hr_can_approve_registrations and
     // management_can_approve_registrations entirely.
-    id: 'access', title: 'Section 1 — Access Control', icon: 'Shield',
+    id: 'access', title: 'Section 1, Access Control', icon: 'Shield',
     fields: [
       { kind: 'toggle', key: 'app_master_switch', label: 'App Access (Master Switch)', description: 'Master switch for entire app. When turned OFF all users except CEO will see a maintenance page and cannot access any features.', warning: '⚠️ This will immediately lock out all users and shut down app access. Only you can turn it back on. Are you sure?' },
       { kind: 'toggle', key: 'registrations_allowed', label: 'Allow New Registrations', description: "When OFF the registration page shows 'Registration is currently closed' and no new accounts can be created." },
@@ -68,7 +68,7 @@ export const CEO_SETTINGS_SCHEMA: SettingSection[] = [
     ],
   },
   {
-    id: 'financial', title: 'Section 2 — Financial Controls', icon: 'DollarSign',
+    id: 'financial', title: 'Section 2, Financial Controls', icon: 'DollarSign',
     fields: [
       { kind: 'toggle', key: 'credit_sales_enabled', label: 'Credit Sales Enabled', description: 'Allow credit payment type for customer orders. When OFF Marketing cannot select Credit as payment mode.' },
       { kind: 'number', key: 'max_credit_amount', label: 'Maximum Credit Amount', description: 'Maximum credit amount allowed per customer. Orders requesting credit above this amount are automatically blocked.', min: 0, max: 10000000, unit: 'GHS' },
@@ -86,7 +86,7 @@ export const CEO_SETTINGS_SCHEMA: SettingSection[] = [
     ],
   },
   {
-    id: 'operations', title: 'Section 3 — Operations Controls', icon: 'Package',
+    id: 'operations', title: 'Section 3, Operations Controls', icon: 'Package',
     fields: [
       { kind: 'toggle', key: 'cargo_intake_enabled', label: 'Cargo Intake Enabled', description: 'Allow Operations to log new cargo receipts from the port. When OFF the Log Intake button is disabled.' },
       { kind: 'toggle', key: 'stock_adjustments_allowed', label: 'Stock Adjustments Allowed', description: 'Allow manual stock level adjustments in Operations. When OFF only system-generated stock movements are allowed.' },
@@ -96,7 +96,7 @@ export const CEO_SETTINGS_SCHEMA: SettingSection[] = [
     ],
   },
   {
-    id: 'dispatch', title: 'Section 4 — Dispatch Controls', icon: 'Truck',
+    id: 'dispatch', title: 'Section 4, Dispatch Controls', icon: 'Truck',
     fields: [
       { kind: 'toggle', key: 'deliveries_enabled', label: 'Deliveries Enabled', description: 'Allow Dispatch to create and process deliveries. When OFF no deliveries can be assigned or dispatched.' },
       { kind: 'toggle', key: 'gps_tracking_enabled', label: 'GPS Tracking Enabled', description: 'Enable real-time GPS tracking for all delivery vehicles.' },
@@ -106,7 +106,7 @@ export const CEO_SETTINGS_SCHEMA: SettingSection[] = [
     ],
   },
   {
-    id: 'data', title: 'Section 5 — Data Controls', icon: 'Database',
+    id: 'data', title: 'Section 5, Data Controls', icon: 'Database',
     fields: [
       { kind: 'toggle', key: 'data_export_enabled', label: 'Data Export Enabled', description: 'Allow CSV and PDF exports across all departments. When OFF all export buttons are hidden and disabled.' },
       { kind: 'toggle', key: 'data_import_enabled', label: 'Data Import Enabled', description: 'Master switch for all file imports. Management still controls which departments can import and what types.' },
@@ -121,7 +121,7 @@ export const CEO_SETTINGS_SCHEMA: SettingSection[] = [
     // this array stays one complete, ordered list; only the render call
     // slices it (index 0-2, component, index 3-10) to keep Message
     // Export's current mid-list position.
-    id: 'communication', title: 'Section 6 — Communication Controls', icon: 'MessageCircle',
+    id: 'communication', title: 'Section 6, Communication Controls', icon: 'MessageCircle',
     fields: [
       { kind: 'toggle', key: 'global_chat_enabled', label: 'Global Chat Enabled', description: 'Enable company-wide chat in the Boardroom. When OFF the Global Chat tab is hidden for all users.' },
       { kind: 'toggle', key: 'department_chat_enabled', label: 'Department Chat Enabled', description: 'Enable department-specific chat channels.' },
@@ -143,7 +143,7 @@ export const CEO_SETTINGS_SCHEMA: SettingSection[] = [
     // Only these 6 fields are schema-driven; the pending-department-
     // approvals block and department-rename block stay appended after
     // them in CeoControlCenter.tsx, unchanged.
-    id: 'system', title: 'Section 7 — System Controls', icon: 'Settings',
+    id: 'system', title: 'Section 7, System Controls', icon: 'Settings',
     fields: [
       { kind: 'toggle', key: 'maintenance_mode', label: 'Maintenance Mode', description: 'When ON all users except CEO see a maintenance page and cannot access any features. Use when performing system updates or critical maintenance.', warning: '⚠️ All non-CEO users will immediately see the maintenance page and lose access. Are you sure?' },
       { kind: 'number', key: 'session_timeout_minutes', label: 'Session Timeout', description: 'Automatically log out inactive users after this many minutes. Minimum 5, maximum 480 (8 hours).', min: 5, max: 480, unit: 'min' },
@@ -154,7 +154,7 @@ export const CEO_SETTINGS_SCHEMA: SettingSection[] = [
     ],
   },
   {
-    id: 'approval', title: 'Section 8 — Approval Controls', icon: 'CheckSquare',
+    id: 'approval', title: 'Section 8, Approval Controls', icon: 'CheckSquare',
     fields: [
       { kind: 'number', key: 'ceo_cosign_credit_threshold', label: 'Credit Co-sign Threshold', description: 'Credit orders above this amount require CEO electronic approval before Account Department can process.', min: 0, max: 10000000, unit: 'GHS' },
       { kind: 'number', key: 'ceo_cosign_order_threshold', label: 'Order Co-sign Threshold', description: 'Customer orders above this amount require CEO approval before Account Department can process payment.', min: 0, max: 10000000, unit: 'GHS' },
@@ -162,28 +162,28 @@ export const CEO_SETTINGS_SCHEMA: SettingSection[] = [
       // pre-existing duplication in web's own live source, transcribed
       // faithfully, not something this schema introduces or should fix.
       { kind: 'toggle', key: 'ceo_must_approve_prices', label: 'CEO Price Approval Required', description: 'Management can draft and set prices but CEO must review and approve before they broadcast to Account Department and Marketing.' },
-      { kind: 'toggle', key: 'ceo_must_approve_payroll', label: 'CEO Payroll Approval', description: 'Payroll flow becomes: HR submits → Account Department processes → CEO approves → Payment made. Extra layer of financial security.' },
+      { kind: 'toggle', key: 'ceo_must_approve_payroll', label: 'CEO Payroll Approval', description: 'Payroll flow becomes: HR submits, then Account Department processes, then CEO approves, then Payment made. Extra layer of financial security.' },
       { kind: 'toggle', key: 'ceo_must_approve_departments', label: 'CEO Department Approval', description: 'When ON HR cannot activate new departments without CEO approval. Department is created but stays inactive until CEO approves.' },
       { kind: 'toggle', key: 'ceo_must_approve_registrations', label: 'CEO Registration Approval', description: 'All new staff registrations go directly to CEO first before HR review. Highest level of staff access control.' },
     ],
   },
   {
-    id: 'spreadsheets', title: 'Section 9 — Spreadsheets Control', icon: 'FileSpreadsheet',
+    id: 'spreadsheets', title: 'Section 9, Spreadsheets Control', icon: 'FileSpreadsheet',
     fields: [
       { kind: 'toggleWithException', key: 'spreadsheets_enabled', label: 'Spreadsheets Enabled (Master)', description: 'Master switch for the Spreadsheets feature across all departments. When OFF no user can access Free Sheets or Data Sheets unless they have a specific email exception that overrides this toggle.' },
     ],
   },
   {
-    id: 'risk', title: 'Section 10 — Risk Controls', icon: 'AlertTriangle',
+    id: 'risk', title: 'Section 10, Risk Controls', icon: 'AlertTriangle',
     fields: [
       { kind: 'toggle', key: 'risk_customer_verification_required', label: 'Customer Verification Required', description: 'Customer verification is non-blocking by design, so a pending customer can still be ordered for. This only controls whether Risk treats verification as mandatory, not any order transition.' },
       { kind: 'toggle', key: 'risk_credit_hold_notify_marketing', label: 'Notify Marketing on Credit Hold', description: 'When ON, Marketing is notified whenever Risk puts a customer on credit hold.' },
     ],
   },
   {
-    id: 'birthdays', title: 'Section 11 — Birthday Wishes', icon: 'Cake',
+    id: 'birthdays', title: 'Section 11, Birthday Wishes', icon: 'Cake',
     fields: [
-      { kind: 'toggle', key: 'birthday_wishes_enabled', label: 'Birthday Wishes Allowed', description: 'Master switch. When off, no birthday wishes go out at all, automatic or by hand. HR writes the messages and runs the sending under HR → Birthdays.' },
+      { kind: 'toggle', key: 'birthday_wishes_enabled', label: 'Birthday Wishes Allowed', description: 'Master switch. When off, no birthday wishes go out at all, automatic or by hand. HR writes the messages and runs the sending under HR, then Birthdays.' },
     ],
   },
 ];

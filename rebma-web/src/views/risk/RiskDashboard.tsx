@@ -109,7 +109,7 @@ export default function RiskDashboard({ addNotification, setActiveSubTab, curren
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">{timeGreeting()}, {firstName}</h1>
-          <p className="text-sm text-[var(--text-secondary)]">Risk & Compliance — customer, credit, cargo and delivery review</p>
+          <p className="text-sm text-[var(--text-secondary)]">Risk & Compliance, customer, credit, cargo and delivery review</p>
         </div>
         <button onClick={load} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)]">
           <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh

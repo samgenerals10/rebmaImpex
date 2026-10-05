@@ -237,7 +237,7 @@ export async function printReceipt(r: ReceiptRow, lineItems: OrderLineItem[] | n
         `Receipt: ${r.receiptNumber}`,
         `Client: ${r.clientName}`,
         `Amount: GHS ${r.amount.toLocaleString()}`,
-        `Payment: ${r.paymentMode} — ${r.paymentType}`,
+        `Payment: ${r.paymentMode}, ${r.paymentType}`,
         `Recorded by: ${recordedByForQr}`,
         `Status: ${r.status}`,
       ].join('\n'),
@@ -366,7 +366,7 @@ export async function printReceipt(r: ReceiptRow, lineItems: OrderLineItem[] | n
           </div>
         </div>
 
-        <div class="verified">✓ Payment Verified — ${r.status}</div>
+        <div class="verified">✓ Payment Verified, ${r.status}</div>
 
         <div class="perf">
           <div class="perf-circle"></div>

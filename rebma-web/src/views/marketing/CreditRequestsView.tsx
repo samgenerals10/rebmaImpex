@@ -7,6 +7,7 @@ import {
 import { exportToCSV } from '../../utils/export';
 import CountUp from '../../components/CountUp';
 import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
+import CountBadge from '../../components/ui/CountBadge';
 
 interface CreditRequest {
   id: string;
@@ -294,7 +295,7 @@ export default function MarketingCreditRequestsView({ addNotification, currentUs
         <div className="flex items-center gap-1 bg-[var(--bg-input)] rounded-xl p-1 flex-wrap">
           {STATUS_TABS.map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${activeTab === tab ? 'bg-[var(--bg-card)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'}`}>
-              {tab} {tab === 'All' ? `(${requests.length})` : ''}
+              {tab}{tab === 'All' && <CountBadge count={requests.length} />}
             </button>
           ))}
         </div>

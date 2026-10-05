@@ -9,6 +9,7 @@ import SidePanel from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
 import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 import CountUp from '../../components/CountUp';
+import CountBadge from '../../components/ui/CountBadge';
 
 // ── Brand colors from REBMA logo ──────────────────────────────────────────
 const BRAND = {
@@ -257,7 +258,7 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
             </div>
             <p className="text-xl font-bold" style={{ color: c.color }}><CountUp value={c.value} /></p>
             {(c as any).alert && (
-              <p className="text-[9px] text-amber-600 font-semibold mt-1 flex items-center gap-1"><AlertCircle size={9} /> Action required</p>
+              <p className="text-[10px] text-amber-600 font-semibold mt-1 flex items-center gap-1"><AlertCircle size={9} /> Action required</p>
             )}
           </div>
         ))}
@@ -269,8 +270,8 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
         <div>
           <p className="text-xs font-bold" style={{ color: BRAND.green }}>Operations Workflow</p>
           <p className="text-[11px] mt-0.5" style={{ color: '#2d7a50' }}>
-            Account Department approves payment → order appears here as <strong>APPROVED</strong> →
-            Operations verifies quantity, clicks <strong>"Load to Dispatch"</strong> →
+            Account Department approves payment, then order appears here as <strong>APPROVED</strong>
+            Operations verifies quantity, clicks <strong>"Load to Dispatch"</strong>
             stock ledger updated → Risk assigns vehicle and driver → Driver delivers → <strong>DELIVERED</strong>.
             Print the <strong>Waybill</strong> (Ops keeps, travels with the shipment) · <strong>Invoice</strong> goes via Marketing to customer.
           </p>
@@ -280,13 +281,13 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
       {/* Tabs */}
       <div className="flex gap-1 p-1 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl w-fit">
         {([
-          { key: 'orders' as const, label: `Orders Ready for Dispatch (${orders.length})` },
-          { key: 'goods' as const, label: `Port-Approved Cargo (${goods.length})` },
+          { key: 'orders' as const, label: 'Orders Ready for Dispatch', count: orders.length },
+          { key: 'goods' as const, label: 'Port-Approved Cargo', count: goods.length },
         ]).map(t => (
           <button key={t.key} onClick={() => setActiveTab(t.key)} title={t.key === 'orders' ? 'Orders Account Department has approved, ready to load and hand to Dispatch' : 'Cargo intake approved by Management, awaiting warehouse processing'}
             className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${activeTab === t.key ? 'text-white shadow' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}
             style={activeTab === t.key ? { background: 'var(--accent)' } : {}}>
-            {t.label}
+            {t.label}<CountBadge count={t.count} />
           </button>
         ))}
       </div>
@@ -349,7 +350,7 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
                 { key: 'destination', label: 'Destination', render: o => o.destination || '—' },
                 { key: 'paymentMode', label: 'Payment' },
                 { key: 'issuedBy', label: 'Issued By' },
-                { key: 'status', label: 'Status', status: true, render: o => <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold ${statusBadge(o.status)}`}>{o.status.replace(/_/g, ' ')}</span> },
+                { key: 'status', label: 'Status', status: true, render: o => <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${statusBadge(o.status)}`}>{o.status.replace(/_/g, ' ')}</span> },
                 { key: 'createdAt', label: 'Date' },
               ]}
               data={filteredOrders}
@@ -367,13 +368,13 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
                     </button>
                   )}
                   {(o.status === 'APPROVED' || o.status === 'PROCESSING') && dispatchedOrderIds.has(o.id) && (
-                    <span className="text-[9px] font-bold text-blue-600 flex items-center gap-1"><Truck size={9} /> Assigned, awaiting pickup</span>
+                    <span className="text-[10px] font-bold text-blue-600 flex items-center gap-1"><Truck size={9} /> Assigned, awaiting pickup</span>
                   )}
                   {o.status === 'OUT_FOR_DELIVERY' && (
-                    <span className="text-[9px] font-bold text-amber-600 flex items-center gap-1"><Truck size={9} /> In Transit</span>
+                    <span className="text-[10px] font-bold text-amber-600 flex items-center gap-1"><Truck size={9} /> In Transit</span>
                   )}
                   {o.status === 'DELIVERED' && (
-                    <span className="text-[9px] font-bold" style={{ color: BRAND.green }}>✓ Delivered</span>
+                    <span className="text-[10px] font-bold" style={{ color: BRAND.green }}>✓ Delivered</span>
                   )}
                 </div>
               )}

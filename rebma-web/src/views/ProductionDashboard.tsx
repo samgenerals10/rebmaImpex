@@ -398,7 +398,7 @@ export default function ProductionDashboard({
             onClick={() => setActiveMobileDetail(null)}
             className="px-3 py-1.5 bg-bg-card dark:bg-slate-850 border border-[var(--border)] dark:border-slate-800 rounded-full text-xs font-bold text-text-secondary dark:text-slate-350 cursor-pointer shadow-card"
           >
-            ← Back
+            Back
           </button>
           <h2 className="text-sm font-bold">Record Details</h2>
         </div>
@@ -432,7 +432,7 @@ export default function ProductionDashboard({
                 </div>
                 <div className="py-3 flex justify-between items-center text-xs">
                   <span className="text-text-muted font-medium">Status</span>
-                  <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${statusColor(m.status)}`}>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${statusColor(m.status)}`}>
                     {m.status.replace(/_/g, ' ')}
                   </span>
                 </div>
@@ -495,7 +495,7 @@ export default function ProductionDashboard({
                 </div>
                 <div className="py-3 flex justify-between items-center text-xs">
                   <span className="text-text-muted font-medium">Stage</span>
-                  <span className={`px-2.5 py-0.5 rounded text-[9px] font-bold ${
+                  <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold ${
                     item.stage === 'Awaiting Dispatch' ? 'bg-emerald-500/10 text-emerald-400' :
                     item.stage === 'Quality Check' ? 'bg-amber-500/10 text-amber-400' :
                     'bg-blue-500/10 text-blue-400'
@@ -564,7 +564,7 @@ export default function ProductionDashboard({
                 </div>
                 <div className="py-3 flex justify-between items-center text-xs">
                   <span className="text-text-muted font-medium">Status</span>
-                  <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${statusColor(req.status)}`}>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${statusColor(req.status)}`}>
                     {req.status.replace(/_/g, ' ')}
                   </span>
                 </div>
@@ -643,9 +643,9 @@ export default function ProductionDashboard({
             <div key={i} className="mobile-stat-card">
               <div className="mobile-stat-icon" style={{ background: s.bg }}><Icon className="w-5 h-5" style={{ color: s.color }} /></div>
               <div className="min-w-0">
-                <p className="text-[9px] text-text-muted uppercase font-bold tracking-wider">{s.label}</p>
+                <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider">{s.label}</p>
                 <p className="text-sm font-bold text-text-primary mt-0.5">{s.value}</p>
-                <p className="text-[9px] text-text-muted">{s.sub}</p>
+                <p className="text-[10px] text-text-muted">{s.sub}</p>
               </div>
             </div>
           ); })}
@@ -823,7 +823,7 @@ export default function ProductionDashboard({
                     <div className="hidden lg:block p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-xl space-y-2">
                       <div className="flex justify-between items-center">
                         <span className="text-xs font-bold text-[var(--text-primary)]">{req.id}</span>
-                        <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded text-[9px] font-bold">APPROVED</span>
+                        <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded text-[10px] font-bold">APPROVED</span>
                       </div>
                       <div className="text-[10px] text-[var(--text-secondary)] space-y-0.5">
                         {req.items.map((item, idx) => (
@@ -910,7 +910,7 @@ export default function ProductionDashboard({
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${statusColor(m.status)}`}>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${statusColor(m.status)}`}>
                       {m.status.replace(/_/g, ' ')}
                     </span>
                     <ChevronRight className="w-4 h-4 text-text-muted" />
@@ -938,31 +938,31 @@ export default function ProductionDashboard({
                     <th onClick={() => handleSort('id', materialsSortField, setMaterialsSortField, materialsSortDir, setMaterialsSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none">
                       <div className="flex items-center gap-1">
                         <span>Req. ID</span>
-                        <span className="text-[9px] opacity-70">{materialsSortField === 'id' ? (materialsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                        <span className="text-[10px] opacity-70">{materialsSortField === 'id' ? (materialsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
                     <th onClick={() => handleSort('materialName', materialsSortField, setMaterialsSortField, materialsSortDir, setMaterialsSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none">
                       <div className="flex items-center gap-1">
                         <span>Material Name</span>
-                        <span className="text-[9px] opacity-70">{materialsSortField === 'materialName' ? (materialsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                        <span className="text-[10px] opacity-70">{materialsSortField === 'materialName' ? (materialsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
                     <th onClick={() => handleSort('quantity', materialsSortField, setMaterialsSortField, materialsSortDir, setMaterialsSortDir)} className="py-3 px-3 text-right whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none">
                       <div className="flex items-center justify-end gap-1">
                         <span>Units</span>
-                        <span className="text-[9px] opacity-70">{materialsSortField === 'quantity' ? (materialsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                        <span className="text-[10px] opacity-70">{materialsSortField === 'quantity' ? (materialsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
                     <th onClick={() => handleSort('status', materialsSortField, setMaterialsSortField, materialsSortDir, setMaterialsSortDir)} className="py-3 px-3 text-center whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none">
                       <div className="flex items-center justify-center gap-1">
                         <span>Status</span>
-                        <span className="text-[9px] opacity-70">{materialsSortField === 'status' ? (materialsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                        <span className="text-[10px] opacity-70">{materialsSortField === 'status' ? (materialsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
                     <th onClick={() => handleSort('createdAt', materialsSortField, setMaterialsSortField, materialsSortDir, setMaterialsSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden sm:table-cell">
                       <div className="flex items-center gap-1">
                         <span>Date</span>
-                        <span className="text-[9px] opacity-70">{materialsSortField === 'createdAt' ? (materialsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                        <span className="text-[10px] opacity-70">{materialsSortField === 'createdAt' ? (materialsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
                     <th className="py-3 px-5 text-center whitespace-nowrap">Actions</th>
@@ -983,7 +983,7 @@ export default function ProductionDashboard({
                       <td className="py-3.5 px-3 font-semibold text-[13px] text-[var(--text-primary)]">{m.materialName}</td>
                       <td className="py-3.5 px-3 text-right font-bold font-mono text-[13px] text-[var(--text-primary)]">{m.quantity.toLocaleString()}</td>
                       <td className="py-3.5 px-3 text-center">
-                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${statusColor(m.status)}`}>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${statusColor(m.status)}`}>
                           {m.status.replace(/_/g, ' ')}
                         </span>
                       </td>
@@ -1096,31 +1096,31 @@ export default function ProductionDashboard({
                     <th onClick={() => handleSort('id', wipSortField, setWipSortField, wipSortDir, setWipSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none">
                       <div className="flex items-center gap-1">
                         <span>Item ID</span>
-                        <span className="text-[9px] opacity-70">{wipSortField === 'id' ? (wipSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                        <span className="text-[10px] opacity-70">{wipSortField === 'id' ? (wipSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
                     <th onClick={() => handleSort('productName', wipSortField, setWipSortField, wipSortDir, setWipSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none">
                       <div className="flex items-center gap-1">
                         <span>Product Name</span>
-                        <span className="text-[9px] opacity-70">{wipSortField === 'productName' ? (wipSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                        <span className="text-[10px] opacity-70">{wipSortField === 'productName' ? (wipSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
                     <th onClick={() => handleSort('stage', wipSortField, setWipSortField, wipSortDir, setWipSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none">
                       <div className="flex items-center gap-1">
                         <span>Production Stage</span>
-                        <span className="text-[9px] opacity-70">{wipSortField === 'stage' ? (wipSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                        <span className="text-[10px] opacity-70">{wipSortField === 'stage' ? (wipSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
                     <th onClick={() => handleSort('qty', wipSortField, setWipSortField, wipSortDir, setWipSortDir)} className="py-3 px-3 text-right whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none">
                       <div className="flex items-center justify-end gap-1">
                         <span>Qty (Units)</span>
-                        <span className="text-[9px] opacity-70">{wipSortField === 'qty' ? (wipSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                        <span className="text-[10px] opacity-70">{wipSortField === 'qty' ? (wipSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
                     <th onClick={() => handleSort('updatedAt', wipSortField, setWipSortField, wipSortDir, setWipSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden sm:table-cell">
                       <div className="flex items-center gap-1">
                         <span>Last Updated</span>
-                        <span className="text-[9px] opacity-70">{wipSortField === 'updatedAt' ? (wipSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                        <span className="text-[10px] opacity-70">{wipSortField === 'updatedAt' ? (wipSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
                     <th className="py-3 px-5 text-center whitespace-nowrap">Actions</th>
@@ -1140,7 +1140,7 @@ export default function ProductionDashboard({
                       <td className="py-3.5 px-3 font-mono font-bold text-[var(--accent)]">{item.id}</td>
                       <td className="py-3.5 px-3 font-medium text-[13px] text-[var(--text-primary)]">{item.productName}</td>
                       <td className="py-3.5 px-3">
-                        <span className={`px-2.5 py-0.5 rounded text-[9px] font-bold ${
+                        <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold ${
                           item.stage === 'Awaiting Dispatch' ? 'bg-emerald-500/10 text-emerald-400' :
                           item.stage === 'Quality Check' ? 'bg-amber-500/10 text-amber-400' :
                           'bg-blue-500/10 text-blue-400'
@@ -1252,7 +1252,7 @@ export default function ProductionDashboard({
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${statusColor(req.status)}`}>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${statusColor(req.status)}`}>
                       {req.status.replace(/_/g, ' ')}
                     </span>
                     <ChevronRight className="w-4 h-4 text-text-muted" />
@@ -1280,31 +1280,31 @@ export default function ProductionDashboard({
                     <th onClick={() => handleSort('id', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none">
                       <div className="flex items-center gap-1">
                         <span>Req. ID</span>
-                        <span className="text-[9px] opacity-70">{historySortField === 'id' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                        <span className="text-[10px] opacity-70">{historySortField === 'id' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
                     <th onClick={() => handleSort('materialName', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none">
                       <div className="flex items-center gap-1">
                         <span>Materials</span>
-                        <span className="text-[9px] opacity-70">{historySortField === 'materialName' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                        <span className="text-[10px] opacity-70">{historySortField === 'materialName' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
                     <th onClick={() => handleSort('quantity', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 text-right whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none">
                       <div className="flex items-center justify-end gap-1">
                         <span>Total Units</span>
-                        <span className="text-[9px] opacity-70">{historySortField === 'quantity' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                        <span className="text-[10px] opacity-70">{historySortField === 'quantity' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
                     <th onClick={() => handleSort('status', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 text-center whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none">
                       <div className="flex items-center justify-center gap-1">
                         <span>Status</span>
-                        <span className="text-[9px] opacity-70">{historySortField === 'status' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                        <span className="text-[10px] opacity-70">{historySortField === 'status' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
                     <th onClick={() => handleSort('createdAt', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden sm:table-cell">
                       <div className="flex items-center gap-1">
                         <span>Date</span>
-                        <span className="text-[9px] opacity-70">{historySortField === 'createdAt' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                        <span className="text-[10px] opacity-70">{historySortField === 'createdAt' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
                     <th className="py-3 px-5 text-center whitespace-nowrap">Actions</th>
@@ -1327,7 +1327,7 @@ export default function ProductionDashboard({
                       </td>
                       <td className="py-3.5 px-3 text-right font-bold font-mono text-[13px] text-[var(--text-primary)]">{req.items.reduce((s, i) => s + i.quantity, 0).toLocaleString()}</td>
                       <td className="py-3.5 px-3 text-center">
-                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${statusColor(req.status)}`}>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${statusColor(req.status)}`}>
                           {req.status.replace(/_/g, ' ')}
                         </span>
                       </td>

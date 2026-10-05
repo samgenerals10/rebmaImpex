@@ -109,7 +109,7 @@ export default function PriceApprovalsScreen() {
       }).eq('id', req.id);
       if (decideErr) throw decideErr;
 
-      const details = `${req.product_name} → ${req.currency} ${Number(req.unit_price).toLocaleString()}${note ? `. Note: ${note}` : ''}`;
+      const details = `${req.product_name} to ${req.currency} ${Number(req.unit_price).toLocaleString()}${note ? `. Note: ${note}` : ''}`;
       const { error: auditErr } = await supabase.from('global_audit_history').insert({
         action: `${approve ? 'Approved' : 'Rejected'} price request`,
         department: 'MANAGEMENT',
@@ -120,7 +120,7 @@ export default function PriceApprovalsScreen() {
       if (auditErr) throw auditErr;
 
       const { error: notifErr } = await supabase.from('supplier_order_notifications').insert({
-        message: `Price change ${approve ? 'APPROVED' : 'REJECTED'} by CEO: ${req.product_name} → ${req.currency} ${Number(req.unit_price).toLocaleString()}${note ? `. Note: ${note}` : ''}`,
+        message: `Price change ${approve ? 'APPROVED' : 'REJECTED'} by CEO: ${req.product_name} to ${req.currency} ${Number(req.unit_price).toLocaleString()}${note ? `. Note: ${note}` : ''}`,
         notified_department: 'MANAGEMENT',
         read: false,
       });

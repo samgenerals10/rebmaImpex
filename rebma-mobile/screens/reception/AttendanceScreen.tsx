@@ -268,7 +268,7 @@ export default function AttendanceScreen() {
           )
         }
       >
-        <Field label="Employee Number" hint="Optional — auto-fills the name below if it matches">
+        <Field label="Employee Number" hint="Optional, auto-fills the name below if it matches">
           <View style={{ flexDirection: 'row', gap: t.spacing.sm, alignItems: 'center' }}>
             <View style={{ flex: 1 }}>
               <Input
@@ -289,7 +289,7 @@ export default function AttendanceScreen() {
           ) : lookupResult === 'not_found' ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
               <XIcon size={13} color={t.colors.status.danger.text} />
-              <Text style={{ fontFamily: t.font.medium, fontSize: t.type.meta10.size, color: t.colors.status.danger.text }}>No match — type the name directly</Text>
+              <Text style={{ fontFamily: t.font.medium, fontSize: t.type.meta10.size, color: t.colors.status.danger.text }}>No match, type the name directly</Text>
             </View>
           ) : null}
         </Field>
@@ -299,7 +299,7 @@ export default function AttendanceScreen() {
         {pendingLate ? (
           <View style={{ backgroundColor: t.colors.status.warning.bg, borderRadius: t.radius.md, padding: t.spacing.md, marginTop: t.spacing.sm }}>
             <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.status.warning.text, marginBottom: t.spacing.xs }}>
-              Location verified — but it's after {rules.lateAfterTime}
+              Location verified, but it's after {rules.lateAfterTime}
             </Text>
             <Field label="Reason for Lateness *">
               <Input value={lateReason} onChangeText={setLateReason} placeholder="e.g. Traffic on the highway" multiline numberOfLines={3} style={{ minHeight: 70, textAlignVertical: 'top' }} />

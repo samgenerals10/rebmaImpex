@@ -202,7 +202,7 @@ export default function PendingApprovalsAlertCard({ department, onNavigate }: Pr
         </Text>
       </View>
       <View style={{ paddingVertical: t.spacing.xs, paddingHorizontal: t.spacing.sm, borderRadius: t.radius.sm, backgroundColor: warn.text }}>
-        <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta10.size, color: '#ffffff' }}>Review →</Text>
+        <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta10.size, color: '#ffffff' }}>Review</Text>
       </View>
     </Pressable>
   );

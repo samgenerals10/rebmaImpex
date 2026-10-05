@@ -38,7 +38,7 @@ export default function HelpAssistantView({ setActiveDepartment, setActiveSubTab
     {
       id: 'welcome',
       from: 'bot',
-      text: "Ask me anything about the app — a Control Center setting, a department's pages, or why something got blocked (e.g. \"why can't someone log into mobile\").",
+      text: "Ask me anything about the app, a Control Center setting, a department's pages, or why something got blocked (e.g. \"why can't someone log into mobile\").",
     },
   ]);
   const endRef = useRef<HTMLDivElement>(null);

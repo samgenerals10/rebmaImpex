@@ -85,7 +85,7 @@ export default function ResponsiveDataView<T>({
                     <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5">
                       {cardCols.filter(c => !c.status).map(col => (
                         <div key={col.key} className="min-w-0">
-                          <p className="text-[9px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">{col.label}</p>
+                          <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">{col.label}</p>
                           <p className="text-xs text-[var(--text-secondary)] truncate">{cellValue(col, row)}</p>
                         </div>
                       ))}

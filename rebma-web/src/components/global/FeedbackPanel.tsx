@@ -111,7 +111,7 @@ export default function FeedbackPanel({ currentUser, addNotification }: Feedback
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex bg-[var(--bg-input)] border border-[var(--border)] rounded-lg overflow-hidden text-[9px] font-semibold">
+          <div className="flex bg-[var(--bg-input)] border border-[var(--border)] rounded-lg overflow-hidden text-[10px] font-semibold">
             {(['all','positive','neutral','negative'] as const).map(f => (
               <button key={f} onClick={() => setFilter(f)}
                 className={`px-2 py-1.5 capitalize cursor-pointer transition-colors ${filter === f ? 'bg-[var(--accent)] text-white' : 'text-[var(--text-secondary)] hover:bg-[var(--accent-light)]'}`}>
@@ -163,7 +163,7 @@ export default function FeedbackPanel({ currentUser, addNotification }: Feedback
                           ))}
                         </div>
                       )}
-                      {item.resolved && <span className="text-[9px] font-bold text-emerald-600 bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded-full">Resolved</span>}
+                      {item.resolved && <span className="text-[10px] font-bold text-emerald-600 bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded-full">Resolved</span>}
                     </div>
                   </div>
                 </button>

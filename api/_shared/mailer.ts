@@ -34,7 +34,7 @@ export async function isMailConfigured(supabaseAdmin: SupabaseClient): Promise<b
 export async function sendMail(supabaseAdmin: SupabaseClient, to: string | null | undefined, subject: string, text: string, html: string): Promise<SendResult> {
   if (!to) return { sent: false, reason: 'No email address on file.' };
   const s = await getSettings(supabaseAdmin, ['api_key_resend', 'email_from_address']);
-  if (!s.api_key_resend) return { sent: false, reason: 'Email is not set up yet (Control Center → API Keys → Resend).' };
+  if (!s.api_key_resend) return { sent: false, reason: 'Email is not set up yet (Control Center, then API Keys, then Resend).' };
   try {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',

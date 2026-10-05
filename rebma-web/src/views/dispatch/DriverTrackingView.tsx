@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { uploadFile } from '../../utils/uploadFile';
 import { getFleetSpeedLimitKmh, speedKmh, DEFAULT_FLEET_SPEED_LIMIT_KMH } from '../../utils/fleetSpeedLimit';
 import { setVisibleInterval } from '../../utils/visibleInterval';
+import CountBadge from '../../components/ui/CountBadge';
 
 interface DriverTrackingViewProps {
   driver: { id: string; driverId: string; fullName: string; vehicleId: string | null };
@@ -308,7 +309,7 @@ export default function DriverTrackingView({ driver, onLogout }: DriverTrackingV
           <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
             <div className="flex items-center justify-between mb-3">
               <p className="text-xs font-extrabold text-text-primary flex items-center gap-2">
-                <Package className="w-4 h-4" /> Today's Stops {stops.length > 0 && `(${stops.length})`}
+                <Package className="w-4 h-4" /> Today's Stops<CountBadge count={stops.length} />
               </p>
               <button type="button" onClick={loadStops} className="text-text-muted hover:text-text-primary">
                 <RefreshCw className="w-3.5 h-3.5" />
@@ -398,11 +399,11 @@ export default function DriverTrackingView({ driver, onLogout }: DriverTrackingV
             <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
               <div className="grid grid-cols-2 gap-3 mb-3">
                 <div className="p-3 rounded-xl bg-[var(--bg-page)] border border-[var(--border)]">
-                  <p className="text-[9px] font-bold uppercase text-text-muted">Latitude</p>
+                  <p className="text-[10px] font-bold uppercase text-text-muted">Latitude</p>
                   <p className="text-sm font-bold text-text-primary mt-1 font-mono">{lastLat !== null ? lastLat.toFixed(5) : '—'}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-[var(--bg-page)] border border-[var(--border)]">
-                  <p className="text-[9px] font-bold uppercase text-text-muted">Longitude</p>
+                  <p className="text-[10px] font-bold uppercase text-text-muted">Longitude</p>
                   <p className="text-sm font-bold text-text-primary mt-1 font-mono">{lastLng !== null ? lastLng.toFixed(5) : '—'}</p>
                 </div>
               </div>

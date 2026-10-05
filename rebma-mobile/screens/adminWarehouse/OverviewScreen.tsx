@@ -205,7 +205,7 @@ export default function OverviewScreen() {
         <TrackedSection id="recent-cargo" title="Recent Cargo Intakes" icon={Layers}>
         {/* Direct correction: outer border removed and padding tightened
             (via Card's own `style` override, not a change to the shared
-            component — every other screen's <Card> is unaffected). The
+            component, every other screen's <Card> is unaffected). The
             horizontal-scroll items below already carry their own
             border/background, so the outer Card doing the same too was
             a border-in-a-border, padding-in-a-padding look. Shadow alone
@@ -250,7 +250,7 @@ export default function OverviewScreen() {
                 >
                   {/* Direct correction: the real cargo photo (captured
                       at Stock Intake, e.g. Milk Powder/Rice) now shows
-                      here — it was already being saved, this screen's
+                      here, it was already being saved, this screen's
                       own query just never selected the column that
                       holds it. ProductImage's own tap opens a full-size
                       viewer; tapping anywhere else on the card navigates

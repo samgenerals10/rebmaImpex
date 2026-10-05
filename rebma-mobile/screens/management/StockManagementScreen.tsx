@@ -120,7 +120,7 @@ export default function StockManagementScreen() {
         // to a cargo entry disappeared from that entry's own timeline
         // ("even with rejections, editing... it should be tracked").
         reference_id: correctionTarget.id,
-        details: `Corrected cargo entry. Qty ${oldQty} → ${newQty}${delta !== 0 ? ` (stock adjusted by ${delta > 0 ? '+' : ''}${delta})` : ''}. Reason: ${correctionForm.note.trim()}`,
+        details: `Corrected cargo entry. Qty ${oldQty} to ${newQty}${delta !== 0 ? ` (stock adjusted by ${delta > 0 ? '+' : ''}${delta})` : ''}. Reason: ${correctionForm.note.trim()}`,
         timestamp: new Date().toISOString(),
       });
 
@@ -245,7 +245,7 @@ export default function StockManagementScreen() {
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }}>
       <View style={{ gap: t.spacing.xl }}>
         <View>
-          <SectionHeader title="Stock" subtitle="Approved by Risk from Admin & Warehouse's cargo intake — correct an entry error, or delete a stock record" />
+          <SectionHeader title="Stock" subtitle="Approved by Risk from Admin & Warehouse's cargo intake, correct an entry error, or delete a stock record" />
           <SearchSortBar
             value={cargoSearch}
             onChangeText={setCargoSearch}
@@ -266,7 +266,7 @@ export default function StockManagementScreen() {
           renderActions={(c) => (
             <View style={{ flexDirection: 'row', gap: t.spacing.sm, alignItems: 'center' }}>
               {/* Direct instruction: tracking should be "horizontal on
-                  every list" — a visible icon right on the row, not
+                  every list", a visible icon right on the row, not
                   buried behind a menu. */}
               <IconActionButton icon={History} tone="info" accessibilityLabel="View Timeline" onPress={() => setTimelineTarget(c)} />
               <Button label="Correct" size="sm" variant="ghost" icon={<Edit3 size={12} color={t.colors.textSecondary} />} onPress={() => openCorrection(c)} />
@@ -316,7 +316,7 @@ export default function StockManagementScreen() {
               <View style={{ flexDirection: 'row', gap: t.spacing.xs, alignItems: 'flex-start' }}>
                 <AlertTriangle size={14} color={t.colors.status.warning.text} />
                 <Text style={{ flex: 1, fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.status.warning.text }}>
-                  Open orders exist against: {openOrdersWarning.map((w) => `${w.product} (${w.count})`).join(', ')}. Deletion doesn't touch orders.
+                  Open orders exist against: {openOrdersWarning.map((w) => `${w.product}: ${w.count} open`).join(', ')}. Deletion doesn't touch orders.
                 </Text>
               </View>
             </Card>

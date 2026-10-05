@@ -47,7 +47,7 @@ export default function SpeedGauge({ speedKmh, limitKmh, size = 96 }: SpeedGauge
   return (
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
       {/* Rotate the whole SVG (a plain RN style transform, not the raw
-          SVG `rotation`/`origin` props — those two don't translate
+          SVG `rotation`/`origin` props, those two don't translate
           cleanly to a real DOM attribute on react-native-svg's web
           renderer and throw a console warning there) so the fill starts
           at 12 o'clock instead of 3 o'clock. */}

@@ -50,11 +50,11 @@ function loadCountries(): Promise<Country[]> {
           countriesCache = list;
           return list;
         }
-      } catch { /* storage unavailable — fall through to network */ }
+      } catch { /* storage unavailable, fall through to network */ }
 
       const list = await fetchAllCountries();
       countriesCache = list;
-      try { localStorage.setItem(CACHE_KEY, JSON.stringify(list)); } catch { /* storage full — cache stays in-memory only */ }
+      try { localStorage.setItem(CACHE_KEY, JSON.stringify(list)); } catch { /* storage full, cache stays in-memory only */ }
       return list;
     })().catch(err => { countriesPromise = null; throw err; });
   }

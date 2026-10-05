@@ -498,17 +498,17 @@ export default function RegistrationsView({ pendingRegistrations, addNotificatio
             <div className="space-y-3">
               <div>
                 <label className="block text-xs text-[var(--text-secondary)] mb-1 font-semibold">Full Name</label>
-                <input value={editForm.fullName} onChange={e => setEditForm({ ...editForm, fullName: e.target.value })}
+                <input placeholder="Enter full name" value={editForm.fullName} onChange={e => setEditForm({ ...editForm, fullName: e.target.value })}
                   className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-sm outline-none" />
               </div>
               <div>
                 <label className="block text-xs text-[var(--text-secondary)] mb-1 font-semibold">Email</label>
-                <input value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })}
+                <input placeholder="Enter email" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })}
                   className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-sm outline-none" />
               </div>
               <div>
                 <label className="block text-xs text-[var(--text-secondary)] mb-1 font-semibold">Phone</label>
-                <input value={editForm.phone || ''} onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
+                <input placeholder="Enter phone" value={editForm.phone || ''} onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
                   className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-sm outline-none" />
               </div>
               <div>
@@ -517,7 +517,7 @@ export default function RegistrationsView({ pendingRegistrations, addNotificatio
               </div>
               <div>
                 <label className="block text-xs text-[var(--text-secondary)] mb-1 font-semibold">Ghana Card ID</label>
-                <input value={editForm.ghanaCard} onChange={e => setEditForm({ ...editForm, ghanaCard: e.target.value })}
+                <input placeholder="Enter Ghana card ID" value={editForm.ghanaCard} onChange={e => setEditForm({ ...editForm, ghanaCard: e.target.value })}
                   className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 font-mono text-[var(--text-primary)] text-sm outline-none" />
               </div>
             </div>

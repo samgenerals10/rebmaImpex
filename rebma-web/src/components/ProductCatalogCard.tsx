@@ -32,7 +32,7 @@ export default function ProductCatalogCard({ item, onSelect }: Props) {
           )}
         </div>
         <span
-          className={`absolute top-3 right-3 text-[8px] font-semibold px-1.5 py-0.5 rounded-full ${
+          className={`absolute top-3 right-3 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
             inStock ? 'bg-emerald-500/10 text-emerald-500' : 'bg-gray-500/10 text-[var(--text-muted)]'
           }`}
         >
@@ -42,7 +42,7 @@ export default function ProductCatalogCard({ item, onSelect }: Props) {
 
       <div className="p-2">
         <p className="text-[11px] font-bold text-[var(--text-primary)] leading-tight truncate">{item.name}</p>
-        {item.category && <p className="text-[9px] text-[var(--text-muted)] truncate">{item.category}</p>}
+        {item.category && <p className="text-[10px] text-[var(--text-muted)] truncate">{item.category}</p>}
 
         <div className="flex items-end justify-between mt-1.5">
           <p className="text-xs font-extrabold text-[var(--text-primary)] truncate">
@@ -59,11 +59,11 @@ export default function ProductCatalogCard({ item, onSelect }: Props) {
 
         <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-[var(--border)]">
           <div>
-            <p className="text-[8px] text-[var(--text-muted)] leading-tight">Sold</p>
+            <p className="text-[10px] text-[var(--text-muted)] leading-tight">Sold</p>
             <p className="text-[10px] font-bold text-blue-500 leading-tight">{item.soldQty.toLocaleString()}</p>
           </div>
           <div className="text-right">
-            <p className="text-[8px] text-[var(--text-muted)] leading-tight">Left</p>
+            <p className="text-[10px] text-[var(--text-muted)] leading-tight">Left</p>
             <p className="text-[10px] font-bold text-[var(--text-primary)] leading-tight">{item.qty.toLocaleString()}</p>
           </div>
         </div>
