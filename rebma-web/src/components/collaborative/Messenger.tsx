@@ -2,7 +2,7 @@
 // Complete chat messenger: "Everyone" broadcast + group channels + 1-on-1
 // DMs, file/image attachments, emoji reactions, threaded replies, read
 // receipts, typing indicators (Supabase Realtime Presence), and ad-hoc
-// voice/video calls (real Jitsi rooms) launched from any conversation.
+// voice/video calls (in-browser WebRTC, same as the phone) launched from any conversation.
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   MessageSquare, Search, Users, X, Send, Paperclip, Smile, Reply,

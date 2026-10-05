@@ -2411,9 +2411,9 @@ export const messenger = {
   },
 
   // Ad-hoc voice/video call from a chat channel — creates a real meeting row
-  // with a fresh Jitsi room, notifies every member, and posts a join link
-  // into the thread. `kind` only changes the initial Jitsi config (audio-only
-  // vs video) — Jitsi's own UI lets either side switch mid-call.
+  // with a fresh call room, notifies every member, and posts a join link
+  // into the thread. `kind` only changes whether the call starts audio-only
+  // or with video.
   startCall: async (channelId: string, memberIds: string[], organizerId: string, organizerName: string, kind: 'voice' | 'video') => {
     const room = slugRoom(kind === 'voice' ? 'Call' : 'Video');
     const { data: created, error } = await supabase.from('meetings').insert({
@@ -2436,7 +2436,7 @@ export const messenger = {
 
   // Phase 11.5 — fired when a call ends (the call window's onClose), for
   // any invited member who never read the call-started message. Not a
-  // perfect "did they actually join the Jitsi room" signal (this app has
+  // perfect "did they actually join the call" signal (this app has
   // no server-side scheduler/cron to watch that reliably), but a real,
   // simple, immediately-actionable one: if they hadn't even opened the
   // notification/message by the time the call ended, they missed it.

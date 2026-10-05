@@ -246,7 +246,7 @@ export default function BoardroomView({
             <div>
               <p className="text-[10px] uppercase tracking-widest text-white/60 font-bold">Scheduled Meetings</p>
               <h2 className="text-3xl font-extrabold text-white mt-1 tracking-tight"><CountUp value={meetingsList.length} suffix=" Meetings" /></h2>
-              <p className="text-[10px] text-white/70 mt-1">Live Jitsi channel enabled</p>
+              <p className="text-[10px] text-white/70 mt-1">Live video calls enabled</p>
             </div>
             <div className="mobile-card-chip mt-1" />
           </div>
