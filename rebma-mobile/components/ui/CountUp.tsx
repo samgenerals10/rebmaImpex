@@ -22,12 +22,16 @@ function easeOutExpo(x: number): number {
 
 export default function CountUp({ value, duration = 900, decimals = 0, prefix = '', suffix = '', format, fallback = 'Not set', style }: Props) {
   const [display, setDisplay] = useState(0);
-  const fromRef = useRef(0);
+  // Tracks what is on screen right now, so a refresh that lands mid-count
+  // glides on from the current number instead of jumping back (that jump
+  // was the visible flicker on auto-refreshing dashboards).
+  const shownRef = useRef(0);
 
   useEffect(() => {
     if (value == null || Number.isNaN(value)) return;
-    const from = fromRef.current;
+    const from = shownRef.current;
     const to = value;
+    if (from === to) { setDisplay(to); return; }
     const start = Date.now();
     let raf: ReturnType<typeof setInterval>;
     // setInterval, not requestAnimationFrame — RN throttles rAF when the
@@ -36,11 +40,10 @@ export default function CountUp({ value, duration = 900, decimals = 0, prefix = 
       const elapsed = Date.now() - start;
       const progress = Math.min(1, elapsed / duration);
       const eased = easeOutExpo(progress);
-      setDisplay(from + (to - from) * eased);
-      if (progress >= 1) {
-        clearInterval(raf);
-        fromRef.current = to;
-      }
+      const next = from + (to - from) * eased;
+      shownRef.current = next;
+      setDisplay(next);
+      if (progress >= 1) clearInterval(raf);
     }, 16);
     return () => clearInterval(raf);
     // eslint-disable-next-line react-hooks/exhaustive-deps

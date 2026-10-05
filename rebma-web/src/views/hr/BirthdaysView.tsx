@@ -114,7 +114,12 @@ export default function BirthdaysView({ currentUser, addNotification }: Props) {
       id: 'default', auto_send: next.auto_send ?? autoSend, send_time: next.send_time ?? sendTime,
       updated_by: currentUser?.fullName || 'HR', updated_at: new Date().toISOString(),
     });
-    if (error) { addNotification(`Could not save: ${error.message}`); return false; }
+    if (error) {
+      // A missing table means the birthday setup SQL has not been run yet, so say that plainly.
+      const notSetUp = /schema cache|does not exist/i.test(error.message);
+      addNotification(notSetUp ? 'Could not save: birthday settings are not set up in the database yet. Ask an admin to run the birthday setup.' : `Could not save: ${error.message}`);
+      return false;
+    }
     return true;
   };
 

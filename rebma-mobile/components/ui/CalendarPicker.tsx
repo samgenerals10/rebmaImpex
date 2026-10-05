@@ -51,12 +51,12 @@ export default function CalendarPicker({ month, onMonthChange, mode = 'single', 
     return cells;
   }, [year, monthIndex]);
 
-  const go = (delta: number) => {
+  const go = (delta: number, target?: Date) => {
     Animated.parallel([
       Animated.timing(slide, { toValue: -delta * 40, duration: 120, useNativeDriver: true }),
       Animated.timing(fade, { toValue: 0, duration: 120, useNativeDriver: true }),
     ]).start(() => {
-      onMonthChange(new Date(year, monthIndex + delta, 1));
+      onMonthChange(target || new Date(year, monthIndex + delta, 1));
       slide.setValue(delta * 40);
       Animated.parallel([
         Animated.spring(slide, { toValue: 0, useNativeDriver: true, speed: 20, bounciness: 4 }),
@@ -96,7 +96,7 @@ export default function CalendarPicker({ month, onMonthChange, mode = 'single', 
         <View style={{ alignItems: 'center' }}>
           <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary }}>{MONTHS[monthIndex]} {year}</Text>
           {(year !== new Date().getFullYear() || monthIndex !== new Date().getMonth()) && (
-            <Pressable onPress={() => onMonthChange(new Date())} hitSlop={6}>
+            <Pressable onPress={() => { const now = new Date(); go(now.getFullYear() * 12 + now.getMonth() > year * 12 + monthIndex ? 1 : -1, now); }} hitSlop={6}>
               <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta11.size, color: t.colors.accent }}>Back to this month</Text>
             </Pressable>
           )}
@@ -119,21 +119,62 @@ export default function CalendarPicker({ month, onMonthChange, mode = 'single', 
           const between = inRange(key) && !selected;
           const mark = marks?.[key];
           return (
-            <Pressable key={key} onPress={() => tap(key)} style={{ width: `${100 / 7}%`, aspectRatio: 1, padding: 2 }} accessibilityLabel={key}>
-              <View style={{
-                flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: t.radius.md,
-                backgroundColor: selected ? t.colors.accent : between ? t.colors.accentSoft : 'transparent',
-                borderWidth: key === todayKey && !selected ? 1 : 0, borderColor: t.colors.accent,
-              }}>
-                <Text style={{ fontFamily: selected ? t.font.bold : t.font.medium, fontSize: t.type.body12.size, color: selected ? '#fff' : t.colors.textPrimary }}>
-                  {Number(key.slice(8))}
-                </Text>
-                {mark && <View style={{ width: 5, height: 5, borderRadius: 3, marginTop: 2, backgroundColor: selected ? '#fff' : (mark.color || t.colors.accent) }} />}
-              </View>
-            </Pressable>
+            <DayCell
+              key={key}
+              label={Number(key.slice(8))}
+              selected={selected}
+              between={between}
+              isToday={key === todayKey}
+              markColor={mark ? (mark.color || t.colors.accent) : undefined}
+              onPress={() => tap(key)}
+              accessibilityLabel={key}
+            />
           );
         })}
       </Animated.View>
     </View>
+  );
+}
+
+// One day in the grid. Shrinks slightly under the finger and pops when it
+// becomes selected, so picking a date feels physical.
+function DayCell({ label, selected, between, isToday, markColor, onPress, accessibilityLabel }: {
+  label: number; selected: boolean; between: boolean; isToday: boolean;
+  markColor?: string; onPress: () => void; accessibilityLabel: string;
+}) {
+  const t = useTheme();
+  const scale = useRef(new Animated.Value(1)).current;
+  const wasSelected = useRef(selected);
+
+  useEffect(() => {
+    if (selected && !wasSelected.current) {
+      scale.setValue(0.8);
+      Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 18, bounciness: 12 }).start();
+    }
+    wasSelected.current = selected;
+  }, [selected, scale]);
+
+  const pressTo = (v: number) => Animated.spring(scale, { toValue: v, useNativeDriver: true, speed: 40, bounciness: 0 }).start();
+
+  return (
+    <Pressable
+      onPress={onPress}
+      onPressIn={() => pressTo(0.88)}
+      onPressOut={() => pressTo(1)}
+      style={{ width: `${100 / 7}%`, aspectRatio: 1, padding: 2 }}
+      accessibilityLabel={accessibilityLabel}
+    >
+      <Animated.View style={{
+        flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: t.radius.md,
+        backgroundColor: selected ? t.colors.accent : between ? t.colors.accentSoft : 'transparent',
+        borderWidth: isToday && !selected ? 1 : 0, borderColor: t.colors.accent,
+        transform: [{ scale }],
+      }}>
+        <Text style={{ fontFamily: selected ? t.font.bold : t.font.medium, fontSize: t.type.body12.size, color: selected ? '#fff' : t.colors.textPrimary }}>
+          {label}
+        </Text>
+        {markColor && <View style={{ width: 5, height: 5, borderRadius: 3, marginTop: 2, backgroundColor: selected ? '#fff' : markColor }} />}
+      </Animated.View>
+    </Pressable>
   );
 }

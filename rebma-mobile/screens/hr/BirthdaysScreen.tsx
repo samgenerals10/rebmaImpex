@@ -132,7 +132,12 @@ export default function BirthdaysScreen() {
       id: 'default', auto_send: next.auto_send ?? autoSend, send_time: next.send_time ?? sendTime,
       updated_by: profile?.fullName || 'HR', updated_at: new Date().toISOString(),
     });
-    if (error) { Alert.alert('Could not save', error.message); return false; }
+    if (error) {
+      // A missing table means the birthday setup SQL has not been run yet, so say that plainly.
+      const notSetUp = /schema cache|does not exist/i.test(error.message);
+      Alert.alert('Could not save', notSetUp ? 'Birthday settings are not set up in the database yet. Ask an admin to run the birthday setup.' : error.message);
+      return false;
+    }
     return true;
   };
 
@@ -214,17 +219,20 @@ export default function BirthdaysScreen() {
             <Toggle value={autoSend} onChange={async (v) => { setAutoSend(v); if (!(await saveSettings({ auto_send: v }))) setAutoSend(!v); }} />
           </View>
           {autoSend && (
-            <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: t.spacing.sm, marginTop: t.spacing.sm }}>
-              <View style={{ flex: 1 }}>
-                <Field label="Sending time (24-hour)">
-                  <Input value={timeDraft} onChangeText={setTimeDraft} placeholder="08:00" keyboardType="numbers-and-punctuation" />
-                </Field>
-              </View>
-              <Button label="Save" size="sm" disabled={timeDraft === sendTime} onPress={async () => {
-                const v = timeDraft.trim();
-                if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(v)) { Alert.alert('Check the time', 'Use 24-hour time like 08:00 or 14:30.'); return; }
-                if (await saveSettings({ send_time: v })) { setSendTime(v); Alert.alert('Saved', `Wishes go out at ${v}.`); }
-              }} />
+            <View style={{ marginTop: t.spacing.sm }}>
+              {/* Label sits above the whole row so the button stretches to exactly the input's height. */}
+              <Field label="Sending time (24-hour)">
+                <View style={{ flexDirection: 'row', alignItems: 'stretch', gap: t.spacing.sm }}>
+                  <View style={{ flex: 1 }}>
+                    <Input value={timeDraft} onChangeText={setTimeDraft} placeholder="08:00" keyboardType="numbers-and-punctuation" />
+                  </View>
+                  <Button label="Save" disabled={timeDraft === sendTime} style={{ alignSelf: 'stretch' }} onPress={async () => {
+                    const v = timeDraft.trim();
+                    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(v)) { Alert.alert('Check the time', 'Use 24-hour time like 08:00 or 14:30.'); return; }
+                    if (await saveSettings({ send_time: v })) { setSendTime(v); Alert.alert('Saved', `Wishes go out at ${v}.`); }
+                  }} />
+                </View>
+              </Field>
             </View>
           )}
           {!templates.some((x) => x.is_default) && (

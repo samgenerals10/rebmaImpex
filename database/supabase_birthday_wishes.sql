@@ -16,10 +16,6 @@
 --
 -- Who can use them: HR and the CEO only. Marketing has no birthday access.
 
--- Earlier draft cleanup (it gave Marketing access and had fewer columns).
-drop policy if exists "birthday_wishes_log_read" on public.birthday_wishes_log;
-drop policy if exists "birthday_wishes_log_write" on public.birthday_wishes_log;
-
 create table if not exists public.birthday_templates (
   id uuid primary key default gen_random_uuid(),
   name text not null,
@@ -59,6 +55,11 @@ create table if not exists public.birthday_wishes_log (
 alter table public.birthday_wishes_log add column if not exists template_id uuid;
 alter table public.birthday_wishes_log add column if not exists message text;
 alter table public.birthday_wishes_log add column if not exists sent_by text;
+
+-- Earlier draft cleanup (it gave Marketing access and had fewer columns).
+-- Runs after the table exists, so a fresh database doesn't fail here.
+drop policy if exists "birthday_wishes_log_read" on public.birthday_wishes_log;
+drop policy if exists "birthday_wishes_log_write" on public.birthday_wishes_log;
 
 create table if not exists public.birthday_notice_log (
   notice_date date not null,

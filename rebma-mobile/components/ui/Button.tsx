@@ -1,6 +1,6 @@
 // rebma-mobile/components/ui/Button.tsx
-import type { ReactNode } from 'react';
-import { Pressable, Text, ActivityIndicator, View, type ViewStyle, type StyleProp } from 'react-native';
+import { useRef, useState, type ReactNode } from 'react';
+import { Animated, Pressable, Text, ActivityIndicator, View, type ViewStyle, type StyleProp } from 'react-native';
 import { useTheme } from '../../theme/ThemeProvider';
 
 interface Props {
@@ -16,9 +16,15 @@ interface Props {
   trailingBadgeIcon?: ReactNode;
 }
 
+// Pressable that can take an animated scale, so buttons spring under the finger.
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
 export default function Button({ label, onPress, variant = 'primary', size = 'md', icon, loading, disabled, fullWidth, style, trailingBadgeIcon }: Props) {
   const t = useTheme();
   const isDisabled = disabled || loading;
+  const scale = useRef(new Animated.Value(1)).current;
+  const [pressed, setPressed] = useState(false);
+  const springTo = (v: number) => Animated.spring(scale, { toValue: v, useNativeDriver: true, speed: 40, bounciness: v === 1 ? 8 : 0 }).start();
 
   const bg = {
     primary: t.colors.accent,
@@ -36,10 +42,12 @@ export default function Button({ label, onPress, variant = 'primary', size = 'md
   const padHorizontal = size === 'sm' ? 14 : size === 'lg' ? 24 : 18;
 
   return (
-    <Pressable
+    <AnimatedPressable
       onPress={onPress}
       disabled={isDisabled}
-      style={({ pressed }) => [
+      onPressIn={() => { setPressed(true); springTo(0.96); }}
+      onPressOut={() => { setPressed(false); springTo(1); }}
+      style={[
         {
           flexDirection: 'row',
           alignItems: 'center',
@@ -61,6 +69,7 @@ export default function Button({ label, onPress, variant = 'primary', size = 'md
         // elevation; only the actual nav FAB uses 'fab'.
         variant === 'primary' && !isDisabled && t.shadow('raised'),
         style,
+        { transform: [{ scale }] },
       ]}
     >
       {loading ? (
@@ -85,6 +94,6 @@ export default function Button({ label, onPress, variant = 'primary', size = 'md
           ) : null}
         </>
       )}
-    </Pressable>
+    </AnimatedPressable>
   );
 }
