@@ -2222,10 +2222,12 @@ export const messenger = {
       .from('chat_messages')
       .select('*')
       .eq('channel_id', channelId)
-      .order('created_at', { ascending: true })
+      // Newest 500, then put back in time order. Asking for the oldest 500
+      // meant a busy chat stopped showing new messages after 500.
+      .order('created_at', { ascending: false })
       .limit(500);
     if (error) throw new Error(error.message);
-    return data || [];
+    return (data || []).reverse();
   },
 
   sendMessage: async (channelId: string, senderId: string, senderName: string, content: string, opts?: { attachmentUrl?: string; attachmentUrls?: string[]; attachmentType?: string; attachmentName?: string; replyToId?: string; forwardedFromId?: string }) => {
@@ -2272,7 +2274,7 @@ export const messenger = {
   // and any reactions/read receipts already recorded, don't orphan.
   deleteMessageForEveryone: async (messageId: string, senderId: string) => {
     const { error } = await supabase.from('chat_messages').update({
-      deleted_at: new Date().toISOString(), deleted_by: senderId, content: '', attachment_url: null, attachment_type: null, attachment_name: null,
+      deleted_at: new Date().toISOString(), deleted_by: senderId, content: '', attachment_url: null, attachment_urls: null, attachment_type: null, attachment_name: null,
     }).eq('id', messageId).eq('sender_id', senderId);
     if (error) throw new Error(error.message);
   },

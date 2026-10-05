@@ -339,18 +339,22 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 540,
 
   const fetchLatest = async () => {
     if (driverIds.length === 0) return;
-    const { data } = await supabase
-      .from('driver_locations')
-      .select('driver_id, latitude, longitude, recorded_at, speed')
-      .in('driver_id', driverIds)
-      .order('recorded_at', { ascending: false })
-      .limit(200);
-    if (!mountedRef.current || !data) return;
+    // One small query per driver, so a driver who pings often can't push
+    // another driver's latest position out of a shared row limit.
+    const rows = await Promise.all(driverIds.map(id =>
+      supabase
+        .from('driver_locations')
+        .select('driver_id, latitude, longitude, recorded_at, speed')
+        .eq('driver_id', id)
+        .order('recorded_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+        .then(({ data }) => data as any)
+    ));
+    if (!mountedRef.current) return;
     const next: Record<string, LivePoint> = {};
-    for (const row of data as any[]) {
-      if (!next[row.driver_id]) {
-        next[row.driver_id] = { lat: Number(row.latitude), lng: Number(row.longitude), recordedAt: row.recorded_at, speed: row.speed ?? null };
-      }
+    for (const row of rows) {
+      if (row) next[row.driver_id] = { lat: Number(row.latitude), lng: Number(row.longitude), recordedAt: row.recorded_at, speed: row.speed ?? null };
     }
     setLatestByDriver(next);
   };
@@ -404,22 +408,22 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 540,
   useEffect(() => {
     if (!showTrails || focusDeliveryId || driverIds.length === 0) { setTrailsByDriver({}); return; }
     let cancelled = false;
-    supabase
-      .from('driver_locations')
-      .select('driver_id, latitude, longitude, recorded_at')
-      .in('driver_id', driverIds)
-      .order('recorded_at', { ascending: false })
-      .limit(driverIds.length * 20)
-      .then(({ data }) => {
-        if (cancelled || !data) return;
-        const byDriver: Record<string, LivePoint[]> = {};
-        for (const r of (data as any[]).reverse()) {
-          const arr = byDriver[r.driver_id] || (byDriver[r.driver_id] = []);
-          arr.push({ lat: Number(r.latitude), lng: Number(r.longitude), recordedAt: r.recorded_at });
-          if (arr.length > 20) arr.shift();
-        }
-        setTrailsByDriver(byDriver);
-      });
+    Promise.all(driverIds.map(id =>
+      supabase
+        .from('driver_locations')
+        .select('latitude, longitude, recorded_at')
+        .eq('driver_id', id)
+        .order('recorded_at', { ascending: false })
+        .limit(20)
+        .then(({ data }) => [id, (data || []) as any[]] as const)
+    )).then(results => {
+      if (cancelled) return;
+      const byDriver: Record<string, LivePoint[]> = {};
+      for (const [id, rows] of results) {
+        byDriver[id] = rows.slice().reverse().map(r => ({ lat: Number(r.latitude), lng: Number(r.longitude), recordedAt: r.recorded_at }));
+      }
+      setTrailsByDriver(byDriver);
+    });
     return () => { cancelled = true; };
   }, [showTrails, focusDeliveryId, driverIds.join(',')]);
 
@@ -473,6 +477,12 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 540,
     .map(({ delivery, point }) => `${delivery.id}:${!!routesByDelivery[delivery.id]}:${point.lat.toFixed(2)}:${point.lng.toFixed(2)}`)
     .join(',');
   const hasAnyRoute = Object.keys(routesByDelivery).some(id => markers.some(m => m.delivery.id === id));
+
+  const isPingFresh = (p: LivePoint) => !!p.recordedAt && Date.now() - new Date(p.recordedAt).getTime() <= STALE_MINUTES * 60000;
+  const enRoute = markers.filter(m =>
+    m.delivery.driverState ? m.delivery.driverState === 'ON_THE_WAY' || m.delivery.driverState === 'RETURNING'
+      : m.delivery.status === 'OUT_FOR_DELIVERY' || m.delivery.status === 'IN_TRANSIT'
+  );
 
   // Determine active target for Primary Highlight Card
   const activeFocusDelivery = focusDeliveryId ? deliveries.find(d => d.id === focusDeliveryId) : markers[0]?.delivery;
@@ -555,9 +565,9 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 540,
           </button>
 
           {/* En Route Active Chip */}
-          {markers.length > 0 && (
+          {enRoute.length > 0 && (
             <button
-              onClick={() => setPanTarget([markers[0].point.lat, markers[0].point.lng])}
+              onClick={() => setPanTarget([enRoute[0].point.lat, enRoute[0].point.lng])}
               style={{
                 display: 'flex', alignItems: 'center', gap: 7,
                 background: 'rgba(255,255,255,0.94)', backdropFilter: 'blur(12px)',
@@ -568,7 +578,8 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 540,
               <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#F59E0B', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
                 <Navigation size={11} />
               </div>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#0F172A' }}>En Route ({markers.length})</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#0F172A' }}>En Route</span>
+              <span style={{ minWidth: 18, height: 18, padding: '0 5px', borderRadius: 999, background: '#F59E0B', color: '#fff', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{enRoute.length}</span>
             </button>
           )}
         </div>
@@ -605,18 +616,19 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 540,
             </div>
             <div style={{ minWidth: 0, flex: 1 }}>
               <div style={{ fontSize: 14, fontWeight: 800, color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {activeFocusDelivery?.driverName || 'Accra Central Depot'}
+                {activeFocusDelivery ? (activeFocusDelivery.driverName || 'Driver not set') : 'Company depot'}
               </div>
               <div style={{ fontSize: 11, fontWeight: 600, color: '#64748B' }}>
-                {activeFocusDelivery?.vehicleId || 'Main Staging Terminal'}
+                {activeFocusDelivery ? (activeFocusDelivery.vehicleId || 'Vehicle not set') : 'No vehicle on the road'}
               </div>
             </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, margin: '2px 0' }}>
-            <div style={{ height: 6, width: '80%', background: '#E2E8F0', borderRadius: 3 }} />
-            <div style={{ height: 6, width: '55%', background: '#CBD5E1', borderRadius: 3 }} />
-          </div>
+          {activeFocusDelivery?.driverState && (
+            <div style={{ fontSize: 11, fontWeight: 700, color: DRIVER_STATE_COLOR[activeFocusDelivery.driverState] || '#64748B' }}>
+              {DRIVER_STATE_LABEL[activeFocusDelivery.driverState]}
+            </div>
+          )}
 
           {activeRoute && (
             <div style={{ fontSize: 11, fontWeight: 700, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -684,7 +696,7 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 540,
           <div style={{ width: '100%', height: '100%', background: '#F8FAFC', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: 'var(--accent)', fontSize: 16 }}>
             {markers[0].delivery.driverName ? markers[0].delivery.driverName.charAt(0) : 'D'}
           </div>
-          <div style={{ position: 'absolute', bottom: 2, right: 2, width: 10, height: 10, borderRadius: '50%', background: '#10B981', border: '1.5px solid #fff' }} />
+          <div style={{ position: 'absolute', bottom: 2, right: 2, width: 10, height: 10, borderRadius: '50%', background: markers[0].isLive && isPingFresh(markers[0].point) ? '#10B981' : '#94A3B8', border: '1.5px solid #fff' }} />
         </div>
       )}
 
@@ -885,9 +897,11 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 540,
                       {formatDuration(route.durationSeconds)} · {formatDistance(route.distanceMeters)}
                     </p>
                   )}
-                  <p style={{ margin: 0, color: isLive ? '#10b981' : '#94a3b8' }}>
+                  <p style={{ margin: 0, color: isLive && !stale ? '#10b981' : '#94a3b8' }}>
                     {isLive
-                      ? `Live · ${point.recordedAt ? new Date(point.recordedAt).toLocaleTimeString() : 'now'}`
+                      ? stale
+                        ? `Last seen ${new Date(point.recordedAt).toLocaleString()}`
+                        : `Live · ${new Date(point.recordedAt).toLocaleTimeString()}`
                       : atCompany ? 'At the depot, trip not started yet' : 'No GPS ping yet, last known position'}
                   </p>
                   {onMarkerClick && <p style={{ margin: '4px 0 0', color: '#94a3b8', fontStyle: 'italic' }}>Click marker for full details</p>}

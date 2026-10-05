@@ -264,7 +264,7 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
       }
       setDmChannelByUser(dmMap);
 
-      if (!activeChannel) {
+      if (!activeChannel && globalChatEnabled) {
         const everyone = mine.find((c: Channel) => c.type === 'everyone');
         if (everyone) setActiveChannel(everyone);
       }
@@ -274,7 +274,9 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
 
   // ── Load messages + reactions/reads for active channel ──
   const loadThread = useCallback(async () => {
-    if (!activeChannel) return;
+    // Closed panel: load nothing and mark nothing read. Reading happens when
+    // the person actually opens the chat again.
+    if (!activeChannel || !isOpen) return;
     const all = await messenger.fetchMessages(activeChannel.id) as Msg[];
     const allIds = all.map((m) => m.id);
     const hiddenIds = new Set(await messenger.fetchHiddenMessageIds(myId, allIds));
@@ -297,7 +299,7 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
       if (m.sender_id !== myId && !m.deleted_at && !(rdMap[m.id] || []).includes(myId)) messenger.markRead(m.id, myId);
     }
     refreshUnreadCounts();
-  }, [activeChannel, myId, refreshUnreadCounts]);
+  }, [activeChannel, myId, refreshUnreadCounts, isOpen]);
 
   useEffect(() => { loadThread(); }, [loadThread]);
 
@@ -320,8 +322,9 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
   }, [isOpen, myId, refreshUnreadCounts]);
 
   // ── Realtime: new messages + reactions + reads in this channel ──
+  // Only while the panel is open, so a closed chat can't mark messages read.
   useEffect(() => {
-    if (!activeChannel) return;
+    if (!activeChannel || !isOpen) return;
     const ch = supabase
       .channel('messenger-thread-' + activeChannel.id)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `channel_id=eq.${activeChannel.id}` }, payload => {
@@ -356,11 +359,11 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
       supabase.removeChannel(ch);
       if (threadReloadTimer.current) clearTimeout(threadReloadTimer.current);
     };
-  }, [activeChannel, loadThread, myId, scheduleThreadReload]);
+  }, [activeChannel, loadThread, myId, scheduleThreadReload, isOpen]);
 
   // ── Presence: typing indicator ──
   useEffect(() => {
-    if (!activeChannel || !myId) return;
+    if (!activeChannel || !myId || !isOpen) return;
     const presence = supabase.channel('presence-' + activeChannel.id, { config: { presence: { key: myId } } });
     presence
       .on('presence', { event: 'sync' }, () => {
@@ -375,8 +378,8 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
       })
       .subscribe();
     presenceChannelRef.current = presence;
-    return () => { supabase.removeChannel(presence); };
-  }, [activeChannel, myId]);
+    return () => { supabase.removeChannel(presence); presenceChannelRef.current = null; };
+  }, [activeChannel, myId, isOpen]);
 
   const notifyTyping = () => {
     if (!presenceChannelRef.current) return;
@@ -392,19 +395,24 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
   // Resolve signed URLs for attachments lazily — includes the
   // single-attachment column, every path inside a multi-image message,
   // and any group's photo_url (Phase 11.4 — same bucket, same signing).
+  // Paths that already failed or are being fetched, so a missing file is
+  // tried once instead of being retried in an endless loop.
+  const signingPathsRef = useRef<Set<string>>(new Set());
   useEffect(() => {
-    const single = messages.filter(m => m.attachment_url && m.attachment_type !== 'call' && !attachmentUrls[m.attachment_url!]).map(m => m.attachment_url!);
-    const multi = messages.flatMap(m => (m.attachment_urls || []).filter(p => !attachmentUrls[p]));
-    const groupPhotos = channels.filter(c => c.photo_url && !attachmentUrls[c.photo_url]).map(c => c.photo_url!);
+    const want = (p: string) => !attachmentUrls[p] && !signingPathsRef.current.has(p);
+    const single = messages.filter(m => !m.deleted_at && m.attachment_url && m.attachment_type !== 'call' && want(m.attachment_url)).map(m => m.attachment_url!);
+    const multi = messages.filter(m => !m.deleted_at).flatMap(m => (m.attachment_urls || []).filter(want));
+    const groupPhotos = channels.filter(c => c.photo_url && want(c.photo_url)).map(c => c.photo_url!);
     const paths = Array.from(new Set([...single, ...multi, ...groupPhotos]));
     if (paths.length === 0) return;
+    paths.forEach(p => signingPathsRef.current.add(p));
     (async () => {
       const entries: Record<string, string> = {};
       for (const p of paths) {
         const url = await messenger.getSignedAttachmentUrl(p);
         if (url) entries[p] = url;
       }
-      setAttachmentUrls(prev => ({ ...prev, ...entries }));
+      if (Object.keys(entries).length > 0) setAttachmentUrls(prev => ({ ...prev, ...entries }));
     })();
   }, [messages, attachmentUrls, channels]);
 
@@ -694,9 +702,9 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
   // recipients (Phase 11.2) are filtered out here — @mentions below use
   // their own, separate notifyUsers call that skips this filter entirely,
   // since a mention should cut through a mute.
-  const notifyOthersOfMessage = async (preview: string) => {
+  const notifyOthersOfMessage = async (preview: string, skipIds: string[] = []) => {
     if (!activeChannel || activeChannel.type === 'everyone') return;
-    const others = activeChannelMemberIds.current.filter((id) => id !== myId);
+    const others = activeChannelMemberIds.current.filter((id) => id !== myId && !skipIds.includes(id));
     if (others.length === 0) return;
     try {
       const muted = await messenger.fetchMutedUserIds(activeChannel.id, others);
@@ -709,11 +717,23 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
   // name, so "@Sam" only pings a Sam who's actually in this conversation.
   // Deliberately bypasses the mute filter above: getting @mentioned is
   // the one notification a muted conversation should still surface.
-  const notifyMentions = (text: string) => {
-    if (!activeChannel) return;
+  const notifyMentions = (text: string): string[] => {
+    if (!activeChannel) return [];
     const mentioned = profiles.filter(pr => activeChannelMemberIds.current.includes(pr.id) && text.includes('@' + pr.fullName));
-    if (mentioned.length === 0) return;
+    if (mentioned.length === 0) return [];
     messenger.notifyUsers(mentioned.map(pr => pr.id), 'chat_mention', myName, `mentioned you: ${text.slice(0, 100)}`, activeChannel.id).catch(() => {});
+    return mentioned.map(pr => pr.id);
+  };
+
+  // The same rules a typed message follows, for photos, files and voice
+  // notes too: the CEO's chat switches and any block or suspension.
+  const channelTypeEnabled = (type?: Channel['type']) =>
+    type === 'everyone' ? globalChatEnabled : type === 'group' ? departmentChatEnabled : type === 'dm' ? directMessagesEnabled : false;
+  const sendBlockedReason = (): string | null => {
+    if (!activeChannel) return 'Pick a conversation first.';
+    if (!channelTypeEnabled(activeChannel.type)) return 'The CEO has turned this kind of chat off.';
+    if (dmLocked) return dmLockMessage;
+    return null;
   };
 
   const handleSend = async () => {
@@ -723,17 +743,19 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
     if (activeChannel.type === 'dm' && !directMessagesEnabled) return;
     if (dmLocked) return;
     const text = composer;
+    const replying = replyTo;
     setComposer('');
     setReplyTo(null);
     setMentionQuery(null);
     setSendError('');
     try {
-      await messenger.sendMessage(activeChannel.id, myId, myName, text, replyTo ? { replyToId: replyTo.id } : undefined);
-      notifyOthersOfMessage(text);
-      notifyMentions(text);
+      await messenger.sendMessage(activeChannel.id, myId, myName, text, replying ? { replyToId: replying.id } : undefined);
+      const mentionedIds = notifyMentions(text);
+      notifyOthersOfMessage(text, mentionedIds);
     } catch (e: any) {
-      // Put the text back so it isn't lost, and say why it didn't go.
+      // Put the text and the reply back so nothing is lost, and say why it didn't go.
       setComposer(text);
+      setReplyTo(replying);
       setSendError(e?.message || 'Your message was not sent.');
     }
   };
@@ -758,6 +780,8 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
 
   const handleAttach = async (file: File) => {
     if (!activeChannel) return;
+    const blocked = sendBlockedReason();
+    if (blocked) { setSendError(blocked); return; }
     const err = validateAttachment(file);
     if (err) { alert(err); return; }
     try {
@@ -768,13 +792,15 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
         attachmentUrl: path, attachmentType: isImage ? 'image' : 'file', attachmentName: file.name,
       });
       notifyOthersOfMessage(preview);
-    } catch (e) { console.error('Attachment upload failed:', e); }
+    } catch (e: any) { setSendError(`The file was not sent: ${e?.message || 'upload failed'}`); }
   };
 
   // Phase 11.3 — several images sent together as one bubble (attachment_urls),
   // distinct from a single-image message, which keeps using attachment_url.
   const handleAttachMultiple = async (files: File[]) => {
     if (!activeChannel || files.length === 0) return;
+    const blocked = sendBlockedReason();
+    if (blocked) { setSendError(blocked); return; }
     for (const f of files) {
       const err = validateAttachment(f);
       if (err) { alert(err); return; }
@@ -786,7 +812,7 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
         attachmentUrls: paths, attachmentType: 'image',
       });
       notifyOthersOfMessage(preview);
-    } catch (e) { console.error('Attachment upload failed:', e); }
+    } catch (e: any) { setSendError(`The photos were not sent: ${e?.message || 'upload failed'}`); }
   };
 
   // Phase 11.3 — voice notes via the browser's native MediaRecorder, no
@@ -797,6 +823,8 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
   const recordedChunksRef = useRef<Blob[]>([]);
 
   const startVoiceRecording = async () => {
+    const blocked = sendBlockedReason();
+    if (blocked) { setSendError(blocked); return; }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream);
@@ -813,7 +841,7 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
             attachmentUrl: path, attachmentType: 'audio', attachmentName: file.name,
           });
           notifyOthersOfMessage('🎤 Voice note');
-        } catch (e) { console.error('Voice note upload failed:', e); }
+        } catch (e: any) { setSendError(`The voice note was not sent: ${e?.message || 'upload failed'}`); }
       };
       mediaRecorderRef.current = recorder;
       recorder.start();
@@ -887,12 +915,11 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
     if (!forwardTarget) return;
     // Apply the same channel-type toggles a plain send already respects
     // (handleSend, above) — forwarding was bypassing them entirely.
-    if (targetChannel.type === 'everyone' && !globalChatEnabled) return;
-    if (targetChannel.type === 'group' && !departmentChatEnabled) return;
-    if (targetChannel.type === 'dm' && !directMessagesEnabled) return;
+    if (!channelTypeEnabled(targetChannel.type)) { alert('The CEO has turned this kind of chat off, so the message was not forwarded.'); return; }
     try {
       await messenger.sendMessage(targetChannel.id, myId, myName, forwardTarget.content, {
         attachmentUrl: forwardTarget.attachment_url || undefined,
+        attachmentUrls: forwardTarget.attachment_urls || undefined,
         attachmentType: forwardTarget.attachment_type || undefined,
         attachmentName: forwardTarget.attachment_name || undefined,
         forwardedFromId: forwardTarget.id,
@@ -902,7 +929,7 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
         const others = (members || []).map((m: any) => m.user_id).filter((id: string) => id !== myId);
         if (others.length > 0) messenger.notifyUsers(others, 'chat_message', myName, forwardTarget.content.slice(0, 120), targetChannel.id).catch(() => {});
       }
-    } catch (e) { console.error('Forward failed:', e); }
+    } catch (e: any) { alert(`The message was not forwarded: ${e?.message || 'unknown error'}`); }
     setForwardTarget(null);
   };
 
@@ -1376,7 +1403,13 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
                 </div>
               )}
 
-              {activeChannel && !(dmLocked && !editingMessage) && (
+              {activeChannel && !channelTypeEnabled(activeChannel.type) && (
+                <div className="p-3 border-t border-[var(--border)] shrink-0">
+                  <p className="px-3 py-2 rounded-xl bg-amber-500/10 text-xs font-semibold text-amber-600 text-center">The CEO has turned this kind of chat off, so new messages can't be sent here.</p>
+                </div>
+              )}
+
+              {activeChannel && channelTypeEnabled(activeChannel.type) && !(dmLocked && !editingMessage) && (
                 <div className="flex items-center gap-2 p-3 border-t border-[var(--border)] shrink-0">
                   {editingMessage ? (
                     <>

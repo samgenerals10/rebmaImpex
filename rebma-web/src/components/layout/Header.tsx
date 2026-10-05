@@ -138,8 +138,9 @@ export default function Header({
           // result now also lands in Finance (the only place that detail
           // view still exists), matching how Risk searchers already jump
           // to Risk's own tab rather than staying in their home department.
-          dept: isAdmin ? 'CEO' : (dept === 'RISK' ? 'RISK' : 'FINANCE'),
-          tab: isAdmin ? 'Invoices' : (dept === 'RISK' ? 'RiskApprovals' : (dept === 'FINANCE' ? 'OrdersQueue' : 'SalesHistory')),
+          // Each searcher lands in their own department; only CEO/admin may jump across.
+          dept: isAdmin ? 'CEO' : dept,
+          tab: isAdmin ? 'Invoices' : (dept === 'RISK' ? 'RiskApprovals' : dept === 'FINANCE' ? 'OrdersQueue' : dept === 'MANAGEMENT' ? 'CreditApproval' : 'CreateOrder'),
           icon: Clipboard
         });
       });
@@ -181,7 +182,7 @@ export default function Header({
           subtitle: `Receipt: ${p.id} · GHS ${Number(p.amount || 0).toLocaleString()} · Mode: ${p.paymentMode}`,
           category: 'Account Department Receipts',
           dept: 'FINANCE',
-          tab: 'Tickets',
+          tab: 'Receipts',
           icon: DollarSign
         });
       });
@@ -475,20 +476,29 @@ export default function Header({
       </div>
 
       {/* 2. DESKTOP HEADER */}
-      <div className="header-shell hidden lg:flex items-center h-16 px-6 border-b border-[var(--border)] relative gap-4 w-full">
+      <div className="header-shell hidden lg:flex items-center h-[76px] pl-3 pr-3 rounded-full border border-[var(--border)] relative gap-4 w-full">
         {/* Collapse sidebar toggle — far left, matches reference */}
         {onToggleSidebar && (
           <button
             onClick={onToggleSidebar}
-            className="p-2 rounded-lg hover:bg-[var(--accent-light)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors shrink-0 cursor-pointer"
+            className="w-12 h-12 rounded-full flex items-center justify-center bg-[var(--bg-card)] ring-4 ring-[var(--accent-light)] shadow-[0_4px_14px_rgba(15,23,42,0.08)] text-[var(--accent)] hover:scale-105 active:scale-95 transition-transform shrink-0 cursor-pointer"
             title="Toggle Sidebar"
           >
-            <Menu className="w-4 h-4" />
+            <Menu className="w-5 h-5" />
           </button>
         )}
 
+        {/* Who and where, next to the circle */}
+        <div className="hidden xl:block min-w-0 shrink-0 max-w-[200px]">
+          <p className="text-sm font-bold text-[var(--text-primary)] truncate">{getGreeting()}, {currentUser?.fullName?.split(' ')[0] || 'there'}</p>
+          <p className="text-[11px] text-[var(--text-muted)] truncate">{allDepts.find(d => d.value === dept)?.label || dept}</p>
+        </div>
+
+        {/* Raised tray holding search and the quick controls */}
+        <div className="flex-1 min-w-0 flex items-center gap-1 h-14 pl-2 pr-2 rounded-full bg-[var(--bg-page)] shadow-[inset_0_1px_4px_rgba(15,23,42,0.07)]">
+
         {/* Search bar — center, pill shape, matches reference */}
-        <div className="relative flex items-center flex-1 max-w-[420px]">
+        <div className="relative flex items-center flex-1 min-w-0">
           <div className="relative w-full">
             <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
               <Search className="h-4 w-4 text-text-muted" />
@@ -498,8 +508,13 @@ export default function Header({
               placeholder={isAdmin ? "Search everywhere (CEO mode)..." : `Search ${dept.toLowerCase()} records...`}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-3.5 py-2 bg-[var(--bg-input)] border border-[var(--border)] rounded-full text-xs text-[var(--text-primary)] placeholder:text-text-muted focus:outline-none focus:border-[var(--accent)] transition-colors"
+              className="w-full pl-10 pr-3.5 py-2.5 bg-[var(--bg-card)] border border-transparent rounded-full text-xs text-[var(--text-primary)] placeholder:text-text-muted focus:outline-none focus:border-[var(--accent)] transition-colors"
             />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery('')} className="absolute inset-y-0 right-2 my-auto w-6 h-6 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer" title="Clear search">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
 
           {/* Search Dropdown Results */}
@@ -514,7 +529,7 @@ export default function Header({
                   const Icon = res.icon;
                   return (
                     <button
-                      key={res.id}
+                      key={`${res.category}-${res.id}`}
                       onClick={() => handleResultClick(res)}
                       className="w-full text-left p-2.5 hover:bg-[var(--accent-light)] rounded-xl flex items-center gap-3 transition-colors cursor-pointer group"
                     >
@@ -540,17 +555,18 @@ export default function Header({
         </div>
 
         {/* Status badges & Widgets */}
-        <div className="flex items-center gap-3 relative">
-          {/* LIVE indicator */}
-          <div className="flex items-center gap-1.5 text-[10px] text-[var(--accent)] bg-[var(--accent-light)] px-3 py-1 rounded-full font-bold uppercase tracking-wider">
-            <Wifi className="w-3.5 h-3.5 animate-pulse text-[var(--accent)]" />
+        <div className="flex items-center gap-1 relative shrink-0">
+          <span className="w-px h-6 bg-[var(--border)] mx-1" aria-hidden />
+          {/* LIVE indicator: green and pulsing online, red and still offline */}
+          <div className={`flex items-center gap-1.5 text-[10px] px-3 py-1 rounded-full font-bold uppercase tracking-wider ${networkOnline ? 'text-[var(--accent)] bg-[var(--accent-light)]' : 'text-rose-600 bg-rose-50'}`}>
+            <Wifi className={`w-3.5 h-3.5 ${networkOnline ? 'animate-pulse' : ''}`} />
             <span>{networkOnline ? 'Live' : 'Offline'}</span>
           </div>
 
           {/* Chat Button */}
           <button
             onClick={onOpenChat}
-            className="p-2 bg-[var(--bg-card)] hover:bg-[var(--accent-light)] border border-[var(--border)] rounded-xl text-[var(--text-secondary)] hover:text-[var(--accent)] transition-all cursor-pointer shadow-card shrink-0 relative"
+            className="w-10 h-10 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--accent)] hover:bg-[var(--bg-card)] transition-all cursor-pointer shrink-0 relative"
             title="Open Chat Terminal"
           >
             <MessageSquare className="w-4 h-4" />
@@ -571,12 +587,13 @@ export default function Header({
           <div className="relative">
             <button
               onClick={() => setShowPanel(p => !p)}
-              className="p-2 bg-[var(--bg-card)] hover:bg-[var(--accent-light)] border border-[var(--border)] rounded-xl text-[var(--text-secondary)] hover:text-[var(--accent)] transition-all cursor-pointer shadow-card shrink-0 relative"
+              className="w-10 h-10 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--accent)] hover:bg-[var(--bg-card)] transition-all cursor-pointer shrink-0 relative"
               title="Notifications"
             >
               <Bell className="w-4 h-4" />
+              {showPanel && <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-[var(--accent)]" aria-hidden />}
               {notifications.length > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-[var(--bg-card)] px-0.5">
+                <span className="absolute -top-0 -right-0 min-w-[16px] h-[16px] bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-[var(--bg-card)] px-0.5">
                   {notifications.length > 9 ? '9+' : <CountUp value={notifications.length} />}
                 </span>
               )}
@@ -637,19 +654,22 @@ export default function Header({
           {/* Dark Mode Toggle */}
           <button
             onClick={() => setDarkMode(!darkMode)}
-            className="p-2 bg-[var(--bg-card)] hover:bg-[var(--accent-light)] border border-[var(--border)] rounded-xl text-[var(--text-secondary)] hover:text-[var(--accent)] transition-all cursor-pointer shadow-card shrink-0"
+            className="w-10 h-10 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--accent)] hover:bg-[var(--bg-card)] transition-all cursor-pointer shrink-0"
             title="Toggle Light/Dark Mode"
           >
             {darkMode ? <Sun className="w-4 h-4 text-amber-500" /> : <Moon className="w-4 h-4" />}
           </button>
 
-          {/* User profile avatar + name dropdown — matches reference */}
-          <div className="relative">
+        </div>
+        </div>
+
+          {/* Profile in a ringed circle, like the left one */}
+          <div className="relative shrink-0">
             <button
               onClick={() => setShowAvatarDropdown(prev => !prev)}
-              className="flex items-center gap-2.5 px-2 py-1.5 rounded-xl hover:bg-[var(--accent-light)] transition-colors cursor-pointer"
+              className="flex items-center gap-2.5 pl-1 pr-1 xl:pr-3 py-1 rounded-full bg-[var(--bg-card)] ring-4 ring-[var(--accent-light)] shadow-[0_4px_14px_rgba(15,23,42,0.08)] hover:scale-[1.03] active:scale-95 transition-transform cursor-pointer"
             >
-              <div className="w-8 h-8 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-xs shadow-card shrink-0 border-2 border-white overflow-hidden relative">
+              <div className="w-10 h-10 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden relative">
                 {currentUser?.photo ? (
                   <img src={currentUser.photo} className="w-full h-full object-cover" alt="Profile" />
                 ) : (
@@ -728,7 +748,7 @@ export default function Header({
                         onClick={() => {
                           if (setActiveDepartment) {
                             setActiveDepartment('SETTINGS');
-                            if (setActiveSubTab) setActiveSubTab('Themes');
+                            if (setActiveSubTab) setActiveSubTab('Appearance');
                           }
                           setShowAvatarDropdown(false);
                         }}
@@ -753,7 +773,11 @@ export default function Header({
               )}
             </AnimatePresence>
           </div>
-        </div>
+
+          {/* Decorative dot grid, wide screens only */}
+          <div className="hidden 2xl:grid grid-cols-3 gap-1 pr-2 shrink-0" aria-hidden>
+            {Array.from({ length: 9 }).map((_, i) => <span key={i} className="w-1 h-1 rounded-full bg-[var(--border)]" />)}
+          </div>
       </div>
 
       {/* Click-outside dismiss overlay */}

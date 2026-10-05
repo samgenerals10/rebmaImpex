@@ -432,19 +432,23 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
   // Resolve signed URLs for attachments lazily, same as web — includes
   // the single-attachment column, every path inside a multi-image
   // message, and the group photo (Phase 11.4 — same bucket, same signing).
+  // Paths already tried, so a missing file is fetched once, not in an endless loop.
+  const signingPathsRef = useRef<Set<string>>(new Set());
   useEffect(() => {
-    const single = messages.filter((m) => m.attachment_url && m.attachment_type !== 'call' && !attachmentUrls[m.attachment_url!]).map((m) => m.attachment_url!);
-    const multi = messages.flatMap((m) => (m.attachment_urls || []).filter((p) => !attachmentUrls[p]));
-    const groupPhoto = groupPhotoPath && !attachmentUrls[groupPhotoPath] ? [groupPhotoPath] : [];
+    const want = (p: string) => !attachmentUrls[p] && !signingPathsRef.current.has(p);
+    const single = messages.filter((m) => !m.deleted_at && m.attachment_url && m.attachment_type !== 'call' && want(m.attachment_url)).map((m) => m.attachment_url!);
+    const multi = messages.filter((m) => !m.deleted_at).flatMap((m) => (m.attachment_urls || []).filter(want));
+    const groupPhoto = groupPhotoPath && want(groupPhotoPath) ? [groupPhotoPath] : [];
     const paths = Array.from(new Set([...single, ...multi, ...groupPhoto]));
     if (paths.length === 0) return;
+    paths.forEach((p) => signingPathsRef.current.add(p));
     (async () => {
       const entries: Record<string, string> = {};
       for (const path of paths) {
         const url = await messenger.getSignedAttachmentUrl(path);
         if (url) entries[path] = url;
       }
-      setAttachmentUrls((prev) => ({ ...prev, ...entries }));
+      if (Object.keys(entries).length > 0) setAttachmentUrls((prev) => ({ ...prev, ...entries }));
     })();
   }, [messages, attachmentUrls, groupPhotoPath]);
 
@@ -491,15 +495,23 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
     : blockedByThem ? "You can't message this person"
     : 'This chat is suspended';
 
+  // The same rules for every kind of send (typed, photo, file, voice note,
+  // forward): the CEO's chat switches and any block or suspension.
+  const typeEnabled = (type?: string) =>
+    type === 'everyone' ? globalChatEnabled : type === 'group' ? departmentChatEnabled : type === 'dm' ? directMessagesEnabled : false;
+  const sendBlockedReason = (): string | null => {
+    if (!typeEnabled(channelType)) return 'The CEO has turned this kind of chat off.';
+    if (dmLocked) return lockedPlaceholder;
+    return null;
+  };
+
   const handleSend = async () => {
     if (!composer.trim() || sending) return;
     // These three channel-type toggles were never checked on mobile at
     // all (web's own handleSend already gates on them) — a CEO disabling
     // Everyone/group/DM chat had no effect on mobile sends.
-    if (channelType === 'everyone' && !globalChatEnabled) return;
-    if (channelType === 'group' && !departmentChatEnabled) return;
-    if (channelType === 'dm' && !directMessagesEnabled) return;
-    if (dmLocked) return;
+    const blocked = sendBlockedReason();
+    if (blocked) { Alert.alert("Can't send", blocked); return; }
     const text = composer;
     setComposer('');
     setMentionQuery(null);
@@ -522,7 +534,11 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
   // aligned text links) — replaced with a real Sheet matching the app's
   // own design everywhere else this kind of menu appears (see the
   // Message action Sheet below, same ActionRow pattern).
-  const handleAttach = () => setAttachSheetOpen(true);
+  const handleAttach = () => {
+    const blocked = sendBlockedReason();
+    if (blocked) { Alert.alert("Can't send", blocked); return; }
+    setAttachSheetOpen(true);
+  };
 
   // Real Capture (photo or video) — see lib/media.ts's pickOrCaptureMedia()
   // for why this is the one place in the app it's wired in: an actual
@@ -602,6 +618,8 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
   }, []);
 
   const startVoiceRecording = async () => {
+    const blocked = sendBlockedReason();
+    if (blocked) { Alert.alert("Can't send", blocked); return; }
     try {
       const status = await AudioModule.requestRecordingPermissionsAsync();
       if (!status.granted) {
@@ -703,12 +721,11 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
     if (!forwardTarget || !me) return;
     // Same channel-type toggles handleSend now respects, above —
     // forwarding was bypassing them entirely.
-    if (target.type === 'everyone' && !globalChatEnabled) return;
-    if (target.type === 'group' && !departmentChatEnabled) return;
-    if (target.type === 'dm' && !directMessagesEnabled) return;
+    if (!typeEnabled(target.type)) { Alert.alert('Not forwarded', 'The CEO has turned this kind of chat off.'); return; }
     try {
       await messenger.sendMessage(target.id, myId, myName, forwardTarget.content, {
         attachmentUrl: forwardTarget.attachment_url || undefined,
+        attachmentUrls: forwardTarget.attachment_urls || undefined,
         attachmentType: forwardTarget.attachment_type || undefined,
         attachmentName: forwardTarget.attachment_name || undefined,
         forwardedFromId: forwardTarget.id,
