@@ -2009,16 +2009,6 @@ export default function App() {
     }
   };
 
-  const handleManagementCreditDecision = async (id: string, approve: boolean) => {
-    try {
-      await management.approveCreditOrder(id, approve);
-      addNotification(`Management credit decision submitted.`);
-      refreshAllData();
-    } catch (err: any) {
-      alert(err.message || 'Failed to process credit decision.');
-    }
-  };
-
   const handleFinalizeOrder = async (id: string) => {
     try {
       await finance.finalizeOrder(id);
@@ -3406,7 +3396,6 @@ export default function App() {
             auditLog={auditLog}
             goodsPrices={goodsPrices}
             onApproveIntake={handleApproveIntake}
-            onApproveCredit={handleManagementCreditDecision}
             onSetPrice={handleSetPrice}
             activeSubTab={activeSubTab}
             currentUser={currentUser}

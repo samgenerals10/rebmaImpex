@@ -822,35 +822,6 @@ export function shortageMessage(shortages: { productName: string; requested: num
   return `Insufficient stock, cannot approve: ${list}`;
 }
 
-// Deducts sold items from stock the moment a sale is confirmed — Finance approving
-// a direct-payment order, or Management approving a credit order (both are the
-// point revenue is already recognized, see the ['APPROVED','PROCESSING',...]
-// status checks used across the dashboards) — rather than waiting for the order
-// to be invoiced/dispatched later. Never throws: a stock hiccup shouldn't block
-// the approval itself, it just logs. Availability itself is checked separately,
-// before this runs, via checkStockAvailability — see evaluateOrder/approveCreditOrder.
-export async function deductStockForOrder(order: any, reference: string) {
-  try {
-    const meta = order.metadata || {};
-    const metaItems = meta.items || [];
-    const lineItems = metaItems.length > 0
-      ? metaItems
-      : (order.product_name || order.productName) ? [{ productName: order.product_name || order.productName, quantity: Number(order.quantity || 1) }] : [];
-    if (lineItems.length === 0) return;
-
-    // Routed through a SECURITY DEFINER RPC (deduct_stock_for_order) that
-    // takes a per-product advisory lock, same idiom
-    // create_order_with_stock_check() already uses — the previous
-    // read-quantity-then-write-quantity two-step here had no lock between
-    // the two round trips, so two concurrent approvals for the same
-    // product could both read the same starting quantity and both write
-    // a decremented value, losing one decrement (an effective oversell).
-    const { error } = await supabase.rpc('deduct_stock_for_order', { p_line_items: lineItems, p_reference: reference });
-    if (error) console.error('Stock deduction failed during sale confirmation:', error);
-  } catch (e) {
-    console.error('Stock deduction failed during sale confirmation:', e);
-  }
-}
 
 // Auto-generates the customer receipt and the operations pick/load ticket the
 // moment a sale is confirmed (same trigger point as deductStockForOrder) —
@@ -1179,58 +1150,6 @@ export const management = {
     }
 
     return intake ? mapCargoToFrontend(intake[0]) : null;
-  },
-
-  approveCreditOrder: async (orderId: string, approve: boolean) => {
-    const { data: sessionData } = await supabase.auth.getSession();
-    const performerId = sessionData.session?.user?.id || null;
-    const { data: performers } = await supabase.from('profiles').select('full_name, email').eq('id', performerId).limit(1);
-    const performedBy = performers?.[0]?.full_name || 'Management';
-    const performedByEmail = performers?.[0]?.email || null;
-
-    const { data: orders } = await supabase.from('orders').select('*').eq('id', orderId).limit(1);
-    const order = orders?.[0];
-    if (!order) throw new Error('Order not found');
-
-    if (approve) {
-      const shortages = await checkStockAvailability(order);
-      if (shortages.length > 0) throw new Error(shortageMessage(shortages));
-    }
-
-    const status = approve ? 'APPROVED' : 'REJECTED';
-    const { data: updatedOrder, error } = await supabase
-      .from('orders')
-      .update(approve
-        ? { status, updated_at: new Date().toISOString(), finance_approved_by: performedBy, finance_approved_by_email: performedByEmail }
-        : { status, updated_at: new Date().toISOString() })
-      .eq('id', orderId)
-      .select();
-    if (error) throw new Error(error.message);
-
-    if (order) {
-      try {
-        await supabase.from('global_audit_history').insert({
-          action: approve ? 'APPROVE_CREDIT_ORDER' : 'REJECT_CREDIT_ORDER',
-          department: 'MANAGEMENT',
-          performed_by: performedBy,
-          user_id: performerId,
-          details: `Credit order ${orderId} for ${order.client_name || order.clientName} (GHS ${order.total_amount || order.totalAmount}) ${approve ? 'approved' : 'rejected'}.`,
-          timestamp: new Date().toISOString()
-        });
-      } catch (e) {
-        console.error(e);
-      }
-
-      if (approve) {
-        const ticketRef = order.ticket_number || order.ticketNumber || `ORD-${orderId.slice(0, 6).toUpperCase()}`;
-        await deductStockForOrder(order, `Credit Order Approved: ${ticketRef}`);
-        await autoGenerateReceiptAndTicket({ ...order, finance_approved_by: performedBy }, `Credit Order Approved: ${ticketRef}`);
-        const { data: finalOrder } = await supabase.from('orders').select('*').eq('id', orderId).limit(1);
-        return finalOrder?.[0] ? mapOrderToFrontend(finalOrder[0]) : (updatedOrder ? mapOrderToFrontend(updatedOrder[0]) : null);
-      }
-    }
-
-    return updatedOrder ? mapOrderToFrontend(updatedOrder[0]) : null;
   },
 
   approveProductionRequest: async (requestId: string, approve: boolean) => {

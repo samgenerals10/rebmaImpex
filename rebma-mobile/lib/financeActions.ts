@@ -43,32 +43,6 @@ export function shortageMessage(shortages: StockShortage[]): string {
   return `Insufficient stock, so this can't be approved: ${list}`;
 }
 
-// Deducts sold items from stock the moment a sale is confirmed. Never
-// throws — a stock hiccup shouldn't block the approval itself, it just
-// logs, matching web's own try/catch-and-continue behavior.
-// Routed through a SECURITY DEFINER RPC (deduct_stock_for_order) that
-// takes a per-product advisory lock, matching web's own fix and the same
-// idiom create_order_with_stock_check() already uses — the previous
-// read-quantity-then-write-quantity two-step here had no lock between the
-// two round trips, so two concurrent approvals for the same product could
-// both read the same starting quantity and both write a decremented
-// value, losing one decrement (an effective oversell).
-export async function deductStockForOrder(order: any, reference: string): Promise<void> {
-  try {
-    const meta = order.metadata || {};
-    const metaItems = meta.items || [];
-    const lineItems = metaItems.length > 0
-      ? metaItems
-      : (order.product_name ? [{ productName: order.product_name, quantity: Number(order.quantity || 1) }] : []);
-    if (lineItems.length === 0) return;
-
-    const { error } = await supabase.rpc('deduct_stock_for_order', { p_line_items: lineItems, p_reference: reference });
-    if (error) console.error('Stock deduction failed during sale confirmation:', error);
-  } catch (e) {
-    console.error('Stock deduction failed during sale confirmation:', e);
-  }
-}
-
 export function generateReceiptNumber(): string {
   return 'RCP-' + Math.floor(10000 + Math.random() * 90000);
 }

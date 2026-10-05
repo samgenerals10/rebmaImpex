@@ -22,7 +22,6 @@ interface ManagementDashboardProps {
   auditLog: AuditEntry[];
   goodsPrices: GoodsPrice[];
   onApproveIntake: (id: string, approve: boolean, price?: number) => void;
-  onApproveCredit: (id: string, approve: boolean) => void;
   onSetPrice: (price: Omit<GoodsPrice, 'id'>) => void;
   activeSubTab: string;
   currentUser: { fullName: string; department: string } | null;
@@ -62,7 +61,6 @@ export default function ManagementDashboard({
   auditLog,
   goodsPrices,
   onApproveIntake,
-  onApproveCredit,
   onSetPrice,
   activeSubTab = 'CargoApproval',
   currentUser,
@@ -680,8 +678,9 @@ export default function ManagementDashboard({
                 ...localOrders.filter(o => o.status === 'PENDING_MANAGEMENT').slice(0, 3).map(o => ({
                   id: o.id, icon: '💳', title: `Credit: ${o.clientName}`,
                   sub: `Marketing · ${o.createdAt}`, type: 'Credit', amount: `GHS ${o.totalAmount.toLocaleString()}`,
-                  onApprove: () => { onApproveCredit(o.id, true); addNotification?.(`Credit order ${o.id} approved.`); },
-                  onReject:  () => { onApproveCredit(o.id, false); addNotification?.(`Credit order ${o.id} rejected.`); }
+                  // Decided in the Approvals screen, which updates stock safely.
+                  onApprove: () => { setActiveSubTab?.('CreditApproval'); },
+                  onReject:  () => { setActiveSubTab?.('CreditApproval'); }
                 })),
               ].slice(0, 5).map(item => (
                 <div key={item.id} className="flex items-center justify-between gap-3 p-3 bg-[var(--bg)] rounded-xl border border-[var(--border)]">
@@ -923,10 +922,6 @@ export default function ManagementDashboard({
                         {order.ghanaCard && <p className="text-[10px] text-[var(--text-muted)] font-mono">Ghana Card: <code className="bg-[var(--bg-card)] px-1 rounded border border-[var(--border)] text-[var(--text-primary)]">{order.ghanaCard}</code></p>}
                       </div>
                       <div className="flex flex-col gap-2 items-start sm:items-end w-full sm:w-auto shrink-0">
-                        <div className="flex gap-2 w-full sm:w-auto">
-                          <button onClick={() => onApproveCredit(order.id, true)} className="flex-1 sm:flex-none px-3 py-1.5 bg-[var(--accent)] text-white rounded-lg text-xs font-bold cursor-pointer hover:opacity-90 transition-opacity shadow text-center">Authorize Credit</button>
-                          <button onClick={() => onApproveCredit(order.id, false)} className="flex-1 sm:flex-none px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-xs font-bold cursor-pointer hover:bg-red-100 transition-colors text-center">Block</button>
-                        </div>
                         <button
                           onClick={() => setExpandedCreditId(isExpanded ? null : order.id)}
                           className="flex items-center gap-1 text-[10px] text-[var(--accent)] hover:underline cursor-pointer transition-all"
