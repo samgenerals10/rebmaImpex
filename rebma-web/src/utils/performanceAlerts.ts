@@ -54,7 +54,7 @@ async function checkDeptInactivity(): Promise<PerformanceAlert[]> {
           alert_type: 'dept_inactivity',
           department: dept,
           severity: 'medium',
-          description: `${dept}, No Activity Detected: the ${dept} department has recorded zero activity in the last 24 hours. Please verify operations are running normally.`,
+          description: `${dept}: No Activity Detected. The ${dept} department has recorded zero activity in the last 24 hours. Please verify operations are running normally.`,
           status: 'open',
         });
       }
@@ -90,7 +90,7 @@ async function checkAttendanceAlerts(): Promise<PerformanceAlert[]> {
             alert_type: 'attendance_low',
             department: dept,
             severity: rate < 25 ? 'critical' : 'high',
-            description: `${dept}, Low Attendance (${rate.toFixed(0)}%): only ${present ?? 0} of ${total ?? 0} staff have checked in today, below the ${ATTENDANCE_THRESHOLD}% threshold.`,
+            description: `${dept}: Low Attendance (${rate.toFixed(0)}%). Only ${present ?? 0} of ${total ?? 0} staff have checked in today, below the ${ATTENDANCE_THRESHOLD}% threshold.`,
             status: 'open',
           });
         }
@@ -119,7 +119,7 @@ async function checkFinanceAlerts(): Promise<PerformanceAlert[]> {
           alert_type: 'finance_low',
           department: 'FINANCE',
           severity: 'medium',
-          description: `Account Department, Low Revenue Today (GHS ${total.toLocaleString()}): below the expected minimum of GHS ${FINANCE_LOW_THRESHOLD.toLocaleString()}.`,
+          description: `Account Department: Low Revenue Today (GHS ${total.toLocaleString()}). Below the expected minimum of GHS ${FINANCE_LOW_THRESHOLD.toLocaleString()}.`,
           status: 'open',
         });
       }
@@ -128,7 +128,7 @@ async function checkFinanceAlerts(): Promise<PerformanceAlert[]> {
           alert_type: 'finance_high',
           department: 'FINANCE',
           severity: 'low',
-          description: `Account Department, High Revenue Day (GHS ${total.toLocaleString()}): exceeds the high-value threshold. Consider end-of-day reconciliation.`,
+          description: `Account Department: High Revenue Day (GHS ${total.toLocaleString()}). Exceeds the high-value threshold. Consider end-of-day reconciliation.`,
           status: 'open',
         });
       }

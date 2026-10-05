@@ -49,7 +49,7 @@ export default function PerformanceAlertsPanel() {
 
   const resolve = async (id?: string) => {
     if (!id) return;
-    await resolveAlert(id, profile?.fullName);
+    await resolveAlert(id, profile?.id);
     await load();
   };
 
