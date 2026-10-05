@@ -15,10 +15,10 @@
 import { createClient } from '@supabase/supabase-js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { randomBytes } from 'crypto';
-import { isRateLimited } from './_shared/rateLimit';
-import { isRegistrationExpired } from './_shared/registration';
-import { sendInvite, deliverySummary } from './_shared/mailer';
-import { getAppOrigin } from './_shared/settings';
+import { isRateLimited } from '../_shared/rateLimit';
+import { isRegistrationExpired } from '../_shared/registration';
+import { sendInvite, deliverySummary } from '../_shared/mailer';
+import { getAppOrigin } from '../_shared/settings';
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';

@@ -17,9 +17,9 @@
 // for approval. Nothing here tells them who approves it.
 import { createClient } from '@supabase/supabase-js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { findUserByEmail } from './_shared/findUserByEmail';
-import { isRateLimited } from './_shared/rateLimit';
-import { APPROVAL_WINDOW_HOURS } from './_shared/registration';
+import { findUserByEmail } from '../_shared/findUserByEmail';
+import { isRateLimited } from '../_shared/rateLimit';
+import { APPROVAL_WINDOW_HOURS } from '../_shared/registration';
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';

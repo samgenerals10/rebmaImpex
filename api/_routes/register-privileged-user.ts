@@ -14,9 +14,9 @@
 //     approval, so HR_EMAIL is no longer used anywhere.
 import { createClient } from '@supabase/supabase-js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { isRateLimited } from './_shared/rateLimit';
-import { findUserByEmail } from './_shared/findUserByEmail';
-import { getSetting } from './_shared/settings';
+import { isRateLimited } from '../_shared/rateLimit';
+import { findUserByEmail } from '../_shared/findUserByEmail';
+import { getSetting } from '../_shared/settings';
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';

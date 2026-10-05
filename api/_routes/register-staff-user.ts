@@ -5,8 +5,8 @@
 // for the hire, mirroring api/register-driver-user.ts.
 import { createClient } from '@supabase/supabase-js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { findUserByEmail } from './_shared/findUserByEmail';
-import { isRateLimited } from './_shared/rateLimit';
+import { findUserByEmail } from '../_shared/findUserByEmail';
+import { isRateLimited } from '../_shared/rateLimit';
 import { randomInt } from 'crypto';
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';

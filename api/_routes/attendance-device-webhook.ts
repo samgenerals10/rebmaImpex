@@ -56,7 +56,7 @@
 // both event types doesn't fail; only CHECK_IN is actually recorded.
 import { createClient } from '@supabase/supabase-js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { isRateLimited } from './_shared/rateLimit';
+import { isRateLimited } from '../_shared/rateLimit';
 import { timingSafeEqual } from 'crypto';
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';

@@ -17,8 +17,8 @@
 // is required and compared in constant time.
 import { createClient } from '@supabase/supabase-js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { isRateLimited } from './_shared/rateLimit';
-import { isConnectorAuthorized } from './_shared/connectorAuth';
+import { isRateLimited } from '../_shared/rateLimit';
+import { isConnectorAuthorized } from '../_shared/connectorAuth';
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';

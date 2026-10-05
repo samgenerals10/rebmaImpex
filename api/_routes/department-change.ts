@@ -14,9 +14,9 @@
 // Body: { action, toDepartment?, toRole?, reason?, requestId?, note?, password? }
 import { createClient } from '@supabase/supabase-js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { isRateLimited } from './_shared/rateLimit';
-import { getCaller, verifyPassword } from './_shared/reauth';
-import { notify, audit } from './_shared/termination';
+import { isRateLimited } from '../_shared/rateLimit';
+import { getCaller, verifyPassword } from '../_shared/reauth';
+import { notify, audit } from '../_shared/termination';
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';

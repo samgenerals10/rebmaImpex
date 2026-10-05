@@ -13,11 +13,11 @@
 import { createClient } from '@supabase/supabase-js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { randomBytes, createHash } from 'crypto';
-import { isRateLimited } from './_shared/rateLimit';
-import { requireCeo, verifyPassword } from './_shared/reauth';
-import { sendMail, esc, isMailConfigured } from './_shared/mailer';
-import { getAppOrigin } from './_shared/settings';
-import { findUserByEmail } from './_shared/findUserByEmail';
+import { isRateLimited } from '../_shared/rateLimit';
+import { requireCeo, verifyPassword } from '../_shared/reauth';
+import { sendMail, esc, isMailConfigured } from '../_shared/mailer';
+import { getAppOrigin } from '../_shared/settings';
+import { findUserByEmail } from '../_shared/findUserByEmail';
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';

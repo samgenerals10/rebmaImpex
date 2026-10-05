@@ -3,12 +3,12 @@
 // Uses the service_role key to update profiles and send magic link emails.
 import { createClient } from '@supabase/supabase-js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { isRateLimited } from './_shared/rateLimit';
-import { isRegistrationExpired, APPROVAL_WINDOW_HOURS } from './_shared/registration';
-import { sendApproved, deliverySummary } from './_shared/mailer';
-import { getAppOrigin } from './_shared/settings';
-import { verifyPassword } from './_shared/reauth';
-import { continueWork, describeMoved, notify } from './_shared/termination';
+import { isRateLimited } from '../_shared/rateLimit';
+import { isRegistrationExpired, APPROVAL_WINDOW_HOURS } from '../_shared/registration';
+import { sendApproved, deliverySummary } from '../_shared/mailer';
+import { getAppOrigin } from '../_shared/settings';
+import { verifyPassword } from '../_shared/reauth';
+import { continueWork, describeMoved, notify } from '../_shared/termination';
 import { randomInt } from 'crypto';
 
 // A temporary password made on the server with secure randomness. It is

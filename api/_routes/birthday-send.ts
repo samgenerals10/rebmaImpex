@@ -8,11 +8,11 @@
 //         message, channels: ('email'|'sms')[], year? }
 import { createClient } from '@supabase/supabase-js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { isRateLimited } from './_shared/rateLimit';
-import { getCaller } from './_shared/reauth';
-import { getSetting } from './_shared/settings';
-import { sendBirthdayWish, type BirthdayPerson } from './_shared/birthdays';
-import { deliverySummary } from './_shared/mailer';
+import { isRateLimited } from '../_shared/rateLimit';
+import { getCaller } from '../_shared/reauth';
+import { getSetting } from '../_shared/settings';
+import { sendBirthdayWish, type BirthdayPerson } from '../_shared/birthdays';
+import { deliverySummary } from '../_shared/mailer';
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';

@@ -23,9 +23,9 @@
 // The CEO's master switch (Control Center → Birthday Wishes) stops all of it.
 import { createClient } from '@supabase/supabase-js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { isRateLimited } from './_shared/rateLimit';
-import { getSetting } from './_shared/settings';
-import { loadBirthdayPeople, isBirthdayOn, pickDefaultTemplate, fillTemplate, sendBirthdayWish, type BirthdayTemplate } from './_shared/birthdays';
+import { isRateLimited } from '../_shared/rateLimit';
+import { getSetting } from '../_shared/settings';
+import { loadBirthdayPeople, isBirthdayOn, pickDefaultTemplate, fillTemplate, sendBirthdayWish, type BirthdayTemplate } from '../_shared/birthdays';
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
