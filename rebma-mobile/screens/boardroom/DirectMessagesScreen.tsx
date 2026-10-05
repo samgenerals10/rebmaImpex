@@ -17,6 +17,8 @@ import Screen from '../../components/ui/Screen';
 import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
 import EmptyState from '../../components/ui/EmptyState';
+import { setActiveInterval } from '../../lib/activeInterval';
+import { useIsFocused } from '@react-navigation/native';
 
 const DEPARTMENTS = ['CEO', 'MANAGEMENT', 'FINANCE', 'OPERATIONS', 'MARKETING', 'HR', 'PRODUCTION', 'RECEPTION', 'DISPATCH', 'LOGISTICS'];
 
@@ -37,17 +39,21 @@ export default function DirectMessagesScreen() {
       .from('chat_messages')
       .select('id, sender, content, time, receiver, created_at')
       .not('receiver', 'is', null)
+      // Messenger conversations share this table; Boardroom messages have no channel.
+      .is('channel_id', null)
       .order('created_at', { ascending: true })
       .limit(300);
     setMessages((data as any) || []);
     setLoading(false);
   }, []);
 
+  // Polls only while this screen is in front and the app is open.
+  const isFocused = useIsFocused();
   useEffect(() => {
+    if (!isFocused) return;
     load();
-    const iv = setInterval(load, 8000);
-    return () => clearInterval(iv);
-  }, [load]);
+    return setActiveInterval(load, 8000);
+  }, [load, isFocused]);
 
   const thread = messages.filter(
     (m) =>

@@ -61,6 +61,32 @@ import { useIdleTimeout } from './hooks/useIdleTimeout';
 import TwoFactorSetup from './components/TwoFactorSetup';
 import { playNotificationSound, getSavedSound, getSavedVolume, stopAlertSound, setAlertNotifId } from './utils/notificationSound';
 import { showDeviceAlert } from './utils/deviceAlerts';
+import { setVisibleInterval } from './utils/visibleInterval';
+
+// The shared lists App keeps for its screens. See loadSection() below.
+type DataSection = 'goods' | 'orders' | 'customers' | 'audit' | 'prices' | 'requests' | 'payments'
+  | 'visitors' | 'attendance' | 'pending' | 'staff' | 'chat' | 'unpriced';
+const ALL_DATA_SECTIONS: DataSection[] = ['goods', 'orders', 'customers', 'audit', 'prices', 'requests', 'payments', 'visitors', 'attendance', 'pending', 'staff', 'chat', 'unpriced'];
+// Which lists each department's screens read, so the background timer and
+// live changes only reload those.
+const SECTIONS_BY_DEPARTMENT: Record<string, DataSection[]> = {
+  CEO: ['staff', 'unpriced'],
+  MANAGEMENT: ['goods', 'orders', 'customers', 'audit', 'prices', 'unpriced'],
+  HR: ['staff', 'pending', 'attendance'],
+  MARKETING: ['orders', 'customers'],
+  ADMIN_WAREHOUSE: ['orders', 'goods'],
+  FINANCE: ['orders', 'payments', 'requests'],
+  PRODUCTION: ['requests'],
+  RECEPTION: ['visitors'],
+  BOARDROOM: ['chat'],
+  RISK: [],
+  SETTINGS: [],
+};
+// What the header search (and the alternate layouts) read across departments.
+const SEARCH_SECTIONS: DataSection[] = ['orders', 'goods', 'payments', 'staff', 'customers'];
+function sectionsForDepartment(dept: string): DataSection[] {
+  return SECTIONS_BY_DEPARTMENT[(dept || '').toUpperCase()] ?? ['orders'];
+}
 import { uploadFile } from './utils/uploadFile';
 import { usePendingBadges } from './hooks/usePendingBadges';
 
@@ -845,292 +871,358 @@ export default function App() {
     setAuditLog(prev => [entry, ...prev]);
   };
 
-  const refreshAllData = async () => {
-    if (!getToken()) return;
+  const currentUserRef = useRef(currentUser);
+  currentUserRef.current = currentUser;
+  const activeDepartmentRef = useRef(activeDepartment);
+  activeDepartmentRef.current = activeDepartment;
 
-    // Fetch incoming goods
-    try {
-      const goods = await operations.getIncomingGoods();
-      setIncomingGoodsList(goods.map((item: any) => ({
-        id: item.id,
-        productName: item.productName || 'N/A',
-        productImage: item.productImage || undefined,
-        goodsCode: item.goodsCode || 'N/A',
-        destination: item.destination || 'N/A',
-        country: item.country,
-        company: item.company,
-        quantity: item.quantity,
-        weight: item.weight,
-        discrepancies: item.discrepancies || 'None',
-        status: item.status,
-        unitPrice: item.unitPrice || undefined,
-        rejectionReason: item.rejectionReason || undefined,
-        createdAt: new Date(item.createdAt).toLocaleString()
-      })));
-    } catch (e) {
-      console.log('Skipping incoming goods fetch (unauthorized/error)');
-    }
-
-    // Fetch orders
-    try {
-      const orders = await marketing.getOrders();
-      setOrdersList(orders.map((o: any) => ({
-        id: o.id,
-        ticketNumber: o.ticketNumber || undefined,
-        clientName: o.clientName,
-        productName: o.productName || 'N/A',
-        destination: o.destination || 'N/A',
-        paymentMode: o.paymentMode,
-        totalAmount: o.totalAmount,
-        ghanaCard: o.ghanaCard || undefined,
-        status: o.status,
-        createdAt: o.createdAt || new Date().toISOString(),
-        customerId: o.customerId || undefined,
-        amountPaid: o.amountPaid ?? 0,
-        rejectionReason: o.rejectionReason || undefined,
-        metadata: o.metadata || null
-      })));
-    } catch (e) {
-      console.log('Skipping orders fetch (unauthorized/error)');
-    }
-
-    // Fetch customers
-    try {
-      const customers = await marketing.getCustomers();
-      setCustomersList(customers.map((c: any) => ({
-        id: c.id,
-        name: c.name,
-        phone: c.phone,
-        location: c.location,
-        companyName: c.companyName,
-        ghanaCard: c.ghanaCard || undefined,
-        email: c.email || undefined,
-        photo: c.photo || undefined,
-        registeredAt: new Date(c.registeredAt).toLocaleString(),
-        creditHistory: c.creditHistory ? (typeof c.creditHistory === 'string' ? JSON.parse(c.creditHistory) : c.creditHistory) : undefined,
-        // Was missing here — CustomersView.tsx re-syncs its local state from this
-        // prop on every refresh, so omitting these silently wiped the special
-        // flag/discount from the UI (and the ring/badge) a few seconds after
-        // every periodic customer refetch, even though the DB value was correct.
-        isSpecialCustomer: c.isSpecialCustomer ?? false,
-        discountPercent: c.discountPercent ?? 0,
-        // Same "must be here or it silently vanishes" rule applies to every
-        // field below — this remap is one of three independent Customer
-        // mapping choke points (see apiClient.ts's mapCustomerToFrontend and
-        // CustomersView.tsx's own inline mapper for the other two).
-        houseAddress: c.houseAddress || undefined,
-        companyAddress: c.companyAddress || undefined,
-        gpsLat: c.gpsLat,
-        gpsLng: c.gpsLng,
-        ghanaCard2: c.ghanaCard2 || undefined,
-        partnerName: c.partnerName || undefined,
-        businessCertificateUrl: c.businessCertificateUrl || undefined,
-        notes: c.notes || undefined,
-        status: c.status || 'PENDING',
-        verifiedBy: c.verifiedBy || undefined,
-        verifiedAt: c.verifiedAt || undefined,
-        rejectionReason: c.rejectionReason || undefined,
-        // Phase 6 — same "must be here or it silently vanishes" choke point.
-        creditLimit: c.creditLimit ?? null,
-        creditStatus: c.creditStatus || 'ACTIVE',
-        creditTermsSetBy: c.creditTermsSetBy || undefined,
-        creditTermsSetAt: c.creditTermsSetAt || undefined,
-      })));
-    } catch (e) {
-      console.log('Skipping customers fetch (unauthorized/error)');
-    }
-
-    // Fetch audit entries
-    try {
-      const logs = await management.getAuditLog();
-      setAuditLog(logs.map((log: any) => ({
-        id: log.id,
-        action: log.action,
-        department: log.department,
-        performedBy: log.performedBy,
-        details: log.details,
-        timestamp: new Date(log.timestamp).toLocaleString(),
-        referenceId: log.referenceId || undefined,
-      })));
-    } catch (e) {
-      console.log('Skipping audit log fetch (unauthorized/error)');
-    }
-
-    // Fetch goods prices
-    try {
-      const prices = await management.getPrices();
-      setGoodsPrices(prices.map((p: any) => ({
-        id: p.id,
-        productName: p.productName,
-        category: p.category,
-        unitPrice: p.unitPrice,
-        currency: p.currency,
-        setBy: p.setBy,
-        setAt: new Date(p.setAt).toLocaleString()
-      })));
-    } catch (e) {
-      console.log('Skipping goods prices fetch (unauthorized/error)');
-    }
-
-    // Fetch production requests
-    try {
-      const reqs = await production.getRequests();
-      setProductionRequests(reqs.map((r: any) => ({
-        id: r.id,
-        items: typeof r.items === 'string' ? JSON.parse(r.items) : r.items,
-        status: r.status,
-        producedGoods: r.producedGoods || undefined,
-        createdAt: new Date(r.createdAt).toLocaleString()
-      })));
-    } catch (e) {
-      console.log('Skipping production requests fetch (unauthorized/error)');
-    }
-
-    // Fetch payments — only for departments the narrowed finance_payments_select
-    // RLS actually grants (finance/management/risk/admin); everyone else would
-    // just get an empty result, so skip the round-trip entirely.
-    try {
-      const canSeePayments = currentUser?.isAdmin || ['FINANCE', 'MANAGEMENT', 'RISK'].includes((currentUser?.department || '').toUpperCase());
-      const payments = canSeePayments ? await finance.getPayments() : [];
-      setPaymentsList(payments.map((p: any) => ({
-        id: p.id,
-        clientName: p.clientName,
-        amount: p.amount,
-        paymentMode: p.paymentMode,
-        paymentType: p.paymentType,
-        orderId: p.orderId || undefined,
-        createdAt: new Date(p.createdAt).toLocaleString()
-      })));
-    } catch (e) {
-      console.log('Skipping payments fetch (unauthorized/error)');
-    }
-
-    // Fetch visitors
-    try {
-      const visitors = await reception.getVisitors();
-      setVisitorsList(visitors.map((v: any) => ({
-        id: v.id,
-        fullName: v.fullName,
-        purpose: v.purpose,
-        hostName: v.hostName,
-        checkInTime: new Date(v.checkInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        checkOutTime: v.checkOutTime ? new Date(v.checkOutTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : undefined
-      })));
-    } catch (e) {
-      console.log('Skipping visitors fetch (unauthorized/error)');
-    }
-
-    // Fetch attendance
-    try {
-      const attendance = await hr.getAttendance();
-      setAttendanceList(attendance.map((a: any) => ({
-        id: a.id,
-        fullName: a.user?.fullName || 'Unknown',
-        checkInTime: new Date(a.checkInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        status: a.status as 'PRESENT' | 'LATE',
-        date: new Date(a.date).toLocaleDateString()
-      })));
-    } catch (e) {
-      console.log('Skipping attendance fetch (unauthorized/error)');
-    }
-
-    // Fetch pending registrations (HR)
-    try {
-      const pendings = await hr.getPendingUsers();
-      setPendingRegistrations(pendings.map((p: any) => ({
-        id: p.id,
-        fullName: p.fullName,
-        email: p.email,
-        department: p.department,
-        ghanaCard: p.ghanaCardId || 'N/A',
-        submittedAt: new Date(p.registeredAt || p.createdAt).toLocaleString(),
-        status: 'PENDING',
-        registeredAt: p.registeredAt || null,
-        expired: isRegistrationExpired(p.rawStatus, p.registeredAt),
-      })));
-    } catch (e) {
-      console.log('Skipping pending users fetch (unauthorized/error)');
-    }
-
-    // Fetch active users (staff list in HR)
-    try {
-      const activeUsers = await hr.getAllUsers();
-      // Terminated people disappear from staff lists (their work stays).
-      setStaffList(activeUsers.filter((u: any) => String(u.status || '').toUpperCase() !== 'TERMINATED').map((u: any) => ({
-        id: u.id,
-        fullName: u.fullName,
-        email: u.email,
-        department: u.department,
-        role: u.isAdmin ? 'CEO' : `${u.department} Staff`,
-        ghanaCard: u.ghanaCardId || 'GHA-XXXXXXX-X',
-        phone: u.phone || 'N/A',
-        photo: u.photo || undefined,
-        joinedAt: new Date(u.createdAt).toLocaleDateString(),
-        status: 'ACTIVE',
-        // Same "must be here or it silently vanishes" rule as the customer
-        // remap above — this is the staff equivalent of that choke point.
-        employeeNumber: u.employeeNumber || undefined,
-        resumeUrl: u.resumeUrl || undefined,
-        address: u.address || undefined,
-        hrRemarks: u.hrRemarks || undefined,
-        guarantorName: u.guarantorName || undefined,
-        guarantorPhone: u.guarantorPhone || undefined,
-        guarantorRelationship: u.guarantorRelationship || undefined,
-        guarantorIdNumber: u.guarantorIdNumber || undefined,
-        guarantorAddress: u.guarantorAddress || undefined,
-        staffCategory: u.staffCategory || undefined,
-        performanceTaskScore: u.performanceTaskScore,
-        performanceTeamScore: u.performanceTeamScore,
-        performanceQualityScore: u.performanceQualityScore,
-        performanceNotes: u.performanceNotes || undefined,
-        performanceReviewedBy: u.performanceReviewedBy || undefined,
-        performanceReviewedAt: u.performanceReviewedAt || undefined,
-      })));
-    } catch (e) {
-      console.log('Skipping staff list fetch (unauthorized/error)');
-    }
-
-    // Fetch chat messages
-    try {
-      const { data: messages, error } = await supabase
-        .from('chat_messages')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(500);
-      if (error) throw error;
-      if (messages && messages.length > 0) {
-        setChatMessagesState(messages.reverse().map((m: any) => ({
-          id: m.id,
-          sender: m.sender,
-          content: m.content,
-          time: m.time,
-          receiver: m.receiver || undefined
-        })));
+  // ── Shared data lists ──
+  // Each list is a "section" that can be reloaded on its own. Live changes
+  // and the background timer reload only the sections the current screen
+  // uses, and a burst of changes is merged into one reload, instead of
+  // every change reloading every list for every person.
+  const loadSection = async (section: DataSection) => {
+    const currentUser = currentUserRef.current;
+    switch (section) {
+      case 'goods': {
+        // Fetch incoming goods
+        try {
+          const goods = await operations.getIncomingGoods();
+          setIncomingGoodsList(goods.map((item: any) => ({
+            id: item.id,
+            productName: item.productName || 'N/A',
+            productImage: item.productImage || undefined,
+            goodsCode: item.goodsCode || 'N/A',
+            destination: item.destination || 'N/A',
+            country: item.country,
+            company: item.company,
+            quantity: item.quantity,
+            weight: item.weight,
+            discrepancies: item.discrepancies || 'None',
+            status: item.status,
+            unitPrice: item.unitPrice || undefined,
+            rejectionReason: item.rejectionReason || undefined,
+            createdAt: new Date(item.createdAt).toLocaleString()
+          })));
+        } catch (e) {
+          console.log('Skipping incoming goods fetch (unauthorized/error)');
+        }
+        return;
       }
-    } catch (e) {
-      console.log('Skipping chat messages fetch:', e);
-    }
-
-    // Fetch unpriced count
-    try {
-      const [cargoRes, pricesRes] = await Promise.all([
-        supabase.from('cargo_intake').select('product_name').eq('status', 'APPROVED'),
-        supabase.from('goods_prices_catalog').select('product_name')
-      ]);
-      if (cargoRes.data && pricesRes.data) {
-        const pricedNames = new Set(pricesRes.data.map((p: any) => String(p.product_name).toLowerCase().trim()));
-        const uniqueUnpricedCargo = new Set<string>();
-        cargoRes.data.forEach((c: any) => {
-          const name = String(c.product_name).toLowerCase().trim();
-          if (!pricedNames.has(name)) {
-            uniqueUnpricedCargo.add(name);
+      case 'orders': {
+        // Fetch orders
+        try {
+          const orders = await marketing.getOrders();
+          setOrdersList(orders.map((o: any) => ({
+            id: o.id,
+            ticketNumber: o.ticketNumber || undefined,
+            clientName: o.clientName,
+            productName: o.productName || 'N/A',
+            destination: o.destination || 'N/A',
+            paymentMode: o.paymentMode,
+            totalAmount: o.totalAmount,
+            ghanaCard: o.ghanaCard || undefined,
+            status: o.status,
+            createdAt: o.createdAt || new Date().toISOString(),
+            customerId: o.customerId || undefined,
+            amountPaid: o.amountPaid ?? 0,
+            rejectionReason: o.rejectionReason || undefined,
+            metadata: o.metadata || null
+          })));
+        } catch (e) {
+          console.log('Skipping orders fetch (unauthorized/error)');
+        }
+        return;
+      }
+      case 'customers': {
+        // Fetch customers
+        try {
+          const customers = await marketing.getCustomers();
+          setCustomersList(customers.map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            phone: c.phone,
+            location: c.location,
+            companyName: c.companyName,
+            ghanaCard: c.ghanaCard || undefined,
+            email: c.email || undefined,
+            photo: c.photo || undefined,
+            registeredAt: new Date(c.registeredAt).toLocaleString(),
+            creditHistory: c.creditHistory ? (typeof c.creditHistory === 'string' ? JSON.parse(c.creditHistory) : c.creditHistory) : undefined,
+            // Was missing here — CustomersView.tsx re-syncs its local state from this
+            // prop on every refresh, so omitting these silently wiped the special
+            // flag/discount from the UI (and the ring/badge) a few seconds after
+            // every periodic customer refetch, even though the DB value was correct.
+            isSpecialCustomer: c.isSpecialCustomer ?? false,
+            discountPercent: c.discountPercent ?? 0,
+            // Same "must be here or it silently vanishes" rule applies to every
+            // field below — this remap is one of three independent Customer
+            // mapping choke points (see apiClient.ts's mapCustomerToFrontend and
+            // CustomersView.tsx's own inline mapper for the other two).
+            houseAddress: c.houseAddress || undefined,
+            companyAddress: c.companyAddress || undefined,
+            gpsLat: c.gpsLat,
+            gpsLng: c.gpsLng,
+            ghanaCard2: c.ghanaCard2 || undefined,
+            partnerName: c.partnerName || undefined,
+            businessCertificateUrl: c.businessCertificateUrl || undefined,
+            notes: c.notes || undefined,
+            status: c.status || 'PENDING',
+            verifiedBy: c.verifiedBy || undefined,
+            verifiedAt: c.verifiedAt || undefined,
+            rejectionReason: c.rejectionReason || undefined,
+            // Phase 6 — same "must be here or it silently vanishes" choke point.
+            creditLimit: c.creditLimit ?? null,
+            creditStatus: c.creditStatus || 'ACTIVE',
+            creditTermsSetBy: c.creditTermsSetBy || undefined,
+            creditTermsSetAt: c.creditTermsSetAt || undefined,
+          })));
+        } catch (e) {
+          console.log('Skipping customers fetch (unauthorized/error)');
+        }
+        return;
+      }
+      case 'audit': {
+        // Fetch audit entries
+        try {
+          const logs = await management.getAuditLog();
+          setAuditLog(logs.map((log: any) => ({
+            id: log.id,
+            action: log.action,
+            department: log.department,
+            performedBy: log.performedBy,
+            details: log.details,
+            timestamp: new Date(log.timestamp).toLocaleString(),
+            referenceId: log.referenceId || undefined,
+          })));
+        } catch (e) {
+          console.log('Skipping audit log fetch (unauthorized/error)');
+        }
+        return;
+      }
+      case 'prices': {
+        // Fetch goods prices
+        try {
+          const prices = await management.getPrices();
+          setGoodsPrices(prices.map((p: any) => ({
+            id: p.id,
+            productName: p.productName,
+            category: p.category,
+            unitPrice: p.unitPrice,
+            currency: p.currency,
+            setBy: p.setBy,
+            setAt: new Date(p.setAt).toLocaleString()
+          })));
+        } catch (e) {
+          console.log('Skipping goods prices fetch (unauthorized/error)');
+        }
+        return;
+      }
+      case 'requests': {
+        // Fetch production requests
+        try {
+          const reqs = await production.getRequests();
+          setProductionRequests(reqs.map((r: any) => ({
+            id: r.id,
+            items: typeof r.items === 'string' ? JSON.parse(r.items) : r.items,
+            status: r.status,
+            producedGoods: r.producedGoods || undefined,
+            createdAt: new Date(r.createdAt).toLocaleString()
+          })));
+        } catch (e) {
+          console.log('Skipping production requests fetch (unauthorized/error)');
+        }
+        return;
+      }
+      case 'payments': {
+        // Fetch payments — only for departments the narrowed finance_payments_select
+        // RLS actually grants (finance/management/risk/admin); everyone else would
+        // just get an empty result, so skip the round-trip entirely.
+        try {
+          const canSeePayments = currentUser?.isAdmin || ['FINANCE', 'MANAGEMENT', 'RISK'].includes((currentUser?.department || '').toUpperCase());
+          const payments = canSeePayments ? await finance.getPayments() : [];
+          setPaymentsList(payments.map((p: any) => ({
+            id: p.id,
+            clientName: p.clientName,
+            amount: p.amount,
+            paymentMode: p.paymentMode,
+            paymentType: p.paymentType,
+            orderId: p.orderId || undefined,
+            createdAt: new Date(p.createdAt).toLocaleString()
+          })));
+        } catch (e) {
+          console.log('Skipping payments fetch (unauthorized/error)');
+        }
+        return;
+      }
+      case 'visitors': {
+        // Fetch visitors
+        try {
+          const visitors = await reception.getVisitors();
+          setVisitorsList(visitors.map((v: any) => ({
+            id: v.id,
+            fullName: v.fullName,
+            purpose: v.purpose,
+            hostName: v.hostName,
+            checkInTime: new Date(v.checkInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            checkOutTime: v.checkOutTime ? new Date(v.checkOutTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : undefined
+          })));
+        } catch (e) {
+          console.log('Skipping visitors fetch (unauthorized/error)');
+        }
+        return;
+      }
+      case 'attendance': {
+        // Fetch attendance
+        try {
+          const attendance = await hr.getAttendance();
+          setAttendanceList(attendance.map((a: any) => ({
+            id: a.id,
+            fullName: a.user?.fullName || 'Unknown',
+            checkInTime: new Date(a.checkInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            status: a.status as 'PRESENT' | 'LATE',
+            date: new Date(a.date).toLocaleDateString()
+          })));
+        } catch (e) {
+          console.log('Skipping attendance fetch (unauthorized/error)');
+        }
+        return;
+      }
+      case 'pending': {
+        // Fetch pending registrations (HR)
+        try {
+          const pendings = await hr.getPendingUsers();
+          setPendingRegistrations(pendings.map((p: any) => ({
+            id: p.id,
+            fullName: p.fullName,
+            email: p.email,
+            department: p.department,
+            ghanaCard: p.ghanaCardId || 'N/A',
+            submittedAt: new Date(p.registeredAt || p.createdAt).toLocaleString(),
+            status: 'PENDING',
+            registeredAt: p.registeredAt || null,
+            expired: isRegistrationExpired(p.rawStatus, p.registeredAt),
+          })));
+        } catch (e) {
+          console.log('Skipping pending users fetch (unauthorized/error)');
+        }
+        return;
+      }
+      case 'staff': {
+        // Fetch active users (staff list in HR)
+        try {
+          const activeUsers = await hr.getAllUsers();
+          // Terminated people disappear from staff lists (their work stays).
+          setStaffList(activeUsers.filter((u: any) => String(u.status || '').toUpperCase() !== 'TERMINATED').map((u: any) => ({
+            id: u.id,
+            fullName: u.fullName,
+            email: u.email,
+            department: u.department,
+            role: u.isAdmin ? 'CEO' : `${u.department} Staff`,
+            ghanaCard: u.ghanaCardId || 'GHA-XXXXXXX-X',
+            phone: u.phone || 'N/A',
+            photo: u.photo || undefined,
+            joinedAt: new Date(u.createdAt).toLocaleDateString(),
+            status: 'ACTIVE',
+            // Same "must be here or it silently vanishes" rule as the customer
+            // remap above — this is the staff equivalent of that choke point.
+            employeeNumber: u.employeeNumber || undefined,
+            resumeUrl: u.resumeUrl || undefined,
+            address: u.address || undefined,
+            hrRemarks: u.hrRemarks || undefined,
+            guarantorName: u.guarantorName || undefined,
+            guarantorPhone: u.guarantorPhone || undefined,
+            guarantorRelationship: u.guarantorRelationship || undefined,
+            guarantorIdNumber: u.guarantorIdNumber || undefined,
+            guarantorAddress: u.guarantorAddress || undefined,
+            staffCategory: u.staffCategory || undefined,
+            performanceTaskScore: u.performanceTaskScore,
+            performanceTeamScore: u.performanceTeamScore,
+            performanceQualityScore: u.performanceQualityScore,
+            performanceNotes: u.performanceNotes || undefined,
+            performanceReviewedBy: u.performanceReviewedBy || undefined,
+            performanceReviewedAt: u.performanceReviewedAt || undefined,
+          })));
+        } catch (e) {
+          console.log('Skipping staff list fetch (unauthorized/error)');
+        }
+        return;
+      }
+      case 'chat': {
+        // Fetch chat messages
+        try {
+          const { data: messages, error } = await supabase
+            .from('chat_messages')
+            .select('*')
+            .is('channel_id', null)
+            .order('created_at', { ascending: false })
+            .limit(500);
+          if (error) throw error;
+          if (messages && messages.length > 0) {
+            setChatMessagesState(messages.reverse().map((m: any) => ({
+              id: m.id,
+              sender: m.sender,
+              content: m.content,
+              time: m.time,
+              receiver: m.receiver || undefined
+            })));
           }
-        });
-        setUnpricedCount(uniqueUnpricedCargo.size);
+        } catch (e) {
+          console.log('Skipping chat messages fetch:', e);
+        }
+        return;
       }
-    } catch (e) {
-      console.log('Skipping unpriced count fetch:', e);
+      case 'unpriced': {
+        // Fetch unpriced count
+        try {
+          const [cargoRes, pricesRes] = await Promise.all([
+            supabase.from('cargo_intake').select('product_name').eq('status', 'APPROVED'),
+            supabase.from('goods_prices_catalog').select('product_name')
+          ]);
+          if (cargoRes.data && pricesRes.data) {
+            const pricedNames = new Set(pricesRes.data.map((p: any) => String(p.product_name).toLowerCase().trim()));
+            const uniqueUnpricedCargo = new Set<string>();
+            cargoRes.data.forEach((c: any) => {
+              const name = String(c.product_name).toLowerCase().trim();
+              if (!pricedNames.has(name)) {
+                uniqueUnpricedCargo.add(name);
+              }
+            });
+            setUnpricedCount(uniqueUnpricedCargo.size);
+          }
+        } catch (e) {
+          console.log('Skipping unpriced count fetch:', e);
+        }
+        return;
+      }
     }
+  };
+
+  const refreshSections = async (sections: DataSection[]) => {
+    if (!getToken() || sections.length === 0) return;
+    await Promise.all(sections.map(loadSection));
+  };
+
+  // Full reload, used once at sign-in and after a person's own actions.
+  const refreshAllData = () => refreshSections(ALL_DATA_SECTIONS);
+
+  const pendingSectionsRef = useRef<Set<DataSection>>(new Set());
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scheduleRefresh = (sections: DataSection[]) => {
+    if (sections.length === 0) return;
+    sections.forEach(sec => pendingSectionsRef.current.add(sec));
+    if (refreshTimerRef.current) return;
+    refreshTimerRef.current = setTimeout(() => {
+      refreshTimerRef.current = null;
+      const list = Array.from(pendingSectionsRef.current);
+      pendingSectionsRef.current.clear();
+      refreshSections(list);
+    }, 1500);
+  };
+  // For live changes: only reload what the screen in front actually shows.
+  const scheduleRelevantRefresh = (sections: DataSection[]) => {
+    const relevant = sectionsForDepartment(activeDepartmentRef.current);
+    scheduleRefresh(sections.filter(sec => relevant.includes(sec)));
   };
 
   // Auth initialize hook
@@ -1364,14 +1456,34 @@ export default function App() {
     };
   }, []);
 
-  // Sync data & auto-poll
+  // Sync data & auto-poll. One full load at sign-in, then every 30 seconds
+  // only the lists the current screen uses, and the search lists every 3
+  // minutes. Both pause while the tab is hidden.
   useEffect(() => {
     if (isAuthenticated) {
       refreshAllData();
-      const interval = setInterval(refreshAllData, 30000);
-      return () => clearInterval(interval);
+      const stopScreen = setVisibleInterval(() => scheduleRefresh(sectionsForDepartment(activeDepartmentRef.current)), 30000);
+      const stopSearch = setVisibleInterval(() => scheduleRefresh(SEARCH_SECTIONS), 180000);
+      return () => { stopScreen(); stopSearch(); };
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
+
+  // Starting a search brings the searched lists up to date.
+  const searchActive = searchQuery.trim().length > 0;
+  useEffect(() => {
+    if (isAuthenticated && searchActive) scheduleRefresh(SEARCH_SECTIONS);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchActive, isAuthenticated]);
+
+  // Opening another department brings its lists up to date straight away.
+  const firstDeptRunRef = useRef(true);
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if (firstDeptRunRef.current) { firstDeptRunRef.current = false; return; }
+    scheduleRefresh(sectionsForDepartment(activeDepartment));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeDepartment, isAuthenticated]);
 
   // Supabase Realtime subscriptions hook
   useEffect(() => {
@@ -1392,13 +1504,13 @@ export default function App() {
                 if (currentUser.department === 'HR' || currentUser.isAdmin) {
                   addNotification(`New pending user: ${newRecord.full_name || 'Unknown'}`, { dept: 'HR', tab: 'Registrations' });
                   addTabAlert('HR');
-                  refreshAllData();
+                  scheduleRelevantRefresh(['pending', 'staff']);
                 }
               }
             } else if (payload.eventType === 'UPDATE') {
               if (oldRecord && oldRecord.status !== 'ACTIVE' && newRecord.status === 'ACTIVE') {
                 addNotification(`User ${newRecord.full_name || 'Unknown'} approved.`);
-                refreshAllData();
+                scheduleRelevantRefresh(['pending', 'staff']);
               }
             }
           }
@@ -1413,20 +1525,20 @@ export default function App() {
               if (currentUser.department === 'MANAGEMENT' || currentUser.isAdmin) {
                 addNotification(`New cargo intake logged for ${newRecord.company || 'N/A'}`, { dept: 'MANAGEMENT', tab: 'CargoApproval' });
                 addTabAlert('MANAGEMENT');
-                refreshAllData();
+                scheduleRelevantRefresh(['goods', 'unpriced']);
               }
             } else if (payload.eventType === 'UPDATE') {
               if (oldRecord && oldRecord.status !== 'APPROVED' && newRecord.status === 'APPROVED') {
                 if (currentUser.department === 'ADMIN_WAREHOUSE' || currentUser.isAdmin) {
                   addNotification(`Intake approved: ${newRecord.id}`, { dept: 'ADMIN_WAREHOUSE', tab: 'PortIngestion' });
                   addTabAlert('ADMIN_WAREHOUSE');
-                  refreshAllData();
+                  scheduleRelevantRefresh(['goods', 'unpriced']);
                 }
               } else if (oldRecord && oldRecord.status !== 'REJECTED' && newRecord.status === 'REJECTED') {
                 if (currentUser.department === 'ADMIN_WAREHOUSE' || currentUser.isAdmin) {
                   addNotification(`Intake rejected: ${newRecord.id}`, { dept: 'ADMIN_WAREHOUSE', tab: 'PortIngestion' });
                   addTabAlert('ADMIN_WAREHOUSE');
-                  refreshAllData();
+                  scheduleRelevantRefresh(['goods', 'unpriced']);
                 }
               }
             }
@@ -1440,7 +1552,7 @@ export default function App() {
             if (currentUser.department === 'ADMIN_WAREHOUSE' || currentUser.isAdmin) {
               addNotification(`New delivery assigned: Order ${newRecord.order_id || 'N/A'}`, { dept: 'RISK', tab: 'Deliveries' });
               addTabAlert('ADMIN_WAREHOUSE');
-              refreshAllData();
+              scheduleRelevantRefresh(['orders']);
             }
           }
         )
@@ -1455,7 +1567,7 @@ export default function App() {
               addTabAlert('MARKETING');
               addTabAlert('MANAGEMENT');
             }
-            refreshAllData();
+            scheduleRelevantRefresh(['prices', 'unpriced']);
           }
         )
         .on(
@@ -1477,21 +1589,21 @@ export default function App() {
                 addTabAlert('ADMIN_WAREHOUSE');
               }
             }
-            refreshAllData();
+            scheduleRelevantRefresh(['orders']);
           }
         )
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'stock' },
           () => {
-            refreshAllData();
+            scheduleRelevantRefresh(['goods']);
           }
         )
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'stock_ledger' },
           () => {
-            refreshAllData();
+            scheduleRelevantRefresh(['goods']);
           }
         )
         .on(
@@ -1503,21 +1615,14 @@ export default function App() {
               addNotification(`New payment recorded: ${newRecord.reference || newRecord.id || ''}`, { dept: 'FINANCE', tab: 'Receipts' });
               addTabAlert('FINANCE');
             }
-            refreshAllData();
-          }
-        )
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'orders' },
-          () => {
-            refreshAllData();
+            scheduleRelevantRefresh(['payments']);
           }
         )
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'general_purchases' },
           () => {
-            refreshAllData();
+            scheduleRelevantRefresh(['goods']);
           }
         )
         .on(
@@ -1525,6 +1630,9 @@ export default function App() {
           { event: 'INSERT', schema: 'public', table: 'chat_messages' },
           (payload) => {
             const newMsg = payload.new as any;
+            // Messenger conversations live in the same table; this feed is
+            // only the Boardroom's own messages, which have no channel.
+            if (newMsg.channel_id) return;
             const formattedMsg: ChatMessage = {
               id: newMsg.id,
               sender: newMsg.sender,
@@ -1609,8 +1717,7 @@ export default function App() {
     if (!currentUser?.id) { setChatUnreadCount(0); return; }
     const refresh = () => messenger.getUnreadCounts().then((m) => setChatUnreadCount(Object.values(m).reduce((a, b) => a + b, 0)));
     refresh();
-    const iv = setInterval(refresh, 30000);
-    return () => clearInterval(iv);
+    return setVisibleInterval(refresh, 30000);
   }, [currentUser?.id]);
   const [chatMessages, setChatMessagesState] = useState<ChatMessage[]>([
     { id: '1', sender: 'System Terminal', content: 'Supabase Realtime initialized. Boardroom chat active.', time: '09:00 AM' }

@@ -361,7 +361,10 @@ export const messenger = {
   },
 
   markRead: async (messageId: string, userId: string) => {
-    await supabase.from('chat_message_reads').upsert({ message_id: messageId, user_id: userId }, { onConflict: 'message_id,user_id' });
+    // ignoreDuplicates: an already-read message is left alone. Without it
+    // every re-read rewrote the row, which fired a change event to every
+    // open chat in the company and made them all reload.
+    await supabase.from('chat_message_reads').upsert({ message_id: messageId, user_id: userId }, { onConflict: 'message_id,user_id', ignoreDuplicates: true });
   },
 
   // chat-attachments is a PRIVATE bucket on web (createSignedUrl, not

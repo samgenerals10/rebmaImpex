@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { fetchPendingForDept } from '../components/global/PendingApprovalsAlert';
+import { setVisibleInterval } from '../utils/visibleInterval';
 
 const POLL_MS = 30000;
 
@@ -26,8 +27,8 @@ export function usePendingBadges(activeDepartment: string, visibleDepartments: s
     };
 
     load();
-    const iv = setInterval(load, POLL_MS);
-    return () => { active = false; clearInterval(iv); };
+    const stop = setVisibleInterval(load, POLL_MS);
+    return () => { active = false; stop(); };
   }, [activeDepartment]);
 
   useEffect(() => {
@@ -51,8 +52,8 @@ export function usePendingBadges(activeDepartment: string, visibleDepartments: s
     };
 
     load();
-    const iv = setInterval(load, POLL_MS);
-    return () => { active = false; clearInterval(iv); };
+    const stop = setVisibleInterval(load, POLL_MS);
+    return () => { active = false; stop(); };
   }, [visibleDepartments.join(',')]);
 
   return { navBadges, deptBadges };

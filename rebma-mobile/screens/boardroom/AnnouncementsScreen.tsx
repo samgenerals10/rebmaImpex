@@ -18,6 +18,8 @@ import Screen from '../../components/ui/Screen';
 import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
 import EmptyState from '../../components/ui/EmptyState';
+import { setActiveInterval } from '../../lib/activeInterval';
+import { useIsFocused } from '@react-navigation/native';
 
 interface Msg { id: string; sender: string; content: string; time: string; created_at: string }
 
@@ -30,16 +32,18 @@ export default function AnnouncementsScreen() {
   const [sending, setSending] = useState(false);
 
   const load = useCallback(async () => {
-    const { data } = await supabase.from('chat_messages').select('id, sender, content, time, created_at').is('receiver', null).order('created_at', { ascending: true }).limit(200);
+    const { data } = await supabase.from('chat_messages').select('id, sender, content, time, created_at').is('receiver', null).is('channel_id', null).order('created_at', { ascending: true }).limit(200);
     setMessages((data as any) || []);
     setLoading(false);
   }, []);
 
+  // Polls only while this screen is in front and the app is open.
+  const isFocused = useIsFocused();
   useEffect(() => {
+    if (!isFocused) return;
     load();
-    const iv = setInterval(load, 8000);
-    return () => clearInterval(iv);
-  }, [load]);
+    return setActiveInterval(load, 8000);
+  }, [load, isFocused]);
 
   const send = async () => {
     if (!text.trim() || sending) return;

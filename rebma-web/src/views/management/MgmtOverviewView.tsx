@@ -20,6 +20,7 @@ import {
 import DateRangeField from '../../components/ui/DateRangeField';
 import type { CalendarValue } from '../../components/ui/CalendarPicker';
 import { dayKey, trendBuckets, bucketKeyFor } from '../../utils/dateRange';
+import { setVisibleInterval } from '../../utils/visibleInterval';
 interface Props {
   addNotification?: (msg: string) => void;
   setActiveSubTab?: (tab: string) => void;
@@ -60,7 +61,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
   const [goodsPrices, setGoodsPrices] = useState<any[]>([]);
   const [soldLedger, setSoldLedger] = useState<any[]>([]);
   const [stockList, setStockList] = useState<any[]>([]);
-  const feedRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const feedRef = useRef<(() => void) | null>(null);
   const [showRevenueModal, setShowRevenueModal] = useState(false);
   const [revenueModalTab, setRevenueModalTab] = useState<'raw' | 'finished'>('raw');
 
@@ -125,9 +126,9 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
   useEffect(() => {
     fetchData();
     refreshFeed();
-    feedRef.current = setInterval(refreshFeed, 30000);
+    feedRef.current = setVisibleInterval(refreshFeed, 30000);
     return () => {
-      if (feedRef.current) clearInterval(feedRef.current);
+      feedRef.current?.();
     };
   }, []);
 

@@ -25,6 +25,7 @@ import {
 } from 'recharts';
 import { motion } from 'framer-motion';
 import { exportToCSV, exportToPDF } from '../utils/export';
+import { setVisibleInterval } from '../utils/visibleInterval';
 
 interface SupplierOrderSummary {
   id: string;
@@ -338,8 +339,7 @@ export default function CeoDashboard({
   // gpsInterval-driven polling, split from the effect above so a settings
   // change only restarts this timer, not any subscription.
   useEffect(() => {
-    const interval = setInterval(loadTransit, gpsInterval ? gpsInterval * 1000 : 5000);
-    return () => clearInterval(interval);
+    return setVisibleInterval(loadTransit, gpsInterval ? gpsInterval * 1000 : 5000);
   }, [gpsInterval]);
 
   // renderWithShell() always renders both a mobile and a desktop branch

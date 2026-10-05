@@ -271,6 +271,23 @@ const mapCustomerToFrontend = (db: any): any => {
 
 // ── Token helpers (Maintained for backward compatibility with App.tsx state management) ────────────
 // Supabase manages its own session internally, but these helpers keep the UI contract stable.
+// Supabase returns at most 1,000 rows per request, so a long list used to be
+// cut off silently at 1,000. This reads it page by page instead, up to a
+// safety ceiling. Callers add a unique last sort column (id) so pages never
+// overlap or skip a row.
+const LIST_PAGE_SIZE = 1000;
+const LIST_MAX_ROWS = 20000;
+async function fetchAllRows(build: () => any): Promise<any[]> {
+  const rows: any[] = [];
+  for (let from = 0; from < LIST_MAX_ROWS; from += LIST_PAGE_SIZE) {
+    const { data, error } = await build().range(from, from + LIST_PAGE_SIZE - 1);
+    if (error) throw new Error(error.message);
+    rows.push(...(data || []));
+    if (!data || data.length < LIST_PAGE_SIZE) break;
+  }
+  return rows;
+}
+
 export const getToken = (): string | null => {
   // Return Supabase session token if available, fall back to localStorage
   return localStorage.getItem('rebma_token');
@@ -477,13 +494,13 @@ export const hr = {
   },
 
   getAllUsers: async () => {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('profiles')
       .select('*')
       .eq('status', 'ACTIVE')
-      .order('role', { ascending: true });
-    if (error) throw new Error(error.message);
-    return (data || []).map(mapProfileToFrontend);
+      .order('role', { ascending: true })
+      .order('id', { ascending: false }));
+    return data.map(mapProfileToFrontend);
   },
 
   /**
@@ -513,12 +530,12 @@ export const hr = {
   },
 
   getAttendance: async () => {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('attendance')
       .select('*, user:profiles(full_name, role)')
-      .order('check_in_time', { ascending: false });
-    if (error) throw new Error(error.message);
-    return (data || []).map(mapAttendanceToFrontend);
+      .order('check_in_time', { ascending: false })
+      .order('id', { ascending: false }));
+    return data.map(mapAttendanceToFrontend);
   },
 
   // HR-editable fields that aren't set at registration time — address,
@@ -565,12 +582,12 @@ export const hr = {
 // ── Operations ────────────────────────────────────────────────
 export const operations = {
   getIncomingGoods: async () => {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('cargo_intake')
       .select('*')
-      .order('created_at', { ascending: false });
-    if (error) throw new Error(error.message);
-    return (data || []).map(mapCargoToFrontend);
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false }));
+    return data.map(mapCargoToFrontend);
   },
 
   logIntake: async (data: {
@@ -934,12 +951,12 @@ export const management = {
   },
 
   getPrices: async () => {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('goods_prices')
       .select('*')
-      .order('updated_at', { ascending: false });
-    if (error) throw new Error(error.message);
-    return (data || []).map(mapPriceToFrontend);
+      .order('updated_at', { ascending: false })
+      .order('id', { ascending: false }));
+    return data.map(mapPriceToFrontend);
   },
 
   setPrice: async (data: { productName: string; category: string; unitPrice: number; currency: string; metadata?: any }) => {
@@ -1200,21 +1217,21 @@ export const management = {
 // ── Marketing ─────────────────────────────────────────────────
 export const marketing = {
   getOrders: async () => {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('orders')
       .select('*')
-      .order('created_at', { ascending: false });
-    if (error) throw new Error(error.message);
-    return (data || []).map(mapOrderToFrontend);
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false }));
+    return data.map(mapOrderToFrontend);
   },
 
   getCustomers: async () => {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('customers')
       .select('*')
-      .order('registered_at', { ascending: false });
-    if (error) throw new Error(error.message);
-    return (data || []).map(mapCustomerToFrontend);
+      .order('registered_at', { ascending: false })
+      .order('id', { ascending: false }));
+    return data.map(mapCustomerToFrontend);
   },
 
   registerCustomer: async (data: {
@@ -1279,13 +1296,13 @@ export const marketing = {
 // ── Finance ───────────────────────────────────────────────────
 export const finance = {
   getPayments: async () => {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('finance_payments')
       .select('*')
-      .order('created_at', { ascending: false });
-    if (error) throw new Error(error.message);
-    
-    return (data || []).map((p: any) => ({
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false }));
+
+    return data.map((p: any) => ({
       id: p.id,
       clientName: p.client_name || 'N/A',
       amount: Number(p.amount || 0),
@@ -1419,12 +1436,12 @@ export const finance = {
 // ── Production ────────────────────────────────────────────────
 export const production = {
   getRequests: async () => {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('production_requests')
       .select('*')
-      .order('created_at', { ascending: false });
-    if (error) throw new Error(error.message);
-    return (data || []).map(mapRequisitionToFrontend);
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false }));
+    return data.map(mapRequisitionToFrontend);
   },
 
   requestMaterials: async (items: Array<{ materialName: string; quantity: number }>, notes?: string) => {
@@ -1693,12 +1710,12 @@ export const dispatch = {
 // ── Reception ─────────────────────────────────────────────────
 export const reception = {
   getVisitors: async () => {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('visitors')
       .select('*')
-      .order('check_in_time', { ascending: false });
-    if (error) throw new Error(error.message);
-    return (data || []).map(mapVisitorToFrontend);
+      .order('check_in_time', { ascending: false })
+      .order('id', { ascending: false }));
+    return data.map(mapVisitorToFrontend);
   },
 
   checkInVisitor: async (fullName: string, purpose: string, hostName: string) => {
@@ -2343,7 +2360,10 @@ export const messenger = {
   },
 
   markRead: async (messageId: string, userId: string) => {
-    await supabase.from('chat_message_reads').upsert({ message_id: messageId, user_id: userId }, { onConflict: 'message_id,user_id' });
+    // ignoreDuplicates: an already-read message is left alone. Without it
+    // every re-read rewrote the row, which fired a change event to every
+    // open chat in the company and made them all reload.
+    await supabase.from('chat_message_reads').upsert({ message_id: messageId, user_id: userId }, { onConflict: 'message_id,user_id', ignoreDuplicates: true });
   },
 
   fetchReads: async (messageIds: string[]) => {

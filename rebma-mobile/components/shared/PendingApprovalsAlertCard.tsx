@@ -16,6 +16,7 @@ import { View, Text, Pressable } from 'react-native';
 import { AlertCircle } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../theme/ThemeProvider';
+import { setActiveInterval } from '../../lib/activeInterval';
 
 interface PendingItem {
   label: string;
@@ -170,8 +171,8 @@ export default function PendingApprovalsAlertCard({ department, onNavigate }: Pr
       if (active) setPending(result);
     };
     load();
-    const iv = setInterval(load, 30000);
-    return () => { active = false; clearInterval(iv); };
+    const stop = setActiveInterval(load, 30000);
+    return () => { active = false; stop(); };
   }, [department]);
 
   if (pending.length === 0) return null;

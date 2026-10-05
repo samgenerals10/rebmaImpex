@@ -12,6 +12,7 @@ import { getFleetSpeedLimitKmh, DEFAULT_FLEET_SPEED_LIMIT_KMH } from '../../lib/
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import SpeedGauge from '../../components/shared/SpeedGauge';
+import { setActiveInterval } from '../../lib/activeInterval';
 
 function mapsLink(address: string): string {
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`;
@@ -73,8 +74,8 @@ export default function DispatchHomeScreen() {
       if (!cancelled) setFleetSpeedLimit(limit);
     };
     poll();
-    const interval = setInterval(poll, 15000);
-    return () => { cancelled = true; clearInterval(interval); };
+    const stop = setActiveInterval(poll, 15000);
+    return () => { cancelled = true; stop(); };
   }, []);
 
   const loadActiveDelivery = async (d: DriverRow) => {

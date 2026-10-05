@@ -23,6 +23,7 @@ import {
   type IncomingInvite,
 } from '../../utils/chatAccess';
 import type { CurrentUser } from '../../types/erp';
+import { setVisibleInterval } from '../../utils/visibleInterval';
 
 interface Props {
   isOpen: boolean;
@@ -291,14 +292,23 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
     setReads(rdMap);
     setStarredIds(new Set(starred));
     setPinnedIds(new Set((pins as any[]).map((p) => p.message_id)));
-    // Mark all as read by me
+    // Mark as read by me, only the ones not already read.
     for (const m of msgs) {
-      if (m.sender_id !== myId && !m.deleted_at) messenger.markRead(m.id, myId);
+      if (m.sender_id !== myId && !m.deleted_at && !(rdMap[m.id] || []).includes(myId)) messenger.markRead(m.id, myId);
     }
     refreshUnreadCounts();
   }, [activeChannel, myId, refreshUnreadCounts]);
 
   useEffect(() => { loadThread(); }, [loadThread]);
+
+  // Ids of the messages in the open conversation, for filtering live events.
+  const threadMessageIdsRef = useRef<Set<string>>(new Set());
+  useEffect(() => { threadMessageIdsRef.current = new Set(messages.map(m => m.id)); }, [messages]);
+  const threadReloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scheduleThreadReload = useCallback(() => {
+    if (threadReloadTimer.current) clearTimeout(threadReloadTimer.current);
+    threadReloadTimer.current = setTimeout(() => { threadReloadTimer.current = null; loadThread(); }, 400);
+  }, [loadThread]);
 
   // Cross-channel unread badges won't move just from the active thread's
   // own realtime subscription (it's filtered to that one channel_id) — a
@@ -306,8 +316,7 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
   // reasonably fresh, same posture as this app's other secondary-badge polls.
   useEffect(() => {
     if (!isOpen || !myId) return;
-    const iv = setInterval(refreshUnreadCounts, 20000);
-    return () => clearInterval(iv);
+    return setVisibleInterval(refreshUnreadCounts, 20000);
   }, [isOpen, myId, refreshUnreadCounts]);
 
   // ── Realtime: new messages + reactions + reads in this channel ──
@@ -323,11 +332,31 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
         // whatever next triggered a full loadThread().
         if ((payload.new as Msg).sender_id !== myId) messenger.markRead(payload.new.id as string, myId);
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_message_reactions' }, () => loadThread())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_message_reads' }, () => loadThread())
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_messages', filter: `channel_id=eq.${activeChannel.id}` }, payload => {
+        // Edits and deletes show up live, same as on the phone.
+        setMessages(prev => prev.map(m => m.id === payload.new.id ? { ...m, ...(payload.new as Msg) } : m));
+      })
+      // Reactions and reads have no channel column, so the server sends
+      // every one in the company. Only reload when it touches a message in
+      // this conversation, and batch bursts into one reload.
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_message_reactions' }, payload => {
+        const id = (payload.new as any)?.message_id ?? (payload.old as any)?.message_id;
+        if (id && !threadMessageIdsRef.current.has(id)) return;
+        scheduleThreadReload();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_message_reads' }, payload => {
+        const row = (payload.new as any)?.message_id ? payload.new as any : payload.old as any;
+        if (row?.user_id === myId) return;
+        if (row?.message_id && !threadMessageIdsRef.current.has(row.message_id)) return;
+        scheduleThreadReload();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_pinned_messages', filter: `channel_id=eq.${activeChannel.id}` }, () => scheduleThreadReload())
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
-  }, [activeChannel, loadThread]);
+    return () => {
+      supabase.removeChannel(ch);
+      if (threadReloadTimer.current) clearTimeout(threadReloadTimer.current);
+    };
+  }, [activeChannel, loadThread, myId, scheduleThreadReload]);
 
   // ── Presence: typing indicator ──
   useEffect(() => {

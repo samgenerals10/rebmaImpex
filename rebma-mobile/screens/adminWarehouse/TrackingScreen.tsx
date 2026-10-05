@@ -23,6 +23,7 @@ import Button from '../../components/ui/Button';
 import Tabs from '../../components/ui/Tabs';
 import FleetMap from '../../components/shared/FleetMap';
 import SpeedGauge from '../../components/shared/SpeedGauge';
+import { setActiveInterval } from '../../lib/activeInterval';
 
 interface DriverRow {
   id: string;
@@ -74,8 +75,8 @@ export default function TrackingScreen() {
       if (!cancelled) setFleetLimit(limit);
     };
     poll();
-    const interval = setInterval(poll, 15000);
-    return () => { cancelled = true; clearInterval(interval); };
+    const stop = setActiveInterval(poll, 15000);
+    return () => { cancelled = true; stop(); };
   }, []);
 
   const load = useCallback(async () => {

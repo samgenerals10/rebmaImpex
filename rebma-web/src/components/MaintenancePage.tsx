@@ -2,6 +2,7 @@
 import { useEffect } from 'react';
 import { Settings } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
+import { setVisibleInterval } from '../utils/visibleInterval';
 
 interface Props {
   onAccessRestored: () => void;
@@ -24,8 +25,7 @@ export default function MaintenancePage({ onAccessRestored }: Props) {
         }
       } catch { /* ignore */ }
     };
-    const interval = setInterval(check, 60000);
-    return () => clearInterval(interval);
+    return setVisibleInterval(check, 60000);
   }, [onAccessRestored]);
 
   return (

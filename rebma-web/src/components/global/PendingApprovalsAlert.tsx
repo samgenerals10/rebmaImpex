@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
+import { setVisibleInterval } from '../../utils/visibleInterval';
 
 interface Props {
   department: string;
@@ -199,8 +200,8 @@ export default function PendingApprovalsAlert({ department, onNavigate, addNotif
       }
     };
     load();
-    const iv = setInterval(load, 30000);
-    return () => { active = false; clearInterval(iv); };
+    const stop = setVisibleInterval(load, 30000);
+    return () => { active = false; stop(); };
   }, [department]);
 
   if (pending.length === 0) return null;

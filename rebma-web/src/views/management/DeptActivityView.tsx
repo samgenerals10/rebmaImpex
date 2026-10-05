@@ -9,6 +9,7 @@ import SidePanel from '../../components/ui/SidePanel';
 import { exportToCSV, exportToPDF } from '../../utils/export';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import CountUp from '../../components/CountUp';
+import { setVisibleInterval } from '../../utils/visibleInterval';
 
 interface ActivityItem {
   id: string;
@@ -74,7 +75,7 @@ export default function DeptActivityView({ addNotification, currentUser }: Props
   const [visibleCount, setVisibleCount] = useState(10);
   const [rowMenuOpen, setRowMenuOpen] = useState<string | null>(null);
   const [detailItem, setDetailItem] = useState<ActivityItem | null>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const intervalRef = useRef<(() => void) | null>(null);
 
   const loadActivities = async () => {
     try {
@@ -108,8 +109,8 @@ export default function DeptActivityView({ addNotification, currentUser }: Props
 
   useEffect(() => {
     loadActivities();
-    intervalRef.current = setInterval(loadActivities, 30000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+    intervalRef.current = setVisibleInterval(loadActivities, 30000);
+    return () => { intervalRef.current?.(); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showCeoEntries]);
 

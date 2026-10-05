@@ -151,7 +151,7 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
     setStarredIds(new Set(starred));
     setPinnedIds(new Set(pins.map((pin) => pin.message_id)));
     for (const m of msgs) {
-      if (m.sender_id !== myId && !m.deleted_at) messenger.markRead(m.id, myId);
+      if (m.sender_id !== myId && !m.deleted_at && !(rdMap[m.id] || []).includes(myId)) messenger.markRead(m.id, myId);
     }
   }, [channelId, myId]);
 
@@ -358,6 +358,15 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
     if (data) setActiveCall({ room: data.jitsi_room, title: data.title, kind: data.title.toLowerCase().includes('video') ? 'video' : 'voice', memberIds: [], otherUserId, meetingId: data.id, isHost: data.organizer_id === myId });
   };
 
+  // Ids of the messages on screen, for filtering live events.
+  const threadMessageIds = useRef<Set<string>>(new Set());
+  useEffect(() => { threadMessageIds.current = new Set(messages.map((m) => m.id)); }, [messages]);
+  const reloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scheduleReload = useCallback(() => {
+    if (reloadTimer.current) clearTimeout(reloadTimer.current);
+    reloadTimer.current = setTimeout(() => { reloadTimer.current = null; loadThread(); }, 400);
+  }, [loadThread]);
+
   // Realtime — scoped to this one screen instance, which mounts/unmounts
   // cleanly on push/pop, so no shared-singleton risk like the presence
   // channel (only one thread is ever open at a time on mobile).
@@ -371,12 +380,27 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_messages', filter: `channel_id=eq.${channelId}` }, (payload) => {
         setMessages((prev) => prev.map((m) => (m.id === (payload.new as any).id ? (payload.new as ChatMessage) : m)));
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_message_reactions' }, () => loadThread())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_message_reads' }, () => loadThread())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_pinned_messages' }, () => loadThread())
+      // Reactions and reads have no channel column, so the server sends
+      // every one in the company. Only reload when it touches a message in
+      // this conversation, and batch bursts into one reload.
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_message_reactions' }, (payload) => {
+        const id = (payload.new as any)?.message_id ?? (payload.old as any)?.message_id;
+        if (id && !threadMessageIds.current.has(id)) return;
+        scheduleReload();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_message_reads' }, (payload) => {
+        const row = (payload.new as any)?.message_id ? (payload.new as any) : (payload.old as any);
+        if (row?.user_id === myId) return;
+        if (row?.message_id && !threadMessageIds.current.has(row.message_id)) return;
+        scheduleReload();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_pinned_messages', filter: `channel_id=eq.${channelId}` }, () => scheduleReload())
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
-  }, [channelId, loadThread, myId]);
+    return () => {
+      supabase.removeChannel(ch);
+      if (reloadTimer.current) clearTimeout(reloadTimer.current);
+    };
+  }, [channelId, loadThread, myId, scheduleReload]);
 
   // Typing indicator presence — mirrors web's Messenger.tsx exactly.
   useEffect(() => {

@@ -32,6 +32,7 @@ import { useBlink } from '../../hooks/useBlink';
 import { NOTIFICATION_SOUNDS } from '../../lib/notificationSounds';
 import Avatar from '../ui/Avatar';
 import Sheet from '../ui/Sheet';
+import { setActiveInterval } from '../../lib/activeInterval';
 
 // Direct instruction: "when the alert comes, the icon beside the
 // message should blink and it should work with the notification sound
@@ -52,8 +53,8 @@ function useUnreadNotifications(userId: string | undefined, department: string |
     let active = true;
     const load = () => { if (active) refreshUnreadCount(userId || '', department || ''); };
     load();
-    const iv = setInterval(load, 30000);
-    return () => { active = false; clearInterval(iv); };
+    const stop = setActiveInterval(load, 30000);
+    return () => { active = false; stop(); };
   }, [userId, department, refreshUnreadCount]);
 
   return unreadCount;

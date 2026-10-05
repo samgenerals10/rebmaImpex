@@ -46,6 +46,7 @@ import SearchablePicker from '../../components/ui/SearchablePicker';
 import SearchSortBar from '../../components/ui/SearchSortBar';
 import DataList, { type DataColumn } from '../../components/ui/DataList';
 import Sheet from '../../components/ui/Sheet';
+import { setActiveInterval } from '../../lib/activeInterval';
 
 type AttendanceRow = AttendanceTableRow;
 
@@ -302,8 +303,7 @@ export default function AttendanceScreen() {
   // Device scans land in the table on their own while today is showing.
   useEffect(() => {
     if (!isFocused || !includesToday) return;
-    const id = setInterval(() => { loadRecords(true); loadDevices(); }, 10_000);
-    return () => clearInterval(id);
+    return setActiveInterval(() => { loadRecords(true); loadDevices(); }, 10_000);
   }, [isFocused, includesToday, loadRecords, loadDevices]);
 
   const refreshAll = () => {

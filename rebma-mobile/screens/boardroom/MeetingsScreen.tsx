@@ -36,6 +36,8 @@ import EmptyState from '../../components/ui/EmptyState';
 import Tabs from '../../components/ui/Tabs';
 import GroupCallSheet from '../../components/shared/GroupCallSheet';
 import CalendarPicker, { toKey, type CalendarValue } from '../../components/ui/CalendarPicker';
+import { setActiveInterval } from '../../lib/activeInterval';
+import { useIsFocused } from '@react-navigation/native';
 
 function slugRoom(prefix: string) {
   return `Rebma-${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -107,9 +109,14 @@ export default function MeetingsScreen() {
     supabase.from('profiles_directory').select('id, full_name, role').eq('status', 'ACTIVE').order('full_name', { ascending: true }).then(({ data }) => {
       setAttendeeProfiles((data || []).map((p: any) => ({ id: p.id, fullName: p.full_name || 'Unknown', department: p.role || '' })).filter((p: any) => p.id !== myId));
     });
-    const iv = setInterval(loadMeetings, 8000);
-    return () => clearInterval(iv);
   }, [myId, load, loadMeetings]);
+
+  // Polls only while this screen is in front and the app is open.
+  const isFocused = useIsFocused();
+  useEffect(() => {
+    if (!isFocused) return;
+    return setActiveInterval(loadMeetings, 8000);
+  }, [isFocused, loadMeetings]);
 
   const toggleAttendee = (id: string) => setSelectedAttendeeIds((prev) => (prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id]));
 

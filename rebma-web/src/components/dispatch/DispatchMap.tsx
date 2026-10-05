@@ -7,6 +7,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { useRealtimeChannel } from '../../hooks/useRealtimeChannel';
 import { documentTemplates } from '../../services/apiClient';
 import { getFleetSpeedLimitKmh, setFleetSpeedLimitKmh, speedKmh, DEFAULT_FLEET_SPEED_LIMIT_KMH } from '../../utils/fleetSpeedLimit';
+import { setVisibleInterval } from '../../utils/visibleInterval';
 
 type MapLayer = 'street' | '3d' | 'satellite';
 
@@ -308,7 +309,7 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 540,
     let cancelled = false;
     const loadLimit = () => getFleetSpeedLimitKmh().then(v => { if (!cancelled) setFleetSpeedLimit(v); });
     loadLimit();
-    const iv = setInterval(loadLimit, 15000);
+    const stopLimit = setVisibleInterval(loadLimit, 15000);
     supabase.auth.getUser().then(async ({ data }) => {
       const uid = data.user?.id;
       if (!uid) return;
@@ -317,7 +318,7 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 540,
       setCanEditLimit(!!prof.is_admin || String(prof.role || '').toLowerCase() === 'risk');
       setEditorName(prof.full_name || 'Risk');
     });
-    return () => { cancelled = true; clearInterval(iv); };
+    return () => { cancelled = true; stopLimit(); };
   }, []);
   const saveFleetSpeedLimit = async () => {
     const parsed = parseInt(limitDraft, 10);
@@ -357,10 +358,10 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 540,
   useEffect(() => {
     mountedRef.current = true;
     fetchLatest();
-    const poll = setInterval(fetchLatest, pollIntervalSeconds * 1000);
+    const stopPoll = setVisibleInterval(fetchLatest, pollIntervalSeconds * 1000);
     return () => {
       mountedRef.current = false;
-      clearInterval(poll);
+      stopPoll();
     };
   }, [driverIds.join(','), focusDeliveryId]);
 

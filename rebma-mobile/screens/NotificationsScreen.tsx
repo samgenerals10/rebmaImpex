@@ -12,7 +12,7 @@
 // real) is not ported.
 import { useCallback, useEffect, useState } from 'react';
 import { View, Text, Pressable, Linking } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { Bell, CheckCheck, Trash2, ExternalLink, ChevronLeft } from 'lucide-react-native';
 import { supabase } from '../lib/supabaseClient';
 import { navigationRef } from '../navigation/navigationRef';
@@ -24,6 +24,7 @@ import PageTitle from '../components/ui/PageTitle';
 import Button from '../components/ui/Button';
 import EmptyState from '../components/ui/EmptyState';
 import { SkeletonList } from '../components/ui/Skeleton';
+import { setActiveInterval } from '../lib/activeInterval';
 
 interface DbNotification {
   id: string; title: string; message: string; type: string; read: boolean;
@@ -65,11 +66,13 @@ export default function NotificationsScreen() {
     refreshUnreadCount(profile.id, profile.department);
   }, [profile?.id, profile?.department]);
 
+  // Polls only while this screen is in front and the app is open.
+  const isFocused = useIsFocused();
   useEffect(() => {
+    if (!isFocused) return;
     load();
-    const iv = setInterval(load, 8000);
-    return () => clearInterval(iv);
-  }, [load]);
+    return setActiveInterval(load, 8000);
+  }, [load, isFocused]);
 
   const markRead = async (n: DbNotification) => {
     setNotifs((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)));

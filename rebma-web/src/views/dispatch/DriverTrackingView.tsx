@@ -3,6 +3,7 @@ import { LogOut, MapPin, Navigation, Package, Wifi, WifiOff, RefreshCw, External
 import { supabase } from '../../lib/supabaseClient';
 import { uploadFile } from '../../utils/uploadFile';
 import { getFleetSpeedLimitKmh, speedKmh, DEFAULT_FLEET_SPEED_LIMIT_KMH } from '../../utils/fleetSpeedLimit';
+import { setVisibleInterval } from '../../utils/visibleInterval';
 
 interface DriverTrackingViewProps {
   driver: { id: string; driverId: string; fullName: string; vehicleId: string | null };
@@ -56,8 +57,8 @@ export default function DriverTrackingView({ driver, onLogout }: DriverTrackingV
     let cancelled = false;
     const loadLimit = () => getFleetSpeedLimitKmh().then(v => { if (!cancelled) setFleetSpeedLimit(v); });
     loadLimit();
-    const iv = setInterval(loadLimit, 15000);
-    return () => { cancelled = true; clearInterval(iv); };
+    const stop = setVisibleInterval(loadLimit, 15000);
+    return () => { cancelled = true; stop(); };
   }, []);
 
   const loadStops = async () => {

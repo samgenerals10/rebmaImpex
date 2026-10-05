@@ -67,6 +67,7 @@ import { getCeoSetting } from '../../lib/ceoSetting';
 import Avatar from '../ui/Avatar';
 import Input from '../ui/Input';
 import Button from '../ui/Button';
+import { setActiveInterval } from '../../lib/activeInterval';
 
 // react-native-webview's <WebView> has no web-platform implementation
 // (confirmed live: it renders "RNCWebView doesn't support this
@@ -1246,8 +1247,7 @@ export default function FleetMap({ onSelectedChange }: FleetMapProps = {}) {
 
   useEffect(() => {
     load();
-    const interval = setInterval(load, 15000);
-    return () => clearInterval(interval);
+    return setActiveInterval(load, 15000);
   }, [load]);
 
   // Same 15s cadence as the driver positions — a limit change Risk makes
@@ -1257,8 +1257,8 @@ export default function FleetMap({ onSelectedChange }: FleetMapProps = {}) {
     let cancelled = false;
     const loadLimit = () => getFleetSpeedLimitKmh().then((v) => { if (!cancelled) setFleetSpeedLimitState(v); });
     loadLimit();
-    const interval = setInterval(loadLimit, 15000);
-    return () => { cancelled = true; clearInterval(interval); };
+    const stop = setActiveInterval(loadLimit, 15000);
+    return () => { cancelled = true; stop(); };
   }, []);
 
   const saveFleetSpeedLimit = async () => {

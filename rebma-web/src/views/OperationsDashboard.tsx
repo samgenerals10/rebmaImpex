@@ -24,6 +24,7 @@ import SidePanel from '../components/ui/SidePanel';
 import SearchableDropdown from '../components/ui/SearchableDropdown';
 import ResponsiveDataView, { type DataColumn } from '../components/mobile/ResponsiveDataView';
 import RequestTimelinePanel from '../components/global/RequestTimelinePanel';
+import { setVisibleInterval } from '../utils/visibleInterval';
 
 interface OperationsDashboardProps {
   ordersList: Order[];
@@ -348,11 +349,11 @@ export default function OperationsDashboard({
     fetchTotalQtyRef.current = fetchTotalQty;
     fetchLowStock();
     fetchTotalQty();
-    const interval = setInterval(fetchLowStock, 30000);
+    const stopLowStock = setVisibleInterval(fetchLowStock, 30000);
 
     return () => {
       active = false;
-      clearInterval(interval);
+      stopLowStock();
     };
   }, []);
 
