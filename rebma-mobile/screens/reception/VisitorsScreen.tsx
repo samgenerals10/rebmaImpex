@@ -35,7 +35,7 @@ interface VisitorRow {
 const emptyForm = { fullName: '', company: '', purpose: 'Business Meeting', hostName: '', notes: '' };
 
 function fmt(iso: string | null) {
-  if (!iso) return '—';
+  if (!iso) return 'Not set';
   return new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
@@ -171,8 +171,8 @@ export default function VisitorsScreen() {
   const columns: DataColumn<VisitorRow>[] = [
     { key: 'full_name', label: 'Visitor', primary: true },
     { key: 'status', label: 'Status', status: true, render: (v) => <Badge tone={v.check_out_time ? 'muted' : 'success'} label={v.check_out_time ? 'Checked Out' : 'On Site'} /> },
-    { key: 'badge_number', label: 'Badge', render: (v) => v.badge_number || '—' },
-    { key: 'host_name', label: 'Host', render: (v) => v.host_name || '—' },
+    { key: 'badge_number', label: 'Badge', render: (v) => v.badge_number || 'Not set' },
+    { key: 'host_name', label: 'Host', render: (v) => v.host_name || 'Not set' },
     { key: 'check_in_time', label: 'Check-In', render: (v) => fmt(v.check_in_time) },
   ];
 

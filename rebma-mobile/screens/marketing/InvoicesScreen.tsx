@@ -160,7 +160,7 @@ export default function InvoicesScreen() {
   const columns: DataColumn<ProformaRow>[] = [
     { key: 'client_name', label: 'Client', primary: true },
     { key: 'status', label: 'Status', status: true, render: (p) => <Badge tone={STATUS_TONE[p.status] || 'muted'} label={p.status} /> },
-    { key: 'proforma_no', label: 'Proforma #', render: (p) => p.proforma_no || '—' },
+    { key: 'proforma_no', label: 'Proforma #', render: (p) => p.proforma_no || 'Not set' },
     { key: 'grand_total', label: 'Total', render: (p) => `GHS ${Number(p.grand_total || 0).toLocaleString()}` },
     { key: 'created_at', label: 'Date', render: (p) => new Date(p.created_at).toLocaleDateString() },
   ];
@@ -232,7 +232,7 @@ export default function InvoicesScreen() {
             <SheetSection label="Summary">
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 2 }}>
                 <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted }}>Proforma No</Text>
-                <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta11.size, color: t.colors.accent }}>{detail.proforma_no || '—'}</Text>
+                <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta11.size, color: t.colors.accent }}>{detail.proforma_no || 'Not set'}</Text>
               </View>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 2 }}>
                 <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted }}>Issued</Text>

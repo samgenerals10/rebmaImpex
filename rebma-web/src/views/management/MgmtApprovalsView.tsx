@@ -140,7 +140,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
         .limit(100);
       const parsed: ApprovalItem[] = (data || [])
         .map((row: any): ApprovalItem | null => {
-          const m = String(row.action || '').match(/^(APPROVE|REJECT|RETURN)[A-Z_]*:\s*([\w-]+)\s*—\s*(.+)$/i);
+          const m = String(row.action || '').match(/^(APPROVE|REJECT|RETURN)[A-Z_]*:\s*([\w-]+)\s*(?:—|,)\s*(.+)$/i)  // older entries use a dash, newer ones a comma;
           if (!m) return null;
           const [, verb, requestId, rest] = m;
           const noteMatch = rest.match(/^(.*?)(?:\s*\|\s*Note:\s*(.*))?$/);
@@ -158,7 +158,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
             id: row.id,
             requestId,
             type: inferredType, // inferred from the id prefix so history rows get the right icon/color too
-            description: reason ? `${description} — Reason: ${reason}` : description,
+            description: reason ? `${description}, Reason: ${reason}` : description,
             department: row.department || 'MANAGEMENT',
             amount: null,
             date: row.timestamp ? row.timestamp.slice(0, 10) : '',
@@ -228,7 +228,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
         id: row.id,
         requestId: `ORD-${row.id.slice(-6).toUpperCase()}`,
         type: 'Sales Order' as const,
-        description: `${row.payment_mode === 'CREDIT' ? 'Credit order' : `${row.payment_mode || 'Cash'} order`} for ${row.client_name} — GHS ${Number(row.total_amount || 0).toLocaleString()}`,
+        description: `${row.payment_mode === 'CREDIT' ? 'Credit order' : `${row.payment_mode || 'Cash'} order`} for ${row.client_name}, GHS ${Number(row.total_amount || 0).toLocaleString()}`,
         department: 'MARKETING',
         amount: Number(row.total_amount || 0),
         date: row.created_at?.slice(0, 10) || '',
@@ -410,7 +410,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
           await supabase.from('supplier_order_notifications').insert([{ message: `New stock approved: ${selectedItem.description}. Update pricing in Marketing.`, notified_department: 'MARKETING', read: false }]);
         } else {
           // Cargo reject previously sent no notification at all.
-          await supabase.from('supplier_order_notifications').insert([{ message: `Cargo intake REJECTED by Management: ${selectedItem.description}${modalNote ? ` — ${modalNote}` : ''}`, notified_department: 'OPERATIONS', read: false }]);
+          await supabase.from('supplier_order_notifications').insert([{ message: `Cargo intake REJECTED by Management: ${selectedItem.description}${modalNote ? `, ${modalNote}` : ''}`, notified_department: 'OPERATIONS', read: false }]);
         }
       }
 
@@ -454,9 +454,9 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
           await supabase.from('supplier_order_notifications').insert([{ message: `Order approved by Management and now awaiting Accounts Office processing: ${selectedItem.description}`, notified_department: 'FINANCE', read: false }]);
           await supabase.from('supplier_order_notifications').insert([{ message: `Your order has been approved by Management and sent to Accounts: ${selectedItem.description}`, notified_department: 'MARKETING', read: false }]);
         } else if (action === 'return') {
-          await supabase.from('supplier_order_notifications').insert([{ message: `Order RETURNED FOR CORRECTION by Management: ${selectedItem.description}${modalNote ? ` — ${modalNote}` : ''}`, notified_department: 'MARKETING', read: false }]);
+          await supabase.from('supplier_order_notifications').insert([{ message: `Order RETURNED FOR CORRECTION by Management: ${selectedItem.description}${modalNote ? `, ${modalNote}` : ''}`, notified_department: 'MARKETING', read: false }]);
         } else {
-          await supabase.from('supplier_order_notifications').insert([{ message: `Order REJECTED by Management: ${selectedItem.description}${modalNote ? ` — ${modalNote}` : ''}`, notified_department: 'MARKETING', read: false }]);
+          await supabase.from('supplier_order_notifications').insert([{ message: `Order REJECTED by Management: ${selectedItem.description}${modalNote ? `, ${modalNote}` : ''}`, notified_department: 'MARKETING', read: false }]);
         }
       }
 
@@ -487,7 +487,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
           });
           if (prodErr) throw prodErr;
           // Production reject previously sent no notification at all.
-          await supabase.from('supplier_order_notifications').insert([{ message: `Production request REJECTED by Management: ${selectedItem.description}${modalNote ? ` — ${modalNote}` : ''}`, notified_department: 'PRODUCTION', read: false }]);
+          await supabase.from('supplier_order_notifications').insert([{ message: `Production request REJECTED by Management: ${selectedItem.description}${modalNote ? `, ${modalNote}` : ''}`, notified_department: 'PRODUCTION', read: false }]);
         }
       }
 
@@ -504,7 +504,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
         } else {
           // General purchase reject previously sent no notification — the
           // requesting department never learned it was turned down.
-          await supabase.from('supplier_order_notifications').insert([{ message: `General purchase REJECTED by Management: ${selectedItem.description}${modalNote ? ` — ${modalNote}` : ''}`, notified_department: requestingDept, read: false }]);
+          await supabase.from('supplier_order_notifications').insert([{ message: `General purchase REJECTED by Management: ${selectedItem.description}${modalNote ? `, ${modalNote}` : ''}`, notified_department: requestingDept, read: false }]);
         }
       }
 
@@ -528,19 +528,19 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
             p_float_id: String(selectedItem.id), p_action: 'reject', p_note: modalNote || null,
           });
           if (floatErr) throw floatErr;
-          await supabase.from('supplier_order_notifications').insert([{ message: `Float replenishment REJECTED by Management: ${selectedItem.description}${modalNote ? ` — ${modalNote}` : ''}`, notified_department: 'FINANCE', read: false }]);
+          await supabase.from('supplier_order_notifications').insert([{ message: `Float replenishment REJECTED by Management: ${selectedItem.description}${modalNote ? `, ${modalNote}` : ''}`, notified_department: 'FINANCE', read: false }]);
         }
       }
 
       await supabase.from('global_audit_history').insert([{
         department: 'MANAGEMENT',
-        action: `${action.toUpperCase()}: ${selectedItem.requestId} — ${selectedItem.description}${modalNote ? ` | Note: ${modalNote}` : ''}`,
+        action: `${action.toUpperCase()}: ${selectedItem.requestId}, ${selectedItem.description}${modalNote ? ` | Note: ${modalNote}` : ''}`,
         performed_by: currentUser?.fullName || 'Management',
         reference_id: selectedItem.id,
         details: modalNote || null,
       }]);
 
-      addNotification?.(`${selectedItem.requestId} ${action === 'approve' ? 'Approved' : action === 'return' ? 'Returned for correction' : 'Rejected'}${modalNote ? ` — "${modalNote}"` : ''}`);
+      addNotification?.(`${selectedItem.requestId} ${action === 'approve' ? 'Approved' : action === 'return' ? 'Returned for correction' : 'Rejected'}${modalNote ? `, "${modalNote}"` : ''}`);
     } catch (e: any) {
       console.error(e);
       addNotification?.(`Not done: ${e?.message || 'the action failed.'}`);
@@ -685,7 +685,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
                               const qty = draft.quantity !== '' ? Math.max(0, Number(draft.quantity) || 0) : 0;
                               const unitPrice = draft.unitPrice !== '' ? Math.max(0, Number(draft.unitPrice) || 0) : 0;
                               const subtotal = qty * unitPrice;
-                              return <span className="font-semibold text-emerald-600">{subtotal > 0 ? `GHS ${subtotal.toLocaleString()}` : '—'}</span>;
+                              return <span className="font-semibold text-emerald-600">{subtotal > 0 ? `GHS ${subtotal.toLocaleString()}` : 'Not set'}</span>;
                             }
                           },
                         ]}
@@ -845,7 +845,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
                   }
                 },
                 { key: 'department', label: 'Department' },
-                { key: 'amount', label: 'Amount', render: item => item.amount !== null ? `GHS ${(Number(item.amount ?? 0)).toLocaleString()}` : '—' },
+                { key: 'amount', label: 'Amount', render: item => item.amount !== null ? `GHS ${(Number(item.amount ?? 0)).toLocaleString()}` : 'Not set' },
                 { key: 'date', label: 'Date' },
                 { key: 'priority', label: 'Priority', render: item => <span className={`font-semibold text-xs ${PRIORITY_COLORS[item.priority]}`}>● {item.priority}</span> },
                 { key: 'status', label: 'Status', status: true, render: item => <span className={`text-xs px-2 py-1 rounded-full font-medium whitespace-nowrap ${STATUS_COLORS[item.status]}`}>{item.status}</span> },
@@ -990,7 +990,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
                   </div>
 
                   <div className="mt-2 border-t border-[var(--border)] pt-2">
-                    <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Selling Price (GHS) — optional</label>
+                    <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Selling Price (GHS), optional</label>
                     <input
                       type="number"
                       value={sellingPrice}

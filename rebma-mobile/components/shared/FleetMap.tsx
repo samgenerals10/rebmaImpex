@@ -334,22 +334,22 @@ const MAP_HTML = `<!DOCTYPE html>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script>
-    // Initial paint, before any real driver data arrives — centered on
+    // Initial paint, before any real driver data arrives, centered on
     // Rebma Impex Limited itself (the same coordinate CENTRAL_DEPOT below
     // uses), since that's the real, physical place a driver with no GPS
     // fix yet defaults to. This used to be a leftover placeholder Accra
     // coordinate (5.6037, -0.187) from before the depot location was
-    // corrected — ~13km from the real depot, which pushed every driver
+    // corrected, ~13km from the real depot, which pushed every driver
     // marker off-screen on first load until fitBounds (below) caught up.
     const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([5.694949, -0.010621], 14);
 
     // Real, confirmed bug fix: Leaflet caches its container's pixel size
     // at creation time and only recomputes marker/tile positions against
-    // that cached size — it never re-measures on its own. The WebView/
+    // that cached size, it never re-measures on its own. The WebView/
     // iframe hosting this map can genuinely resize after that (the RN
     // side's own layout settling, a tab switch, entering/leaving
     // fullscreen, an orientation change), and once the cached size goes
-    // stale every latlng-to-pixel conversion is wrong — markers compute a
+    // stale every latlng-to-pixel conversion is wrong, markers compute a
     // pixel position far outside the real visible area and simply never
     // appear, even though their own lat/lng, icon, and cluster membership
     // are all completely correct (confirmed directly: a driver's own
@@ -357,7 +357,7 @@ const MAP_HTML = `<!DOCTYPE html>
     // cluster, but its computed container point was hundreds of pixels
     // outside the actual, much larger, rendered viewport). A ResizeObserver
     // on the map's own container is the standard fix for an embedded,
-    // responsively-sized Leaflet map — it calls invalidateSize() every
+    // responsively-sized Leaflet map, it calls invalidateSize() every
     // time the real box actually changes, keeping Leaflet's cache honest.
     const mapEl = document.getElementById('map');
     if (mapEl && typeof ResizeObserver !== 'undefined') {
@@ -372,7 +372,7 @@ const MAP_HTML = `<!DOCTYPE html>
     setTimeout(function () { map.invalidateSize(); }, 0);
 
     // Basemap layers: street (OpenStreetMap) and satellite (Esri World
-    // Imagery) — both genuinely free, no API key. A third "3D Voyager"
+    // Imagery), both genuinely free, no API key. A third "3D Voyager"
     // CartoDB layer was tried here at one point; dropped because CartoDB
     // now gates that tile endpoint behind a paid API key, so it rendered
     // nothing but "API KEY REQUIRED" watermark tiles as the default view.
@@ -380,10 +380,10 @@ const MAP_HTML = `<!DOCTYPE html>
     const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 });
     streetLayer.addTo(map);
     let currentBasemap = 'street';
-    // A real, modern-styled basemap — only exists once Risk enters a real
+    // A real, modern-styled basemap, only exists once Risk enters a real
     // MapTiler key in Control Center's new API Keys section (see
     // 'set-maptiler-key' below). No key means no layer, and the toggle
-    // stays a plain, honest street/satellite choice on free tiles — never
+    // stays a plain, honest street/satellite choice on free tiles, never
     // a fake "modern" option that silently isn't actually configured.
     let modernLayer = null;
     let userPickedBasemap = false;
@@ -398,7 +398,7 @@ const MAP_HTML = `<!DOCTYPE html>
 
     // Fixed waypoint constants. CENTRAL_DEPOT is Rebma Impex Limited's
     // own real, confirmed location (from a Google Maps link the user
-    // shared) — this is also the real, physical place every driver's day
+    // shared), this is also the real, physical place every driver's day
     // actually starts, and doubles as the default position for a driver
     // who hasn't started sharing live GPS yet (see buildPointsPayload's
     // REBMA_HQ fallback below). No longer the placeholder Accra
@@ -434,16 +434,16 @@ const MAP_HTML = `<!DOCTYPE html>
       });
     }
 
-    // Fixed waypoint markers — real company reference points. The
+    // Fixed waypoint markers, real company reference points. The
     // quick-jump chip buttons for these live on the RN side (in the
     // search dropdown), not as HTML elements floating inside this
-    // WebView/iframe — that avoided a real stacking conflict, since an
+    // WebView/iframe, that avoided a real stacking conflict, since an
     // absolutely-positioned element in here at top-left would sit
     // directly under the RN Fleet Speed Limit banner and weather chip,
     // which occupy that same screen region from outside the WebView.
     // Tapping a waypoint pin now opens a small RN-side info card (name +
     // a Directions action), matching the shape of Google Maps' own
-    // location card the user pointed to as a reference — a rounded card
+    // location card the user pointed to as a reference, a rounded card
     // with an icon-in-circle quick action under the place name, not a
     // plain black tooltip bubble.
     L.marker(CENTRAL_DEPOT, { icon: teardropPin('#2563EB', '🏭') })
@@ -479,19 +479,19 @@ const MAP_HTML = `<!DOCTYPE html>
     let trailLine = null;
     let destMarker = null;
     // Which driver marker (if any) currently carries the road-legal-limit
-    // tooltip, and the nearest-other-driver connector line — both live
+    // tooltip, and the nearest-other-driver connector line, both live
     // directly on the map now, bound/unbound as selection changes.
     let roadLimitMarkerId = null;
     let nearestLine = null;
 
-    // Structures & Places layer — real nearby OSM-tagged places (fuel,
+    // Structures & Places layer, real nearby OSM-tagged places (fuel,
     // hospital, police, market, bus/lorry station, warehouse), shown only
     // around the selected driver and only while toggled on from the RN
-    // side. Kept off the marker cluster group entirely — these aren't
+    // side. Kept off the marker cluster group entirely, these aren't
     // fleet vehicles.
     const placesLayer = L.layerGroup();
     // Teardrop pin with a white inner circle and the category's icon
-    // centered inside — a color-coded pin + icon badge, matching the
+    // centered inside, a color-coded pin + icon badge, matching the
     // reference the user shared (colored pin + icon, not a plain dot).
     function placeCategoryColor(category) {
       return { fuel: '#f59e0b', hospital: '#ef4444', police: '#3b82f6', market: '#10b981', station: '#8b5cf6', warehouse: '#64748b', place: '#0f172a' }[category] || '#0f172a';
@@ -524,7 +524,7 @@ const MAP_HTML = `<!DOCTYPE html>
       }
     }
 
-    // Feature 7: trail replay — steps a small marker along a driver's own
+    // Feature 7: trail replay, steps a small marker along a driver's own
     // already-fetched breadcrumb trail, reporting progress back to RN so
     // the panel can show "12 / 40" and a Stop button.
     let replayMarker = null;
@@ -558,7 +558,7 @@ const MAP_HTML = `<!DOCTYPE html>
 
     // A more detailed, illustrated top-down car (windshield, roof
     // shading, wheel hints, headlight dots) rather than a plain rounded
-    // rectangle — a real car IMAGE (a photograph) would blur and distort
+    // rectangle, a real car IMAGE (a photograph) would blur and distort
     // when rotated to face travel direction at this size, so this is the
     // deliberate, explained alternative: a clean illustration, not a
     // photo, the same choice real navigation apps make for this exact UI
@@ -588,28 +588,28 @@ const MAP_HTML = `<!DOCTYPE html>
 
     function markerHtml(p, isNew) {
       // Animation 2's pulse ring only makes sense for a genuinely live,
-      // non-stale vehicle — a greyed-out stale marker shouldn't look like
+      // non-stale vehicle, a greyed-out stale marker shouldn't look like
       // it's actively reporting.
       var pulse = p.stale ? '' : '<div class="fleet-pulse-ring"></div>';
       // The pop-in class deliberately goes on an OUTER wrapper, never on
-      // .fleet-car-wrap itself — that element already owns its own
+      // .fleet-car-wrap itself, that element already owns its own
       // inline rotate() transform (real GPS heading), and a second
       // animated 'transform' on the same element would fight it and
       // leave the car facing the wrong way once the animation ends.
       var popClass = isNew ? ' fleet-pop-in' : '';
-      // Every non-stale driver renders as the illustrated car — a real
+      // Every non-stale driver renders as the illustrated car, a real
       // reported heading rotates it to face the actual direction of
       // travel; no heading yet (stationary, or hasn't started moving
       // today) just faces it forward rather than guessing. Only a
       // genuinely stale/offline driver (was reporting, stopped) falls
-      // back to a plain dot — that's a real, different status, not the
+      // back to a plain dot, that's a real, different status, not the
       // same thing as "hasn't moved yet."
       if (p.stale) {
         return pulse + '<div class="' + popClass.trim() + '"><div class="fleet-dot" style="width:16px;height:16px;background:' + p.color + '"></div></div>';
       }
       var heading = p.heading != null ? p.heading : 0;
       // Speed shown against the fleet limit directly on the marker
-      // ("22/60 km/h") — the actionable number is now visible on the map
+      // ("22/60 km/h"), the actionable number is now visible on the map
       // itself for every driver at a glance, not just the tapped one.
       var badge = (p.speedKmh != null && p.speedKmh > 2)
         ? '<div class="fleet-car-badge">' + p.speedKmh + '/' + p.fleetLimitKmh + ' km/h</div>'
@@ -637,7 +637,7 @@ const MAP_HTML = `<!DOCTYPE html>
 
     // Animation 4: a marker that stops being reported fades out instead
     // of just vanishing. Leaflet has no built-in animated removal, so
-    // this fakes it — flip on the CSS opacity transition, then actually
+    // this fakes it, flip on the CSS opacity transition, then actually
     // detach the layer once that transition has had time to finish.
     function removeMarkerAnimated(id) {
       const m = markers[id];
@@ -649,7 +649,7 @@ const MAP_HTML = `<!DOCTYPE html>
         setTimeout(function () { markerCluster.removeLayer(m); }, 420);
       } else {
         // No element to fade (e.g. the marker is currently hidden inside
-        // a cluster badge) — just remove it from the cluster group.
+        // a cluster badge), just remove it from the cluster group.
         markerCluster.removeLayer(m);
       }
     }
@@ -663,14 +663,14 @@ const MAP_HTML = `<!DOCTYPE html>
         const icon = L.divIcon({ className: '', html: markerHtml(p, isNew), iconSize: size });
         // Real, confirmed bug fix: a marker already inside a
         // MarkerClusterGroup does not reliably keep rendering after its
-        // own setLatLng()/setIcon() is called — even a remove-then-readd
+        // own setLatLng()/setIcon() is called, even a remove-then-readd
         // of that SAME marker instance was tested live and still went
         // invisible, which points at internal DOM-icon state the plugin
         // caches per marker instance across a removeLayer/addLayer cycle,
         // not just the well-known "don't call setLatLng while clustered"
         // limitation. The reliable fix, verified live for both the
         // initial add and every subsequent move: never mutate an existing
-        // marker instance — always discard it and create a fresh one.
+        // marker instance, always discard it and create a fresh one.
         // This is what actually made "a driver's car marker moves on the
         // map" work at all; without it, every driver's marker froze after
         // its first ever render, no matter how the position update
@@ -692,7 +692,7 @@ const MAP_HTML = `<!DOCTYPE html>
       if (!fittedOnce && points.length > 0) {
         fittedOnce = true;
         const group = L.featureGroup(Object.values(markers));
-        // maxZoom caps how tight fitBounds is allowed to go — without it,
+        // maxZoom caps how tight fitBounds is allowed to go, without it,
         // a single driver (a zero-area bounding box even after padding)
         // pushes the map to its absolute max zoom (19), showing almost no
         // street context around them. 16 still reads as "zoomed to that
@@ -722,7 +722,7 @@ const MAP_HTML = `<!DOCTYPE html>
     // (the stroke progressively extending from nothing to its full
     // length) rather than just appearing fully formed. Leaflet renders
     // polylines as SVG <path> elements, so this is the standard SVG
-    // stroke-dasharray/dashoffset trick — set the dash length to the
+    // stroke-dasharray/dashoffset trick, set the dash length to the
     // path's own total length (so it reads as one continuous unbroken
     // line, not a dashed one), start fully offset (invisible), then
     // transition the offset back to zero.
@@ -734,7 +734,7 @@ const MAP_HTML = `<!DOCTYPE html>
       path.style.strokeDasharray = length + ' ' + length;
       path.style.strokeDashoffset = length;
       // Force a reflow so the browser registers the starting state above
-      // before the transition below is applied — without this the two
+      // before the transition below is applied, without this the two
       // style writes get batched together and nothing visibly animates.
       path.getBoundingClientRect();
       path.style.transition = 'stroke-dashoffset ' + durationSec + 's ease-out ' + delayMs + 'ms';
@@ -769,7 +769,7 @@ const MAP_HTML = `<!DOCTYPE html>
           destMarker.bindTooltip(msg.routeLabel, { permanent: true, direction: 'top', offset: [0, -36], className: 'fleet-info-tooltip' }).openTooltip();
         }
       } else if (routeLine && msg.routeLabel) {
-        // "Returning to base" has no synthetic destination pin — Rebma
+        // "Returning to base" has no synthetic destination pin, Rebma
         // Impex Limited already has its own permanent waypoint marker,
         // so the label binds to the route line itself instead.
         routeLine.bindTooltip(msg.routeLabel, { permanent: true, direction: 'center', className: 'fleet-info-tooltip' }).openTooltip();
@@ -809,7 +809,7 @@ const MAP_HTML = `<!DOCTYPE html>
             sendToParent({ type: 'modern-basemap-available' });
             // Only switch to it automatically the first time it becomes
             // available and nobody has already picked a basemap by hand
-            // this session — never override an explicit choice.
+            // this session, never override an explicit choice.
             if (!userPickedBasemap && currentBasemap === 'street') setBasemap('modern');
           }
         }
@@ -1763,7 +1763,7 @@ export default function FleetMap({ onSelectedChange }: FleetMapProps = {}) {
             <LoadingDots color={t.colors.textMuted} />
           ) : (
             <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta11.size, color: t.colors.textPrimary }}>
-              {weather && typeof weather === 'object' ? `${weatherEmoji(weather.code)} ${Math.round(weather.tempC)}°C` : '—'}
+              {weather && typeof weather === 'object' ? `${weatherEmoji(weather.code)} ${Math.round(weather.tempC)}°C` : 'Not set'}
             </Text>
           )}
         </View>

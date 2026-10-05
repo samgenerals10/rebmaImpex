@@ -358,7 +358,7 @@ export default function DriverTrackingView({ driver, onLogout }: DriverTrackingV
                     {stop.paymentMode && (
                       <p className="text-[11px] text-text-muted mt-1 flex items-center gap-1">
                         <CreditCard className="w-3 h-3 shrink-0" /> {stop.paymentMode}
-                        {typeof stop.totalAmount === 'number' && ` — GHS ${stop.totalAmount.toLocaleString()}`}
+                        {typeof stop.totalAmount === 'number' && `, GHS ${stop.totalAmount.toLocaleString()}`}
                       </p>
                     )}
                     <div className="flex gap-2 mt-2.5">
@@ -400,11 +400,11 @@ export default function DriverTrackingView({ driver, onLogout }: DriverTrackingV
               <div className="grid grid-cols-2 gap-3 mb-3">
                 <div className="p-3 rounded-xl bg-[var(--bg-page)] border border-[var(--border)]">
                   <p className="text-[10px] font-bold uppercase text-text-muted">Latitude</p>
-                  <p className="text-sm font-bold text-text-primary mt-1 font-mono">{lastLat !== null ? lastLat.toFixed(5) : '—'}</p>
+                  <p className="text-sm font-bold text-text-primary mt-1 font-mono">{lastLat !== null ? lastLat.toFixed(5) : 'Not set'}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-[var(--bg-page)] border border-[var(--border)]">
                   <p className="text-[10px] font-bold uppercase text-text-muted">Longitude</p>
-                  <p className="text-sm font-bold text-text-primary mt-1 font-mono">{lastLng !== null ? lastLng.toFixed(5) : '—'}</p>
+                  <p className="text-sm font-bold text-text-primary mt-1 font-mono">{lastLng !== null ? lastLng.toFixed(5) : 'Not set'}</p>
                 </div>
               </div>
 

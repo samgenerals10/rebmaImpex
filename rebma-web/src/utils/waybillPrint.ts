@@ -80,7 +80,7 @@ export async function printWaybillForDelivery(deliveryLogId: string, printedBy?:
   // is legitimate identification, not a bug. Only the copy embedded in the
   // QR payload gets sanitized, since that's the one iOS's scanner misreads
   // as a "Mail" action instead of showing the document content.
-  const issuedBy = order.issuedBy && order.issuedBy !== '—' ? order.issuedBy : 'Pending record';
+  const issuedBy = order.issuedBy && order.issuedBy !== 'Not set' ? order.issuedBy : 'Pending record';
   let qrDataUrl = '';
   try {
     // JSON, not the old human-readable text block — the whole point of the
@@ -101,7 +101,7 @@ export async function printWaybillForDelivery(deliveryLogId: string, printedBy?:
   const [sBg, sColor] = statusColors[order.status] || ['#f8fafc', '#334155'];
 
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
-  <title>Waybill ${waybillNumber || order.ticketNumber} — REBMA IMPEX</title>
+  <title>Waybill ${waybillNumber || order.ticketNumber}, REBMA IMPEX</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Segoe UI',Arial,sans-serif;background:#e8f4ea;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:32px}
@@ -185,7 +185,7 @@ export async function printWaybillForDelivery(deliveryLogId: string, printedBy?:
           </div>
           <div class="sb-item">
             <div class="sl">Container No.</div>
-            <div class="sv">${containerNumber || '—'}</div>
+            <div class="sv">${containerNumber || 'Not set'}</div>
           </div>
           <div class="sb-item">
             <div class="sl">Vehicle</div>
@@ -222,7 +222,7 @@ export async function printWaybillForDelivery(deliveryLogId: string, printedBy?:
               ${items.map(item => `
                 <tr style="border-bottom: 1px solid #e6f7ed;">
                   <td style="text-align: left; padding: 6px 0; font-weight: 650; color: #1e293b;">${item.productName}</td>
-                  <td style="text-align: right; padding: 6px 0; font-weight: 800; color: ${BRAND.green}; font-family: monospace; font-size: 12px;">${item.quantity != null ? Number(item.quantity).toLocaleString() : '—'}</td>
+                  <td style="text-align: right; padding: 6px 0; font-weight: 800; color: ${BRAND.green}; font-family: monospace; font-size: 12px;">${item.quantity != null ? Number(item.quantity).toLocaleString() : 'Not set'}</td>
                   <td style="text-align: right; padding: 6px 0; font-weight: 650; color: #1e293b;">${order.destination || 'To be confirmed by Operations'}</td>
                 </tr>
               `).join('')}

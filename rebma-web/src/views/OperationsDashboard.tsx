@@ -57,7 +57,7 @@ function getOrderProductsDisplay(order: any): string {
   if (Array.isArray(items) && items.length > 0) {
     return items.map((item: any) => `${item.productName} (x${item.quantity})`).join(', ');
   }
-  const name = order.productName || '—';
+  const name = order.productName || 'Not set';
   const qty = order.quantity;
   return qty ? `${name} (x${qty})` : name;
 }
@@ -456,7 +456,7 @@ export default function OperationsDashboard({
         { name: 'Pending', value: localCargo.filter(c => c.status === 'PENDING_RISK_APPROVAL').length },
         { name: 'Rejected', value: localCargo.filter(c => c.status === 'REJECTED').length },
       ],
-      tableData: localCargo.slice(0, 8).map(c => ({ ref: c.goodsCode || c.id, product: c.productName || c.company || '—', weight: `${Number(c.weight || 0).toFixed(1)}t`, status: c.status.replace('_', ' ') })),
+      tableData: localCargo.slice(0, 8).map(c => ({ ref: c.goodsCode || c.id, product: c.productName || c.company || 'Not set', weight: `${Number(c.weight || 0).toFixed(1)}t`, status: c.status.replace('_', ' ') })),
       columns: [{ key: 'ref', label: 'Ref' }, { key: 'product', label: 'Product' }, { key: 'weight', label: 'Weight' }, { key: 'status', label: 'Status' }]
     },
     {
@@ -467,7 +467,7 @@ export default function OperationsDashboard({
         { name: 'Delivered', value: localOrders.filter(o => o.status === 'DELIVERED').length },
         { name: 'Pending', value: localOrders.filter(o => o.status === 'PENDING_MANAGEMENT' || o.status === 'PENDING_FINANCE').length },
       ],
-      tableData: localOrders.filter(o => o.status === 'PROCESSING').slice(0, 8).map(o => ({ id: o.ticketNumber || o.id, item: o.productName || '—', qty: '—', status: 'Awaiting Release' })),
+      tableData: localOrders.filter(o => o.status === 'PROCESSING').slice(0, 8).map(o => ({ id: o.ticketNumber || o.id, item: o.productName || 'Not set', qty: 'Not set', status: 'Awaiting Release' })),
       columns: [{ key: 'id', label: 'ID' }, { key: 'item', label: 'Item' }, { key: 'qty', label: 'Qty' }, { key: 'status', label: 'Status' }]
     },
     {
@@ -477,7 +477,7 @@ export default function OperationsDashboard({
         { name: 'Pending', value: localCargo.filter(c => c.status === 'PENDING_RISK_APPROVAL').length },
         { name: 'Approved', value: localCargo.filter(c => c.status === 'APPROVED').length },
       ],
-      tableData: localCargo.filter(c => c.status === 'PENDING_RISK_APPROVAL').slice(0, 8).map(c => ({ code: c.goodsCode || c.id, name: c.productName || c.company || '—', unit: String((c as any).unit || 'units') })),
+      tableData: localCargo.filter(c => c.status === 'PENDING_RISK_APPROVAL').slice(0, 8).map(c => ({ code: c.goodsCode || c.id, name: c.productName || c.company || 'Not set', unit: String((c as any).unit || 'units') })),
       columns: [{ key: 'code', label: 'Code' }, { key: 'name', label: 'Product' }, { key: 'unit', label: 'Unit' }]
     },
     {
@@ -487,7 +487,7 @@ export default function OperationsDashboard({
         { name: 'Flagged', value: discrepancyCount },
         { name: 'Clear', value: localCargo.filter(c => !c.discrepancies || c.discrepancies === 'None').length },
       ],
-      tableData: localCargo.filter(c => c.discrepancies && c.discrepancies !== 'None').slice(0, 8).map(c => ({ id: c.goodsCode || c.id, item: c.productName || c.company || '—', issue: c.discrepancies || '—', status: 'Flagged' })),
+      tableData: localCargo.filter(c => c.discrepancies && c.discrepancies !== 'None').slice(0, 8).map(c => ({ id: c.goodsCode || c.id, item: c.productName || c.company || 'Not set', issue: c.discrepancies || 'Not set', status: 'Flagged' })),
       columns: [{ key: 'id', label: 'ID' }, { key: 'item', label: 'Item' }, { key: 'issue', label: 'Issue' }, { key: 'status', label: 'Status' }]
     }
   ];
@@ -633,7 +633,7 @@ export default function OperationsDashboard({
 
 
   const handleShareOrder = (order: Order) => {
-    const shareText = `Rebma Sales Order: ${order.id} - Ticket: ${order.ticketNumber} - Client: ${order.clientName} - Amt: GHS ${order.totalAmount}`;
+    const shareText = `Rebma Sales Order: ${order.id}, Ticket: ${order.ticketNumber}, Client: ${order.clientName}, Amt: GHS ${order.totalAmount}`;
     navigator.clipboard.writeText(shareText).then(() => {
       addNotification(`Copied link details for order ${order.id} to clipboard!`);
     }).catch(() => alert(shareText));
@@ -674,7 +674,7 @@ export default function OperationsDashboard({
 
 
   const handleShareCargo = (cargo: IncomingGoods) => {
-    const shareText = `Rebma Cargo Record: GC-${cargo.goodsCode} - ${cargo.productName} - Qty: ${cargo.quantity} - Origin: ${cargo.country}`;
+    const shareText = `Rebma Cargo Record: GC-${cargo.goodsCode}, ${cargo.productName}, Qty: ${cargo.quantity}, Origin: ${cargo.country}`;
     navigator.clipboard.writeText(shareText).then(() => {
       addNotification(`Copied cargo link details to clipboard!`);
     }).catch(() => alert(shareText));
@@ -823,11 +823,11 @@ export default function OperationsDashboard({
               <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-4 shadow-card border border-[var(--border)] dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
                 <div className="py-3 flex justify-between items-center text-xs">
                   <span className="text-text-muted font-medium">Ticket Number</span>
-                  <span className="font-semibold text-text-primary dark:text-slate-200 font-mono">{order.ticketNumber || '—'}</span>
+                  <span className="font-semibold text-text-primary dark:text-slate-200 font-mono">{order.ticketNumber || 'Not set'}</span>
                 </div>
                 <div className="py-3 flex justify-between items-center text-xs">
                   <span className="text-text-muted font-medium">Destination</span>
-                  <span className="font-semibold text-text-primary dark:text-slate-200">{order.destination || '—'}</span>
+                  <span className="font-semibold text-text-primary dark:text-slate-200">{order.destination || 'Not set'}</span>
                 </div>
                 <div className="py-3 flex justify-between items-center text-xs">
                   <span className="text-text-muted font-medium">Amount</span>
@@ -881,7 +881,7 @@ export default function OperationsDashboard({
               <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-4 shadow-card border border-[var(--border)] dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
                 <div className="py-3 flex justify-between items-center text-xs">
                   <span className="text-text-muted font-medium">Goods Code</span>
-                  <span className="font-semibold text-text-primary dark:text-slate-200 font-mono">{cargo.goodsCode || '—'}</span>
+                  <span className="font-semibold text-text-primary dark:text-slate-200 font-mono">{cargo.goodsCode || 'Not set'}</span>
                 </div>
                 <div className="py-3 flex justify-between items-center text-xs">
                   <span className="text-text-muted font-medium">Country of Origin</span>
@@ -905,7 +905,7 @@ export default function OperationsDashboard({
                 </div>
                 <div className="py-3 flex justify-between items-center text-xs">
                   <span className="text-text-muted font-medium">Destination</span>
-                  <span className="font-semibold text-text-primary dark:text-slate-200">{cargo.destination || '—'}</span>
+                  <span className="font-semibold text-text-primary dark:text-slate-200">{cargo.destination || 'Not set'}</span>
                 </div>
                 <div className="py-3 flex justify-between items-center text-xs">
                   <span className="text-text-muted font-medium">Status</span>
@@ -1005,7 +1005,7 @@ export default function OperationsDashboard({
                         <span className="text-xs text-[var(--text-secondary)] font-semibold">{o.supplier_name}</span>
                       </div>
                       <p className="text-xs text-[var(--text-muted)]">
-                        {Array.isArray(o.products) ? o.products.map((p: any) => `${p.product_name} (${p.quantity} ${p.unit})`).join(', ') : '—'}
+                        {Array.isArray(o.products) ? o.products.map((p: any) => `${p.product_name} (${p.quantity} ${p.unit})`).join(', ') : 'Not set'}
                       </p>
                       {o.message && <p className="text-[11px] text-indigo-600 dark:text-indigo-400 italic">{o.message}</p>}
                     </div>
@@ -1434,7 +1434,7 @@ export default function OperationsDashboard({
                           )}
                         </div>
                         <p className="text-[10px] text-[var(--text-muted)] mt-0.5">Client: <strong>{order.clientName}</strong> | Products: <strong className="text-[var(--text-primary)]">{getOrderProductsDisplay(order)}</strong></p>
-                        <p className="text-[10px] text-[var(--text-muted)]">Destination: <strong>{order.destination || '—'}</strong> | Value: <strong>GHS {order.totalAmount.toLocaleString()}</strong></p>
+                        <p className="text-[10px] text-[var(--text-muted)]">Destination: <strong>{order.destination || 'Not set'}</strong> | Value: <strong>GHS {order.totalAmount.toLocaleString()}</strong></p>
                         <p className="text-[10px] text-emerald-500 font-semibold mt-1">Invoice Generated. Release Authorized.</p>
                       </div>
                       <div>
@@ -1457,7 +1457,7 @@ export default function OperationsDashboard({
                   {productionTickets.map(ticket => (
                     <div key={ticket.id} className="py-4 flex items-center justify-between">
                       <div className="text-[var(--text-primary)]">
-                        <p className="text-xs font-bold text-[var(--text-primary)]">{ticket.details?.productName || 'Product'} — {ticket.details?.quantity} {ticket.details?.unit || 'units'}</p>
+                        <p className="text-xs font-bold text-[var(--text-primary)]">{ticket.details?.productName || 'Product'}, {ticket.details?.quantity} {ticket.details?.unit || 'units'}</p>
                         <p className="text-[10px] text-[var(--text-muted)] mt-0.5">{ticket.details?.purpose || 'Approved by Management for repackaging/handling'}</p>
                         <p className="text-[10px] text-cyan-500 font-semibold mt-1">Approved by Management. Ready for warehouse handling.</p>
                       </div>
@@ -1688,11 +1688,11 @@ export default function OperationsDashboard({
                               <p className="font-mono font-bold text-[var(--text-primary)]">CARGO-{item.id}</p>
                               {item.goodsCode && <p className="text-[10px] text-[var(--text-muted)]">{item.goodsCode}</p>}
                             </td>
-                            <td className="py-3 px-2 font-medium text-[13px]">{item.productName || '—'}</td>
+                            <td className="py-3 px-2 font-medium text-[13px]">{item.productName || 'Not set'}</td>
                             <td className="py-3 px-2 text-[var(--text-muted)] font-mono text-[10px] whitespace-nowrap hidden lg:table-cell">{item.createdAt || 'N/A'}</td>
                             <td className="py-3 px-2 font-semibold text-[13px] hidden md:table-cell">{item.country}</td>
                             <td className="py-3 px-2 text-[var(--text-muted)] hidden md:table-cell">{item.company}</td>
-                            <td className="py-3 px-2 text-[var(--text-muted)] hidden lg:table-cell">{item.destination || '—'}</td>
+                            <td className="py-3 px-2 text-[var(--text-muted)] hidden lg:table-cell">{item.destination || 'Not set'}</td>
                             <td className="py-3 px-2 text-right font-mono font-bold text-[13px]">{item.quantity} u.</td>
                             <td className="py-3 px-2 text-right font-mono font-bold text-[13px]">{item.weight}T</td>
                             <td className="py-3 px-2 text-rose-500 font-semibold hidden sm:table-cell">{item.discrepancies}</td>
@@ -1791,20 +1791,20 @@ export default function OperationsDashboard({
                 <div className="w-full p-3">
                   <ResponsiveDataView<IncomingGoods>
                     columns={[
-                      { key: 'productName', label: 'Product', primary: true, render: item => item.productName || '—' },
+                      { key: 'productName', label: 'Product', primary: true, render: item => item.productName || 'Not set' },
                       { key: 'goodsCode', label: 'Goods Code', render: item => <span className="font-mono font-bold">{item.goodsCode || `CARGO-${item.id}`}</span> },
                       { key: 'country', label: 'Origin', render: item => `${item.country} / ${item.company}` },
-                      { key: 'destination', label: 'Destination', render: item => item.destination || '—' },
+                      { key: 'destination', label: 'Destination', render: item => item.destination || 'Not set' },
                       { key: 'createdAt', label: 'Logged At', render: item => <span className="font-mono text-[10px]">{item.createdAt || 'N/A'}</span> },
                       { key: 'status', label: 'Status', status: true, render: item => <span className={`px-2 py-0.5 rounded font-bold text-[10px] ${statusBadge(item.status)}`}>{item.status.replace(/_/g, ' ')}</span> },
                       {
                         key: 'rejectionReason', label: 'Reason', render: item => (
                           (item.status === 'REJECTED' || item.status === 'RETURNED_FOR_CORRECTION') && item.rejectionReason
                             ? <span className="text-rose-600 text-xs">{item.rejectionReason}</span>
-                            : <span className="text-[var(--text-muted)]">—</span>
+                            : <span className="text-[var(--text-muted)]">Not set</span>
                         )
                       },
-                      { key: 'unitPrice', label: 'Unit Price', align: 'right', render: item => <span className="font-mono font-bold">{item.unitPrice ? `GHS ${item.unitPrice}` : '—'}</span> },
+                      { key: 'unitPrice', label: 'Unit Price', align: 'right', render: item => <span className="font-mono font-bold">{item.unitPrice ? `GHS ${item.unitPrice}` : 'Not set'}</span> },
                     ]}
                     data={sortedHistory}
                     rowKey={item => item.id}

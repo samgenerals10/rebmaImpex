@@ -39,7 +39,7 @@ export default function CountUp({
   prefix = '',
   suffix = '',
   format,
-  fallback = '—',
+  fallback = 'Not set',
   className,
 }: Props) {
   const spanRef = useRef<HTMLSpanElement>(null);

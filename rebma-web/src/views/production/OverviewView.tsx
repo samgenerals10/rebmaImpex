@@ -353,7 +353,7 @@ export default function ProductionOverviewView({ currentUser, productionRequests
               </BarChart>
             </ResponsiveContainer>
           </div>
-          <p className="text-[10px] text-[var(--text-muted)] mt-1">Efficiency: <strong className="text-emerald-600">{goodsReceived > 0 ? `${((weekBoxes / goodsReceived) * 100).toFixed(1)}%` : weekBoxes > 0 ? '100%' : '—'}</strong> (boxes per raw unit)</p>
+          <p className="text-[10px] text-[var(--text-muted)] mt-1">Efficiency: <strong className="text-emerald-600">{goodsReceived > 0 ? `${((weekBoxes / goodsReceived) * 100).toFixed(1)}%` : weekBoxes > 0 ? '100%' : 'Not set'}</strong> (boxes per raw unit)</p>
         </div>
       </div>
 

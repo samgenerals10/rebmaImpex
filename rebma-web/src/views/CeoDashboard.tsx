@@ -125,8 +125,8 @@ export default function CeoDashboard({
         setRecentOrders((data ?? []).map((r: any) => ({
           id: r.id,
           order_number: r.goods_code || r.id,
-          supplier_name: r.company || '—',
-          supplier_country: r.country || '—',
+          supplier_name: r.company || 'Not set',
+          supplier_country: r.country || 'Not set',
           total_amount: r.weight || 0,
           total_amount_ghs: 0,
           currency: 'Tons',
@@ -149,8 +149,8 @@ export default function CeoDashboard({
         setPendingOrders((data ?? []).map((r: any) => ({
           id: r.id,
           order_number: r.goods_code || r.id,
-          supplier_name: r.company || '—',
-          supplier_country: r.country || '—',
+          supplier_name: r.company || 'Not set',
+          supplier_country: r.country || 'Not set',
           total_amount: r.weight || 0,
           total_amount_ghs: 0,
           currency: 'Tons',
@@ -376,20 +376,20 @@ export default function CeoDashboard({
 
   const handleExportCSV = () => {
     const data = [
-      { Metric: 'Global Ingestion Flow', Value: kpiIngestion !== null ? `${kpiIngestion.toLocaleString()} Tons` : '—', Details: 'Accra Port Operations' },
-      { Metric: 'Processing Invoices', Value: kpiInvoices !== null ? `${kpiInvoices} Invoices` : '—', Details: 'Awaiting finance clearance' },
-      { Metric: 'Active Logistics Vehicles', Value: kpiFleet !== null ? `${kpiFleet} Trucks` : '—', Details: `${transitVehicles.length} vehicles currently in transit` },
-      { Metric: 'Total Registered Staff', Value: kpiStaff !== null ? `${kpiStaff} Active` : '—', Details: 'HR approval pending queue' }
+      { Metric: 'Global Ingestion Flow', Value: kpiIngestion !== null ? `${kpiIngestion.toLocaleString()} Tons` : 'Not set', Details: 'Accra Port Operations' },
+      { Metric: 'Processing Invoices', Value: kpiInvoices !== null ? `${kpiInvoices} Invoices` : 'Not set', Details: 'Awaiting finance clearance' },
+      { Metric: 'Active Logistics Vehicles', Value: kpiFleet !== null ? `${kpiFleet} Trucks` : 'Not set', Details: `${transitVehicles.length} vehicles currently in transit` },
+      { Metric: 'Total Registered Staff', Value: kpiStaff !== null ? `${kpiStaff} Active` : 'Not set', Details: 'HR approval pending queue' }
     ];
     exportToCSV(data, ['Metric', 'Value', 'Details'], 'ceo_executive_summary');
   };
 
   const handleExportPDF = () => {
     const data = [
-      { Metric: 'Global Ingestion Flow', Value: kpiIngestion !== null ? `${kpiIngestion.toLocaleString()} Tons` : '—', Details: 'Accra Port Operations' },
-      { Metric: 'Processing Invoices', Value: kpiInvoices !== null ? `${kpiInvoices} Invoices` : '—', Details: 'Awaiting finance clearance' },
-      { Metric: 'Active Logistics Vehicles', Value: kpiFleet !== null ? `${kpiFleet} Trucks` : '—', Details: `${transitVehicles.length} vehicles currently in transit` },
-      { Metric: 'Total Registered Staff', Value: kpiStaff !== null ? `${kpiStaff} Active` : '—', Details: 'HR approval pending queue' }
+      { Metric: 'Global Ingestion Flow', Value: kpiIngestion !== null ? `${kpiIngestion.toLocaleString()} Tons` : 'Not set', Details: 'Accra Port Operations' },
+      { Metric: 'Processing Invoices', Value: kpiInvoices !== null ? `${kpiInvoices} Invoices` : 'Not set', Details: 'Awaiting finance clearance' },
+      { Metric: 'Active Logistics Vehicles', Value: kpiFleet !== null ? `${kpiFleet} Trucks` : 'Not set', Details: `${transitVehicles.length} vehicles currently in transit` },
+      { Metric: 'Total Registered Staff', Value: kpiStaff !== null ? `${kpiStaff} Active` : 'Not set', Details: 'HR approval pending queue' }
     ];
     exportToPDF('CEO Executive Summary', data, ['Metric', 'Value', 'Details']);
   };
@@ -404,8 +404,8 @@ export default function CeoDashboard({
   });
 
   const smallStats = [
-    { title: 'Logistics', value: kpiFleet !== null ? `${kpiFleet} Truck${kpiFleet !== 1 ? 's' : ''}` : '—', sub: 'GPS Live', icon: Truck, color: '#6366f1', bg: '#eef2ff', tab: 'Fleet' },
-    { title: 'Staff Force', value: kpiStaff !== null ? `${kpiStaff} Active` : '—', sub: 'From HR', icon: Users, color: '#f59e0b', bg: '#fef3c7', tab: 'Staff' },
+    { title: 'Logistics', value: kpiFleet !== null ? `${kpiFleet} Truck${kpiFleet !== 1 ? 's' : ''}` : 'Not set', sub: 'GPS Live', icon: Truck, color: '#6366f1', bg: '#eef2ff', tab: 'Fleet' },
+    { title: 'Staff Force', value: kpiStaff !== null ? `${kpiStaff} Active` : 'Not set', sub: 'From HR', icon: Users, color: '#f59e0b', bg: '#fef3c7', tab: 'Staff' },
   ];
 
   return (
@@ -437,7 +437,7 @@ export default function CeoDashboard({
           emphasis="primary"
           tone="accent"
           label="Global Ingestion Flow"
-          value={kpiIngestion !== null ? `${kpiIngestion.toLocaleString()} Tons` : '—'}
+          value={kpiIngestion !== null ? `${kpiIngestion.toLocaleString()} Tons` : 'Not set'}
           sublabel="Total cargo intake · Accra Port Operations"
           icon={<Layers className="w-5 h-5" />}
         />
@@ -445,7 +445,7 @@ export default function CeoDashboard({
           emphasis="primary"
           tone={kpiInvoices ? 'warning' : 'neutral'}
           label="Processing Invoices"
-          value={kpiInvoices !== null ? `${kpiInvoices} Invoice${kpiInvoices !== 1 ? 's' : ''}` : '—'}
+          value={kpiInvoices !== null ? `${kpiInvoices} Invoice${kpiInvoices !== 1 ? 's' : ''}` : 'Not set'}
           sublabel="Awaiting finance clearance"
           icon={<FileText className="w-5 h-5" />}
           onClick={() => setActiveSubTab?.('Invoices')}
@@ -629,7 +629,7 @@ export default function CeoDashboard({
                 <div className="flex items-end justify-between mt-2 gap-2">
                   <div>
                     <h3 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] leading-none"><CountUp value={card.value} suffix={card.suffix} /></h3>
-                    <p className="flex items-center gap-0.5 text-[10px] font-semibold mt-1.5 text-[var(--text-muted)]">—</p>
+                    <p className="flex items-center gap-0.5 text-[10px] font-semibold mt-1.5 text-[var(--text-muted)]">Not set</p>
                   </div>
                   <MiniSparkline data={card.data} color="var(--accent)" width={60} height={36} />
                 </div>

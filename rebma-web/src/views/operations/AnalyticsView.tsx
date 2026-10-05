@@ -170,8 +170,8 @@ export default function AnalyticsView({ addNotification }: AddNotificationProps)
               date: (r.created_at || '').slice(0, 10),
               product: name,
               quantity: qty,
-              supplier: r.supplier_name || r.company || '—',
-              status: r.status || '—',
+              supplier: r.supplier_name || r.company || 'Not set',
+              status: r.status || 'Not set',
             });
           }
           setAllCargoRows(cargoRowsArr);
@@ -207,13 +207,13 @@ export default function AnalyticsView({ addNotification }: AddNotificationProps)
     { label: 'Total Cargo Intakes', value: totalCargo, icon: Package, color: 'var(--accent)', kpiKey: 'all' },
     { label: 'Released to Dispatch', value: totalReleased, icon: PackageCheck, color: '#10b981', kpiKey: 'released' },
     { label: 'Discrepancies Reported', value: totalDiscrepancies, icon: AlertTriangle, color: '#f59e0b', kpiKey: 'discrepancies' },
-    { label: 'Avg. Processing Time', value: '—', icon: Clock, color: '#8b5cf6', kpiKey: null },
+    { label: 'Avg. Processing Time', value: 'Not set', icon: Clock, color: '#8b5cf6', kpiKey: null },
   ];
 
   const getModalRows = (kpiKey: string | null): CargoRow[] => {
     if (kpiKey === 'all') return allCargoRows;
     if (kpiKey === 'released') return allCargoRows.filter(r => r.status === 'APPROVED');
-    if (kpiKey === 'discrepancies') return allCargoRows.filter(r => r.status !== 'APPROVED' && r.status !== '—');
+    if (kpiKey === 'discrepancies') return allCargoRows.filter(r => r.status !== 'APPROVED' && r.status !== 'Not set');
     return [];
   };
 

@@ -126,9 +126,9 @@ export default function TransactionsGrid() {
       </View>
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.sm }}>
-        <View style={{ width: '31%' }}><MetricCard label="Total In" value={loading ? '—' : `GHS ${totalIn.toLocaleString()}`} tone="accent" /></View>
-        <View style={{ width: '31%' }}><MetricCard label="Total Out" value={loading ? '—' : `GHS ${totalOut.toLocaleString()}`} tone="danger" /></View>
-        <View style={{ width: '31%' }}><MetricCard label="Net" value={loading ? '—' : `GHS ${net.toLocaleString()}`} /></View>
+        <View style={{ width: '31%' }}><MetricCard label="Total In" value={loading ? 'Not set' : `GHS ${totalIn.toLocaleString()}`} tone="accent" /></View>
+        <View style={{ width: '31%' }}><MetricCard label="Total Out" value={loading ? 'Not set' : `GHS ${totalOut.toLocaleString()}`} tone="danger" /></View>
+        <View style={{ width: '31%' }}><MetricCard label="Net" value={loading ? 'Not set' : `GHS ${net.toLocaleString()}`} /></View>
       </View>
       <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted }}>{filtered.length} transactions</Text>
 

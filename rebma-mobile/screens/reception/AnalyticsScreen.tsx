@@ -72,7 +72,7 @@ export default function AnalyticsScreen() {
         <DateRangeField value={range} onChange={setRange} title="Visitor figures for" />
 
         <View style={{ gap: t.spacing.sm }}>
-          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Visitors" value={loading ? '—' : totalVisitors} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Check-Ins" value={loading ? '—' : totalCheckins} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Avg Visitors / Day" value={loading ? '—' : avgPerDay} /></View></View>
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Visitors" value={loading ? 'Not set' : totalVisitors} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Check-Ins" value={loading ? 'Not set' : totalCheckins} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Avg Visitors / Day" value={loading ? 'Not set' : avgPerDay} /></View></View>
         </View>
 
         {!loading && trendData.length > 0 && (

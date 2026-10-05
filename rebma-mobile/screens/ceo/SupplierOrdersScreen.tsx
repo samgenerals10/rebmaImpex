@@ -353,7 +353,7 @@ export default function SupplierOrdersScreen() {
             <SheetSection label="Shipping">
               <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>Port of Entry: {detail.port_of_entry}</Text>
               <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>Method: {detail.shipping_method}</Text>
-              <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>Expected Delivery: {detail.expected_delivery_date || '—'}</Text>
+              <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>Expected Delivery: {detail.expected_delivery_date || 'Not set'}</Text>
               {detail.payment_reference && <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>Payment Ref: {detail.payment_reference}</Text>}
               {detail.notes && <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>Notes: {detail.notes}</Text>}
             </SheetSection>

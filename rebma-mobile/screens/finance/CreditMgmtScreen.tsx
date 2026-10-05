@@ -183,8 +183,8 @@ export default function CreditMgmtScreen() {
     { key: 'status', label: 'Status', status: true, render: (e) => <Badge tone={STATUS_TONE[e.status]} label={e.status} /> },
     { key: 'orderRef', label: 'Order' },
     { key: 'outstanding', label: 'Outstanding', render: (e) => `GHS ${e.outstanding.toLocaleString()}` },
-    { key: 'dueDate', label: 'Due', render: (e) => e.dueDate || '—' },
-    { key: 'daysOverdue', label: 'Days Overdue', render: (e) => e.daysOverdue > 0 ? e.daysOverdue : '—' },
+    { key: 'dueDate', label: 'Due', render: (e) => e.dueDate || 'Not set' },
+    { key: 'daysOverdue', label: 'Days Overdue', render: (e) => e.daysOverdue > 0 ? e.daysOverdue : 'Not set' },
   ];
 
   const exportColumns: ExportColumn[] = [
@@ -205,7 +205,7 @@ export default function CreditMgmtScreen() {
           <Button label="Export CSV" size="sm" variant="ghost" icon={<Download size={13} color={t.colors.textSecondary} />} onPress={() => setExportOpen(true)} />
         </View>
         <View style={{ gap: t.spacing.sm }}>
-          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Extended" value={loading ? '—' : `GHS ${totalExtended.toLocaleString()}`} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Collected" value={loading ? '—' : `GHS ${totalCollected.toLocaleString()}`} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Outstanding" value={loading ? '—' : `GHS ${totalOutstanding.toLocaleString()}`} tone="warning" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Overdue" value={loading ? '—' : overdueCount} tone="danger" /></View></View>
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Extended" value={loading ? 'Not set' : `GHS ${totalExtended.toLocaleString()}`} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Collected" value={loading ? 'Not set' : `GHS ${totalCollected.toLocaleString()}`} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Outstanding" value={loading ? 'Not set' : `GHS ${totalOutstanding.toLocaleString()}`} tone="warning" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Overdue" value={loading ? 'Not set' : overdueCount} tone="danger" /></View></View>
         </View>
         <Input value={search} onChangeText={setSearch} placeholder="Search customers…" />
         <SearchablePicker label="Status" value={statusFilter} onChange={setStatusFilter} options={[{ value: 'ALL', label: 'All' }, { value: 'Current', label: 'Current' }, { value: 'Due Soon', label: 'Due Soon' }, { value: 'Overdue', label: 'Overdue' }, { value: 'Paid', label: 'Paid' }]} />

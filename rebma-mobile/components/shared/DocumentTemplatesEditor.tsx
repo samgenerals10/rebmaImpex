@@ -255,7 +255,7 @@ export default function DocumentTemplatesEditor({ updatedBy }: { updatedBy: stri
               )}
               <View>
                 <Text style={{ fontFamily: t.font.extrabold, fontSize: 13, color: '#1a5c32' }}>{draft.companyName || 'REBMA IMPEX'}</Text>
-                <Text style={{ fontFamily: t.font.bold, fontSize: 9, color: '#29a9dc', textTransform: 'uppercase' }}>{draft.subtitle || '—'}</Text>
+                <Text style={{ fontFamily: t.font.bold, fontSize: 9, color: '#29a9dc', textTransform: 'uppercase' }}>{draft.subtitle || 'Not set'}</Text>
               </View>
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: t.spacing.sm }}>
@@ -265,7 +265,7 @@ export default function DocumentTemplatesEditor({ updatedBy }: { updatedBy: stri
               </Text>
             </View>
             <View style={{ borderTopWidth: 1, borderTopColor: '#e2e8f0', borderStyle: 'dashed', paddingTop: t.spacing.sm }}>
-              <Text style={{ fontFamily: t.font.regular, fontSize: 9, color: '#94a3b8' }}>{draft.footerNote || '—'}</Text>
+              <Text style={{ fontFamily: t.font.regular, fontSize: 9, color: '#94a3b8' }}>{draft.footerNote || 'Not set'}</Text>
               <Text style={{ fontFamily: t.font.regular, fontStyle: 'italic', fontSize: 8, color: '#cbd5e1', marginTop: 6 }}>+ document number, QR code, issued-by (added automatically)</Text>
             </View>
           </View>

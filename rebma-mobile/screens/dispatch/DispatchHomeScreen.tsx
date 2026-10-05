@@ -363,11 +363,11 @@ export default function DispatchHomeScreen() {
               <View style={{ flexDirection: 'row', gap: t.spacing.md }}>
                 <View style={{ flex: 1, padding: t.spacing.md, backgroundColor: t.colors.bgPage, borderRadius: t.radius.md, borderWidth: 1, borderColor: t.colors.border }}>
                   <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta10.size, color: t.colors.textMuted, textTransform: 'uppercase' }}>Latitude</Text>
-                  <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginTop: 4 }}>{lastLat !== null ? lastLat.toFixed(5) : '—'}</Text>
+                  <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginTop: 4 }}>{lastLat !== null ? lastLat.toFixed(5) : 'Not set'}</Text>
                 </View>
                 <View style={{ flex: 1, padding: t.spacing.md, backgroundColor: t.colors.bgPage, borderRadius: t.radius.md, borderWidth: 1, borderColor: t.colors.border }}>
                   <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta10.size, color: t.colors.textMuted, textTransform: 'uppercase' }}>Longitude</Text>
-                  <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginTop: 4 }}>{lastLng !== null ? lastLng.toFixed(5) : '—'}</Text>
+                  <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginTop: 4 }}>{lastLng !== null ? lastLng.toFixed(5) : 'Not set'}</Text>
                 </View>
               </View>
 

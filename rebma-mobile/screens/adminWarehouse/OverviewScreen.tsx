@@ -107,11 +107,11 @@ export default function OverviewScreen() {
   );
 
   const kpiDefs = [
-    { id: 'stock', label: 'Stock', value: loading ? '—' : stockQty.toLocaleString(), sublabel: 'Total units', naturalTone: 'accent' as const, Icon: Package, naturalIconColor: t.colors.accent, onPress: () => navigation.navigate('Stock') },
-    { id: 'weight', label: 'Weight', value: loading ? '—' : `${totalTons.toFixed(1)}T`, sublabel: 'Cargo tons', naturalTone: 'info' as const, Icon: Layers, naturalIconColor: t.colors.status.info.text, onPress: () => navigation.navigate('Stock') },
-    { id: 'queue', label: 'Queue', value: loading ? '—' : pendingReleaseOrders.length, sublabel: 'Ready to load', naturalTone: 'success' as const, Icon: Truck, naturalIconColor: t.colors.action.emerald, onPress: () => navigation.navigate('Releases') },
-    { id: 'pending', label: 'Pending', value: loading ? '—' : pendingApprovalCount, sublabel: 'At Risk review', naturalTone: 'warning' as const, Icon: ClipboardCheck, naturalIconColor: t.colors.action.amber, onPress: () => navigation.navigate('OpsHistory') },
-    { id: 'issues', label: 'Issues', value: loading ? '—' : discrepancyCount, sublabel: 'Flagged batches', naturalTone: 'danger' as const, Icon: TriangleAlert, naturalIconColor: t.colors.action.rose, onPress: () => navigation.navigate('OpsHistory') },
+    { id: 'stock', label: 'Stock', value: loading ? 'Not set' : stockQty.toLocaleString(), sublabel: 'Total units', naturalTone: 'accent' as const, Icon: Package, naturalIconColor: t.colors.accent, onPress: () => navigation.navigate('Stock') },
+    { id: 'weight', label: 'Weight', value: loading ? 'Not set' : `${totalTons.toFixed(1)}T`, sublabel: 'Cargo tons', naturalTone: 'info' as const, Icon: Layers, naturalIconColor: t.colors.status.info.text, onPress: () => navigation.navigate('Stock') },
+    { id: 'queue', label: 'Queue', value: loading ? 'Not set' : pendingReleaseOrders.length, sublabel: 'Ready to load', naturalTone: 'success' as const, Icon: Truck, naturalIconColor: t.colors.action.emerald, onPress: () => navigation.navigate('Releases') },
+    { id: 'pending', label: 'Pending', value: loading ? 'Not set' : pendingApprovalCount, sublabel: 'At Risk review', naturalTone: 'warning' as const, Icon: ClipboardCheck, naturalIconColor: t.colors.action.amber, onPress: () => navigation.navigate('OpsHistory') },
+    { id: 'issues', label: 'Issues', value: loading ? 'Not set' : discrepancyCount, sublabel: 'Flagged batches', naturalTone: 'danger' as const, Icon: TriangleAlert, naturalIconColor: t.colors.action.rose, onPress: () => navigation.navigate('OpsHistory') },
   ];
   const spanning = kpiDefs.find((k) => k.id === spanKey) || kpiDefs.find((k) => k.id === 'stock')!;
   const remaining = kpiDefs.filter((k) => k.id !== spanning.id);
@@ -261,7 +261,7 @@ export default function OverviewScreen() {
                     {item.product_name || 'Unnamed Cargo'}
                   </Text>
                   <Text style={{ fontFamily: t.font.medium, fontSize: t.type.meta10.size, color: t.colors.textMuted, marginTop: 2 }} numberOfLines={1}>
-                    CARGO-{item.id.slice(-6).toUpperCase()} · {item.company || '—'}
+                    CARGO-{item.id.slice(-6).toUpperCase()} · {item.company || 'Not set'}
                   </Text>
                   <Text style={{ fontFamily: t.font.extrabold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginTop: t.spacing.sm }}>
                     {Number(item.weight || 0).toFixed(1)}T

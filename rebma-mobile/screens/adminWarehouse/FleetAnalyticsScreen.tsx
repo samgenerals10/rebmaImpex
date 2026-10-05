@@ -145,8 +145,8 @@ export default function FleetAnalyticsScreen() {
         <DateRangeField value={range} onChange={setRange} title="Fleet figures for" />
 
         <View style={{ gap: t.spacing.sm }}>
-          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Fleet Size" value={loading ? '—' : totalVehicles} sublabel={`${operationalCount} operational`} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Fleet Utilization" value={loading ? '—' : `${utilizationRate}%`} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Cost per Delivery" value={loading ? '—' : (costPerDelivery > 0 ? `GHS ${costPerDelivery}` : '—')} tone="warning" /></View></View>
-          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Avg Fuel Efficiency" value={loading ? '—' : (avgFuelEfficiency ? `${avgFuelEfficiency} km/L` : '—')} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Deliveries Completed" value={loading ? '—' : deliveredByVehicleTotal(deliveredByVehicle)} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Fuel Spend (period)" value={loading ? '—' : `GHS ${totalFuelCostPeriod.toLocaleString()}`} tone="warning" /></View></View>
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Fleet Size" value={loading ? 'Not set' : totalVehicles} sublabel={`${operationalCount} operational`} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Fleet Utilization" value={loading ? 'Not set' : `${utilizationRate}%`} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Cost per Delivery" value={loading ? 'Not set' : (costPerDelivery > 0 ? `GHS ${costPerDelivery}` : 'Not set')} tone="warning" /></View></View>
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Avg Fuel Efficiency" value={loading ? 'Not set' : (avgFuelEfficiency ? `${avgFuelEfficiency} km/L` : 'Not set')} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Deliveries Completed" value={loading ? 'Not set' : deliveredByVehicleTotal(deliveredByVehicle)} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Fuel Spend (period)" value={loading ? 'Not set' : `GHS ${totalFuelCostPeriod.toLocaleString()}`} tone="warning" /></View></View>
         </View>
 
         {!loading && driverData.length > 0 && (
@@ -163,7 +163,7 @@ export default function FleetAnalyticsScreen() {
 
         <Card>
           <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginBottom: 4 }}>Open Maintenance Work Orders</Text>
-          <Text style={{ fontFamily: t.font.extrabold, fontSize: t.type.kpi28.size, color: t.colors.textPrimary }}>{loading ? '—' : openWorkOrders}</Text>
+          <Text style={{ fontFamily: t.font.extrabold, fontSize: t.type.kpi28.size, color: t.colors.textPrimary }}>{loading ? 'Not set' : openWorkOrders}</Text>
           <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted, marginTop: 2 }}>{maintInPeriod.length} logged this period</Text>
         </Card>
 

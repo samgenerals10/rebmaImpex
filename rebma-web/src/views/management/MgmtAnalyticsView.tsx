@@ -210,11 +210,11 @@ export default function MgmtAnalyticsView({ addNotification }: Props) {
       if (data && data.length > 0) {
         setRecentDecisions(data.map((r: any) => ({
           date: r.timestamp ? r.timestamp.split('T')[0] : '',
-          type: r.action?.replace(/_/g, ' ') ?? '—',
-          description: r.details ?? '—',
+          type: r.action?.replace(/_/g, ' ') ?? 'Not set',
+          description: r.details ?? 'Not set',
           decision: r.action?.includes('REJECT') ? 'Rejected' : r.action?.includes('APPROVE') ? 'Approved' : 'Actioned',
-          outcome: r.details ?? '—',
-          ref: r.id?.slice(0, 8) ?? '—',
+          outcome: r.details ?? 'Not set',
+          ref: r.id?.slice(0, 8) ?? 'Not set',
         })));
       } else {
         setRecentDecisions([]);
@@ -237,7 +237,7 @@ export default function MgmtAnalyticsView({ addNotification }: Props) {
     { label: 'Total Cargo Reviewed', value: totalApprovals, prefix: '', suffix: '', icon: ClipboardCheck, color: 'var(--accent)' },
     { label: 'Approval Rate', value: approvalRate, prefix: '', suffix: '%', icon: ShieldCheck, color: '#10b981' },
     { label: 'Revenue Tracked', value: deptRevenue.length > 0 ? deptRevenue.reduce((s,d) => s + d.revenue, 0) : null, prefix: 'GHS ', suffix: '', icon: DollarSign, color: '#8b5cf6' },
-    { label: 'Departments Active', value: performanceHeatmap.length > 0 ? `${performanceHeatmap.length}/${DEPT_LIST.length}` : '—', prefix: '', suffix: '', icon: Users, color: '#f59e0b' },
+    { label: 'Departments Active', value: performanceHeatmap.length > 0 ? `${performanceHeatmap.length}/${DEPT_LIST.length}` : 'Not set', prefix: '', suffix: '', icon: Users, color: '#f59e0b' },
   ];
 
   return (
@@ -272,7 +272,7 @@ export default function MgmtAnalyticsView({ addNotification }: Props) {
                 </div>
               </div>
               <p className="text-2xl font-bold text-[var(--text-primary)]">
-                {loading ? '—' : typeof card.value === 'number'
+                {loading ? 'Not set' : typeof card.value === 'number'
                   ? <CountUp value={card.value} prefix={card.prefix} suffix={card.suffix} />
                   : card.value}
               </p>

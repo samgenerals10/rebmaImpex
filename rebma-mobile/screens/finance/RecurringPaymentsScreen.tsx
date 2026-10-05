@@ -118,7 +118,7 @@ export default function RecurringPaymentsScreen() {
     { key: 'status', label: 'Status', status: true, render: (r) => <Badge tone={r.status === 'active' ? 'success' : 'muted'} label={r.status} /> },
     { key: 'amount', label: 'Amount', render: (r) => `GHS ${Number(r.amount || 0).toLocaleString()}` },
     { key: 'frequency', label: 'Frequency' },
-    { key: 'next_date', label: 'Next Due', render: (r) => r.next_date || '—' },
+    { key: 'next_date', label: 'Next Due', render: (r) => r.next_date || 'Not set' },
   ];
 
   return (

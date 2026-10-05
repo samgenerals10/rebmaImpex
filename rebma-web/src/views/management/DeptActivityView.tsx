@@ -45,7 +45,7 @@ const DEPT_ICONS: Record<string, React.ComponentType<{ className?: string }>> = 
 };
 
 const timeAgo = (iso: string): string => {
-  if (!iso) return '—';
+  if (!iso) return 'Not set';
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return 'just now';
@@ -387,9 +387,9 @@ export default function DeptActivityView({ addNotification, currentUser }: Props
               { label: 'Department', value: detailItem.department },
               { label: 'Performed By', value: detailItem.user },
               { label: 'Action', value: detailItem.action },
-              { label: 'Details', value: detailItem.details || '—' },
-              { label: 'Timestamp', value: detailItem.timestamp ? new Date(detailItem.timestamp).toLocaleString() : '—' },
-              { label: 'Reference ID', value: detailItem.refId || '—' },
+              { label: 'Details', value: detailItem.details || 'Not set' },
+              { label: 'Timestamp', value: detailItem.timestamp ? new Date(detailItem.timestamp).toLocaleString() : 'Not set' },
+              { label: 'Reference ID', value: detailItem.refId || 'Not set' },
             ].map(row => (
               <div key={row.label} className="flex flex-col gap-0.5 p-3 bg-[var(--bg)] rounded-xl border border-[var(--border)]">
                 <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wide">{row.label}</span>

@@ -237,7 +237,7 @@ function TableEditor({ table, onBack }: { table: { id: string; label: string }; 
     key: c,
     label: c,
     primary: idx === 0,
-    render: (row) => (row[c] == null ? '—' : String(row[c])),
+    render: (row) => (row[c] == null ? 'Not set' : String(row[c])),
   }));
 
   return (
@@ -352,7 +352,7 @@ function FreeSheetPicker({ department, refreshKey, onOpen }: { department: strin
               <View style={{ flex: 1 }}>
                 <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary }}>{s.title}</Text>
                 <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted }}>
-                  {s.created_by_name || '—'}{s.updated_at ? ` · ${new Date(s.updated_at).toLocaleDateString()} ${new Date(s.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
+                  {s.created_by_name || 'Not set'}{s.updated_at ? ` · ${new Date(s.updated_at).toLocaleDateString()} ${new Date(s.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
                 </Text>
               </View>
               <Pressable onPress={() => remove(s)} hitSlop={8}><Trash2 size={15} color={t.colors.status.danger.text} /></Pressable>

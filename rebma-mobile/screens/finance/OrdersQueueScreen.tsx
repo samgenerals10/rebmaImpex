@@ -207,16 +207,16 @@ export default function OrdersQueueScreen() {
   const columns: DataColumn<OrderRow>[] = [
     { key: 'client_name', label: 'Client', primary: true },
     { key: 'status', label: 'Status', status: true, render: (o) => <Badge tone={statusTone(o.status)} label={o.status.replace(/_/g, ' ')} /> },
-    { key: 'ticket_number', label: 'Ticket', render: (o) => o.ticket_number || '—' },
+    { key: 'ticket_number', label: 'Ticket', render: (o) => o.ticket_number || 'Not set' },
     { key: 'total_amount', label: 'Amount', render: (o) => `GHS ${Number(o.total_amount || 0).toLocaleString()}` },
-    { key: 'payment_mode', label: 'Payment', render: (o) => o.payment_mode || '—' },
+    { key: 'payment_mode', label: 'Payment', render: (o) => o.payment_mode || 'Not set' },
   ];
 
   return (
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}>
       <View style={{ gap: t.spacing.md }}>
         <View style={{ gap: t.spacing.sm }}>
-          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Pending Review" value={loading ? '—' : pendingOrders.length} sublabel={`GHS ${pendingValue.toLocaleString()}`} tone="warning" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Approved / Active" value={loading ? '—' : approvedOrders.length} sublabel={`GHS ${approvedValue.toLocaleString()}`} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Delivered" value={loading ? '—' : deliveredOrders.length} sublabel={`GHS ${deliveredValue.toLocaleString()}`} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Rejected" value={loading ? '—' : rejectedOrders.length} sublabel="Orders declined" tone="danger" /></View></View>
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Pending Review" value={loading ? 'Not set' : pendingOrders.length} sublabel={`GHS ${pendingValue.toLocaleString()}`} tone="warning" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Approved / Active" value={loading ? 'Not set' : approvedOrders.length} sublabel={`GHS ${approvedValue.toLocaleString()}`} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Delivered" value={loading ? 'Not set' : deliveredOrders.length} sublabel={`GHS ${deliveredValue.toLocaleString()}`} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Rejected" value={loading ? 'Not set' : rejectedOrders.length} sublabel="Orders declined" tone="danger" /></View></View>
         </View>
         <Input value={search} onChangeText={setSearch} placeholder="Search orders…" />
         <SearchablePicker label="Payment Mode" value={modeFilter} onChange={setModeFilter} options={['All', 'CASH', 'CHEQUE', 'MOBILE_MONEY', 'CREDIT'].map((m) => ({ value: m, label: m }))} />
@@ -247,8 +247,8 @@ export default function OrdersQueueScreen() {
         {selected && (
           <>
             <SheetSection label="Order Summary">
-              <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>Product: {selected.product_name || '—'}</Text>
-              <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>Destination: {selected.destination || '—'}</Text>
+              <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>Product: {selected.product_name || 'Not set'}</Text>
+              <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>Destination: {selected.destination || 'Not set'}</Text>
               <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginTop: 4 }}>Total: GHS {Number(selected.total_amount || 0).toLocaleString()}</Text>
             </SheetSection>
 

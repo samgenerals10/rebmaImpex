@@ -184,7 +184,7 @@ export default function WipStockScreen() {
     { key: 'product_name', label: 'Product', primary: true },
     { key: 'stage', label: 'Stage', status: true, render: (i) => <Badge tone={stageTone(i.stage)} label={i.stage} size="xs" /> },
     { key: 'qty', label: 'Qty', render: (i) => `${Number(i.qty || 0).toLocaleString()} ${i.unit || ''}` },
-    { key: 'batch_ref', label: 'Batch', render: (i) => i.batch_ref || '—' },
+    { key: 'batch_ref', label: 'Batch', render: (i) => i.batch_ref || 'Not set' },
   ];
 
   return (
@@ -247,10 +247,10 @@ export default function WipStockScreen() {
           <View style={{ gap: t.spacing.sm }}>
             <Badge tone={stageTone(detail.stage)} label={detail.stage} />
             {[
-              { label: 'Batch Reference', value: detail.batch_ref || '—' },
+              { label: 'Batch Reference', value: detail.batch_ref || 'Not set' },
               { label: 'Quantity', value: `${Number(detail.qty || 0).toLocaleString()} ${detail.unit || ''}` },
-              { label: 'Last Updated', value: detail.updated_at ? new Date(detail.updated_at).toLocaleString() : '—' },
-              { label: 'Notes', value: detail.notes || '—' },
+              { label: 'Last Updated', value: detail.updated_at ? new Date(detail.updated_at).toLocaleString() : 'Not set' },
+              { label: 'Notes', value: detail.notes || 'Not set' },
             ].map((r) => (
               <View key={r.label} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: t.spacing.xs, borderBottomWidth: 1, borderBottomColor: t.colors.border }}>
                 <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta11.size, color: t.colors.textMuted }}>{r.label}</Text>

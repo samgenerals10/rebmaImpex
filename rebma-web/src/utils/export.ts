@@ -69,7 +69,7 @@ function drawLetterhead(doc: jsPDF, title: string) {
   doc.setFontSize(10);
   doc.setTextColor(100, 116, 139);
   doc.setFont('helvetica', 'normal');
-  doc.text(`${title} Report - Confidential Internal Document`, 14, 25);
+  doc.text(`${title} Report, Confidential Internal Document`, 14, 25);
   const now = new Date();
   doc.text(`Generated: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`, doc.internal.pageSize.getWidth() - 14, 18, { align: 'right' });
   doc.setDrawColor(2, 152, 208);
@@ -302,7 +302,7 @@ export function exportToDOC(
 <head>
 <meta charset="utf-8"/>
 <meta name="ProgId" content="Word.Document"/>
-<title>${title} — ${t.companyName}</title>
+<title>${title}, ${t.companyName}</title>
 <style>
   body { font-family: 'Segoe UI', Calibri, Arial, sans-serif; margin: 0; padding: 0; }
   .page { max-width: 900px; margin: 32px auto; padding: 0 32px 32px; }

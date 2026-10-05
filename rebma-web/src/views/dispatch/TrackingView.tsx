@@ -97,18 +97,18 @@ export default function TrackingView({ addNotification: _addNotification }: Prop
               id: d.id,
               driverId: d.driver_id,
               driverName: d.full_name,
-              truckId: d.vehicle_id || '—',
+              truckId: d.vehicle_id || 'Not set',
               status: d.status === 'ON_DELIVERY' ? 'IN_TRANSIT' : (d.status as VehicleRecord['status']),
               driverState,
-              phone: d.phone || '—',
-              ghanaCard: d.ghana_card_id || '—',
-              licenseNumber: d.license_number || '—',
+              phone: d.phone || 'Not set',
+              ghanaCard: d.ghana_card_id || 'Not set',
+              licenseNumber: d.license_number || 'Not set',
               photo: d.photo || undefined,
               lastKnownLocation: lastPing ? `Live GPS · updated ${fmtAgo(lastPing)}` : 'No GPS ping yet, driver hasn’t opened the mobile app during a delivery',
               lastUpdated: lastPing || new Date().toISOString(),
               lastDelivery: lastDelivery ? {
                 id: lastDelivery.id,
-                destination: lastDelivery.delivery_address || '—',
+                destination: lastDelivery.delivery_address || 'Not set',
                 status: lastDelivery.status,
                 coordinates: (lastDelivery.destination_lat != null && lastDelivery.destination_lng != null)
                   ? { lat: Number(lastDelivery.destination_lat), lng: Number(lastDelivery.destination_lng) }

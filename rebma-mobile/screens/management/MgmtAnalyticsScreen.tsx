@@ -64,7 +64,7 @@ export default function MgmtAnalyticsScreen() {
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}>
       <View style={{ gap: t.spacing.xl }}>
         <View style={{ gap: t.spacing.sm }}>
-          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Cargo Approved" value={loading ? '—' : approved} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Cargo Rejected" value={loading ? '—' : rejected} tone="danger" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Cargo Pending" value={loading ? '—' : pending} tone="warning" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Net Revenue" value={loading ? '—' : `GHS ${(revenue - expenses).toLocaleString()}`} tone={revenue - expenses >= 0 ? 'accent' : 'danger'} /></View></View>
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Cargo Approved" value={loading ? 'Not set' : approved} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Cargo Rejected" value={loading ? 'Not set' : rejected} tone="danger" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Cargo Pending" value={loading ? 'Not set' : pending} tone="warning" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Net Revenue" value={loading ? 'Not set' : `GHS ${(revenue - expenses).toLocaleString()}`} tone={revenue - expenses >= 0 ? 'accent' : 'danger'} /></View></View>
         </View>
 
         <Card>

@@ -120,7 +120,7 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
         .limit(100);
       const parsed: ApprovalItem[] = (data || [])
         .map((row: any): ApprovalItem | null => {
-          const m = String(row.action || '').match(/^(APPROVE|REJECT|RETURN|ESCALATE)[A-Z_]*:\s*([\w-]+)\s*—\s*(.+)$/i);
+          const m = String(row.action || '').match(/^(APPROVE|REJECT|RETURN|ESCALATE)[A-Z_]*:\s*([\w-]+)\s*(?:—|,)\s*(.+)$/i)  // older entries use a dash, newer ones a comma;
           if (!m) return null;
           const [, verb, requestId, rest] = m;
           const noteMatch = rest.match(/^(.*?)(?:\s*\|\s*Note:\s*(.*))?$/);
@@ -141,7 +141,7 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
             id: row.id,
             requestId,
             type: inferredType,
-            description: reason ? `${description} — Reason: ${reason}` : description,
+            description: reason ? `${description}, Reason: ${reason}` : description,
             department: row.department || 'RISK',
             amount: null,
             date: row.timestamp ? row.timestamp.slice(0, 10) : '',
@@ -202,7 +202,7 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
         id: row.id,
         requestId: `CUST-${String(row.id).slice(-6).toUpperCase()}`,
         type: 'Customer Verification' as const,
-        description: `${row.name || 'Unnamed customer'}${row.company_name ? ` — ${row.company_name}` : ''}`,
+        description: `${row.name || 'Unnamed customer'}${row.company_name ? `, ${row.company_name}` : ''}`,
         department: 'MARKETING',
         amount: null,
         date: row.registered_at?.slice(0, 10) || '',
@@ -236,7 +236,7 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
         id: row.id,
         requestId: `ORD-${row.id.slice(-6).toUpperCase()}`,
         type: 'Sales Order' as const,
-        description: `${row.payment_mode === 'CREDIT' ? 'Credit order' : `${row.payment_mode || 'Cash'} order`} for ${row.client_name} — GHS ${Number(row.total_amount || 0).toLocaleString()}`,
+        description: `${row.payment_mode === 'CREDIT' ? 'Credit order' : `${row.payment_mode || 'Cash'} order`} for ${row.client_name}, GHS ${Number(row.total_amount || 0).toLocaleString()}`,
         department: 'MARKETING',
         amount: Number(row.total_amount || 0),
         date: row.created_at?.slice(0, 10) || '',
@@ -264,7 +264,7 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
         id: row.id,
         requestId: `ORD-${row.id.slice(-6).toUpperCase()}`,
         type: 'Risk Final Release' as const,
-        description: `${row.payment_mode === 'CREDIT' ? 'Credit order' : `${row.payment_mode || 'Cash'} order`} for ${row.client_name} — GHS ${Number(row.total_amount || 0).toLocaleString()} (cleared by Accounts, awaiting release)`,
+        description: `${row.payment_mode === 'CREDIT' ? 'Credit order' : `${row.payment_mode || 'Cash'} order`} for ${row.client_name}, GHS ${Number(row.total_amount || 0).toLocaleString()} (cleared by Accounts, awaiting release)`,
         department: 'FINANCE',
         amount: Number(row.total_amount || 0),
         date: row.created_at?.slice(0, 10) || '',
@@ -461,7 +461,7 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
 
       await supabase.from('global_audit_history').insert([{
         department: 'RISK',
-        action: `${verb}: ${selectedItem.requestId} — ${selectedItem.description}${modalNote ? ` | Note: ${modalNote}` : ''}`,
+        action: `${verb}: ${selectedItem.requestId}, ${selectedItem.description}${modalNote ? ` | Note: ${modalNote}` : ''}`,
         performed_by: currentUser?.fullName || 'Risk',
         reference_id: selectedItem.id,
         details: modalNote || null,
@@ -779,7 +779,7 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
                   }
                 },
                 { key: 'department', label: 'Department' },
-                { key: 'amount', label: 'Amount', render: item => item.amount !== null ? `GHS ${(Number(item.amount ?? 0)).toLocaleString()}` : '—' },
+                { key: 'amount', label: 'Amount', render: item => item.amount !== null ? `GHS ${(Number(item.amount ?? 0)).toLocaleString()}` : 'Not set' },
                 { key: 'date', label: 'Date' },
                 { key: 'priority', label: 'Priority', render: item => <span className={`font-semibold text-xs ${PRIORITY_COLORS[item.priority]}`}>● {item.priority}</span> },
                 { key: 'status', label: 'Status', status: true, render: item => <span className={`text-xs px-2 py-1 rounded-full font-medium whitespace-nowrap ${STATUS_COLORS[item.status]}`}>{item.status}</span> },

@@ -128,9 +128,9 @@ export default function DriversScreen() {
       ),
     },
     { key: 'status', label: 'Status', status: true, render: (d) => <Badge tone={d.status === 'ACTIVE' ? 'success' : d.status === 'ON_DELIVERY' ? 'info' : 'muted'} label={d.status.replace(/_/g, ' ')} /> },
-    { key: 'driver_id', label: 'ID', render: (d) => d.driver_id || '—' },
-    { key: 'phone', label: 'Phone', render: (d) => d.phone || '—' },
-    { key: 'vehicle_id', label: 'Vehicle', render: (d) => d.vehicle_id || '—' },
+    { key: 'driver_id', label: 'ID', render: (d) => d.driver_id || 'Not set' },
+    { key: 'phone', label: 'Phone', render: (d) => d.phone || 'Not set' },
+    { key: 'vehicle_id', label: 'Vehicle', render: (d) => d.vehicle_id || 'Not set' },
   ];
 
   return (

@@ -314,7 +314,7 @@ export default function ApprovalsView({ currentUser, addNotification }: Props) {
                   : <XCircle className="w-4 h-4 text-rose-600 shrink-0" />
                 }
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-[var(--text-primary)] truncate">{item.requester} — {item.description}</p>
+                  <p className="text-xs font-semibold text-[var(--text-primary)] truncate">{item.requester}, {item.description}</p>
                   <p className="text-[10px] text-[var(--text-muted)]">{item.department} · {item.date_submitted}</p>
                 </div>
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${item.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-600'}`}>{item.status}</span>

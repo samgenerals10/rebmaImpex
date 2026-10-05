@@ -283,7 +283,7 @@ export default function SetPricesScreen() {
     { key: 'productName', label: 'Product', primary: true },
     { key: 'unitPrice', label: 'Price', status: true, render: (p) => <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.accent }}>{p.currency} {p.unitPrice.toLocaleString()}</Text> },
     { key: 'category', label: 'Category' },
-    { key: 'margin', label: 'Margin', render: (p) => (p.margin != null ? `${p.margin.toFixed(0)}%` : '—') },
+    { key: 'margin', label: 'Margin', render: (p) => (p.margin != null ? `${p.margin.toFixed(0)}%` : 'Not set') },
   ];
 
   const customerColumns: DataColumn<CustomerDiscountRow>[] = [

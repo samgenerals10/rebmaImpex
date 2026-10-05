@@ -99,7 +99,7 @@ export default function CustomerCreditView({ addNotification, currentUser }: Pro
       setCustomers(prev => prev.map(c => c.id === customerId ? { ...c, creditLimit: limit } : c));
       setLimitDraft(prev => { const next = { ...prev }; delete next[customerId]; return next; });
       await supabase.from('global_audit_history').insert({
-        action: `CREDIT_TERMS: CUST-${customerId.slice(-6).toUpperCase()} — ${target?.name || 'customer'}`,
+        action: `CREDIT_TERMS: CUST-${customerId.slice(-6).toUpperCase()}, ${target?.name || 'customer'}`,
         department: 'RISK',
         performed_by: currentUser?.fullName || 'Risk',
         reference_id: customerId,
@@ -124,7 +124,7 @@ export default function CustomerCreditView({ addNotification, currentUser }: Pro
       });
       setCustomers(prev => prev.map(c => c.id === customerId ? { ...c, creditStatus: next } : c));
       await supabase.from('global_audit_history').insert({
-        action: `CREDIT_TERMS: CUST-${customerId.slice(-6).toUpperCase()} — ${target?.name || 'customer'}`,
+        action: `CREDIT_TERMS: CUST-${customerId.slice(-6).toUpperCase()}, ${target?.name || 'customer'}`,
         department: 'RISK',
         performed_by: currentUser?.fullName || 'Risk',
         reference_id: customerId,

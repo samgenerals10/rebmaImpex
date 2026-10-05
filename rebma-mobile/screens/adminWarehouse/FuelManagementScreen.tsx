@@ -123,9 +123,9 @@ export default function FuelManagementScreen() {
   const columns: DataColumn<FuelLogRow>[] = [
     { key: 'vehicle_id', label: 'Vehicle', primary: true },
     { key: 'cost', label: 'Cost', status: true, render: (l) => `GHS ${l.cost.toLocaleString()}` },
-    { key: 'date', label: 'Date', render: (l) => l.date || '—' },
+    { key: 'date', label: 'Date', render: (l) => l.date || 'Not set' },
     { key: 'liters', label: 'Liters', render: (l) => `${l.liters}L` },
-    { key: 'station', label: 'Station', render: (l) => l.station || '—' },
+    { key: 'station', label: 'Station', render: (l) => l.station || 'Not set' },
   ];
 
   return (
@@ -133,7 +133,7 @@ export default function FuelManagementScreen() {
       footer={<View style={{ padding: t.spacing.lg }}><Button label="Log Fuel Purchase" onPress={() => setShowAdd(true)} fullWidth /></View>}
     >
       <View style={{ gap: t.spacing.sm }}>
-        <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Cost" value={loading ? '—' : `GHS ${totalCost.toLocaleString()}`} icon={<Fuel size={16} color={t.colors.accent} />} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="This Month" value={loading ? '—' : `GHS ${monthCost.toLocaleString()}`} icon={<Calendar size={16} color={t.colors.status.warning.text} />} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Avg per Vehicle" value={loading ? '—' : `GHS ${avgCost.toLocaleString()}`} icon={<TruckIcon size={16} color={t.colors.status.info.text} />} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Liters" value={loading ? '—' : `${totalLiters.toLocaleString()}L`} icon={<Droplet size={16} color={t.colors.status.success.text} />} /></View></View>
+        <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Cost" value={loading ? 'Not set' : `GHS ${totalCost.toLocaleString()}`} icon={<Fuel size={16} color={t.colors.accent} />} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="This Month" value={loading ? 'Not set' : `GHS ${monthCost.toLocaleString()}`} icon={<Calendar size={16} color={t.colors.status.warning.text} />} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Avg per Vehicle" value={loading ? 'Not set' : `GHS ${avgCost.toLocaleString()}`} icon={<TruckIcon size={16} color={t.colors.status.info.text} />} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Liters" value={loading ? 'Not set' : `${totalLiters.toLocaleString()}L`} icon={<Droplet size={16} color={t.colors.status.success.text} />} /></View></View>
       </View>
 
       <View style={{ gap: t.spacing.sm, marginBottom: t.spacing.md }}>

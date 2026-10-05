@@ -87,7 +87,7 @@ export default function SalesHistoryScreen() {
       map[key] = (map[key] || 0) + Number(o.total_amount || 0);
     }
     const entries = Object.entries(map).sort((a, b) => b[1] - a[1]);
-    if (entries.length === 0) return { month: '—', revenue: 0 };
+    if (entries.length === 0) return { month: 'Not set', revenue: 0 };
     const [key, revenue] = entries[0];
     const d = new Date(`${key}-01`);
     return { month: d.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' }), revenue };
@@ -119,9 +119,9 @@ export default function SalesHistoryScreen() {
   const columns: DataColumn<OrderRow>[] = [
     { key: 'client_name', label: 'Client', primary: true },
     { key: 'status', label: 'Status', status: true, render: (o) => <Badge tone={statusTone(o.status)} label={o.status.replace(/_/g, ' ')} /> },
-    { key: 'ticket_number', label: 'Ticket', render: (o) => o.ticket_number || '—' },
+    { key: 'ticket_number', label: 'Ticket', render: (o) => o.ticket_number || 'Not set' },
     { key: 'total_amount', label: 'Amount', render: (o) => `GHS ${Number(o.total_amount || 0).toLocaleString()}` },
-    { key: 'payment_mode', label: 'Payment', render: (o) => o.payment_mode || '—' },
+    { key: 'payment_mode', label: 'Payment', render: (o) => o.payment_mode || 'Not set' },
   ];
 
   const items = detail?.metadata?.items || [];
@@ -130,9 +130,9 @@ export default function SalesHistoryScreen() {
   const exportColumns: ExportColumn[] = [
     { key: 'Invoice#', label: 'Invoice#', render: (o) => o.ticket_number || o.id },
     { key: 'Customer', label: 'Customer', render: (o) => o.client_name },
-    { key: 'Product', label: 'Product', render: (o) => o.product_name || '—' },
+    { key: 'Product', label: 'Product', render: (o) => o.product_name || 'Not set' },
     { key: 'Amount', label: 'Amount', render: (o) => Number(o.total_amount || 0).toLocaleString() },
-    { key: 'Payment', label: 'Payment', render: (o) => o.payment_mode || '—' },
+    { key: 'Payment', label: 'Payment', render: (o) => o.payment_mode || 'Not set' },
     { key: 'Status', label: 'Status', render: (o) => o.status },
     { key: 'Date', label: 'Date', render: (o) => new Date(o.created_at).toLocaleDateString() },
   ];
@@ -152,7 +152,7 @@ export default function SalesHistoryScreen() {
         {tab === 'sales' ? (
           <>
             <View style={{ gap: t.spacing.sm }}>
-              <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Revenue" value={loading ? '—' : `GHS ${totalRevenue.toLocaleString()}`} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Completed Orders" value={loading ? '—' : deliveredCount} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Avg Order Value" value={loading ? '—' : `GHS ${avgOrderValue.toFixed(0)}`} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Best Month" value={loading ? '—' : bestMonth.month} sublabel={loading ? undefined : `GHS ${bestMonth.revenue.toLocaleString()}`} /></View></View>
+              <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Revenue" value={loading ? 'Not set' : `GHS ${totalRevenue.toLocaleString()}`} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Completed Orders" value={loading ? 'Not set' : deliveredCount} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Avg Order Value" value={loading ? 'Not set' : `GHS ${avgOrderValue.toFixed(0)}`} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Best Month" value={loading ? 'Not set' : bestMonth.month} sublabel={loading ? undefined : `GHS ${bestMonth.revenue.toLocaleString()}`} /></View></View>
             </View>
 
             {!loading && topCustomers.length > 0 && (
@@ -169,7 +169,7 @@ export default function SalesHistoryScreen() {
         ) : (
           <>
             <View style={{ gap: t.spacing.sm }}>
-              <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Credit Requests" value={loading ? '—' : creditOrders.length} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Pending" value={loading ? '—' : creditPending} tone="warning" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Approved" value={loading ? '—' : creditApproved} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Rejected" value={loading ? '—' : creditRejected} tone="danger" /></View></View>
+              <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Credit Requests" value={loading ? 'Not set' : creditOrders.length} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Pending" value={loading ? 'Not set' : creditPending} tone="warning" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Approved" value={loading ? 'Not set' : creditApproved} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Rejected" value={loading ? 'Not set' : creditRejected} tone="danger" /></View></View>
             </View>
 
             {creditValue > 0 && (
@@ -193,7 +193,7 @@ export default function SalesHistoryScreen() {
                         <Badge tone={statusTone(o.status)} label={o.status.replace(/_/g, ' ')} size="xs" />
                       </View>
                       <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>{o.client_name}</Text>
-                      <Text style={{ fontFamily: t.font.regular, fontSize: t.type.label9.size, color: t.colors.textMuted }}>{o.product_name || '—'} · Submitted {(o.created_at || '').slice(0, 10)}</Text>
+                      <Text style={{ fontFamily: t.font.regular, fontSize: t.type.label9.size, color: t.colors.textMuted }}>{o.product_name || 'Not set'} · Submitted {(o.created_at || '').slice(0, 10)}</Text>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
                         <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.status.success.text }}>GHS {Number(o.total_amount || 0).toLocaleString()}</Text>
                         <Button label="Track" size="sm" variant="ghost" onPress={() => Alert.alert('Tracking', `Tracking order ${o.ticket_number || o.id}.`)} />

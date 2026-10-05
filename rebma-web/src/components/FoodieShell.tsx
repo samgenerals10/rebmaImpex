@@ -533,7 +533,7 @@ export default function FoodieShell({ activeDepartment, currentUser, children }:
           <div>
             <span className="inline-block bg-white/20 text-white text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full mb-2">Port Alert</span>
             <h3 className="text-lg sm:text-xl font-extrabold text-white leading-snug">
-              Tema Port Clearance<br className="hidden sm:block" /> — Priority Queue Open
+              Tema Port Clearance<br className="hidden sm:block" />, Priority Queue Open
             </h3>
             <p className="text-white/75 text-xs mt-1 max-w-xs">Expedited clearance available for REBMA IMPEX cargo until end of day. 50% reduced handling fees apply.</p>
           </div>

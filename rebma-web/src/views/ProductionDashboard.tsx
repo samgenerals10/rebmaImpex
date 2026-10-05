@@ -189,7 +189,7 @@ export default function ProductionDashboard({
 
 
   const handleShareRequisition = (req: ProductionRequest) => {
-    const shareText = `Rebma Requisition order: ${req.id} - Status: ${req.status} - Materials: ${req.items.map(i => `${i.materialName} (${i.quantity})`).join(', ')}`;
+    const shareText = `Rebma Requisition order: ${req.id}, Status: ${req.status}, Materials: ${req.items.map(i => `${i.materialName} (${i.quantity})`).join(', ')}`;
     navigator.clipboard.writeText(shareText).then(() => {
       addNotification(`Copied sharing link for Requisition ${req.id} to clipboard!`);
     }).catch(() => alert(shareText));
@@ -214,7 +214,7 @@ export default function ProductionDashboard({
 
 
   const handleShareWip = (item: typeof initialWipStock[0]) => {
-    const shareText = `Rebma WIP Inventory: ${item.productName} (${item.id}) - Stage: ${item.stage} - Qty: ${item.qty}`;
+    const shareText = `Rebma WIP Inventory: ${item.productName} (${item.id}), Stage: ${item.stage}, Qty: ${item.qty}`;
     navigator.clipboard.writeText(shareText).then(() => {
       addNotification(`Copied WIP item details link to clipboard!`);
     }).catch(() => alert(shareText));

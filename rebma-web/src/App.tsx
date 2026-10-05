@@ -1723,7 +1723,7 @@ export default function App() {
     });
   };
   const [boardroomMinutes, setBoardroomMinutes] = useState<string>(
-    "REMBA IMPEX GHANA LIMITED Boardroom Log - May 24, 2026\n1. Target fleet tracking refresh set to 10s.\n2. Ghana card formats must validate correctly."
+    "REMBA IMPEX GHANA LIMITED Boardroom Log, May 24, 2026\n1. Target fleet tracking refresh set to 10s.\n2. Ghana card formats must validate correctly."
   );
 
   // Unread internal email count (for sidebar badge)
@@ -2641,7 +2641,7 @@ export default function App() {
               <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider ml-1">{f.label}</label>
               <div className="flex items-center gap-3 px-3.5 py-2.5 bg-slate-100/80 border border-slate-200 rounded-2xl">
                 {f.icon}
-                <span className="text-sm text-slate-900">{f.value || '—'}</span>
+                <span className="text-sm text-slate-900">{f.value || 'Not set'}</span>
               </div>
             </div>
           ))}

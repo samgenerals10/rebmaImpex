@@ -510,7 +510,7 @@ export default function Sidebar({
             )}
             {!isSuperAdmin && (isAdmin || isManagement) && activeDepartment !== userDept && activeDepartment !== 'SETTINGS' && (
               <div className={`mt-1 px-2 py-0.5 bg-amber-500/15 border border-amber-500/35 rounded-lg text-[10px] text-amber-700 font-semibold text-center transition-all duration-300 ${isActualCollapsed ? 'opacity-0 h-0 py-0 border-none overflow-hidden' : ''}`}>
-                👁 VIEW ONLY — {isAdmin ? 'CEO' : 'MANAGEMENT'} ACCESS
+                👁 VIEW ONLY, {isAdmin ? 'CEO' : 'MANAGEMENT'} ACCESS
               </div>
             )}
           </div>

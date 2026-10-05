@@ -110,7 +110,7 @@ export default function DepartmentManagerScreen() {
 
   const columns: DataColumn<DeptRecord>[] = [
     { key: 'name', label: 'Department', primary: true },
-    { key: 'code', label: 'Code', status: true, render: (d) => (d.active === false ? <Badge tone="danger" label="Inactive" size="xs" /> : <Badge tone="muted" label={d.code || '—'} size="xs" />) },
+    { key: 'code', label: 'Code', status: true, render: (d) => (d.active === false ? <Badge tone="danger" label="Inactive" size="xs" /> : <Badge tone="muted" label={d.code || 'Not set'} size="xs" />) },
     { key: 'description', label: 'Description', render: (d) => d.description || 'No description' },
   ];
 

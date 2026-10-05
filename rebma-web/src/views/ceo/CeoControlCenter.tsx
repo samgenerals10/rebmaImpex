@@ -508,7 +508,7 @@ function MessageExportSection({ currentUser, addNotification }: { currentUser: P
       exportToCSV(rows, ['channel_id', 'sender', 'content', 'time', 'created_at', 'attachment_type'], `messenger-export-${selectedChannel || 'all'}-${Date.now()}`);
       await supabase.from('global_audit_history').insert({
         department: 'CEO',
-        action: `EXPORT: Messenger history — ${selectedChannel ? channelLabel(channels.find(c => c.id === selectedChannel)!) : 'All conversations'} (${rows.length} messages)`,
+        action: `EXPORT: Messenger history, ${selectedChannel ? channelLabel(channels.find(c => c.id === selectedChannel)!) : 'All conversations'} (${rows.length} messages)`,
         performed_by: currentUser?.fullName || 'CEO',
         reference_id: selectedChannel || null,
         timestamp: new Date().toISOString(),
@@ -1257,7 +1257,7 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
             {settingChangesLog.map((r, i) => (
               <div key={i} className="flex items-center justify-between text-xs py-1 border-b border-[var(--border)] last:border-0">
                 <span className="font-mono text-[var(--accent)] font-semibold">{r.setting_key}</span>
-                <span className="text-[var(--text-muted)]">{r.updated_at ? new Date(r.updated_at).toLocaleString() : '—'}</span>
+                <span className="text-[var(--text-muted)]">{r.updated_at ? new Date(r.updated_at).toLocaleString() : 'Not set'}</span>
               </div>
             ))}
           </div>
@@ -1518,8 +1518,8 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
             {invites.length > 0 && (
               <ResponsiveDataView<typeof invites[number]>
                 columns={[
-                  { key: 'full_name', label: 'Name', primary: true, render: inv => inv.full_name || '—' },
-                  { key: 'email', label: 'Email', render: inv => inv.email || '—' },
+                  { key: 'full_name', label: 'Name', primary: true, render: inv => inv.full_name || 'Not set' },
+                  { key: 'email', label: 'Email', render: inv => inv.email || 'Not set' },
                   { key: 'department', label: 'Dept' },
                   { key: 'expires_at', label: 'Expiry', render: inv => <span className="font-mono">{new Date(inv.expires_at).toLocaleDateString()}</span> },
                   {
@@ -1785,10 +1785,10 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
             <div className="overflow-auto flex-1 p-4">
               <ResponsiveDataView<typeof filteredStaff[number]>
                 columns={[
-                  { key: 'full_name', label: 'Name', primary: true, render: s => s.full_name || '—' },
-                  { key: 'email', label: 'Email', render: s => s.email || '—' },
-                  { key: 'department', label: 'Department', render: s => s.department || s.role || '—' },
-                  { key: 'role', label: 'Role', render: s => s.role || '—' },
+                  { key: 'full_name', label: 'Name', primary: true, render: s => s.full_name || 'Not set' },
+                  { key: 'email', label: 'Email', render: s => s.email || 'Not set' },
+                  { key: 'department', label: 'Department', render: s => s.department || s.role || 'Not set' },
+                  { key: 'role', label: 'Role', render: s => s.role || 'Not set' },
                   {
                     key: 'status', label: 'Status', status: true, render: s => (
                       <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${

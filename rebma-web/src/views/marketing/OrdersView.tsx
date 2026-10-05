@@ -325,7 +325,7 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
       setLineItems([{ productName: '', quantity: 1 }]);
       setForm({ clientName: '', destination: '', paymentMode: 'CASH', customerId: '', phone: '' });
       setDestinationCoords(null);
-      await supabase.from('supplier_order_notifications').insert([{ message: `New order awaiting Risk review: ${form.clientName.trim()} — GHS ${orderTotal.toLocaleString()}`, notified_department: 'RISK', read: false }]);
+      await supabase.from('supplier_order_notifications').insert([{ message: `New order awaiting Risk review: ${form.clientName.trim()}, GHS ${orderTotal.toLocaleString()}`, notified_department: 'RISK', read: false }]);
       addNotification('Order created successfully. Routed to Risk for review.');
     } catch (e: any) {
       console.error(e);
@@ -439,7 +439,7 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
                       </span>
                     );
                   }
-                  return <span>{o.productName || '—'}</span>;
+                  return <span>{o.productName || 'Not set'}</span>;
                 }
               },
               { key: 'totalAmount', label: 'Amount', render: o => <span className="font-semibold text-emerald-600">GHS {(o.totalAmount ?? 0).toLocaleString()}</span> },
@@ -665,7 +665,7 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   {[
                     ['Customer', selectedOrder.clientName],
-                    ['Destination', selectedOrder.destination || '—'],
+                    ['Destination', selectedOrder.destination || 'Not set'],
                     ['Payment Mode', selectedOrder.paymentMode],
                     ['Date', (selectedOrder.createdAt || '').split('T')[0]],
                   ].map(([k, v]) => (
@@ -699,7 +699,7 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
                             },
                             {
                               key: 'lineTotal', label: 'Subtotal', align: 'right', render: item =>
-                                <span className="font-semibold text-emerald-600">{item.lineTotal > 0 ? `GHS ${item.lineTotal.toLocaleString()}` : '—'}</span>
+                                <span className="font-semibold text-emerald-600">{item.lineTotal > 0 ? `GHS ${item.lineTotal.toLocaleString()}` : 'Not set'}</span>
                             },
                           ]}
                           data={lineItems}
@@ -713,7 +713,7 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
                     </div>
                   ) : (
                     <div className="rounded-xl border border-[var(--border)] px-4 py-3 flex items-center justify-between">
-                      <span className="font-medium text-[var(--text-primary)]">{selectedOrder.productName || '—'}</span>
+                      <span className="font-medium text-[var(--text-primary)]">{selectedOrder.productName || 'Not set'}</span>
                       <span className="font-bold text-emerald-600">GHS {(Number(selectedOrder.totalAmount ?? 0)).toLocaleString()}</span>
                     </div>
                   )}

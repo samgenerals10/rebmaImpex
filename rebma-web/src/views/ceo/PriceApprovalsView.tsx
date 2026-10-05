@@ -203,7 +203,7 @@ export default function PriceApprovalsView({ currentUser, addNotification }: Pro
                   : <XCircle className="w-4 h-4 text-rose-600 shrink-0" />}
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-semibold text-[var(--text-primary)] truncate">
-                    {req.product_name} — {req.currency} {Number(req.unit_price).toLocaleString()}
+                    {req.product_name}, {req.currency} {Number(req.unit_price).toLocaleString()}
                   </p>
                   <p className="text-[10px] text-[var(--text-muted)]">
                     {req.requested_by_name || 'Management'}

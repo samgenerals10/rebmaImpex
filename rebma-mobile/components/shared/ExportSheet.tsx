@@ -204,7 +204,7 @@ export default function ExportSheet({ open, onClose, title, subtitle, data, colu
                   {excluded ? <Square size={18} color={t.colors.textMuted} /> : <CheckSquare size={18} color={t.colors.accent} />}
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta11.size, color: t.colors.textMuted }}>{k}</Text>
-                    <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body14.size, color: t.colors.textPrimary }} numberOfLines={2}>{v == null ? '—' : String(v)}</Text>
+                    <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body14.size, color: t.colors.textPrimary }} numberOfLines={2}>{v == null ? 'Not set' : String(v)}</Text>
                   </View>
                 </Pressable>
               );

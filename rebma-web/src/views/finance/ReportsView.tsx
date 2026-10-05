@@ -108,7 +108,7 @@ export default function FinanceReportsView({ addNotification, currentUser }: Pro
           'Amount (GHS)': Number(p.amount).toLocaleString(),
           'Payment Mode': p.payment_mode,
           'Payment Type': p.payment_type,
-          'Recorded By': p.recorded_by || '—',
+          'Recorded By': p.recorded_by || 'Not set',
           'Date': new Date(p.created_at).toLocaleDateString()
         }));
         headers = ['Receipt ID', 'Client Name', 'Amount (GHS)', 'Payment Mode', 'Payment Type', 'Recorded By', 'Date'];
@@ -123,7 +123,7 @@ export default function FinanceReportsView({ addNotification, currentUser }: Pro
         dataToExport = orders.map(o => ({
           'Order ID': o.id,
           'Client Name': o.client_name,
-          'Product Name': o.product_name || '—',
+          'Product Name': o.product_name || 'Not set',
           'Quantity': o.quantity || 1,
           'Amount (GHS)': Number(o.total_amount).toLocaleString(),
           'Payment Mode': o.payment_mode,
@@ -164,10 +164,10 @@ export default function FinanceReportsView({ addNotification, currentUser }: Pro
         const staff = data || [];
         dataToExport = staff.map(s => ({
           'Staff ID': s.id.slice(0, 8).toUpperCase(),
-          'Full Name': s.full_name || '—',
+          'Full Name': s.full_name || 'Not set',
           'Role': s.role || 'Staff',
-          'Department': s.department || '—',
-          'Phone': s.phone || '—',
+          'Department': s.department || 'Not set',
+          'Phone': s.phone || 'Not set',
           'Status': s.status
         }));
         headers = ['Staff ID', 'Full Name', 'Role', 'Department', 'Phone', 'Status'];
@@ -192,7 +192,7 @@ export default function FinanceReportsView({ addNotification, currentUser }: Pro
         dataToExport = unpaid.map(o => ({
           'Invoice ID': o.ticket_number || o.id,
           'Client Name': o.client_name,
-          'Product Name': o.product_name || '—',
+          'Product Name': o.product_name || 'Not set',
           'Amount (GHS)': Number(o.total_amount).toLocaleString(),
           'Payment Mode': o.payment_mode,
           'Invoice Status': o.status,
@@ -231,8 +231,8 @@ export default function FinanceReportsView({ addNotification, currentUser }: Pro
           'Category': e.category || 'General',
           'Cost (GHS)': Number(e.cost).toLocaleString(),
           'Status': e.status,
-          'Department': e.department || '—',
-          'Date Received': e.date_received || '—'
+          'Department': e.department || 'Not set',
+          'Date Received': e.date_received || 'Not set'
         }));
         headers = ['Expense ID', 'Item Name', 'Category', 'Cost (GHS)', 'Status', 'Department', 'Date Received'];
 

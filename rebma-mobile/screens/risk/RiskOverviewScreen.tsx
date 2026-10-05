@@ -92,7 +92,7 @@ export default function RiskOverviewScreen() {
               emphasis="primary"
               tone={totalPending > 0 ? 'warning' : 'accent'}
               label="Pending Review"
-              value={loading ? '—' : totalPending}
+              value={loading ? 'Not set' : totalPending}
               sublabel="Across all queues"
               icon={<ShieldAlert size={18} color={totalPending > 0 ? t.colors.status.warning.text : t.colors.accent} />}
               onPress={() => navigation.navigate('RiskApprovals')}
@@ -103,7 +103,7 @@ export default function RiskOverviewScreen() {
               emphasis="primary"
               tone="success"
               label="Reviewed Today"
-              value={loading ? '—' : approvedToday + rejectedToday}
+              value={loading ? 'Not set' : approvedToday + rejectedToday}
               sublabel={`${approvedToday} verified, ${rejectedToday} rejected`}
               icon={<CheckCircle2 size={18} color={t.colors.status.success.text} />}
               onPress={() => navigation.navigate('DeptActivity')}
@@ -120,7 +120,7 @@ export default function RiskOverviewScreen() {
               <MetricCard
                 emphasis="compact"
                 label="Cargo Intake"
-                value={loading ? '—' : cargoCount}
+                value={loading ? 'Not set' : cargoCount}
                 sublabel="Port arrival"
                 icon={<Package size={14} color={t.colors.action.sky} />}
                 tone={cargoCount > 0 ? 'warning' : 'neutral'}
@@ -131,7 +131,7 @@ export default function RiskOverviewScreen() {
               <MetricCard
                 emphasis="compact"
                 label="Initial Orders"
-                value={loading ? '—' : ordersCount}
+                value={loading ? 'Not set' : ordersCount}
                 sublabel="First review"
                 icon={<CreditCard size={14} color={t.colors.action.violet} />}
                 tone={ordersCount > 0 ? 'warning' : 'neutral'}
@@ -142,7 +142,7 @@ export default function RiskOverviewScreen() {
               <MetricCard
                 emphasis="compact"
                 label="Final Release"
-                value={loading ? '—' : finalReleaseCount}
+                value={loading ? 'Not set' : finalReleaseCount}
                 sublabel="Outbound gate"
                 icon={<ShieldCheck size={14} color={t.colors.action.rose} />}
                 tone={finalReleaseCount > 0 ? 'warning' : 'neutral'}
@@ -153,7 +153,7 @@ export default function RiskOverviewScreen() {
               <MetricCard
                 emphasis="compact"
                 label="Delivery PODs"
-                value={loading ? '—' : podCount}
+                value={loading ? 'Not set' : podCount}
                 sublabel="POD audit"
                 icon={<Camera size={14} color={t.colors.action.teal} />}
                 tone={podCount > 0 ? 'warning' : 'neutral'}
@@ -166,7 +166,7 @@ export default function RiskOverviewScreen() {
               <MetricCard
                 emphasis="compact"
                 label="Customer KYC"
-                value={loading ? '—' : customersPendingCount}
+                value={loading ? 'Not set' : customersPendingCount}
                 sublabel="New accounts"
                 icon={<UserCheck size={14} color={t.colors.action.amber} />}
                 tone={customersPendingCount > 0 ? 'warning' : 'neutral'}
@@ -177,7 +177,7 @@ export default function RiskOverviewScreen() {
               <MetricCard
                 emphasis="compact"
                 label="Credit Watch"
-                value={loading ? '—' : creditWatchCount}
+                value={loading ? 'Not set' : creditWatchCount}
                 sublabel="Over limit"
                 icon={<ShieldAlert size={14} color={t.colors.status.danger.text} />}
                 tone={creditWatchCount > 0 ? 'danger' : 'neutral'}
@@ -188,7 +188,7 @@ export default function RiskOverviewScreen() {
               <MetricCard
                 emphasis="compact"
                 label="Approved"
-                value={loading ? '—' : approvedToday}
+                value={loading ? 'Not set' : approvedToday}
                 sublabel="Today"
                 tone="success"
                 icon={<CheckCircle2 size={14} color={t.colors.action.emerald} />}
@@ -198,7 +198,7 @@ export default function RiskOverviewScreen() {
               <MetricCard
                 emphasis="compact"
                 label="Rejected"
-                value={loading ? '—' : rejectedToday}
+                value={loading ? 'Not set' : rejectedToday}
                 sublabel="Today"
                 tone={rejectedToday > 0 ? 'danger' : 'neutral'}
                 icon={<XCircle size={14} color={t.colors.action.rose} />}

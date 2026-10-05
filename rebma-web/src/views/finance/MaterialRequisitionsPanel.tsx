@@ -53,7 +53,7 @@ export default function FinanceMaterialRequisitionsPanel({ addNotification, curr
       // needs a recorded data entry before Operations physically releases it.
       await supabase.from('global_audit_history').insert([{
         department: 'FINANCE',
-        action: `RECORD_MATERIAL_REQUISITION_CREDIT: ${summary} — requested by ${req.requested_by || 'Production'}`,
+        action: `RECORD_MATERIAL_REQUISITION_CREDIT: ${summary}, requested by ${req.requested_by || 'Production'}`,
         performed_by: currentUser?.fullName || 'Account Department',
       }]);
 

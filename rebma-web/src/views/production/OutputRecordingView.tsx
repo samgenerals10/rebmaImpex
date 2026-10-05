@@ -276,7 +276,7 @@ export default function OutputRecordingView({ addNotification }: Props) {
                   <span style={{ padding: '3px 10px', borderRadius: 9999, fontSize: 12, fontWeight: 600, background: r.quality === 'Pass' ? 'rgba(16,185,129,0.15)' : 'rgba(220,38,38,0.15)', color: r.quality === 'Pass' ? '#059669' : '#dc2626' }}>{r.quality}</span>
                 )
               },
-              { key: 'notes', label: 'Notes', render: r => r.notes || '—' },
+              { key: 'notes', label: 'Notes', render: r => r.notes || 'Not set' },
             ]}
             data={records}
             rowKey={r => r.id}

@@ -239,20 +239,20 @@ export default function CustomersScreen() {
   const columns: DataColumn<CustomerRow>[] = [
     { key: 'name', label: 'Customer', primary: true },
     { key: 'status', label: 'Status', status: true, render: (c) => <Badge tone={VERIFICATION_TONE[c.status] || 'muted'} label={c.status.replace(/_/g, ' ')} /> },
-    { key: 'company_name', label: 'Company', render: (c) => c.company_name || '—' },
-    { key: 'phone', label: 'Phone', render: (c) => c.phone || '—' },
+    { key: 'company_name', label: 'Company', render: (c) => c.company_name || 'Not set' },
+    { key: 'phone', label: 'Phone', render: (c) => c.phone || 'Not set' },
     { key: 'rating', label: 'Rating', render: (c) => <RatingBadge rating={computeCustomerRating(ordersForCustomerRow(orders, c))} size="xs" /> },
   ];
 
   const orderColumns: DataColumn<OrderLike>[] = [
-    { key: 'client_name', label: 'Order', primary: true, render: (o) => o.id || '—' },
+    { key: 'client_name', label: 'Order', primary: true, render: (o) => o.id || 'Not set' },
     { key: 'status', label: 'Status', status: true, render: (o) => <Badge tone="muted" label={(o.status || '').replace(/_/g, ' ')} /> },
     { key: 'total_amount', label: 'Amount', render: (o) => `GHS ${Number(o.total_amount || 0).toLocaleString()}` },
-    { key: 'created_at', label: 'Date', render: (o) => (o.created_at ? new Date(o.created_at).toLocaleDateString() : '—') },
+    { key: 'created_at', label: 'Date', render: (o) => (o.created_at ? new Date(o.created_at).toLocaleDateString() : 'Not set') },
   ];
 
   const creditColumns: DataColumn<OrderLike>[] = [
-    { key: 'client_name', label: 'Order', primary: true, render: (o) => o.id || '—' },
+    { key: 'client_name', label: 'Order', primary: true, render: (o) => o.id || 'Not set' },
     {
       key: 'paid', label: 'Status', status: true,
       render: (o) => {
@@ -272,7 +272,7 @@ export default function CustomersScreen() {
     >
       <View style={{ gap: t.spacing.lg }}>
         <View style={{ gap: t.spacing.sm }}>
-          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Customers" value={loading ? '—' : customers.length} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Active (with Orders)" value={loading ? '—' : activeCount} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="New This Month" value={loading ? '—' : newThisMonth} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Credit Outstanding" value={loading ? '—' : `GHS ${totalCredit.toLocaleString()}`} tone="warning" /></View></View>
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Customers" value={loading ? 'Not set' : customers.length} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Active (with Orders)" value={loading ? 'Not set' : activeCount} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="New This Month" value={loading ? 'Not set' : newThisMonth} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Credit Outstanding" value={loading ? 'Not set' : `GHS ${totalCredit.toLocaleString()}`} tone="warning" /></View></View>
         </View>
 
         <Input value={search} onChangeText={setSearch} placeholder="Search customers…" />
@@ -367,8 +367,8 @@ export default function CustomersScreen() {
             </View>
 
             <SheetSection label="Contact">
-              <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>{detail.phone || '—'} · {detail.email || '—'}</Text>
-              <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary, marginTop: 4 }}>{detail.company_name || '—'} · {detail.location || '—'}</Text>
+              <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>{detail.phone || 'Not set'} · {detail.email || 'Not set'}</Text>
+              <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary, marginTop: 4 }}>{detail.company_name || 'Not set'} · {detail.location || 'Not set'}</Text>
             </SheetSection>
 
             {detail.gps_lat != null && detail.gps_lng != null && (

@@ -35,7 +35,7 @@ const STATUS_META: Record<string, { bg: string; color: string; label: string }> 
 };
 
 const fmt = (iso?: string) =>
-  iso ? new Date(iso).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
+  iso ? new Date(iso).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Not set';
 
 function initials(name: string) {
   return (name || '').split(' ').slice(0, 2).map(w => w[0] || '').join('').toUpperCase() || '?';
@@ -329,13 +329,13 @@ function DeliveryDetail({
             <CheckCircle size={15} /> Submit for Risk Review
           </button>
           <button onClick={() => {
-              downloadRowPDF(`Delivery Note - ${delivery.id}`, {
+              downloadRowPDF(`Delivery Note, ${delivery.id}`, {
                 deliveryId: delivery.id,
                 orderId: delivery.orderId,
                 customer: delivery.clientName,
                 destination: delivery.destination,
                 driver: driver?.fullName || 'Unassigned',
-                vehicle: delivery.vehicleId || '—',
+                vehicle: delivery.vehicleId || 'Not set',
                 dispatched: fmt(delivery.dispatchedAt),
                 status: badge.label,
               });

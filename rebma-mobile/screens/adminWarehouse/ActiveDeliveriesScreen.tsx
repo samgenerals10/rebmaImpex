@@ -256,10 +256,10 @@ export default function ActiveDeliveriesScreen() {
   };
 
   const columns: DataColumn<DeliveryRow>[] = [
-    { key: 'customer_name', label: 'Customer', primary: true, render: (d) => d.customer_name || '—' },
+    { key: 'customer_name', label: 'Customer', primary: true, render: (d) => d.customer_name || 'Not set' },
     { key: 'status', label: 'Status', status: true, render: (d) => <Badge tone={statusTone(d.status)} label={d.status.replace(/_/g, ' ')} /> },
-    { key: 'order_id', label: 'Order', render: (d) => d.order_id || '—' },
-    { key: 'destination', label: 'Destination', render: (d) => d.delivery_address || '—' },
+    { key: 'order_id', label: 'Order', render: (d) => d.order_id || 'Not set' },
+    { key: 'destination', label: 'Destination', render: (d) => d.delivery_address || 'Not set' },
     {
       key: 'driver', label: 'Driver / Vehicle',
       render: (d) => d.driver_name ? `${d.driver_name}${d.vehicle_id ? ` · ${d.vehicle_id}` : ''}` : 'Unassigned',

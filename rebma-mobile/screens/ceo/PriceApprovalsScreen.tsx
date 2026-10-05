@@ -198,7 +198,7 @@ export default function PriceApprovalsScreen() {
                   {req.status === 'APPROVED' ? <CheckCircle size={14} color={t.colors.status.success.text} /> : <XCircle size={14} color={t.colors.status.danger.text} />}
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta11.size, color: t.colors.textPrimary }} numberOfLines={1}>
-                      {req.product_name} — {req.currency} {Number(req.unit_price).toLocaleString()}
+                      {req.product_name}, {req.currency} {Number(req.unit_price).toLocaleString()}
                     </Text>
                     <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted }}>{req.requested_by_name || 'Management'}</Text>
                   </View>

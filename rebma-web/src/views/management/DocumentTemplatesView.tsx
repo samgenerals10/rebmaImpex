@@ -244,7 +244,7 @@ export default function DocumentTemplatesView({ addNotification, currentUser, hi
                   )}
                   <div>
                     <div className="font-black text-[#1a5c32] text-sm leading-tight">{draft.companyName || 'REBMA IMPEX'}</div>
-                    <div className="text-[10px] font-bold text-[#29a9dc] uppercase tracking-wide">{draft.subtitle || '—'}</div>
+                    <div className="text-[10px] font-bold text-[#29a9dc] uppercase tracking-wide">{draft.subtitle || 'Not set'}</div>
                   </div>
                 </div>
                 <div className="text-right">
@@ -256,7 +256,7 @@ export default function DocumentTemplatesView({ addNotification, currentUser, hi
                 {draft.companyAddress}{draft.companyPhone ? ` · Tel: ${draft.companyPhone}` : ''}{draft.companyEmail ? ` · ${draft.companyEmail}` : ''}
               </div>
               <div className="border-t border-dashed border-slate-200 pt-3">
-                <p className="text-[10px] text-slate-400 leading-relaxed">{draft.footerNote || '—'}</p>
+                <p className="text-[10px] text-slate-400 leading-relaxed">{draft.footerNote || 'Not set'}</p>
                 <p className="text-[10px] text-slate-300 mt-2 italic">+ document number, QR code, issued-by (added automatically)</p>
               </div>
               <div className="flex items-center justify-between mt-4 pt-2 border-t border-slate-100 text-[10px] text-slate-400">

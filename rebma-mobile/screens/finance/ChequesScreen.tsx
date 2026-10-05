@@ -10,7 +10,7 @@
 // Column set/order/labels verbatim from ChequesView.tsx:61-70's
 // chequeExportCols, keys adapted to this screen's raw snake_case fields
 // (mobile has no camelCase mapper layer) — the web `render` for `amount`
-// and `orderRef`'s '—' fallback are both preserved.
+// and `orderRef`'s 'Not set' fallback are both preserved.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { Alert } from '../../lib/appAlert';
@@ -186,7 +186,7 @@ export default function ChequesScreen() {
     { key: 'cheque_date', label: 'Cheque Date' },
     { key: 'expected_clearing', label: 'Expected Clearing' },
     { key: 'status', label: 'Status' },
-    { key: 'order_ref', label: 'Order Ref', render: (c) => c.order_ref || '—' },
+    { key: 'order_ref', label: 'Order Ref', render: (c) => c.order_ref || 'Not set' },
   ];
 
   return (
@@ -199,7 +199,7 @@ export default function ChequesScreen() {
         </View>
 
         <View style={{ gap: t.spacing.sm }}>
-          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total" value={loading ? '—' : totals.total} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Cleared" value={loading ? '—' : totals.cleared} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Pending" value={loading ? '—' : totals.pending} tone="warning" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Bounced" value={loading ? '—' : totals.bounced} tone="danger" /></View></View>
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total" value={loading ? 'Not set' : totals.total} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Cleared" value={loading ? 'Not set' : totals.cleared} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Pending" value={loading ? 'Not set' : totals.pending} tone="warning" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Bounced" value={loading ? 'Not set' : totals.bounced} tone="danger" /></View></View>
         </View>
 
         <Input value={search} onChangeText={setSearch} placeholder="Search cheque #, account, or bank…" />

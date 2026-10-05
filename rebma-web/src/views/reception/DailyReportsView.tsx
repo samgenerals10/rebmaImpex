@@ -134,11 +134,11 @@ export default function DailyReportsView({ addNotification }: Props) {
 
         const mappedVisitors = (visData ?? []).map((v: any) => ({
           id: v.id,
-          name: v.visitor_name || v.full_name || '—',
-          company: v.company || '—',
-          purpose: v.purpose || '—',
-          host: v.host_name || '—',
-          in: v.check_in_time ? new Date(v.check_in_time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '—',
+          name: v.visitor_name || v.full_name || 'Not set',
+          company: v.company || 'Not set',
+          purpose: v.purpose || 'Not set',
+          host: v.host_name || 'Not set',
+          in: v.check_in_time ? new Date(v.check_in_time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : 'Not set',
           out: v.check_out_time ? new Date(v.check_out_time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : null,
         }));
         setVisitorsToday(mappedVisitors);

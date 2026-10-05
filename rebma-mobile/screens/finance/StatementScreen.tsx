@@ -109,7 +109,7 @@ export default function StatementScreen() {
     { key: 'quantity', label: 'Qty', render: (r) => `${r.quantity} sold` },
     {
       key: 'stockRemaining', label: 'Stock Left',
-      render: (r) => r.stockRemaining == null ? '—' : r.stockRemaining < 0
+      render: (r) => r.stockRemaining == null ? 'Not set' : r.stockRemaining < 0
         ? <Badge tone="danger" label={`OVERSOLD (${r.stockRemaining.toLocaleString()})`} />
         : String(r.stockRemaining.toLocaleString()),
     },
@@ -133,16 +133,16 @@ export default function StatementScreen() {
     setRowExporting(true);
     try {
       await exportFieldValueDocument('pdf', `Statement, ${detail.productName}`, {
-        'Ticket': detail.ticketNumber || '—',
+        'Ticket': detail.ticketNumber || 'Not set',
         'Product': detail.productName,
         'Client': detail.clientName,
-        'Destination': detail.destination || '—',
+        'Destination': detail.destination || 'Not set',
         'Payment Mode': detail.paymentMode,
         'Quantity': detail.quantity,
         'Unit Price': `GHS ${detail.unitPrice.toLocaleString()}`,
         'Line Total': `GHS ${detail.lineTotal.toLocaleString()}`,
         'Status': detail.status.replace(/_/g, ' '),
-        'Stock Remaining': detail.stockRemaining ?? '—',
+        'Stock Remaining': detail.stockRemaining ?? 'Not set',
       });
     } finally {
       setRowExporting(false);
@@ -165,7 +165,7 @@ export default function StatementScreen() {
         {detail && (
           <SheetSection label="Line Item">
             <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>Client: {detail.clientName}</Text>
-            <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>Destination: {detail.destination || '—'}</Text>
+            <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>Destination: {detail.destination || 'Not set'}</Text>
             <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>Payment: {detail.paymentMode}</Text>
             <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>Unit Price: GHS {detail.unitPrice.toLocaleString()} × {detail.quantity}</Text>
             <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginTop: 4 }}>Line Total: GHS {detail.lineTotal.toLocaleString()}</Text>

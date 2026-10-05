@@ -160,9 +160,9 @@ export default function WalletsGrid() {
       </View>
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.md }}>
-        <View style={{ width: '100%' }}><MetricCard label="Net Balance" value={loading ? '—' : `GHS ${net.toLocaleString()}`} emphasis="primary" tone={net >= 0 ? 'accent' : 'danger'} /></View>
-        <View style={{ width: '47%' }}><MetricCard label="Total In" value={loading ? '—' : `GHS ${totalIn.toLocaleString()}`} tone="accent" /></View>
-        <View style={{ width: '47%' }}><MetricCard label="Total Out" value={loading ? '—' : `GHS ${totalOut.toLocaleString()}`} tone="warning" /></View>
+        <View style={{ width: '100%' }}><MetricCard label="Net Balance" value={loading ? 'Not set' : `GHS ${net.toLocaleString()}`} emphasis="primary" tone={net >= 0 ? 'accent' : 'danger'} /></View>
+        <View style={{ width: '47%' }}><MetricCard label="Total In" value={loading ? 'Not set' : `GHS ${totalIn.toLocaleString()}`} tone="accent" /></View>
+        <View style={{ width: '47%' }}><MetricCard label="Total Out" value={loading ? 'Not set' : `GHS ${totalOut.toLocaleString()}`} tone="warning" /></View>
       </View>
 
       {loading ? (

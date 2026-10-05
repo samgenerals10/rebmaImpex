@@ -144,7 +144,7 @@ export async function approveAccountsReview(order: Order, currentUser?: { fullNa
     { message: `Accounts cleared order ${order.ticketNumber || order.id} for ${order.clientName}, awaiting Risk's final release check.`, notified_department: 'RISK', read: false },
     { message: `Your order ${order.ticketNumber || order.id} has cleared Accounts and is awaiting Risk's final release check.`, notified_department: 'MARKETING', read: false },
   ]);
-  await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Order ${order.ticketNumber || order.id} APPROVED for ${order.clientName} — GHS ${(Number(order.totalAmount ?? 0)).toLocaleString()}`, performed_by: performedBy, reference_id: order.id, timestamp: now }]);
+  await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Order ${order.ticketNumber || order.id} APPROVED for ${order.clientName}, GHS ${(Number(order.totalAmount ?? 0)).toLocaleString()}`, performed_by: performedBy, reference_id: order.id, timestamp: now }]);
 
   return true;
 }
@@ -178,8 +178,8 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
     { key: 'totalAmount', label: 'Amount (GHS)', render: o => Number(o.totalAmount ?? 0).toLocaleString() },
     { key: 'paymentMode', label: 'Payment Mode' },
     { key: 'status', label: 'Status' },
-    { key: 'submittedBy', label: 'Submitted By', render: o => o.submittedBy || '—' },
-    { key: 'createdAt', label: 'Date', render: o => o.createdAt ? o.createdAt.split('T')[0] : '—' },
+    { key: 'submittedBy', label: 'Submitted By', render: o => o.submittedBy || 'Not set' },
+    { key: 'createdAt', label: 'Date', render: o => o.createdAt ? o.createdAt.split('T')[0] : 'Not set' },
   ];
 
 
@@ -449,7 +449,7 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-2">
             {[
               { label: 'Total Amount', value: `GHS ${(Number(selected.totalAmount ?? 0)).toLocaleString()}` },
-              { label: 'Submitted By', value: selected.submittedBy || '—' },
+              { label: 'Submitted By', value: selected.submittedBy || 'Not set' },
               { label: 'Payment Mode', value: selected.paymentMode },
             ].map(({ label, value }) => (
               <div key={label} className="bg-[var(--bg-input)] rounded-xl p-3">

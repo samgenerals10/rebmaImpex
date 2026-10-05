@@ -128,7 +128,7 @@ export default function OpsAnalyticsScreen() {
     <Screen>
       <View style={{ gap: t.spacing.xl }}>
         <View style={{ gap: t.spacing.sm }}>
-          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Cargo Intakes" value={loading ? '—' : totalCargo} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Approved" value={loading ? '—' : approvedCargo} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Discrepancies" value={loading ? '—' : discrepancyCargo} tone="danger" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Low / Out of Stock" value={loading ? '—' : stockCounts.lowStock + stockCounts.outOfStock} tone="warning" /></View></View>
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Cargo Intakes" value={loading ? 'Not set' : totalCargo} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Approved" value={loading ? 'Not set' : approvedCargo} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Discrepancies" value={loading ? 'Not set' : discrepancyCargo} tone="danger" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Low / Out of Stock" value={loading ? 'Not set' : stockCounts.lowStock + stockCounts.outOfStock} tone="warning" /></View></View>
         </View>
 
         {!loading && (

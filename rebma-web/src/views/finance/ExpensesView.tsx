@@ -193,7 +193,7 @@ export default function FinanceExpensesView({ addNotification, currentUser }: Pr
         status: 'Pending',
       }]);
       if (error) throw error;
-      addNotification?.(`Expense logged: ${form.description} — GHS ${parseFloat(form.amount).toLocaleString()}`);
+      addNotification?.(`Expense logged: ${form.description}, GHS ${parseFloat(form.amount).toLocaleString()}`);
       setShowForm(false);
       setForm({ category: 'Rent', description: '', amount: '', date: new Date().toISOString().slice(0, 10), notes: '' });
     } catch (e: any) {
@@ -254,7 +254,7 @@ export default function FinanceExpensesView({ addNotification, currentUser }: Pr
             { key: 'category', label: 'Category', status: true, render: e => <span className={`text-xs px-2 py-1 rounded-full font-medium ${CATEGORY_COLORS[e.category] || ''}`}>{e.category}</span> },
             { key: 'amount', label: 'Amount', render: e => <span className="font-semibold">GHS {e.amount.toLocaleString()}</span> },
             { key: 'date', label: 'Date' },
-            { key: 'receipt', label: 'Receipt', render: e => e.receipt ? <CheckCircle size={14} className="text-green-500" /> : <span className="text-[var(--text-muted)] text-xs">—</span> },
+            { key: 'receipt', label: 'Receipt', render: e => e.receipt ? <CheckCircle size={14} className="text-green-500" /> : <span className="text-[var(--text-muted)] text-xs">Not set</span> },
             { key: 'submittedBy', label: 'By' },
             { key: 'status', label: 'Status', render: e => <span className={`text-xs px-2 py-1 rounded-full font-medium ${STATUS_COLORS[e.status]}`}>{e.status}</span> },
           ] as DataColumn<Expense>[]}

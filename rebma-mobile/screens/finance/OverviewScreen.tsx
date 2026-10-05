@@ -77,7 +77,7 @@ export default function OverviewScreen() {
               emphasis="primary"
               tone="accent"
               label="Total Revenue"
-              value={loading ? '—' : `GHS ${totalRevenue.toLocaleString()}`}
+              value={loading ? 'Not set' : `GHS ${totalRevenue.toLocaleString()}`}
               sublabel="All approved orders"
               icon={<DollarSign size={18} color={t.colors.accent} />}
               onPress={() => navigation.navigate('Transactions')}
@@ -88,7 +88,7 @@ export default function OverviewScreen() {
               emphasis="primary"
               tone="warning"
               label="Pending Orders"
-              value={loading ? '—' : pending.length}
+              value={loading ? 'Not set' : pending.length}
               sublabel="Awaiting review"
               icon={<Clock size={18} color={t.colors.status.warning.text} />}
               onPress={() => navigation.navigate('OrdersQueue')}
@@ -105,7 +105,7 @@ export default function OverviewScreen() {
             <MetricCard
               emphasis="compact"
               label="Total Orders"
-              value={loading ? '—' : orders.length}
+              value={loading ? 'Not set' : orders.length}
               sublabel="All statuses"
               icon={<ClipboardList size={14} color={t.colors.action.violet} />}
               tone="neutral"
@@ -116,7 +116,7 @@ export default function OverviewScreen() {
             <MetricCard
               emphasis="compact"
               label="Payments"
-              value={loading ? '—' : paymentCount}
+              value={loading ? 'Not set' : paymentCount}
               sublabel="Receipts register"
               icon={<Receipt size={14} color={t.colors.action.blue} />}
               tone="info"
@@ -127,7 +127,7 @@ export default function OverviewScreen() {
             <MetricCard
               emphasis="compact"
               label="Collections"
-              value={loading ? '—' : `GHS ${(creditOutstanding / 1000).toFixed(1)}k`}
+              value={loading ? 'Not set' : `GHS ${(creditOutstanding / 1000).toFixed(1)}k`}
               sublabel="Ledger inflow"
               icon={<Wallet size={14} color={t.colors.action.teal} />}
               tone="success"

@@ -382,7 +382,7 @@ export default function FinanceDashboard({
 
 
   const handleSharePayment = (pay: FinancePayment) => {
-    const shareText = `Rebma Receipt: ID: ${pay.id} - Client: ${pay.clientName} - Amt: GHS ${pay.amount} - Mode: ${pay.paymentMode}`;
+    const shareText = `Rebma Receipt: ID: ${pay.id}, Client: ${pay.clientName}, Amt: GHS ${pay.amount}, Mode: ${pay.paymentMode}`;
     navigator.clipboard.writeText(shareText).then(() => {
       addNotification(`Copied receipt sharing link to clipboard!`);
     }).catch(() => alert(shareText));
@@ -399,7 +399,7 @@ export default function FinanceDashboard({
   // Warehouse Production Actions
 
   const handleShareRequisition = (req: ProductionRequest) => {
-    const shareText = `Rebma Warehouse Stock Inflow: Req ID: ${req.id} - Status: ${req.status} - Qty: ${req.items.reduce((s, i) => s + i.quantity, 0)}`;
+    const shareText = `Rebma Warehouse Stock Inflow: Req ID: ${req.id}, Status: ${req.status}, Qty: ${req.items.reduce((s, i) => s + i.quantity, 0)}`;
     navigator.clipboard.writeText(shareText).then(() => {
       addNotification('Copied sharing info to clipboard!');
     }).catch(() => alert(shareText));
@@ -516,7 +516,7 @@ export default function FinanceDashboard({
         { name: 'Transfer', value: Math.round(totalRevenueVal * 0.25) },
       ],
       tableData: localPayments.map(p => ({
-        date: p.createdAt, customer: p.clientName, order: p.orderId || '—',
+        date: p.createdAt, customer: p.clientName, order: p.orderId || 'Not set',
         amount: `GHS ${p.amount.toLocaleString()}`, payment_type: p.paymentType, recorded_by: 'Account Department', status: 'Paid',
       })),
       columns: [
@@ -538,7 +538,7 @@ export default function FinanceDashboard({
       ],
       tableData: effectiveOrders.filter(o => o.status === 'PENDING_FINANCE').map(o => ({
         order: o.id, customer: o.clientName, amount: `GHS ${o.totalAmount.toLocaleString()}`,
-        dept: o.destination || '—', payment_mode: o.paymentMode, submitted: o.createdAt,
+        dept: o.destination || 'Not set', payment_mode: o.paymentMode, submitted: o.createdAt,
       })),
       columns: [
         { key: 'order', label: 'Order#' }, { key: 'customer', label: 'Customer' },
@@ -1015,7 +1015,7 @@ export default function FinanceDashboard({
                         placeholder="-- Choose Credit Order --"
                         options={effectiveOrders.filter(o => o.paymentMode === 'CREDIT' && o.status === 'PENDING_FINANCE').map(o => ({
                           value: o.id,
-                          label: `${o.id} - ${o.clientName} (GHS ${o.totalAmount.toLocaleString()}) [${o.status}]`,
+                          label: `${o.id}, ${o.clientName} (GHS ${o.totalAmount.toLocaleString()}) [${o.status}]`,
                         }))}
                       />
                       {effectiveOrders.filter(o => o.paymentMode === 'CREDIT' && o.status === 'PENDING_FINANCE').length === 0 && (
@@ -1276,7 +1276,7 @@ export default function FinanceDashboard({
                             </span>
                           </td>
                           <td className="py-3.5 px-3 text-[var(--text-secondary)] hidden md:table-cell">{pay.paymentMode.replace('_', ' ')}</td>
-                          <td className="py-3.5 px-3 font-mono text-[var(--text-secondary)] hidden lg:table-cell">{pay.orderId || '—'}</td>
+                          <td className="py-3.5 px-3 font-mono text-[var(--text-secondary)] hidden lg:table-cell">{pay.orderId || 'Not set'}</td>
                           <td className="py-3.5 px-3 text-right font-bold font-mono text-[13px] text-emerald-500">GHS {pay.amount.toLocaleString()}</td>
                           <td className="py-3.5 px-3 text-[var(--text-secondary)] font-mono text-[10px] hidden sm:table-cell">{pay.createdAt}</td>
                           <td className="py-3.5 px-5 text-center relative" onClick={(e) => e.stopPropagation()}>
@@ -1787,13 +1787,13 @@ export default function FinanceDashboard({
                                   </td>
                                   <td className="py-3 px-4 text-slate-900">{log.desc}</td>
                                   <td className="py-3 px-4 text-right font-mono font-bold text-[13px]">
-                                    {log.qty !== null ? (log.qty > 0 ? `+${log.qty.toLocaleString()}` : log.qty.toLocaleString()) : '—'}
+                                    {log.qty !== null ? (log.qty > 0 ? `+${log.qty.toLocaleString()}` : log.qty.toLocaleString()) : 'Not set'}
                                   </td>
                                   <td className="py-3 px-4 text-right font-mono">
                                     {selectedCatalogProduct.currency} {Number(log.price).toLocaleString()}
                                   </td>
                                   <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">
-                                    {log.amount !== null ? `${selectedCatalogProduct.currency} ${Number(log.amount).toLocaleString()}` : '—'}
+                                    {log.amount !== null ? `${selectedCatalogProduct.currency} ${Number(log.amount).toLocaleString()}` : 'Not set'}
                                   </td>
                                   <td className="py-3 px-4 text-slate-500">{log.user}</td>
                                   <td className="py-3 px-4">

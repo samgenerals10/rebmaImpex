@@ -102,7 +102,7 @@ export default function RiskApprovalsScreen() {
 
       const mappedCustomers: ApprovalItem[] = (customersData || []).map((row: any) => ({
         id: row.id, requestId: `CUST-${String(row.id).slice(-6).toUpperCase()}`, type: 'Customer Verification',
-        description: `${row.name || 'Unnamed customer'}${row.company_name ? ` — ${row.company_name}` : ''}`,
+        description: `${row.name || 'Unnamed customer'}${row.company_name ? `, ${row.company_name}` : ''}`,
         amount: null, date: row.registered_at?.slice(0, 10) || '', raw: row,
       }));
       const mappedCargo: ApprovalItem[] = (cargoData || []).map((row: any) => {
@@ -116,7 +116,7 @@ export default function RiskApprovalsScreen() {
       });
       const mappedOrders: ApprovalItem[] = (ordersData || []).map((row: any) => ({
         id: row.id, requestId: `ORD-${row.id.slice(-6).toUpperCase()}`, type: 'Sales Order',
-        description: `${row.payment_mode === 'CREDIT' ? 'Credit order' : `${row.payment_mode || 'Cash'} order`} for ${row.client_name} — GHS ${Number(row.total_amount || 0).toLocaleString()}`,
+        description: `${row.payment_mode === 'CREDIT' ? 'Credit order' : `${row.payment_mode || 'Cash'} order`} for ${row.client_name}, GHS ${Number(row.total_amount || 0).toLocaleString()}`,
         amount: Number(row.total_amount || 0), date: row.created_at?.slice(0, 10) || '', raw: row,
       }));
       const mappedPod: ApprovalItem[] = (podData || []).map((row: any) => ({
@@ -126,7 +126,7 @@ export default function RiskApprovalsScreen() {
       }));
       const mappedFinalRelease: ApprovalItem[] = (finalReleaseData || []).map((row: any) => ({
         id: row.id, requestId: `ORD-${row.id.slice(-6).toUpperCase()}`, type: 'Risk Final Release',
-        description: `${row.payment_mode === 'CREDIT' ? 'Credit order' : `${row.payment_mode || 'Cash'} order`} for ${row.client_name} — GHS ${Number(row.total_amount || 0).toLocaleString()}, cleared by Accounts`,
+        description: `${row.payment_mode === 'CREDIT' ? 'Credit order' : `${row.payment_mode || 'Cash'} order`} for ${row.client_name}, GHS ${Number(row.total_amount || 0).toLocaleString()}, cleared by Accounts`,
         amount: Number(row.total_amount || 0), date: row.created_at?.slice(0, 10) || '', raw: row,
       }));
 
@@ -292,7 +292,7 @@ export default function RiskApprovalsScreen() {
 
       await supabase.from('global_audit_history').insert([{
         department: 'RISK',
-        action: `${verb}: ${selected.requestId} — ${selected.description}${modalNote ? ` | Note: ${modalNote}` : ''}`,
+        action: `${verb}: ${selected.requestId}, ${selected.description}${modalNote ? ` | Note: ${modalNote}` : ''}`,
         performed_by: profile?.fullName || 'Risk',
         reference_id: referenceId,
         details: modalNote || null,
@@ -314,7 +314,7 @@ export default function RiskApprovalsScreen() {
       key: 'type', label: 'Type', status: true,
       render: (i) => <Badge tone={TYPE_TONE[i.type] as StatusTone} label={i.type} size="xs" />,
     },
-    { key: 'amount', label: 'Amount', render: (i) => (i.amount != null ? `GHS ${i.amount.toLocaleString()}` : '—') },
+    { key: 'amount', label: 'Amount', render: (i) => (i.amount != null ? `GHS ${i.amount.toLocaleString()}` : 'Not set') },
     { key: 'date', label: 'Date' },
     { key: 'requestId', label: 'ID' },
   ];

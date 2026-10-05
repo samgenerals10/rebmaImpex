@@ -175,7 +175,7 @@ export default function PayrollPanel({ currentUser, addNotification }: PayrollPa
                 <div key={item.id} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 flex items-center justify-between gap-3 shadow-[var(--box-shadow)]">
                   <div>
                     <p className="text-sm font-bold text-[var(--text-primary)]">{batch?.name || 'Payroll Batch'}</p>
-                    <p className="text-xs text-[var(--text-muted)]">{batch?.period_start} — {batch?.period_end}</p>
+                    <p className="text-xs text-[var(--text-muted)]">{batch?.period_start} to {batch?.period_end}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-lg font-bold text-[var(--accent)]">GHS <CountUp value={item.net_amount} /></p>
@@ -252,7 +252,7 @@ export default function PayrollPanel({ currentUser, addNotification }: PayrollPa
                       {statusBadge(batch.status)}
                     </div>
                     <p className="text-[10px] text-[var(--text-muted)]">
-                      {batch.period_start} — {batch.period_end}
+                      {batch.period_start} to {batch.period_end}
                       {canManage && ` · ${batch.item_count} staff`}
                     </p>
                   </div>

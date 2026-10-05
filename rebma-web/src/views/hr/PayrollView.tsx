@@ -293,7 +293,7 @@ export default function PayrollView({ currentUser, staffList, addNotification }:
                   key: 'totalAmount', label: 'Total Amount', align: 'right', render: batch =>
                     (showAmounts || canSeeFullAmounts) ? `GHS ${(Number(batch.totalAmount ?? 0)).toLocaleString()}` : '•••••'
                 },
-                { key: 'processedAt', label: 'Processed', render: batch => batch.processedAt || '—' },
+                { key: 'processedAt', label: 'Processed', render: batch => batch.processedAt || 'Not set' },
               ]}
               data={batches}
               rowKey={batch => batch.id}
@@ -341,7 +341,7 @@ export default function PayrollView({ currentUser, staffList, addNotification }:
               className="text-xs text-[var(--accent)] font-semibold hover:opacity-80 cursor-pointer">
               Back to Batches
             </button>
-            <h3 className="font-bold text-[var(--text-primary)]">{activeBatch.period} — Payroll Entries</h3>
+            <h3 className="font-bold text-[var(--text-primary)]">{activeBatch.period}, Payroll Entries</h3>
             <span className="ml-auto flex gap-2">
               {activeBatch.status === 'DRAFT' && (
                 <button onClick={() => handleProcessBatch(activeBatch)}

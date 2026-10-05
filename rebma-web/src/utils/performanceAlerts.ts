@@ -54,7 +54,7 @@ async function checkDeptInactivity(): Promise<PerformanceAlert[]> {
           alert_type: 'dept_inactivity',
           department: dept,
           severity: 'medium',
-          description: `${dept} — No Activity Detected: the ${dept} department has recorded zero activity in the last 24 hours. Please verify operations are running normally.`,
+          description: `${dept}, No Activity Detected: the ${dept} department has recorded zero activity in the last 24 hours. Please verify operations are running normally.`,
           status: 'open',
         });
       }
@@ -90,7 +90,7 @@ async function checkAttendanceAlerts(): Promise<PerformanceAlert[]> {
             alert_type: 'attendance_low',
             department: dept,
             severity: rate < 25 ? 'critical' : 'high',
-            description: `${dept} — Low Attendance (${rate.toFixed(0)}%): only ${present ?? 0} of ${total ?? 0} staff have checked in today, below the ${ATTENDANCE_THRESHOLD}% threshold.`,
+            description: `${dept}, Low Attendance (${rate.toFixed(0)}%): only ${present ?? 0} of ${total ?? 0} staff have checked in today, below the ${ATTENDANCE_THRESHOLD}% threshold.`,
             status: 'open',
           });
         }

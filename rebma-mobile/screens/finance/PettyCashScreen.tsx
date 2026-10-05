@@ -177,8 +177,8 @@ export default function PettyCashScreen() {
     { key: 'description', label: 'Description', primary: true },
     { key: 'type', label: 'Type', status: true, render: (e) => <Badge tone={e.type === 'disbursement' ? 'warning' : 'success'} label={e.type} /> },
     { key: 'amount', label: 'Amount', render: (e) => `GHS ${e.amount.toLocaleString()}` },
-    { key: 'disbursed_to', label: 'To', render: (e) => e.disbursed_to || '—' },
-    { key: 'category', label: 'Category', render: (e) => e.category || '—' },
+    { key: 'disbursed_to', label: 'To', render: (e) => e.disbursed_to || 'Not set' },
+    { key: 'category', label: 'Category', render: (e) => e.category || 'Not set' },
     { key: 'balance_after', label: 'Balance After', render: (e) => `GHS ${e.balance_after.toLocaleString()}` },
   ];
 
@@ -198,8 +198,8 @@ export default function PettyCashScreen() {
         <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
           <Button label="Export" size="sm" variant="ghost" icon={<Download size={13} color={t.colors.textSecondary} />} onPress={() => setExportOpen(true)} />
         </View>
-        <MetricCard label="Current Float" value={loading ? '—' : `GHS ${currentFloat.toLocaleString()}`} emphasis="primary" tone={isLow ? 'danger' : 'accent'} sublabel={isLow ? 'Below threshold, consider requesting replenishment' : undefined} />
-        <MetricCard label="Total Disbursed This Month" value={loading ? '—' : `GHS ${totalDisbursed.toLocaleString()}`} />
+        <MetricCard label="Current Float" value={loading ? 'Not set' : `GHS ${currentFloat.toLocaleString()}`} emphasis="primary" tone={isLow ? 'danger' : 'accent'} sublabel={isLow ? 'Below threshold, consider requesting replenishment' : undefined} />
+        <MetricCard label="Total Disbursed This Month" value={loading ? 'Not set' : `GHS ${totalDisbursed.toLocaleString()}`} />
 
         <View style={{ flexDirection: 'row', gap: t.spacing.md }}>
           <View style={{ flex: 1 }}><Button label="Disburse" onPress={() => setShowDisburse(true)} fullWidth /></View>

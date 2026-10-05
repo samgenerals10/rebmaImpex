@@ -169,7 +169,7 @@ export default function RegistrationsScreen() {
             <SheetSection label="Details">
               <View style={{ gap: t.spacing.sm }}>
                 <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>Email: {selected.email}</Text>
-                <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>Phone: {selected.phone || '—'}</Text>
+                <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>Phone: {selected.phone || 'Not set'}</Text>
                 <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>Ghana Card: {selected.ghanaCard}</Text>
                 <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>Submitted: {selected.submittedAt}</Text>
               </View>

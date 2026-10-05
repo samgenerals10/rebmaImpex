@@ -76,7 +76,7 @@ export default function RiskAnalyticsScreen() {
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}>
       <View style={{ gap: t.spacing.xl }}>
         <View style={{ gap: t.spacing.sm }}>
-          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Approved (7 days)" value={loading ? '—' : approvedWeek} tone="success" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Rejected (7 days)" value={loading ? '—' : rejectedWeek} tone={rejectedWeek > 0 ? 'danger' : 'neutral'} /></View><View style={{ flex: 1 }}><MetricCard label="Total Decisions (7 days)" value={loading ? '—' : totalDecisions} tone="accent" emphasis="compact" /></View></View>
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Approved (7 days)" value={loading ? 'Not set' : approvedWeek} tone="success" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Rejected (7 days)" value={loading ? 'Not set' : rejectedWeek} tone={rejectedWeek > 0 ? 'danger' : 'neutral'} /></View><View style={{ flex: 1 }}><MetricCard label="Total Decisions (7 days)" value={loading ? 'Not set' : totalDecisions} tone="accent" emphasis="compact" /></View></View>
         </View>
 
         <Card>

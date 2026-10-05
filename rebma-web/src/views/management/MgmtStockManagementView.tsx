@@ -117,7 +117,7 @@ export default function MgmtStockManagementView({ addNotification, currentUser }
       if (corrErr) throw corrErr;
 
       await supabase.from('global_audit_history').insert({
-        action: `CORRECT_CARGO: ${correctionTarget.goods_code || correctionTarget.id} — ${correctionTarget.product_name}`,
+        action: `CORRECT_CARGO: ${correctionTarget.goods_code || correctionTarget.id}, ${correctionTarget.product_name}`,
         department: 'MANAGEMENT',
         performed_by: performedBy,
         details: `Corrected cargo entry. Qty ${oldQty} to ${newQty}${delta !== 0 ? ` (stock adjusted by ${delta > 0 ? '+' : ''}${delta})` : ''}. Reason: ${correctionForm.note.trim()}`,
@@ -298,7 +298,7 @@ export default function MgmtStockManagementView({ addNotification, currentUser }
             columns={[
               { key: 'product_name', label: 'Product', primary: true },
               { key: 'goods_code', label: 'Goods Code', render: c => <span className="font-mono text-[10px]">{c.goods_code || c.id.slice(0, 8)}</span> },
-              { key: 'company', label: 'Supplier', render: c => c.company || '—' },
+              { key: 'company', label: 'Supplier', render: c => c.company || 'Not set' },
               { key: 'quantity', label: 'Qty' },
               { key: 'weight', label: 'Weight (t)' },
             ]}
@@ -372,7 +372,7 @@ export default function MgmtStockManagementView({ addNotification, currentUser }
                 )
               },
               { key: 'product_name', label: 'Product', primary: true },
-              { key: 'category', label: 'Category', render: s => s.category || '—' },
+              { key: 'category', label: 'Category', render: s => s.category || 'Not set' },
               { key: 'quantity', label: 'Qty' },
               { key: 'unit', label: 'Unit', render: s => s.unit || 'units' },
             ]}

@@ -72,7 +72,7 @@ interface Props<T> {
 function cellValue<T>(col: DataColumn<T>, row: T): ReactNode {
   if (col.render) return col.render(row);
   const v = (row as any)[col.key];
-  return v == null ? '—' : String(v);
+  return v == null ? 'Not set' : String(v);
 }
 
 export default function DataList<T>({

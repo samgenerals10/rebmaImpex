@@ -274,7 +274,7 @@ export default function RegistrationsView({ pendingRegistrations, addNotificatio
               { key: 'email', label: 'Email' },
               { key: 'department', label: 'Department' },
               { key: 'ghanaCard', label: 'Ghana Card', render: reg => <span className="font-mono">{reg.ghanaCard}</span> },
-              { key: 'submittedAt', label: 'Submitted', render: reg => reg.submittedAt?.slice(0, 10) || '—' },
+              { key: 'submittedAt', label: 'Submitted', render: reg => reg.submittedAt?.slice(0, 10) || 'Not set' },
               {
                 key: 'status', label: 'Status', status: true, render: reg => {
                   if (reg.expired) return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700">Expired</span>;
@@ -367,10 +367,10 @@ export default function RegistrationsView({ pendingRegistrations, addNotificatio
             <div className="space-y-2.5">
               {[
                 { icon: Mail, label: 'Email', value: detailReg.email },
-                { icon: Phone, label: 'Phone', value: detailReg.phone || '—' },
+                { icon: Phone, label: 'Phone', value: detailReg.phone || 'Not set' },
                 { icon: CreditCard, label: 'Ghana Card', value: detailReg.ghanaCard },
                 { icon: Building2, label: 'Department', value: detailReg.department },
-                { icon: Calendar, label: 'Submitted', value: detailReg.submittedAt?.slice(0, 10) || '—' },
+                { icon: Calendar, label: 'Submitted', value: detailReg.submittedAt?.slice(0, 10) || 'Not set' },
               ].map(item => (
                 <div key={item.label} className="flex items-center gap-2.5 text-sm">
                   <item.icon className="w-4 h-4 text-[var(--text-muted)] shrink-0" />

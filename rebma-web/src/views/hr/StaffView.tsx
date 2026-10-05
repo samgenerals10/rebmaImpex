@@ -1033,13 +1033,13 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.75rem', marginTop: '1.25rem' }}>
             {[
-              { icon: <Award size={14} />, label: 'Employee Number', value: selected.employeeNumber || '—' },
+              { icon: <Award size={14} />, label: 'Employee Number', value: selected.employeeNumber || 'Not set' },
               { icon: <Mail size={14} />, label: 'Email', value: selected.email },
               { icon: <Phone size={14} />, label: 'Phone', value: selected.phone },
               { icon: <CreditCard size={14} />, label: 'Ghana Card', value: selected.ghanaCard },
-              { icon: <MapPin size={14} />, label: 'Address', value: selected.address || '—' },
+              { icon: <MapPin size={14} />, label: 'Address', value: selected.address || 'Not set' },
               { icon: <Calendar size={14} />, label: 'Joined', value: selected.joinedAt },
-              { icon: <Calendar size={14} />, label: 'Date of Birth', value: selected.dateOfBirth || '—' },
+              { icon: <Calendar size={14} />, label: 'Date of Birth', value: selected.dateOfBirth || 'Not set' },
             ].map(item => (
               <div key={item.label} style={{ background: 'var(--bg)', borderRadius: 8, padding: '0.75rem', border: '1px solid var(--border)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)', fontSize: 11, marginBottom: 4 }}>{item.icon}{item.label}</div>
@@ -1199,7 +1199,7 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
 
             const exportReport = () => {
               downloadRowPDF(`Performance Report: ${selected.fullName}`, {
-                'Employee Number': selected.employeeNumber || '—',
+                'Employee Number': selected.employeeNumber || 'Not set',
                 'Full Name': selected.fullName,
                 'Department': selected.department,
                 'Role': selected.role,
@@ -1208,9 +1208,9 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
                 'Task Completion': selected.performanceTaskScore !== undefined ? `${selected.performanceTaskScore}%` : 'Not yet reviewed',
                 'Team Collaboration': selected.performanceTeamScore !== undefined ? `${selected.performanceTeamScore}%` : 'Not yet reviewed',
                 'Quality of Work': selected.performanceQualityScore !== undefined ? `${selected.performanceQualityScore}%` : 'Not yet reviewed',
-                'Notes': selected.performanceNotes || '—',
-                'Reviewed By': selected.performanceReviewedBy || '—',
-                'Reviewed At': selected.performanceReviewedAt ? new Date(selected.performanceReviewedAt).toLocaleString() : '—',
+                'Notes': selected.performanceNotes || 'Not set',
+                'Reviewed By': selected.performanceReviewedBy || 'Not set',
+                'Reviewed At': selected.performanceReviewedAt ? new Date(selected.performanceReviewedAt).toLocaleString() : 'Not set',
               });
               addNotification('Performance report downloaded.');
             };
@@ -1458,10 +1458,10 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
                   </div>
                 )
               },
-              { key: 'department', label: 'Department', render: r => r.department || '—' },
-              { key: 'role', label: 'Role', render: r => r.role || '—' },
-              { key: 'phone', label: 'Phone', mobileHidden: true, render: r => r.phone || '—' },
-              { key: 'devices', label: 'Devices', render: r => (r.kind === 'invite' ? '—' : r.devices.length ? r.devices.join(', ') : 'Not enrolled') },
+              { key: 'department', label: 'Department', render: r => r.department || 'Not set' },
+              { key: 'role', label: 'Role', render: r => r.role || 'Not set' },
+              { key: 'phone', label: 'Phone', mobileHidden: true, render: r => r.phone || 'Not set' },
+              { key: 'devices', label: 'Devices', render: r => (r.kind === 'invite' ? 'Not set' : r.devices.length ? r.devices.join(', ') : 'Not enrolled') },
               {
                 key: 'status', label: 'Status', status: true, render: r => {
                   const sc = dirStatusStyle(r.status);

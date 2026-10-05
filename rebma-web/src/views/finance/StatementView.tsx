@@ -152,7 +152,7 @@ export default function StatementView({ addNotification }: Props) {
             { key: 'date', label: 'Date/Time', render: row => new Date(row.date).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) },
             { key: 'quantity', label: 'Qty', render: row => `×${row.quantity}` },
             { key: 'clientName', label: 'Purchased By' },
-            { key: 'destination', label: 'Sent To', render: row => row.destination || '—' },
+            { key: 'destination', label: 'Sent To', render: row => row.destination || 'Not set' },
             { key: 'paymentMode', label: 'Payment' },
             {
               key: 'stockRemaining', label: 'Stock Left', render: row => row.stockRemaining !== null ? (
@@ -163,7 +163,7 @@ export default function StatementView({ addNotification }: Props) {
                 ) : (
                   <span className="text-[var(--text-primary)]">{row.stockRemaining.toLocaleString()}</span>
                 )
-              ) : '—'
+              ) : 'Not set'
             },
           ] as DataColumn<StatementRow>[]}
           data={filtered}
@@ -177,11 +177,11 @@ export default function StatementView({ addNotification }: Props) {
                 <Eye className="w-3.5 h-3.5" />
               </button>
               <button
-                onClick={() => downloadRowPDF(`Statement - ${row.ticketNumber || row.orderId}`, {
-                  Ticket: row.ticketNumber || '—', OrderId: row.orderId, Date: new Date(row.date).toLocaleString(),
+                onClick={() => downloadRowPDF(`Statement, ${row.ticketNumber || row.orderId}`, {
+                  Ticket: row.ticketNumber || 'Not set', OrderId: row.orderId, Date: new Date(row.date).toLocaleString(),
                   Product: row.productName, Quantity: row.quantity, PurchasedBy: row.clientName,
-                  SentTo: row.destination || '—', PaymentMode: row.paymentMode,
-                  Status: row.status.replace(/_/g, ' '), StockRemaining: row.stockRemaining ?? '—',
+                  SentTo: row.destination || 'Not set', PaymentMode: row.paymentMode,
+                  Status: row.status.replace(/_/g, ' '), StockRemaining: row.stockRemaining ?? 'Not set',
                 })}
                 className="p-1 hover:bg-[var(--accent-light)] rounded-lg cursor-pointer text-[var(--accent)]"
                 title="Download PDF"
@@ -202,11 +202,11 @@ export default function StatementView({ addNotification }: Props) {
         badgeStyle={{ background: 'var(--accent-light)', color: 'var(--accent)' }}
         fields={[]}
         onClose={() => setSelected(null)}
-        onDownloadPdf={() => downloadRowPDF(`Statement - ${selected.ticketNumber || selected.orderId}`, {
-          Ticket: selected.ticketNumber || '—', OrderId: selected.orderId, Date: new Date(selected.date).toLocaleString(),
+        onDownloadPdf={() => downloadRowPDF(`Statement, ${selected.ticketNumber || selected.orderId}`, {
+          Ticket: selected.ticketNumber || 'Not set', OrderId: selected.orderId, Date: new Date(selected.date).toLocaleString(),
           Product: selected.productName, Quantity: selected.quantity, PurchasedBy: selected.clientName,
-          SentTo: selected.destination || '—', PaymentMode: selected.paymentMode,
-          Status: selected.status.replace(/_/g, ' '), StockRemaining: selected.stockRemaining ?? '—',
+          SentTo: selected.destination || 'Not set', PaymentMode: selected.paymentMode,
+          Status: selected.status.replace(/_/g, ' '), StockRemaining: selected.stockRemaining ?? 'Not set',
         })}
       >
         <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
@@ -229,17 +229,17 @@ export default function StatementView({ addNotification }: Props) {
         {detailTab === 'order' && (
           <div style={{ fontSize: 12, color: 'var(--text-primary)' }}>
             {[
-              ['Ticket', selected.ticketNumber || '—'],
+              ['Ticket', selected.ticketNumber || 'Not set'],
               ['Order ID', selected.orderId],
               ['Product', selected.productName],
               ['Quantity', String(selected.quantity)],
-              ['Unit Price', selected.unitPrice ? `GHS ${selected.unitPrice.toLocaleString()}` : '—'],
-              ['Line Total', selected.lineTotal ? `GHS ${selected.lineTotal.toLocaleString()}` : '—'],
-              ['Order Total', fullOrder ? `GHS ${Number(fullOrder.total_amount || 0).toLocaleString()}` : '—'],
-              ['Destination', selected.destination || '—'],
+              ['Unit Price', selected.unitPrice ? `GHS ${selected.unitPrice.toLocaleString()}` : 'Not set'],
+              ['Line Total', selected.lineTotal ? `GHS ${selected.lineTotal.toLocaleString()}` : 'Not set'],
+              ['Order Total', fullOrder ? `GHS ${Number(fullOrder.total_amount || 0).toLocaleString()}` : 'Not set'],
+              ['Destination', selected.destination || 'Not set'],
               ['Payment Mode', selected.paymentMode],
               ['Status', selected.status.replace(/_/g, ' ')],
-              ['Stock Remaining', selected.stockRemaining !== null ? selected.stockRemaining.toLocaleString() : '—'],
+              ['Stock Remaining', selected.stockRemaining !== null ? selected.stockRemaining.toLocaleString() : 'Not set'],
               ['Date', new Date(selected.date).toLocaleString()],
             ].map(([l, v]) => (
               <div key={l} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
@@ -255,10 +255,10 @@ export default function StatementView({ addNotification }: Props) {
             <div style={{ fontSize: 12, color: 'var(--text-primary)' }}>
               {[
                 ['Name', matchedCustomer.name],
-                ['Company', matchedCustomer.company_name || '—'],
-                ['Phone', matchedCustomer.phone || '—'],
-                ['Location', matchedCustomer.location || '—'],
-                ['Registered', matchedCustomer.registered_at ? new Date(matchedCustomer.registered_at).toLocaleDateString() : '—'],
+                ['Company', matchedCustomer.company_name || 'Not set'],
+                ['Phone', matchedCustomer.phone || 'Not set'],
+                ['Location', matchedCustomer.location || 'Not set'],
+                ['Registered', matchedCustomer.registered_at ? new Date(matchedCustomer.registered_at).toLocaleDateString() : 'Not set'],
               ].map(([l, v]) => (
                 <div key={l} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
                   <span style={{ color: 'var(--text-muted)' }}>{l}</span>

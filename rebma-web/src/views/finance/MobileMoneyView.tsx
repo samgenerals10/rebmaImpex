@@ -55,7 +55,7 @@ export default function FinanceMobileMoneyView({ addNotification, currentUser }:
     { key: 'amount', label: 'Amount (GHS)', render: t => t.amount.toLocaleString() },
     { key: 'date', label: 'Date' },
     { key: 'status', label: 'Status' },
-    { key: 'orderRef', label: 'Order Ref', render: t => t.orderRef || '—' },
+    { key: 'orderRef', label: 'Order Ref', render: t => t.orderRef || 'Not set' },
   ];
 
 
@@ -120,7 +120,7 @@ export default function FinanceMobileMoneyView({ addNotification, currentUser }:
       const { error } = await supabase.from('finance_payments').update({ status: 'Verified' }).eq('id', id);
       if (error) throw error;
       setTxns(prev => prev.map(t => t.id === id ? { ...t, status: 'Verified' } : t));
-      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `MoMo transaction ${id} verified — ${txn?.transactionId}`, performed_by: currentUser?.fullName || 'Account Department', timestamp: new Date().toISOString() }]);
+      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `MoMo transaction ${id} verified, ${txn?.transactionId}`, performed_by: currentUser?.fullName || 'Account Department', timestamp: new Date().toISOString() }]);
       addNotification?.(`MoMo transaction verified: ${txn?.transactionId}`);
     } catch (e: any) {
       alert(e.message || 'Failed to verify transaction.');
@@ -308,7 +308,7 @@ export default function FinanceMobileMoneyView({ addNotification, currentUser }:
               { label: 'MoMo Number', value: viewing.momoNumber },
               { label: 'Amount', value: `GHS ${viewing.amount.toLocaleString()}` },
               { label: 'Date', value: viewing.date },
-              { label: 'Order Reference', value: viewing.orderRef || '—' },
+              { label: 'Order Reference', value: viewing.orderRef || 'Not set' },
               { label: 'Status', value: viewing.status },
             ].map(({ label, value }) => (
               <div key={label} className="flex justify-between py-2 border-b border-[var(--border)] last:border-0">

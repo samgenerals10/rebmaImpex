@@ -51,7 +51,7 @@ export default function EntityDetailPanel({ title, subtitle, badgeText, badgeSty
           <div key={i} className="bg-[var(--bg-input)] rounded-xl px-3.5 py-2.5 border border-[var(--border)]">
             <p className="text-[10px] text-[var(--text-muted)] font-semibold uppercase tracking-wide mb-0.5">{f.label}</p>
             <p className={`text-sm break-words ${f.highlight ? 'font-bold text-[var(--accent)]' : 'font-medium text-[var(--text-primary)]'}`}>
-              {f.value !== null && f.value !== undefined && f.value !== '' ? String(f.value) : '—'}
+              {f.value !== null && f.value !== undefined && f.value !== '' ? String(f.value) : 'Not set'}
             </p>
           </div>
         ))}

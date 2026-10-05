@@ -129,7 +129,7 @@ export default function ReleasesScreen() {
                 <View key={o.id} style={rowStyle(t)}>
                   <View style={{ flex: 1, marginRight: t.spacing.sm }}>
                     <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>{o.client_name}</Text>
-                    <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted }}>{o.product_name || '—'} · {o.destination || '—'} · GHS {o.total_amount.toLocaleString()}</Text>
+                    <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted }}>{o.product_name || 'Not set'} · {o.destination || 'Not set'} · GHS {o.total_amount.toLocaleString()}</Text>
                   </View>
                   <Button label="Release" size="sm" onPress={() => handleRelease(o)} loading={busyId === o.id} disabled={busyId === o.id} />
                 </View>
@@ -150,7 +150,7 @@ export default function ReleasesScreen() {
                 <View key={tk.id} style={rowStyle(t)}>
                   <View style={{ flex: 1, marginRight: t.spacing.sm }}>
                     <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>
-                      {tk.details?.productName || 'Product'} — {tk.details?.quantity} {tk.details?.unit || 'units'}
+                      {tk.details?.productName || 'Product'}, {tk.details?.quantity} {tk.details?.unit || 'units'}
                     </Text>
                     <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted }}>{tk.details?.purpose || 'Approved by Management for repackaging/handling'}</Text>
                   </View>

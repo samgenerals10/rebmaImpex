@@ -131,7 +131,7 @@ export default function TrackingScreen() {
   const columns: DataColumn<Combined>[] = [
     { key: 'full_name', label: 'Driver', primary: true },
     { key: 'status', label: 'Status', status: true, render: (d) => <Badge tone={d.status === 'ACTIVE' ? 'success' : d.status === 'ON_DELIVERY' ? 'info' : 'muted'} label={d.status.replace(/_/g, ' ')} /> },
-    { key: 'vehicle_id', label: 'Vehicle', render: (d) => d.vehicle_id || '—' },
+    { key: 'vehicle_id', label: 'Vehicle', render: (d) => d.vehicle_id || 'Not set' },
     {
       key: 'lastPing', label: 'Last Ping',
       render: (d) => (

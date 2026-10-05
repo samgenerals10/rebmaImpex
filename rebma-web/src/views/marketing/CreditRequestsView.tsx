@@ -153,7 +153,7 @@ export default function MarketingCreditRequestsView({ addNotification, currentUs
           </button>
           <div>
             <h1 className="text-xl font-bold text-[var(--text-primary)]">{detail.id}</h1>
-            <p className="text-sm text-[var(--text-muted)]">Credit Request — {detail.orderId}</p>
+            <p className="text-sm text-[var(--text-muted)]">Credit Request, {detail.orderId}</p>
           </div>
           <span className={`ml-auto px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 ${STATUS_STYLES[detail.status]}`}>
             <Icon size={12} />{detail.status}

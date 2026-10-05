@@ -65,7 +65,7 @@ async function printProforma(r: ProformaRow, issuedBy: string, template: Documen
 
   const dateStr = new Date(r.created_at).toISOString().split('T')[0];
 
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Proforma ${r.proforma_no} — REBMA IMPEX Ghana Limited</title><style>
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Proforma ${r.proforma_no}, REBMA IMPEX Ghana Limited</title><style>
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Segoe UI',Arial,sans-serif;background:#f1f5f9;color:#1e293b}
     .page{background:#fff;max-width:780px;margin:28px auto;border-radius:14px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.12);position:relative}

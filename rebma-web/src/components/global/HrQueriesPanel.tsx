@@ -157,7 +157,7 @@ export default function HrQueriesPanel({ currentUser, addNotification }: Props) 
                   <p className="text-sm text-[var(--text-secondary)] leading-relaxed mt-3">{item.body}</p>
                   {item.response && (
                     <div className="mt-3 p-3 bg-[var(--bg-input)] rounded-lg border border-[var(--border)]">
-                      <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wide mb-1">HR Response{item.responded_by ? ` — ${item.responded_by}` : ''}</p>
+                      <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wide mb-1">HR Response{item.responded_by ? `, ${item.responded_by}` : ''}</p>
                       <p className="text-sm text-[var(--text-primary)]">{item.response}</p>
                     </div>
                   )}

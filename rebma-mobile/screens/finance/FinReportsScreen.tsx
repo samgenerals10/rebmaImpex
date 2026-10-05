@@ -113,10 +113,10 @@ export default function FinReportsScreen() {
     if (lte) query = query.lte('created_at', lte);
     const { data } = await query;
     setResultColumns([
-      { key: 'client_name', label: 'Client', primary: true, render: (p) => p.client_name || '—' },
+      { key: 'client_name', label: 'Client', primary: true, render: (p) => p.client_name || 'Not set' },
       { key: 'amount', label: 'Amount', status: true, render: (p) => <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>GHS {Number(p.amount || 0).toLocaleString()}</Text> },
-      { key: 'payment_type', label: 'Type', render: (p) => p.payment_type || '—' },
-      { key: 'recorded_by', label: 'Recorded By', render: (p) => p.recorded_by || '—' },
+      { key: 'payment_type', label: 'Type', render: (p) => p.payment_type || 'Not set' },
+      { key: 'recorded_by', label: 'Recorded By', render: (p) => p.recorded_by || 'Not set' },
     ]);
     setExportColumns([
       { key: 'id', label: 'Receipt ID' },
@@ -139,15 +139,15 @@ export default function FinReportsScreen() {
     if (lte) query = query.lte('created_at', lte);
     const { data } = await query;
     setResultColumns([
-      { key: 'client_name', label: 'Client', primary: true, render: (o) => o.client_name || '—' },
+      { key: 'client_name', label: 'Client', primary: true, render: (o) => o.client_name || 'Not set' },
       { key: 'status', label: 'Status', status: true, render: (o) => <Badge tone={statusTone(o.status)} label={String(o.status).replace(/_/g, ' ')} /> },
-      { key: 'product_name', label: 'Product', render: (o) => o.product_name || '—' },
+      { key: 'product_name', label: 'Product', render: (o) => o.product_name || 'Not set' },
       { key: 'total_amount', label: 'Amount', render: (o) => `GHS ${Number(o.total_amount || 0).toLocaleString()}` },
     ]);
     setExportColumns([
       { key: 'id', label: 'Order ID' },
       { key: 'client_name', label: 'Client Name', render: (o) => o.client_name || '' },
-      { key: 'product_name', label: 'Product Name', render: (o) => o.product_name || '—' },
+      { key: 'product_name', label: 'Product Name', render: (o) => o.product_name || 'Not set' },
       { key: 'quantity', label: 'Quantity', render: (o) => String(o.quantity || 1) },
       { key: 'total_amount', label: 'Amount (GHS)', render: (o) => Number(o.total_amount || 0).toLocaleString() },
       { key: 'payment_mode', label: 'Payment Mode' },
@@ -191,17 +191,17 @@ export default function FinReportsScreen() {
   const runPayroll = useCallback(async () => {
     const { data } = await supabase.from('profiles_directory').select('*').eq('status', 'ACTIVE');
     setResultColumns([
-      { key: 'full_name', label: 'Name', primary: true, render: (s) => s.full_name || '—' },
+      { key: 'full_name', label: 'Name', primary: true, render: (s) => s.full_name || 'Not set' },
       { key: 'role', label: 'Role', status: true, render: (s) => <Badge tone="muted" label={s.role || 'Staff'} /> },
-      { key: 'department', label: 'Department', render: (s) => s.department || '—' },
-      { key: 'phone', label: 'Phone', render: (s) => s.phone || '—' },
+      { key: 'department', label: 'Department', render: (s) => s.department || 'Not set' },
+      { key: 'phone', label: 'Phone', render: (s) => s.phone || 'Not set' },
     ]);
     setExportColumns([
       { key: 'id', label: 'Staff ID', render: (s) => String(s.id || '').slice(0, 8).toUpperCase() },
-      { key: 'full_name', label: 'Full Name', render: (s) => s.full_name || '—' },
+      { key: 'full_name', label: 'Full Name', render: (s) => s.full_name || 'Not set' },
       { key: 'role', label: 'Role', render: (s) => s.role || 'Staff' },
-      { key: 'department', label: 'Department', render: (s) => s.department || '—' },
-      { key: 'phone', label: 'Phone', render: (s) => s.phone || '—' },
+      { key: 'department', label: 'Department', render: (s) => s.department || 'Not set' },
+      { key: 'phone', label: 'Phone', render: (s) => s.phone || 'Not set' },
       { key: 'status', label: 'Status' },
     ]);
     setResultRows(data || []);
@@ -239,7 +239,7 @@ export default function FinReportsScreen() {
     setExportColumns([
       { key: 'invoiceId', label: 'Invoice ID', render: (o) => o.ticket_number || o.id },
       { key: 'client_name', label: 'Client Name' },
-      { key: 'product_name', label: 'Product Name', render: (o) => o.product_name || '—' },
+      { key: 'product_name', label: 'Product Name', render: (o) => o.product_name || 'Not set' },
       { key: 'total_amount', label: 'Amount (GHS)', render: (o) => Number(o.total_amount || 0).toLocaleString() },
       { key: 'payment_mode', label: 'Payment Mode' },
       { key: 'status', label: 'Invoice Status' },
@@ -282,7 +282,7 @@ export default function FinReportsScreen() {
     if (lte) query = query.lte('created_at', lte);
     const { data } = await query;
     setResultColumns([
-      { key: 'item_name', label: 'Item', primary: true, render: (e) => e.item_name || '—' },
+      { key: 'item_name', label: 'Item', primary: true, render: (e) => e.item_name || 'Not set' },
       { key: 'status', label: 'Status', status: true, render: (e) => <Badge tone={statusTone(e.status)} label={e.status || 'PENDING'} /> },
       { key: 'category', label: 'Category', render: (e) => e.category || 'General' },
       { key: 'cost', label: 'Cost', render: (e) => `GHS ${Number(e.cost || 0).toLocaleString()}` },
@@ -293,8 +293,8 @@ export default function FinReportsScreen() {
       { key: 'category', label: 'Category', render: (e) => e.category || 'General' },
       { key: 'cost', label: 'Cost (GHS)', render: (e) => Number(e.cost || 0).toLocaleString() },
       { key: 'status', label: 'Status' },
-      { key: 'department', label: 'Department', render: (e) => e.department || '—' },
-      { key: 'date_received', label: 'Date Received', render: (e) => e.date_received || '—' },
+      { key: 'department', label: 'Department', render: (e) => e.department || 'Not set' },
+      { key: 'date_received', label: 'Date Received', render: (e) => e.date_received || 'Not set' },
     ]);
     setResultRows(data || []);
   }, [activeDateFilter]);

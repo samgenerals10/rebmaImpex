@@ -121,7 +121,7 @@ export default function OpsHistoryScreen() {
   }, []);
 
   const shareLog = async (r: CargoRow) => {
-    const text = `Rebma Cargo Record: ${r.goods_code || r.id}, ${r.product_name || 'Unnamed'}, Qty: ${r.quantity ?? '—'}, Origin: ${r.country || '—'}`;
+    const text = `Rebma Cargo Record: ${r.goods_code || r.id}, ${r.product_name || 'Unnamed'}, Qty: ${r.quantity ?? 'Not set'}, Origin: ${r.country || 'Not set'}`;
     await Clipboard.setStringAsync(text);
     setMenuTarget(null);
     Alert.alert('Copied', 'Cargo record details copied to clipboard.');
@@ -159,19 +159,19 @@ export default function OpsHistoryScreen() {
   const totalLoss = discrepancies.reduce((s, d) => s + d.costLoss, 0);
 
   const columns: DataColumn<CargoRow>[] = [
-    { key: 'product_name', label: 'Product', primary: true, render: (r) => r.product_name || '—' },
+    { key: 'product_name', label: 'Product', primary: true, render: (r) => r.product_name || 'Not set' },
     { key: 'status', label: 'Status', status: true, render: (r) => <Badge tone={statusTone(r.status)} label={r.status.replace(/_/g, ' ')} /> },
     { key: 'goods_code', label: 'Code', render: (r) => r.goods_code || `CARGO-${r.id.slice(-6).toUpperCase()}` },
-    { key: 'origin', label: 'Origin', render: (r) => `${r.country || '—'} / ${r.company || '—'}` },
-    { key: 'destination', label: 'Destination', render: (r) => r.destination || '—' },
+    { key: 'origin', label: 'Origin', render: (r) => `${r.country || 'Not set'} / ${r.company || 'Not set'}` },
+    { key: 'destination', label: 'Destination', render: (r) => r.destination || 'Not set' },
     { key: 'created_at', label: 'Logged At', render: (r) => r.created_at ? new Date(r.created_at).toLocaleString() : 'N/A' },
     {
       key: 'rejection_reason', label: 'Reason',
       render: (r) => ((r.status === 'REJECTED' || r.status === 'RETURNED_FOR_CORRECTION') && r.rejection_reason)
         ? <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body12.size, color: t.colors.status.danger.text }}>{r.rejection_reason}</Text>
-        : '—',
+        : 'Not set',
     },
-    { key: 'unit_price', label: 'Unit Price', align: 'right', render: (r) => r.unit_price ? `GHS ${r.unit_price}` : '—' },
+    { key: 'unit_price', label: 'Unit Price', align: 'right', render: (r) => r.unit_price ? `GHS ${r.unit_price}` : 'Not set' },
   ];
 
   const discrepancyColumns: DataColumn<DiscrepancyRow>[] = [
@@ -182,7 +182,7 @@ export default function OpsHistoryScreen() {
     { key: 'damagedCount', label: 'Damaged Qty', align: 'center', render: (d) => <Text style={{ fontFamily: t.font.bold, color: t.colors.status.danger.text }}>{d.damagedCount}</Text> },
     { key: 'unitCost', label: 'Unit Cost (GHS)', align: 'right', render: (d) => d.unitCost.toLocaleString() },
     { key: 'costLoss', label: 'Financial Loss (GHS)', align: 'right', render: (d) => <Text style={{ fontFamily: t.font.extrabold, color: t.colors.status.danger.text }}>GHS {d.costLoss.toLocaleString()}</Text> },
-    { key: 'notes', label: 'Notes', render: (d) => d.notes || '—' },
+    { key: 'notes', label: 'Notes', render: (d) => d.notes || 'Not set' },
   ];
 
   return (

@@ -104,7 +104,7 @@ function buildSummaryTable(records: OutputRecord[]) {
       batches: v.dates.size,
       totalBoxes: v.boxes,
       totalSachets: v.sachets,
-      passRate: v.total > 0 ? `${Math.round((v.pass / v.total) * 100)}%` : '—',
+      passRate: v.total > 0 ? `${Math.round((v.pass / v.total) * 100)}%` : 'Not set',
       passRateNum: v.total > 0 ? Math.round((v.pass / v.total) * 100) : 0,
       avgPerBatch: v.dates.size > 0 ? Math.round(v.boxes / v.dates.size) : 0,
     }))

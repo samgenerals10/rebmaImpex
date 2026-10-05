@@ -183,7 +183,7 @@ export default function ExpensesScreen() {
       </View>
 
       <View style={{ gap: t.spacing.sm }}>
-        <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total This Month" value={loading ? '—' : `GHS ${totalThisMonth.toLocaleString()}`} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Approved" value={loading ? '—' : `GHS ${approvedTotal.toLocaleString()}`} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Pending Approval" value={loading ? '—' : pendingCount} tone="warning" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Budget Remaining" value={loading ? '—' : `GHS ${budgetRemaining.toLocaleString()}`} tone={budgetRemaining < 5000 ? 'danger' : undefined} /></View></View>
+        <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total This Month" value={loading ? 'Not set' : `GHS ${totalThisMonth.toLocaleString()}`} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Approved" value={loading ? 'Not set' : `GHS ${approvedTotal.toLocaleString()}`} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Pending Approval" value={loading ? 'Not set' : pendingCount} tone="warning" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Budget Remaining" value={loading ? 'Not set' : `GHS ${budgetRemaining.toLocaleString()}`} tone={budgetRemaining < 5000 ? 'danger' : undefined} /></View></View>
       </View>
 
       <View style={{ gap: t.spacing.sm, marginBottom: t.spacing.md }}>

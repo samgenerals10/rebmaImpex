@@ -448,7 +448,7 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
       {activeTab === 'balances' && (
         <div style={{ background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border)', overflow: 'hidden' }}>
           <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)' }}>
-            <h3 style={{ margin: 0, color: 'var(--text-primary)', fontWeight: 700, fontSize: 15 }}>Leave Balances — {new Date().getFullYear()}</h3>
+            <h3 style={{ margin: 0, color: 'var(--text-primary)', fontWeight: 700, fontSize: 15 }}>Leave Balances, {new Date().getFullYear()}</h3>
           </div>
           <div style={{ padding: '0.75rem' }}>
             <ResponsiveDataView<typeof LEAVE_BALANCES[number]>

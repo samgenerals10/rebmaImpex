@@ -236,7 +236,7 @@ export default function FuelManagementView({ addNotification }: Props) {
             columns={[
               { key: 'vehicleId', label: 'Vehicle ID', primary: true },
               { key: 'date', label: 'Date' },
-              { key: 'driver', label: 'Driver', render: l => l.driver || '—' },
+              { key: 'driver', label: 'Driver', render: l => l.driver || 'Not set' },
               { key: 'liters', label: 'Liters', render: l => `${l.liters} L` },
               { key: 'cost', label: 'Cost (GHS)', status: true, render: l => <span style={{ color: 'var(--accent)', fontWeight: 600 }}>GHS {l.cost.toLocaleString()}</span> },
               { key: 'station', label: 'Fuel Station' },

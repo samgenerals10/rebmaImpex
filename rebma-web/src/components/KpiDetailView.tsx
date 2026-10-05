@@ -165,7 +165,7 @@ export default function KpiDetailView({
                 <tr key={i} className="border-b border-[var(--border)] hover:bg-[var(--accent-light)] transition-colors">
                   {columns.map(col => (
                     <td key={col.key} className="px-4 py-2.5 text-[var(--text-secondary)] whitespace-nowrap">
-                      {col.render ? col.render(row[col.key], row) : (row[col.key] ?? '—')}
+                      {col.render ? col.render(row[col.key], row) : (row[col.key] ?? 'Not set')}
                     </td>
                   ))}
                 </tr>

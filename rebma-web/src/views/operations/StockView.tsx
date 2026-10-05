@@ -71,12 +71,12 @@ const barColor = (current: number, capacity: number) => {
 };
 
 const fmtDate = (iso: string) => {
-  if (!iso) return '—';
+  if (!iso) return 'Not set';
   return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 };
 
 const fmtDateTime = (iso: string) => {
-  if (!iso) return '—';
+  if (!iso) return 'Not set';
   return new Date(iso).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 };
 
@@ -214,10 +214,10 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
         quantity: Number(r.quantity ?? 0),
         unit: r.unit || 'units',
         weight: Number(r.weight_kg ?? r.weight ?? 0),
-        supplier: r.supplier_name || r.company || '—',
-        portOfOrigin: r.port_of_origin || r.country || '—',
+        supplier: r.supplier_name || r.company || 'Not set',
+        portOfOrigin: r.port_of_origin || r.country || 'Not set',
         destination: r.destination || 'Accra Warehouse',
-        approvedBy: r.approved_by || r.updated_by || '—',
+        approvedBy: r.approved_by || r.updated_by || 'Not set',
         approvedAt: r.updated_at || r.created_at || '',
       })));
 
@@ -606,7 +606,7 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
                 {
                   key: 'out', label: 'OUT (Dispatched)', render: c => {
                     const out = getLedgerSince(c.productName, c.approvedAt).totalOut;
-                    return <span style={{ fontWeight: 700, color: '#ef4444' }}>{out > 0 ? out.toLocaleString() : <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>—</span>}</span>;
+                    return <span style={{ fontWeight: 700, color: '#ef4444' }}>{out > 0 ? out.toLocaleString() : <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>Not set</span>}</span>;
                   }
                 },
                 {
@@ -662,8 +662,8 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
                 { key: 'name', label: 'Product', primary: true },
                 { key: 'sku', label: 'SKU', render: s => <span style={{ fontFamily: 'monospace', fontSize: 11 }}>{s.sku}</span> },
                 { key: 'category', label: 'Category' },
-                { key: 'in', label: 'IN (Produced)', render: s => { const totalIn = getLedger(s.name).totalIn; return <span style={{ fontWeight: 700, color: '#3b82f6' }}>{totalIn > 0 ? totalIn.toLocaleString() : <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>—</span>}</span>; } },
-                { key: 'out', label: 'OUT (Sold)', render: s => { const totalOut = getLedger(s.name).totalOut; return <span style={{ fontWeight: 700, color: '#ef4444' }}>{totalOut > 0 ? totalOut.toLocaleString() : <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>—</span>}</span>; } },
+                { key: 'in', label: 'IN (Produced)', render: s => { const totalIn = getLedger(s.name).totalIn; return <span style={{ fontWeight: 700, color: '#3b82f6' }}>{totalIn > 0 ? totalIn.toLocaleString() : <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>Not set</span>}</span>; } },
+                { key: 'out', label: 'OUT (Sold)', render: s => { const totalOut = getLedger(s.name).totalOut; return <span style={{ fontWeight: 700, color: '#ef4444' }}>{totalOut > 0 ? totalOut.toLocaleString() : <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>Not set</span>}</span>; } },
                 { key: 'current', label: 'Remaining', render: s => <span style={{ fontWeight: 700, color: s.current === 0 ? '#ef4444' : '#10b981' }}>{s.current.toLocaleString()}</span> },
                 { key: 'capacity', label: 'Capacity', render: s => s.capacity.toLocaleString() },
                 {
@@ -693,7 +693,7 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
                 {
                   key: 'out', label: 'OUT (Used)', render: gp => {
                     const gpOut = getLedger(gp.itemName).totalOut;
-                    return <span style={{ fontWeight: 700, color: '#ef4444' }}>{gpOut > 0 ? gpOut.toLocaleString() : <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>—</span>}</span>;
+                    return <span style={{ fontWeight: 700, color: '#ef4444' }}>{gpOut > 0 ? gpOut.toLocaleString() : <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>Not set</span>}</span>;
                   }
                 },
                 {
@@ -749,7 +749,7 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
             fields={[
               { label: 'Goods Code', value: selectedCargo.goodsCode, highlight: true },
               { label: 'IN (Approved Qty)', value: `${selectedCargo.quantity.toLocaleString()} ${selectedCargo.unit}`, highlight: true },
-              { label: 'OUT (Dispatched)', value: out > 0 ? `${out.toLocaleString()} ${selectedCargo.unit}` : '—' },
+              { label: 'OUT (Dispatched)', value: out > 0 ? `${out.toLocaleString()} ${selectedCargo.unit}` : 'Not set' },
               { label: 'REMAINING', value: `${remaining.toLocaleString()} ${selectedCargo.unit}` },
               { label: 'Supplier', value: selectedCargo.supplier },
               { label: 'Port of Origin', value: selectedCargo.portOfOrigin },
@@ -789,8 +789,8 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
             badgeStyle={{ background: st.bg, color: st.color }}
             fields={[
               { label: 'SKU', value: selectedStock.sku, highlight: true },
-              { label: 'IN (Total Produced)', value: totalIn > 0 ? `${totalIn.toLocaleString()} units` : '—', highlight: true },
-              { label: 'OUT (Total Sold)', value: totalOut > 0 ? `${totalOut.toLocaleString()} units` : '—' },
+              { label: 'IN (Total Produced)', value: totalIn > 0 ? `${totalIn.toLocaleString()} units` : 'Not set', highlight: true },
+              { label: 'OUT (Total Sold)', value: totalOut > 0 ? `${totalOut.toLocaleString()} units` : 'Not set' },
               { label: 'REMAINING (Current)', value: `${selectedStock.current.toLocaleString()} units` },
               { label: 'Capacity', value: `${selectedStock.capacity.toLocaleString()} units` },
               { label: 'Fill Level', value: `${pct}%` },
@@ -822,7 +822,7 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
             fields={[
               { label: 'Item Code', value: selectedGP.itemCode, highlight: true },
               { label: 'IN (Received)', value: `${gpIn.toLocaleString()} units`, highlight: true },
-              { label: 'OUT (Used)', value: gpOut > 0 ? `${gpOut.toLocaleString()} units` : '—' },
+              { label: 'OUT (Used)', value: gpOut > 0 ? `${gpOut.toLocaleString()} units` : 'Not set' },
               { label: 'REMAINING', value: `${gpRemaining.toLocaleString()} units` },
               { label: 'Date Received', value: selectedGP.dateReceived },
             ]}

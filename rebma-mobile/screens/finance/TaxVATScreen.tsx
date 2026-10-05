@@ -119,7 +119,7 @@ export default function TaxVATScreen() {
           <Button label="Export" size="sm" variant="ghost" icon={<Download size={13} color={t.colors.textSecondary} />} onPress={() => setExportOpen(true)} />
         </View>
         <View style={{ gap: t.spacing.sm }}>
-          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="VAT Collected (MTD)" value={loading ? '—' : `GHS ${(current?.vatAmount || 0).toLocaleString()}`} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total VAT Filed" value={loading ? '—' : `GHS ${totalVatCollected.toLocaleString()}`} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Est. Total Tax Liability" value={loading ? '—' : `GHS ${totalTaxLiability.toLocaleString()}`} tone="warning" /></View></View>
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="VAT Collected (MTD)" value={loading ? 'Not set' : `GHS ${(current?.vatAmount || 0).toLocaleString()}`} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total VAT Filed" value={loading ? 'Not set' : `GHS ${totalVatCollected.toLocaleString()}`} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Est. Total Tax Liability" value={loading ? 'Not set' : `GHS ${totalTaxLiability.toLocaleString()}`} tone="warning" /></View></View>
         </View>
 
         <Card>

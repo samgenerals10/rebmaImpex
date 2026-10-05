@@ -68,7 +68,7 @@ export default function OverviewScreen() {
               emphasis="primary"
               tone="accent"
               label="Active Staff"
-              value={loading ? '—' : activeStaff}
+              value={loading ? 'Not set' : activeStaff}
               sublabel={`of ${totalStaff} registered`}
               icon={<UserCheck size={18} color={t.colors.accent} />}
               onPress={() => navigation.navigate('Staff')}
@@ -79,7 +79,7 @@ export default function OverviewScreen() {
               emphasis="primary"
               tone={pendingRegistrations > 0 ? 'warning' : 'accent'}
               label="Pending Staff"
-              value={loading ? '—' : pendingRegistrations}
+              value={loading ? 'Not set' : pendingRegistrations}
               sublabel="New reviews"
               icon={<UserPlus size={18} color={pendingRegistrations > 0 ? t.colors.status.warning.text : t.colors.accent} />}
               onPress={() => navigation.navigate('Registrations')}
@@ -98,7 +98,7 @@ export default function OverviewScreen() {
               <MetricCard
                 emphasis="compact"
                 label="On Leave"
-                value={loading ? '—' : onLeaveToday}
+                value={loading ? 'Not set' : onLeaveToday}
                 sublabel="Approved off"
                 icon={<Calendar size={14} color={t.colors.action.sky} />}
                 tone="info"
@@ -109,7 +109,7 @@ export default function OverviewScreen() {
               <MetricCard
                 emphasis="compact"
                 label="Staff"
-                value={loading ? '—' : totalStaff}
+                value={loading ? 'Not set' : totalStaff}
                 sublabel="Employees"
                 icon={<Users size={14} color={t.colors.action.violet} />}
                 tone="neutral"
@@ -120,7 +120,7 @@ export default function OverviewScreen() {
               <MetricCard
                 emphasis="compact"
                 label="Departments"
-                value={loading ? '—' : deptCount || 11}
+                value={loading ? 'Not set' : deptCount || 11}
                 sublabel="Org units"
                 icon={<Building2 size={14} color={t.colors.action.emerald} />}
                 tone="success"

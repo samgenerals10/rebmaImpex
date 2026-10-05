@@ -145,10 +145,10 @@ export default function MarketingDashboard({
   ];
 
   const kpiDetails = [
-    { title: 'Registered Customers', metric: 'Accounts', trendData: [{name:'Now',value:totalCustomersCount}], breakdownData: [{name:'Total',value:totalCustomersCount}], tableData: localCustomers.slice(0,5).map(c => ({name: c.name, type: c.companyName || '—', since: c.registeredAt || '—'})), columns: [{key:'name',label:'Customer'}, {key:'type',label:'Company'}, {key:'since',label:'Registered'}] },
+    { title: 'Registered Customers', metric: 'Accounts', trendData: [{name:'Now',value:totalCustomersCount}], breakdownData: [{name:'Total',value:totalCustomersCount}], tableData: localCustomers.slice(0,5).map(c => ({name: c.name, type: c.companyName || 'Not set', since: c.registeredAt || 'Not set'})), columns: [{key:'name',label:'Customer'}, {key:'type',label:'Company'}, {key:'since',label:'Registered'}] },
     { title: 'Total Sales Booked', metric: 'Orders', trendData: [{name:'Now',value:totalOrdersCount}], breakdownData: [{name:'Delivered',value:completedDealsCount}, {name:'Pending',value:localOrders.filter(o=>o.status.startsWith('PENDING')).length}], tableData: localOrders.slice(0,5).map(o => ({ticket: o.ticketNumber || o.id, client: o.clientName, amount: `GHS ${o.totalAmount.toLocaleString()}`})), columns: [{key:'ticket',label:'Ticket'}, {key:'client',label:'Client'}, {key:'amount',label:'Amount'}] },
     { title: 'Pipeline Net Value', metric: 'GHS', trendData: [{name:'Now',value:pipelineValue}], breakdownData: [{name:'Total Value',value:pipelineValue}], tableData: localOrders.slice(0,5).map(o => ({order: o.id, client: o.clientName, value: `GHS ${o.totalAmount.toLocaleString()}`})), columns: [{key:'order',label:'Order'}, {key:'client',label:'Client'}, {key:'value',label:'Value'}] },
-    { title: 'Completed Deliveries', metric: 'Closed Deals', trendData: [{name:'Now',value:completedDealsCount}], breakdownData: [{name:'Delivered',value:completedDealsCount}, {name:'In Progress',value:totalOrdersCount-completedDealsCount}], tableData: localOrders.filter(o=>o.status==='DELIVERED').slice(0,5).map(o => ({id: o.id, client: o.clientName, date: o.createdAt || '—'})), columns: [{key:'id',label:'Order'}, {key:'client',label:'Client'}, {key:'date',label:'Date'}] }
+    { title: 'Completed Deliveries', metric: 'Closed Deals', trendData: [{name:'Now',value:completedDealsCount}], breakdownData: [{name:'Delivered',value:completedDealsCount}, {name:'In Progress',value:totalOrdersCount-completedDealsCount}], tableData: localOrders.filter(o=>o.status==='DELIVERED').slice(0,5).map(o => ({id: o.id, client: o.clientName, date: o.createdAt || 'Not set'})), columns: [{key:'id',label:'Order'}, {key:'client',label:'Client'}, {key:'date',label:'Date'}] }
   ];
 
 
@@ -266,7 +266,7 @@ export default function MarketingDashboard({
 
 
   const handleShareCustomer = (cust: Customer) => {
-    const shareText = `Rebma Customer Account: ${cust.name} - Company: ${cust.companyName} - Phone: ${cust.phone} - Location: ${cust.location}`;
+    const shareText = `Rebma Customer Account: ${cust.name}, Company: ${cust.companyName}, Phone: ${cust.phone}, Location: ${cust.location}`;
     navigator.clipboard.writeText(shareText).then(() => {
       addNotification(`Copied customer account details to clipboard!`);
     }).catch(() => alert(shareText));
@@ -290,7 +290,7 @@ export default function MarketingDashboard({
 
 
   const handleShareOrder = (order: Order) => {
-    const shareText = `Rebma Sales Order: ID: ${order.id} - Ticket: ${order.ticketNumber || 'N/A'} - Client: ${order.clientName} - Amt: GHS ${order.totalAmount}`;
+    const shareText = `Rebma Sales Order: ID: ${order.id}, Ticket: ${order.ticketNumber || 'N/A'}, Client: ${order.clientName}, Amt: GHS ${order.totalAmount}`;
     navigator.clipboard.writeText(shareText).then(() => {
       addNotification(`Copied sales order sharing details to clipboard!`);
     }).catch(() => alert(shareText));
@@ -410,7 +410,7 @@ export default function MarketingDashboard({
                 </div>
               </div>
               <div className="bg-bg-card dark:bg-slate-800 rounded-2xl p-4 shadow-card border border-[var(--border)] dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-700">
-                {[['Phone', cust.phone], ['Location', cust.location || '—'], ['Email', cust.email || '—'], ['Ghana Card', cust.ghanaCard || '—'], ['Registered', cust.registeredAt]].map(([label, value]) => (
+                {[['Phone', cust.phone], ['Location', cust.location || 'Not set'], ['Email', cust.email || 'Not set'], ['Ghana Card', cust.ghanaCard || 'Not set'], ['Registered', cust.registeredAt]].map(([label, value]) => (
                   <div key={label} className="py-3 flex justify-between items-center text-xs">
                     <span className="text-text-muted font-medium">{label}</span>
                     <span className="font-semibold font-mono">{value}</span>
@@ -436,9 +436,9 @@ export default function MarketingDashboard({
               </div>
               <div className="bg-bg-card dark:bg-slate-800 rounded-2xl p-4 shadow-card border border-[var(--border)] dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-700">
                 {[
-                  ['Ticket', order.ticketNumber || '—'],
-                  ['Product', order.productName || '—'],
-                  ['Destination', order.destination || '—'],
+                  ['Ticket', order.ticketNumber || 'Not set'],
+                  ['Product', order.productName || 'Not set'],
+                  ['Destination', order.destination || 'Not set'],
                   ['Payment', order.paymentMode],
                   ['Amount', `GHS ${order.totalAmount.toLocaleString()}`],
                   ['Status', order.status.replace(/_/g, ' ')],
@@ -756,7 +756,7 @@ export default function MarketingDashboard({
               </div>
               <div className="p-3 bg-[var(--bg)] border border-[var(--border)] rounded-xl">
                 <p className="text-[var(--text-muted)] text-[10px] uppercase font-semibold">Location</p>
-                <p className="font-medium mt-0.5 text-[var(--text-primary)]">{selectedCustomer.location || '—'}</p>
+                <p className="font-medium mt-0.5 text-[var(--text-primary)]">{selectedCustomer.location || 'Not set'}</p>
               </div>
               {selectedCustomer.email && (
                 <div className="p-3 bg-[var(--bg)] border border-[var(--border)] rounded-xl">
@@ -785,7 +785,7 @@ export default function MarketingDashboard({
                 {customerOrders(selectedCustomer).map(o => (
                   <div key={o.id} className="flex justify-between items-center p-2 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-[10px]">
                     <span className="font-mono text-[var(--text-primary)]">{o.id}</span>
-                    <span className="text-[var(--text-muted)]">{o.productName || '—'}</span>
+                    <span className="text-[var(--text-muted)]">{o.productName || 'Not set'}</span>
                     <span className="font-bold font-mono text-[var(--text-primary)]">GHS {o.totalAmount.toLocaleString()}</span>
                     <span className={`px-1.5 py-0.5 rounded font-bold text-[10px] ${statusColor(o.status)}`}>{o.status.replace(/_/g, ' ')}</span>
                   </div>
@@ -812,8 +812,8 @@ export default function MarketingDashboard({
             )}
             {[
               ['Client', selectedOrder.clientName],
-              ['Product', selectedOrder.productName || '—'],
-              ['Destination', selectedOrder.destination || '—'],
+              ['Product', selectedOrder.productName || 'Not set'],
+              ['Destination', selectedOrder.destination || 'Not set'],
               ['Payment Mode', selectedOrder.paymentMode],
               ['Amount', `GHS ${selectedOrder.totalAmount.toLocaleString()}`],
               ['Status', selectedOrder.status.replace(/_/g, ' ')],
@@ -1063,7 +1063,7 @@ export default function MarketingDashboard({
                   <td className="py-3.5 px-3 text-[var(--text-muted)] hidden sm:table-cell">{cust.companyName}</td>
                   <td className="py-3.5 px-3 text-[var(--text-muted)] font-mono">{cust.phone}</td>
                   <td className="py-3.5 px-3 text-[var(--text-muted)] hidden sm:table-cell">{cust.location}</td>
-                  <td className="py-3.5 px-3 font-mono text-[10px] text-[var(--text-muted)] hidden md:table-cell">{cust.ghanaCard || '—'}</td>
+                  <td className="py-3.5 px-3 font-mono text-[10px] text-[var(--text-muted)] hidden md:table-cell">{cust.ghanaCard || 'Not set'}</td>
                   <td className="py-3.5 px-3 text-center">
                     <span className="px-2.5 py-0.5 bg-[var(--accent-light)] text-[var(--accent)] rounded-full text-[10px] font-bold">{customerOrders(cust).length}</span>
                   </td>
@@ -1161,7 +1161,7 @@ export default function MarketingDashboard({
                 <div className="w-10 h-10 rounded-full bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center font-bold text-sm shrink-0">{order.clientName[0]}</div>
                 <div>
                   <h4 className="text-sm font-bold text-[var(--text-primary)]">{order.clientName}</h4>
-                  <p className="text-xs text-[var(--text-muted)]">{order.productName || '—'}</p>
+                  <p className="text-xs text-[var(--text-muted)]">{order.productName || 'Not set'}</p>
                   <p className="text-[10px] text-[var(--text-muted)] font-mono mt-0.5">GHS {order.totalAmount.toLocaleString()}</p>
                 </div>
               </div>
@@ -1257,11 +1257,11 @@ export default function MarketingDashboard({
                       className="accent-[var(--accent)] w-3.5 h-3.5"
                     />
                   </td>
-                  <td className="py-3.5 px-3 font-mono font-bold hidden sm:table-cell text-[var(--text-primary)]">{order.ticketNumber || '—'}</td>
+                  <td className="py-3.5 px-3 font-mono font-bold hidden sm:table-cell text-[var(--text-primary)]">{order.ticketNumber || 'Not set'}</td>
                   <td className="py-3.5 px-3 font-mono text-[var(--text-muted)] hidden md:table-cell">{order.id}</td>
                   <td className="py-3.5 px-3 font-semibold text-sm">{order.clientName}</td>
-                  <td className="py-3.5 px-3 text-[var(--text-secondary)]">{order.productName || '—'}</td>
-                  <td className="py-3.5 px-3 text-[var(--text-muted)] hidden md:table-cell">{order.destination || '—'}</td>
+                  <td className="py-3.5 px-3 text-[var(--text-secondary)]">{order.productName || 'Not set'}</td>
+                  <td className="py-3.5 px-3 text-[var(--text-muted)] hidden md:table-cell">{order.destination || 'Not set'}</td>
                   <td className="py-3.5 px-3">
                     <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold ${order.paymentMode === 'CREDIT' ? 'bg-amber-500/10 text-amber-500' : order.paymentMode === 'CASH' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-blue-500/10 text-blue-500'}`}>{order.paymentMode}</span>
                   </td>

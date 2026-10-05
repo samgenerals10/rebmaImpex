@@ -131,7 +131,7 @@ export default function StockScreen() {
     { key: 'product_name', label: 'Product', primary: true, render: (r) => r.product_name || 'Unnamed' },
     { key: 'quantity', label: 'Qty', status: true, render: (r) => <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>{r.quantity} {r.unit || 'units'}</Text> },
     { key: 'goods_code', label: 'Code', render: (r) => r.goods_code || `CARGO-${r.id.slice(-6).toUpperCase()}` },
-    { key: 'company', label: 'Supplier', render: (r) => r.company || '—' },
+    { key: 'company', label: 'Supplier', render: (r) => r.company || 'Not set' },
     { key: 'weight', label: 'Weight', render: (r) => `${Number(r.weight || 0).toFixed(1)}T` },
   ];
 
@@ -142,7 +142,7 @@ export default function StockScreen() {
       render: (r) => { const st = stockStatus(r.quantity, r.maximum_level || 0); return <Badge tone={st.tone} label={st.label} />; },
     },
     { key: 'quantity', label: 'Qty', render: (r) => `${r.quantity} ${r.unit || 'units'}` },
-    { key: 'product_code', label: 'SKU', render: (r) => r.product_code || '—' },
+    { key: 'product_code', label: 'SKU', render: (r) => r.product_code || 'Not set' },
     { key: 'category', label: 'Category', render: (r) => r.category || 'Uncategorized' },
     { key: 'maximum_level', label: 'Capacity', render: (r) => (r.maximum_level || 0).toLocaleString() },
   ];
@@ -150,8 +150,8 @@ export default function StockScreen() {
   const gpCols: DataColumn<GpRow>[] = [
     { key: 'item_name', label: 'Item', primary: true },
     { key: 'quantity', label: 'Qty', status: true, render: (r) => <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>{r.quantity} units</Text> },
-    { key: 'item_code', label: 'Code', render: (r) => r.item_code || '—' },
-    { key: 'category', label: 'Category', render: (r) => r.category || '—' },
+    { key: 'item_code', label: 'Code', render: (r) => r.item_code || 'Not set' },
+    { key: 'category', label: 'Category', render: (r) => r.category || 'Not set' },
     { key: 'cost', label: 'Cost', render: (r) => `GHS ${Number(r.cost || 0).toLocaleString()}` },
   ];
 
@@ -159,7 +159,7 @@ export default function StockScreen() {
     { key: 'product_name', label: 'Product', primary: true },
     { key: 'movement_type', label: 'Type', status: true, render: (r) => <Badge tone={r.movement_type === 'ADD' ? 'success' : r.movement_type === 'REMOVE' ? 'danger' : 'muted'} label={r.movement_type} /> },
     { key: 'quantity', label: 'Qty' },
-    { key: 'reference', label: 'Reference', render: (r) => r.reference || '—' },
+    { key: 'reference', label: 'Reference', render: (r) => r.reference || 'Not set' },
     { key: 'created_at', label: 'When', render: (r) => new Date(r.created_at).toLocaleString() },
   ];
 

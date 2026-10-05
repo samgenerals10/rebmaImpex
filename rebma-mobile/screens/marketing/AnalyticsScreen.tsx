@@ -87,7 +87,7 @@ export default function AnalyticsScreen() {
     <Screen>
       <View style={{ gap: t.spacing.xl }}>
         <View style={{ gap: t.spacing.sm }}>
-          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Revenue" value={loading ? '—' : `GHS ${totalRevenue.toLocaleString()}`} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Orders" value={loading ? '—' : totalOrders} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Customers" value={loading ? '—' : customerCount} /></View></View>
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Revenue" value={loading ? 'Not set' : `GHS ${totalRevenue.toLocaleString()}`} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Orders" value={loading ? 'Not set' : totalOrders} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Customers" value={loading ? 'Not set' : customerCount} /></View></View>
         </View>
 
         {!loading && monthlyTrend.length > 0 && (

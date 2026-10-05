@@ -121,10 +121,10 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
           quantity: Number(r.quantity ?? 0),
           unit: r.unit || 'units',
           weight: Number(r.weight_kg ?? r.weight ?? 0),
-          supplier: r.supplier_name || r.company || '—',
-          portOfOrigin: r.port_of_origin || r.country || '—',
+          supplier: r.supplier_name || r.company || 'Not set',
+          portOfOrigin: r.port_of_origin || r.country || 'Not set',
           destination: r.destination || 'Accra Warehouse',
-          approvedBy: r.approved_by || r.updated_by || '—',
+          approvedBy: r.approved_by || r.updated_by || 'Not set',
           approvedAt: r.updated_at || r.created_at || '',
         })));
       }
@@ -656,13 +656,13 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
         if (col === 'status' && typeof val === 'object') {
           return <span className="px-2 py-0.5 rounded-full font-bold text-[10px]" style={{ background: val.bg, color: val.color }}>{val.label}</span>;
         }
-        let displayed = String(val ?? '—');
+        let displayed = String(val ?? 'Not set');
         if (['unitPrice', 'totalRevenue', 'sellingVal', 'costVal', 'costPrice'].includes(col)) {
           displayed = `GHS ${Number(val || 0).toLocaleString()}`;
         } else if (['qty', 'qtyReceived', 'totalQty', 'remainingQty'].includes(col)) {
           displayed = Number(val || 0).toLocaleString();
         } else if (col === 'approvedAt' || col === 'date') {
-          displayed = val ? new Date(val).toLocaleDateString('en-GB') : '—';
+          displayed = val ? new Date(val).toLocaleDateString('en-GB') : 'Not set';
         }
         return displayed;
       },
@@ -840,7 +840,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
               <button
                 onClick={() => {
                   const dataToExport = getDrillDownData();
-                  const summary = `REBMA Impex - ${activeDrillDown} Details:\n` + dataToExport.slice(0, 5).map(item => `- ${item.name || item.product_name || item.itemName || ''}: ${item.qty || item.quantity || item.totalQty || ''}`).join('\n');
+                  const summary = `REBMA Impex, ${activeDrillDown} Details:\n` + dataToExport.slice(0, 5).map(item => `- ${item.name || item.product_name || item.itemName || ''}: ${item.qty || item.quantity || item.totalQty || ''}`).join('\n');
                   navigator.clipboard.writeText(summary).then(() => {
                     addNotification?.('Statement summary link copied');
                   }).catch(() => alert(summary));
@@ -1043,7 +1043,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
                     onClick={() => {
                       exportToPDF(
                         `${productName} Ledger Statement & Stock Movements`,
-                        entries.map(e => ({ Date: new Date(e.created_at).toLocaleString(), Movement: e.movement_type, Quantity: Number(e.quantity).toLocaleString(), Reference: e.reference || '—', Notes: e.notes || '—', PerformedBy: e.performed_by || 'System' })),
+                        entries.map(e => ({ Date: new Date(e.created_at).toLocaleString(), Movement: e.movement_type, Quantity: Number(e.quantity).toLocaleString(), Reference: e.reference || 'Not set', Notes: e.notes || 'Not set', PerformedBy: e.performed_by || 'System' })),
                         ['Date', 'Movement', 'Quantity', 'Reference', 'Notes', 'PerformedBy']
                       );
                       addNotification?.('Ledger statement PDF printed');
@@ -1074,8 +1074,8 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
                     { key: 'movement_type', label: 'Movement', primary: true, render: e => <span className={`px-2 py-0.5 rounded text-[10px] uppercase tracking-wide font-bold ${e.movement_type === 'ADD' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-red-500/10 text-red-500'}`}>{e.movement_type}</span> },
                     { key: 'created_at', label: 'Date', render: e => <span className="font-mono">{new Date(e.created_at).toLocaleDateString('en-GB')} {new Date(e.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span> },
                     { key: 'quantity', label: 'Quantity', align: 'right', render: e => <span className={`font-bold font-mono ${e.movement_type === 'ADD' ? 'text-blue-500' : 'text-red-500'}`}>{e.movement_type === 'ADD' ? '+' : '-'}{Number(e.quantity).toLocaleString()}</span> },
-                    { key: 'reference', label: 'Reference', render: e => e.reference || '—' },
-                    { key: 'notes', label: 'Notes', render: e => e.notes || '—' },
+                    { key: 'reference', label: 'Reference', render: e => e.reference || 'Not set' },
+                    { key: 'notes', label: 'Notes', render: e => e.notes || 'Not set' },
                     { key: 'performed_by', label: 'Performed By', render: e => e.performed_by || 'System' },
                   ] as DataColumn<typeof entries[number]>[]}
                   data={entries}
@@ -1139,8 +1139,8 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
                 { key: 'name', label: 'Product', primary: true },
                 {
                   key: 'margin', label: 'Margin', status: true, render: (item: any) => {
-                    const margin = item.costPrice > 0 ? (((item.unitPrice - item.costPrice) / item.costPrice) * 100).toFixed(0) : '—';
-                    return <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${Number(margin) > 0 ? 'bg-emerald-500/10 text-emerald-600' : 'bg-[var(--bg-input)] text-[var(--text-muted)]'}`}>{margin !== '—' ? `${margin}%` : '—'}</span>;
+                    const margin = item.costPrice > 0 ? (((item.unitPrice - item.costPrice) / item.costPrice) * 100).toFixed(0) : 'Not set';
+                    return <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${Number(margin) > 0 ? 'bg-emerald-500/10 text-emerald-600' : 'bg-[var(--bg-input)] text-[var(--text-muted)]'}`}>{margin !== 'Not set' ? `${margin}%` : 'Not set'}</span>;
                   }
                 },
                 { key: 'qty', label: 'Qty', render: (item: any) => item.qty.toLocaleString() },
@@ -1189,7 +1189,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
                           )}
                         </div>
                         <p className="text-[10px] text-[var(--text-muted)] mt-0.5">
-                          {item.updated_at ? new Date(item.updated_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                          {item.updated_at ? new Date(item.updated_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Not set'}
                         </p>
                       </div>
                       <div className="text-right shrink-0">

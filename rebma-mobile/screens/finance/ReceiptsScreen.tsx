@@ -107,7 +107,7 @@ export default function ReceiptsScreen() {
   }, [payments, search]);
 
   const columns: DataColumn<PaymentRow>[] = [
-    { key: 'client_name', label: 'Client', primary: true, render: (p) => p.client_name || '—' },
+    { key: 'client_name', label: 'Client', primary: true, render: (p) => p.client_name || 'Not set' },
     { key: 'status', label: 'Status', status: true, render: (p) => <Badge tone={p.status === 'CONFIRMED' ? 'success' : 'muted'} label={p.status || 'CONFIRMED'} /> },
     { key: 'amount', label: 'Amount', render: (p) => `GHS ${Number(p.amount || 0).toLocaleString()}` },
     { key: 'payment_mode', label: 'Mode', render: (p) => (p.payment_mode || '').replace(/_/g, ' ') },
@@ -123,8 +123,8 @@ export default function ReceiptsScreen() {
     { key: 'amount', label: 'Amount (GHS)', render: (p) => Number(p.amount).toLocaleString(undefined, { minimumFractionDigits: 2 }) },
     { key: 'payment_mode', label: 'Payment Mode' },
     { key: 'payment_type', label: 'Payment Type', render: (p) => p.payment_type || '' },
-    { key: 'order_id', label: 'Order ID', render: (p) => p.order_id || '—' },
-    { key: 'recorded_by', label: 'Recorded By', render: (p) => p.recorded_by || '—' },
+    { key: 'order_id', label: 'Order ID', render: (p) => p.order_id || 'Not set' },
+    { key: 'recorded_by', label: 'Recorded By', render: (p) => p.recorded_by || 'Not set' },
     { key: 'status', label: 'Status' },
     { key: 'created_at', label: 'Date', render: (p) => new Date(p.created_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) },
   ];
@@ -144,8 +144,8 @@ export default function ReceiptsScreen() {
           <SheetSection label="Payment Details">
             <Text style={{ fontFamily: t.font.bold, fontSize: t.type.title18.size, color: t.colors.accent, marginBottom: t.spacing.sm }}>GHS {Number(detail.amount || 0).toLocaleString()}</Text>
             <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>Mode: {(detail.payment_mode || '').replace(/_/g, ' ')}</Text>
-            <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>Type: {detail.payment_type || '—'}</Text>
-            <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>Recorded by: {detail.recorded_by || '—'}</Text>
+            <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>Type: {detail.payment_type || 'Not set'}</Text>
+            <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>Recorded by: {detail.recorded_by || 'Not set'}</Text>
             <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>Date: {new Date(detail.created_at).toLocaleString()}</Text>
             <View style={{ height: t.spacing.md }} />
             <Button icon={<Printer size={14} color={t.colors.onAccent} />} label="Print Receipt" onPress={printDetail} loading={printing} disabled={printing} fullWidth />

@@ -382,7 +382,7 @@ export default function InternalOrdersScreen() {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm }}>
                 <Badge tone={statusOrStageTone(disp.statusVal)} label={disp.text} />
                 <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted }}>
-                  Created: {selectedOrder.created_at ? new Date(selectedOrder.created_at).toLocaleString() : '—'}
+                  Created: {selectedOrder.created_at ? new Date(selectedOrder.created_at).toLocaleString() : 'Not set'}
                 </Text>
               </View>
               <View style={{ flexDirection: 'row', gap: t.spacing.md }}>
@@ -401,7 +401,7 @@ export default function InternalOrdersScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted }}>Required By</Text>
                   <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body14.size, color: t.colors.textPrimary }}>
-                    {selectedOrder.required_by_date ? new Date(selectedOrder.required_by_date).toLocaleDateString() : '—'}
+                    {selectedOrder.required_by_date ? new Date(selectedOrder.required_by_date).toLocaleDateString() : 'Not set'}
                   </Text>
                 </View>
                 <View style={{ flex: 1 }}>
@@ -411,7 +411,7 @@ export default function InternalOrdersScreen() {
               </View>
               <View>
                 <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted }}>Purpose</Text>
-                <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body14.size, color: t.colors.textPrimary }}>{selectedOrder.purpose || '—'}</Text>
+                <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body14.size, color: t.colors.textPrimary }}>{selectedOrder.purpose || 'Not set'}</Text>
               </View>
               {selectedOrder.rejection_reason && (
                 <Card tone="inset">

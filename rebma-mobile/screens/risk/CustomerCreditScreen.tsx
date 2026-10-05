@@ -90,7 +90,7 @@ export default function CustomerCreditScreen() {
 
   const logCreditTermsAudit = async (customerId: string, customerName: string, details: string) => {
     await supabase.from('global_audit_history').insert({
-      action: `CREDIT_TERMS: CUST-${customerId.slice(-6).toUpperCase()} — ${customerName}`,
+      action: `CREDIT_TERMS: CUST-${customerId.slice(-6).toUpperCase()}, ${customerName}`,
       department: 'RISK',
       performed_by: profile?.fullName || 'Risk',
       reference_id: customerId,

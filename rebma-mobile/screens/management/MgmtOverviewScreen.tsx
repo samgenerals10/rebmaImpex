@@ -77,7 +77,7 @@ export default function MgmtOverviewScreen() {
               emphasis="primary"
               tone={totalApprovals > 0 ? 'warning' : 'accent'}
               label="Action Items"
-              value={loading ? '—' : totalApprovals}
+              value={loading ? 'Not set' : totalApprovals}
               sublabel={totalApprovals === 0 ? 'All lanes clear' : 'Awaiting sign-off'}
               icon={<Layers size={18} color={totalApprovals > 0 ? t.colors.status.warning.text : t.colors.accent} />}
               onPress={() => navigation.navigate('CreditApproval')}
@@ -94,7 +94,7 @@ export default function MgmtOverviewScreen() {
               emphasis="primary"
               tone="info"
               label="Cargo Intake"
-              value={loading ? '—' : cargoCount}
+              value={loading ? 'Not set' : cargoCount}
               sublabel="Port arrivals"
               icon={<Package size={18} color={t.colors.status.info.text} />}
               onPress={() => navigation.navigate('SetPrices')}
@@ -113,7 +113,7 @@ export default function MgmtOverviewScreen() {
               <MetricCard
                 emphasis="compact"
                 label="Cust. Credit"
-                value={loading ? '—' : ordersCount}
+                value={loading ? 'Not set' : ordersCount}
                 sublabel="Escalated"
                 icon={<CreditCard size={14} color={t.colors.action.violet} />}
                 tone={ordersCount > 0 ? 'warning' : 'neutral'}
@@ -124,7 +124,7 @@ export default function MgmtOverviewScreen() {
               <MetricCard
                 emphasis="compact"
                 label="Production"
-                value={loading ? '—' : productionCount}
+                value={loading ? 'Not set' : productionCount}
                 sublabel="Raw material"
                 icon={<Factory size={14} color={t.colors.action.teal} />}
                 tone={productionCount > 0 ? 'warning' : 'neutral'}
@@ -137,7 +137,7 @@ export default function MgmtOverviewScreen() {
               <MetricCard
                 emphasis="compact"
                 label="Purchases"
-                value={loading ? '—' : purchasesCount}
+                value={loading ? 'Not set' : purchasesCount}
                 sublabel="Expenses"
                 icon={<ShoppingCart size={14} color={t.colors.action.amber} />}
                 tone={purchasesCount > 0 ? 'warning' : 'neutral'}
@@ -148,7 +148,7 @@ export default function MgmtOverviewScreen() {
               <MetricCard
                 emphasis="compact"
                 label="Petty Float"
-                value={loading ? '—' : floatCount}
+                value={loading ? 'Not set' : floatCount}
                 sublabel="Replenishment"
                 icon={<Wallet size={14} color={t.colors.action.rose} />}
                 tone={floatCount > 0 ? 'warning' : 'neutral'}

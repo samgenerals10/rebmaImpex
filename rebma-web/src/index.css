@@ -409,6 +409,8 @@ body {
   background-color: var(--bg-page);
   color: var(--text-primary);
   font-size: var(--font-size-base, 14px);
+  /* Body and paragraph text one step heavier than the 400 default, for readability. */
+  font-weight: 500;
 }
 
 h1, h2, h3, h4, h5, h6 { color: var(--text-primary); }

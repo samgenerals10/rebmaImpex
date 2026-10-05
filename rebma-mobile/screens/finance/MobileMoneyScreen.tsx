@@ -107,7 +107,7 @@ export default function MobileMoneyScreen() {
       Alert.alert('Verify Failed', error.message);
       return;
     }
-    await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `MoMo transaction ${tx.id} verified — ${tx.transaction_id}`, performed_by: profile?.fullName || 'Account Department', timestamp: new Date().toISOString() }]);
+    await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `MoMo transaction ${tx.id} verified, ${tx.transaction_id}`, performed_by: profile?.fullName || 'Account Department', timestamp: new Date().toISOString() }]);
     setDetail(null);
     load();
   };
@@ -131,7 +131,7 @@ export default function MobileMoneyScreen() {
   };
 
   const columns: DataColumn<MomoRow>[] = [
-    { key: 'client_name', label: 'Customer', primary: true, render: (tx) => tx.client_name || '—' },
+    { key: 'client_name', label: 'Customer', primary: true, render: (tx) => tx.client_name || 'Not set' },
     { key: 'status', label: 'Status', status: true, render: (tx) => <Badge tone={STATUS_TONE[tx.status] || 'warning'} label={tx.status || 'Verified'} /> },
     { key: 'network', label: 'Network' },
     { key: 'amount', label: 'Amount', render: (tx) => `GHS ${Number(tx.amount || 0).toLocaleString()}` },
@@ -146,7 +146,7 @@ export default function MobileMoneyScreen() {
     { key: 'amount', label: 'Amount (GHS)', render: (tx) => Number(tx.amount).toLocaleString() },
     { key: 'created_at', label: 'Date' },
     { key: 'status', label: 'Status' },
-    { key: 'order_id', label: 'Order Ref', render: (tx) => tx.order_id || '—' },
+    { key: 'order_id', label: 'Order Ref', render: (tx) => tx.order_id || 'Not set' },
   ];
 
   return (
@@ -156,7 +156,7 @@ export default function MobileMoneyScreen() {
           <Button label="Export" size="sm" variant="ghost" icon={<Download size={13} color={t.colors.textSecondary} />} onPress={() => setExportOpen(true)} />
         </View>
         <View style={{ gap: t.spacing.sm }}>
-          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total MoMo" value={loading ? '—' : `GHS ${totalAmount.toLocaleString()}`} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="MTN" value={loading ? '—' : `GHS ${byNetwork[0].value.toLocaleString()}`} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Vodafone" value={loading ? '—' : `GHS ${byNetwork[1].value.toLocaleString()}`} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="AirtelTigo" value={loading ? '—' : `GHS ${byNetwork[2].value.toLocaleString()}`} /></View></View>
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total MoMo" value={loading ? 'Not set' : `GHS ${totalAmount.toLocaleString()}`} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="MTN" value={loading ? 'Not set' : `GHS ${byNetwork[0].value.toLocaleString()}`} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Vodafone" value={loading ? 'Not set' : `GHS ${byNetwork[1].value.toLocaleString()}`} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="AirtelTigo" value={loading ? 'Not set' : `GHS ${byNetwork[2].value.toLocaleString()}`} /></View></View>
         </View>
         {!loading && byNetwork.some((n) => n.value > 0) && (
           <Card>

@@ -127,7 +127,7 @@ export default function ProofOfDeliveryScreen() {
     { key: 'client', label: 'Customer', primary: true, render: (r) => r.orders?.client_name || 'Generic Client' },
     { key: 'status', label: 'Status', status: true, render: (r) => <Badge tone={statusTone(r.status)} label={r.status.replace(/_/g, ' ')} /> },
     { key: 'driver_name', label: 'Driver', render: (r) => r.driver_name || 'Unassigned' },
-    { key: 'destination', label: 'Destination', render: (r) => r.orders?.destination || '—' },
+    { key: 'destination', label: 'Destination', render: (r) => r.orders?.destination || 'Not set' },
     { key: 'proof', label: 'Proof', render: (r) => r.proof_photo ? 'Captured' : 'None' },
   ];
 

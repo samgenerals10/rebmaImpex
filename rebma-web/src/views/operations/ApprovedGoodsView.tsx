@@ -108,8 +108,8 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
           quantity: Number(r.quantity ?? 0),
           unit: r.unit || 'units',
           weight: Number(r.weight_kg ?? r.weight ?? 0),
-          supplier: r.supplier_name || r.company || '—',
-          portOfOrigin: r.port_of_origin || r.country || '—',
+          supplier: r.supplier_name || r.company || 'Not set',
+          portOfOrigin: r.port_of_origin || r.country || 'Not set',
           destination: r.destination || 'Accra Warehouse',
           approvedAt: (r.updated_at || r.created_at || '').slice(0, 10),
         })));
@@ -124,8 +124,8 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
           status: r.status || 'APPROVED',
           paymentMode: r.payment_mode || r.paymentMode || 'CASH',
           createdAt: (r.created_at || r.createdAt || '').slice(0, 10),
-          submittedBy: r.created_by || r.submittedBy || '—',
-          issuedBy: r.finance_approved_by || r.created_by || '—',
+          submittedBy: r.created_by || r.submittedBy || 'Not set',
+          issuedBy: r.finance_approved_by || r.created_by || 'Not set',
           issuedByEmail: r.finance_approved_by_email || '',
           phone: r.phone || '',
           destinationLat: r.destination_lat != null ? Number(r.destination_lat) : null,
@@ -345,9 +345,9 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
             <ResponsiveDataView<ApprovedOrder>
               columns={[
                 { key: 'clientName', label: 'Client', primary: true },
-                { key: 'ticketNumber', label: 'Ticket #', render: o => <span className="font-mono font-bold" style={{ color: BRAND.green }}>{o.ticketNumber || '—'}</span> },
-                { key: 'productName', label: 'Product', render: o => o.productName || '—' },
-                { key: 'destination', label: 'Destination', render: o => o.destination || '—' },
+                { key: 'ticketNumber', label: 'Ticket #', render: o => <span className="font-mono font-bold" style={{ color: BRAND.green }}>{o.ticketNumber || 'Not set'}</span> },
+                { key: 'productName', label: 'Product', render: o => o.productName || 'Not set' },
+                { key: 'destination', label: 'Destination', render: o => o.destination || 'Not set' },
                 { key: 'paymentMode', label: 'Payment' },
                 { key: 'issuedBy', label: 'Issued By' },
                 { key: 'status', label: 'Status', status: true, render: o => <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${statusBadge(o.status)}`}>{o.status.replace(/_/g, ' ')}</span> },
@@ -474,8 +474,8 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
               {[
                 ['Ticket', dispatchTarget.ticketNumber],
                 ['Client', dispatchTarget.clientName],
-                ['Product', dispatchTarget.productName || '—'],
-                ['Destination', dispatchTarget.destination || '—'],
+                ['Product', dispatchTarget.productName || 'Not set'],
+                ['Destination', dispatchTarget.destination || 'Not set'],
                 ['Payment Mode', dispatchTarget.paymentMode],
                 ['Issued By', dispatchTarget.issuedBy],
               ].map(([k, v]) => (

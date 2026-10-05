@@ -72,7 +72,7 @@ const DEPT_ICON: Record<string, typeof Package> = {
 const BASE_DEPTS = ['OPERATIONS', 'FINANCE', 'MARKETING', 'DISPATCH', 'HR', 'RECEPTION', 'PRODUCTION', 'LOGISTICS'];
 
 function timeAgo(iso: string): string {
-  if (!iso) return '—';
+  if (!iso) return 'Not set';
   const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
   if (mins < 1) return 'just now';
   if (mins < 60) return `${mins} min ago`;

@@ -67,7 +67,7 @@ export default function PayrollScreen() {
               <MetricCard
                 emphasis="compact"
                 label={s.status.charAt(0).toUpperCase() + s.status.slice(1)}
-                value={loading ? '—' : `GHS ${s.total.toLocaleString()}`}
+                value={loading ? 'Not set' : `GHS ${s.total.toLocaleString()}`}
                 sublabel={loading ? undefined : `${s.count} batch${s.count !== 1 ? 'es' : ''}`}
                 tone={s.status === 'paid' ? 'accent' : undefined}
               />

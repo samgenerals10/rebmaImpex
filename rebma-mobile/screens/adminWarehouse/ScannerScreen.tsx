@@ -216,11 +216,11 @@ export default function ScannerScreen() {
               <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.status.success.text }}>Valid Waybill</Text>
             </View>
             <DetailRow label="Waybill" value={result.waybillNumber} />
-            <DetailRow label="Container" value={result.containerNumber || '—'} />
-            <DetailRow label="Client" value={result.clientName || '—'} />
-            <DetailRow label="Destination" value={result.destination || '—'} />
-            <DetailRow label="Vehicle" value={result.vehicleId || '—'} />
-            <DetailRow label="Driver" value={result.driverName || '—'} />
+            <DetailRow label="Container" value={result.containerNumber || 'Not set'} />
+            <DetailRow label="Client" value={result.clientName || 'Not set'} />
+            <DetailRow label="Destination" value={result.destination || 'Not set'} />
+            <DetailRow label="Vehicle" value={result.vehicleId || 'Not set'} />
+            <DetailRow label="Driver" value={result.driverName || 'Not set'} />
             {result.status && <View style={{ marginTop: t.spacing.sm }}><Badge tone="info" label={result.status.replace(/_/g, ' ')} /></View>}
 
             <View style={{ marginTop: t.spacing.md, paddingTop: t.spacing.md, borderTopWidth: 1, borderTopColor: t.colors.border }}>
@@ -270,8 +270,8 @@ export default function ScannerScreen() {
             )}
             <DetailRow label="Barcode" value={productResult.barcode} />
             <DetailRow label="Name" value={productResult.title} />
-            <DetailRow label="Brand" value={productResult.brand || '—'} />
-            <DetailRow label="Category" value={productResult.category || '—'} />
+            <DetailRow label="Brand" value={productResult.brand || 'Not set'} />
+            <DetailRow label="Category" value={productResult.category || 'Not set'} />
             {productResult.description && (
               <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted, marginTop: t.spacing.sm }}>
                 {productResult.description}

@@ -155,8 +155,8 @@ export default function PriceCatalogGrid({ department }: Props) {
     { key: 'unitPrice', label: 'Price', render: (p) => `${p.currency} ${p.unitPrice.toLocaleString()}` },
     { key: 'category', label: 'Category' },
     ...(canSeeCost ? [
-      { key: 'costPrice', label: 'Cost', render: (p: PriceRow) => (p.costPrice != null ? `${p.currency} ${p.costPrice.toLocaleString()}` : '—') },
-      { key: 'margin', label: 'Margin', render: (p: PriceRow) => (p.margin != null ? `${p.margin.toFixed(1)}%` : '—') },
+      { key: 'costPrice', label: 'Cost', render: (p: PriceRow) => (p.costPrice != null ? `${p.currency} ${p.costPrice.toLocaleString()}` : 'Not set') },
+      { key: 'margin', label: 'Margin', render: (p: PriceRow) => (p.margin != null ? `${p.margin.toFixed(1)}%` : 'Not set') },
     ] as DataColumn<PriceRow>[] : []),
   ];
 
@@ -180,11 +180,11 @@ export default function PriceCatalogGrid({ department }: Props) {
         <Button label="Export CSV" size="sm" variant="ghost" icon={<Download size={13} color={t.colors.textSecondary} />} onPress={() => setExportOpen(true)} />
       </View>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.md }}>
-        <View style={{ width: canSeeCost ? '30%' : '100%' }}><MetricCard label="Total Products" value={loading ? '—' : prices.length} /></View>
+        <View style={{ width: canSeeCost ? '30%' : '100%' }}><MetricCard label="Total Products" value={loading ? 'Not set' : prices.length} /></View>
         {canSeeCost && (
           <>
-            <View style={{ width: '30%' }}><MetricCard label="Avg Margin" value={loading || avgMargin == null ? '—' : `${avgMargin.toFixed(1)}%`} tone="accent" /></View>
-            <View style={{ width: '30%' }}><MetricCard label="High Margin (≥50%)" value={loading ? '—' : prices.filter((p) => (p.margin || 0) >= 50).length} tone="warning" /></View>
+            <View style={{ width: '30%' }}><MetricCard label="Avg Margin" value={loading || avgMargin == null ? 'Not set' : `${avgMargin.toFixed(1)}%`} tone="accent" /></View>
+            <View style={{ width: '30%' }}><MetricCard label="High Margin (≥50%)" value={loading ? 'Not set' : prices.filter((p) => (p.margin || 0) >= 50).length} tone="warning" /></View>
           </>
         )}
       </View>

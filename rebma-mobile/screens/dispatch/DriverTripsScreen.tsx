@@ -45,9 +45,9 @@ interface Trip {
 }
 
 function fmtDuration(startIso: string, endIso: string | null): string {
-  if (!endIso) return '—';
+  if (!endIso) return 'Not set';
   const ms = new Date(endIso).getTime() - new Date(startIso).getTime();
-  if (!Number.isFinite(ms) || ms <= 0) return '—';
+  if (!Number.isFinite(ms) || ms <= 0) return 'Not set';
   const mins = Math.round(ms / 60000);
   if (mins < 60) return `${mins} min`;
   return `${Math.floor(mins / 60)}h ${mins % 60}m`;
@@ -90,7 +90,7 @@ export default function DriverTripsScreen() {
 
   const columns: DataColumn<Trip>[] = [
     { key: 'customer_name', label: 'Delivered To', primary: true, render: (r) => r.customer_name || 'Client' },
-    { key: 'delivery_address', label: 'Route', render: (r) => r.delivery_address || '—' },
+    { key: 'delivery_address', label: 'Route', render: (r) => r.delivery_address || 'Not set' },
     { key: 'status', label: 'Status', status: true, render: (r) => <Badge tone={statusTone(r.status)} label={r.status.replace(/_/g, ' ')} /> },
     { key: 'duration', label: 'Duration', render: (r) => fmtDuration(r.created_at, r.status === 'DELIVERED' ? r.updated_at : null) },
     { key: 'pod', label: 'Proof of Delivery', render: (r) => (r.proof_photo ? 'Submitted' : 'Not yet') },

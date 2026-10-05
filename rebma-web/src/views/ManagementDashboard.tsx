@@ -49,7 +49,7 @@ function getOrderProductsDisplay(order: any): string {
   if (Array.isArray(items) && items.length > 0) {
     return items.map((item: any) => `${item.productName} (x${item.quantity})`).join(', ');
   }
-  const name = order.productName || '—';
+  const name = order.productName || 'Not set';
   const qty = order.quantity;
   return qty ? `${name} (x${qty})` : name;
 }
@@ -191,7 +191,7 @@ export default function ManagementDashboard({
     const loadStockAlerts = async () => {
       try {
         const { data } = await supabase.from('stock').select('product_name, product_code, quantity, maximum_level').order('quantity', { ascending: true }).limit(4);
-        if (data) setStockAlerts(data.map((d: any) => ({ name: d.product_name || '—', sku: d.product_code || '—', current: Number(d.quantity || 0), capacity: Number(d.maximum_level || 100) })));
+        if (data) setStockAlerts(data.map((d: any) => ({ name: d.product_name || 'Not set', sku: d.product_code || 'Not set', current: Number(d.quantity || 0), capacity: Number(d.maximum_level || 100) })));
       } catch { /* silent */ }
     };
     loadStockAlertsRef.current = loadStockAlerts;
@@ -225,7 +225,7 @@ export default function ManagementDashboard({
   ];
 
   const kpiDetails = [
-    { title: 'Cargo Awaiting Price', metric: 'Pending', trendData: [{name:'Now',value:pendingCargoCount}], breakdownData: [{name:'Pending',value:pendingCargoCount}, {name:'Approved',value:localGoods.filter(g=>g.status==='APPROVED').length}], tableData: localGoods.filter(g=>g.status==='PENDING_RISK_APPROVAL').slice(0,5).map(g => ({ref: g.goodsCode || g.id, item: g.productName || g.company || '—', status: 'Pending'})), columns: [{key:'ref',label:'Ref #'}, {key:'item',label:'Item'}, {key:'status',label:'Status'}] },
+    { title: 'Cargo Awaiting Price', metric: 'Pending', trendData: [{name:'Now',value:pendingCargoCount}], breakdownData: [{name:'Pending',value:pendingCargoCount}, {name:'Approved',value:localGoods.filter(g=>g.status==='APPROVED').length}], tableData: localGoods.filter(g=>g.status==='PENDING_RISK_APPROVAL').slice(0,5).map(g => ({ref: g.goodsCode || g.id, item: g.productName || g.company || 'Not set', status: 'Pending'})), columns: [{key:'ref',label:'Ref #'}, {key:'item',label:'Item'}, {key:'status',label:'Status'}] },
     { title: 'Credit Audits Pending', metric: 'Audits', trendData: [{name:'Now',value:pendingCreditCount}], breakdownData: [{name:'Approved',value:approvedOrdersCount}, {name:'Pending',value:pendingCreditCount}], tableData: localOrders.filter(o=>o.status==='PENDING_MANAGEMENT').slice(0,5).map(o => ({id: o.id, client: o.clientName, amount: `GHS ${o.totalAmount.toLocaleString()}`})), columns: [{key:'id',label:'Audit ID'}, {key:'client',label:'Client'}, {key:'amount',label:'Amount'}] },
     { title: 'Authorized Orders', metric: 'Orders', trendData: [{name:'Now',value:approvedOrdersCount}], breakdownData: [{name:'Authorized',value:approvedOrdersCount}, {name:'Pending',value:pendingCreditCount+pendingCargoCount}], tableData: localOrders.filter(o=>['APPROVED','DELIVERED','PROCESSING'].includes(o.status)).slice(0,5).map(o => ({order: o.id, client: o.clientName, value: `GHS ${o.totalAmount.toLocaleString()}`})), columns: [{key:'order',label:'Order'}, {key:'client',label:'Client'}, {key:'value',label:'Value'}] },
     { title: 'Net Authorized Value', metric: 'GHS', trendData: [{name:'Now',value:totalApprovedValue}], breakdownData: [{name:'Cleared',value:totalApprovedValue}, {name:'Pending',value:localOrders.filter(o=>o.status.startsWith('PENDING')).reduce((s,o)=>s+o.totalAmount,0)}], tableData: localOrders.filter(o=>['APPROVED','DELIVERED'].includes(o.status)).slice(0,5).map(o=>({order:o.id, client:o.clientName, value:`GHS ${o.totalAmount.toLocaleString()}`})), columns: [{key:'order',label:'Order'}, {key:'client',label:'Client'}, {key:'value',label:'Value'}] }
@@ -267,7 +267,7 @@ export default function ManagementDashboard({
   // Row Action Handlers: Ledger
 
   const handleShareLedger = (entry: AuditEntry) => {
-    const shareText = `Audit Entry [${entry.timestamp}] Dept: ${entry.department} - Performed by ${entry.performedBy}: ${entry.action} - ${entry.details}`;
+    const shareText = `Audit Entry [${entry.timestamp}] Dept: ${entry.department}, Performed by ${entry.performedBy}: ${entry.action}, ${entry.details}`;
     navigator.clipboard.writeText(shareText).then(() => {
       alert('Copied audit ledger detail to clipboard!');
     }).catch(() => alert(shareText));
@@ -294,8 +294,8 @@ export default function ManagementDashboard({
 
   const handleShareHistory = (item: any, isCargo: boolean) => {
     const shareText = isCargo ?
-      `Cargo Log: ${item.productName || item.company} - Price: GHS ${item.unitPrice || 0}/u` :
-      `Order Log: ${item.clientName} - Amt: GHS ${item.totalAmount} - Status: ${item.status}`;
+      `Cargo Log: ${item.productName || item.company}, Price: GHS ${item.unitPrice || 0}/u` :
+      `Order Log: ${item.clientName}, Amt: GHS ${item.totalAmount}, Status: ${item.status}`;
     navigator.clipboard.writeText(shareText).then(() => {
       alert('Copied sharing details to clipboard!');
     }).catch(() => alert(shareText));
@@ -362,10 +362,10 @@ export default function ManagementDashboard({
     type: 'CARGO',
     clientProduct: g.productName || g.company,
     origin: g.country,
-    amount: g.unitPrice ? `GHS ${g.unitPrice}/u` : '—',
+    amount: g.unitPrice ? `GHS ${g.unitPrice}/u` : 'Not set',
     amountVal: g.unitPrice || 0,
     status: g.status,
-    date: g.createdAt || '—',
+    date: g.createdAt || 'Not set',
     originalItem: g
   }));
 
@@ -892,7 +892,7 @@ export default function ManagementDashboard({
                       <div>
                         <p className="text-xs font-bold text-[var(--text-primary)]">{order.clientName}</p>
                         <p className="text-[10px] text-[var(--text-muted)] font-mono">Order: <code className="bg-[var(--bg-card)] px-1 rounded border border-[var(--border)] text-[var(--text-primary)]">{order.id}</code>{order.ticketNumber && <span className="ml-2 text-emerald-600 font-bold">🎫 {order.ticketNumber}</span>}</p>
-                        <p className="text-[10px] text-[var(--text-muted)]">Products: <strong className="text-[var(--text-primary)]">{getOrderProductsDisplay(order)}</strong> | Destination: <strong>{order.destination || '—'}</strong></p>
+                        <p className="text-[10px] text-[var(--text-muted)]">Products: <strong className="text-[var(--text-primary)]">{getOrderProductsDisplay(order)}</strong> | Destination: <strong>{order.destination || 'Not set'}</strong></p>
                         <p className="text-[10px] text-[var(--text-muted)]">Amount: <strong className="text-[var(--text-primary)]">GHS {order.totalAmount.toLocaleString()}</strong> | Mode: <strong>{order.paymentMode}</strong> | Submitted: {order.createdAt}</p>
                         {order.ghanaCard && <p className="text-[10px] text-[var(--text-muted)] font-mono">Ghana Card: <code className="bg-[var(--bg-card)] px-1 rounded border border-[var(--border)] text-[var(--text-primary)]">{order.ghanaCard}</code></p>}
                       </div>
@@ -942,7 +942,7 @@ export default function ManagementDashboard({
                                 <div className="space-y-1">
                                   {cust.creditHistory.map((h, idx) => (
                                     <div key={idx} className="flex justify-between items-center text-[10px] text-[var(--text-muted)] border-b border-[var(--border)] py-1">
-                                      <span><code>{h.orderId}</code> — {h.date}</span>
+                                      <span><code>{h.orderId}</code>, {h.date}</span>
                                       <span className="font-bold text-[var(--text-primary)]">GHS {h.amount.toLocaleString()}</span>
                                       <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${h.status === 'PAID' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'}`}>{h.status}</span>
                                     </div>

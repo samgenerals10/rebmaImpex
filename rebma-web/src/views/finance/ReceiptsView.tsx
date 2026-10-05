@@ -115,10 +115,10 @@ export async function printReceipt(r: ReceiptRow, lineItems: OrderLineItem[] | n
           <td class="it-num">GHS ${Number(it.unitPrice).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
           <td class="it-num it-total">GHS ${Number(it.lineTotal).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
         </tr>`).join('')
-    : `<tr><td colspan="4" class="it-empty">Payment for Order ${r.orderId || '—'}. Itemized breakdown not available for this record.</td></tr>`;
+    : `<tr><td colspan="4" class="it-empty">Payment for Order ${r.orderId || 'Not set'}. Itemized breakdown not available for this record.</td></tr>`;
 
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
-  <title>Receipt ${r.receiptNumber} — REBMA IMPEX</title>
+  <title>Receipt ${r.receiptNumber}, REBMA IMPEX</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Segoe UI',Arial,sans-serif;background:#e8f4ea;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:32px}
@@ -199,8 +199,8 @@ export async function printReceipt(r: ReceiptRow, lineItems: OrderLineItem[] | n
 
         <div class="details-grid">
           <div class="fld"><div class="fl">Client</div><div class="fv">${r.clientName}</div></div>
-          <div class="fld"><div class="fl">Customer Phone</div><div class="fv">${r.customerPhone || '—'}</div></div>
-          <div class="fld"><div class="fl">Order Ref</div><div class="fv">${r.ticketNumber || r.orderId || '—'}</div></div>
+          <div class="fld"><div class="fl">Customer Phone</div><div class="fv">${r.customerPhone || 'Not set'}</div></div>
+          <div class="fld"><div class="fl">Order Ref</div><div class="fv">${r.ticketNumber || r.orderId || 'Not set'}</div></div>
           <div class="fld"><div class="fl">Payment Method</div><div class="fv">${r.paymentMode} · ${r.paymentType}</div></div>
           <div class="fld full"><div class="fl">Recorded By</div><div class="fv">${recordedBy}</div></div>
         </div>
@@ -236,7 +236,7 @@ export async function printReceipt(r: ReceiptRow, lineItems: OrderLineItem[] | n
         <div class="footer">
           <div class="legal">
             ${t.footerNote}<br/>
-            Receipt <strong>${r.receiptNumber}</strong> documents this payment; order ticket <strong>${r.ticketNumber || '—'}</strong> is a separate record. Scan the QR code to verify both match.
+            Receipt <strong>${r.receiptNumber}</strong> documents this payment; order ticket <strong>${r.ticketNumber || 'Not set'}</strong> is a separate record. Scan the QR code to verify both match.
           </div>
           <div class="qr-wrap">
             ${qrDataUrl
@@ -283,10 +283,10 @@ export default function FinanceReceiptsView({ addNotification }: Props) {
     { key: 'amount', label: 'Amount (GHS)', render: r => r.amount.toLocaleString(undefined, { minimumFractionDigits: 2 }) },
     { key: 'paymentMode', label: 'Payment Mode' },
     { key: 'paymentType', label: 'Payment Type' },
-    { key: 'orderId', label: 'Order ID', render: r => r.orderId || '—' },
-    { key: 'recordedBy', label: 'Recorded By', render: r => r.recordedBy || '—' },
+    { key: 'orderId', label: 'Order ID', render: r => r.orderId || 'Not set' },
+    { key: 'recordedBy', label: 'Recorded By', render: r => r.recordedBy || 'Not set' },
     { key: 'status', label: 'Status' },
-    { key: 'createdAt', label: 'Date', render: r => r.createdAt ? new Date(r.createdAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '—' },
+    { key: 'createdAt', label: 'Date', render: r => r.createdAt ? new Date(r.createdAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : 'Not set' },
   ];
 
   const load = useCallback(async () => {
@@ -384,12 +384,12 @@ export default function FinanceReceiptsView({ addNotification }: Props) {
           columns={[
             { key: 'receiptNumber', label: 'Receipt #', primary: true, render: r => <span className="font-mono">{r.receiptNumber}</span> },
             { key: 'status', label: 'Status', status: true, render: r => <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">{r.status}</span> },
-            { key: 'ticketNumber', label: 'Order Ticket', render: r => <span className="font-mono">{r.ticketNumber || '—'}</span> },
+            { key: 'ticketNumber', label: 'Order Ticket', render: r => <span className="font-mono">{r.ticketNumber || 'Not set'}</span> },
             { key: 'clientName', label: 'Client' },
             { key: 'amount', label: 'Amount', render: r => <span className="font-semibold">GHS {r.amount.toLocaleString()}</span> },
             { key: 'paymentMode', label: 'Payment', render: r => `${r.paymentMode} · ${r.paymentType}` },
-            { key: 'recordedBy', label: 'Recorded By', render: r => r.recordedBy || '—' },
-            { key: 'createdAt', label: 'Date', render: r => r.createdAt ? new Date(r.createdAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '—' },
+            { key: 'recordedBy', label: 'Recorded By', render: r => r.recordedBy || 'Not set' },
+            { key: 'createdAt', label: 'Date', render: r => r.createdAt ? new Date(r.createdAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : 'Not set' },
           ] as DataColumn<typeof receipts[number]>[]}
           data={filtered}
           rowKey={r => r.id}

@@ -108,7 +108,7 @@ export default function SalesHistoryView({ ordersList, addNotification }: Props)
     });
   }, [orders]);
 
-  const bestMonth = monthlyData.reduce((b, m) => m.revenue > b.revenue ? m : b, { month: '—', revenue: 0, orders: 0 });
+  const bestMonth = monthlyData.reduce((b, m) => m.revenue > b.revenue ? m : b, { month: 'Not set', revenue: 0, orders: 0 });
 
   // Top customers
   const topCustomers = useMemo(() => {
@@ -187,7 +187,7 @@ export default function SalesHistoryView({ ordersList, addNotification }: Props)
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold text-[var(--text-primary)]">Sales History & Credit Requests</h2>
-          <p className="text-xs text-[var(--text-muted)]">Revenue analytics and credit tracking — {orders.length} total orders</p>
+          <p className="text-xs text-[var(--text-muted)]">Revenue analytics and credit tracking, {orders.length} total orders</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={reload} className="flex items-center gap-1 px-3 py-1.5 bg-[var(--bg-card)] border border-[var(--border)] text-[var(--text-secondary)] text-xs font-semibold rounded-xl cursor-pointer hover:bg-[var(--accent-light)]">
@@ -236,7 +236,7 @@ export default function SalesHistoryView({ ordersList, addNotification }: Props)
 
           {/* Revenue chart */}
           <div className="rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] p-5 shadow-[var(--box-shadow)]">
-            <p className="text-sm font-semibold text-[var(--text-primary)] mb-1">Revenue — Last 6 Months</p>
+            <p className="text-sm font-semibold text-[var(--text-primary)] mb-1">Revenue, Last 6 Months</p>
             <p className="text-[10px] text-[var(--text-muted)] mb-4">Approved + delivered orders · GHS</p>
             <ResponsiveContainer width="100%" height={210}>
               <AreaChart data={monthlyData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
@@ -292,7 +292,7 @@ export default function SalesHistoryView({ ordersList, addNotification }: Props)
                       <div key={p.name} className="flex items-center gap-3">
                         <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }}>{i + 1}</span>
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-[var(--text-primary)] truncate">{p.name || '—'}</p>
+                          <p className="text-xs font-semibold text-[var(--text-primary)] truncate">{p.name || 'Not set'}</p>
                           <p className="text-[10px] text-[var(--text-muted)]">{p.count} sold</p>
                         </div>
                         <span className="text-xs font-bold text-emerald-600 whitespace-nowrap">GHS <CountUp value={p.revenue} /></span>
@@ -372,7 +372,7 @@ export default function SalesHistoryView({ ordersList, addNotification }: Props)
             <div className="p-3">
               <ResponsiveDataView<Order>
                 columns={[
-                  { key: 'clientName', label: 'Customer', primary: true, render: o => o.clientName || '—' },
+                  { key: 'clientName', label: 'Customer', primary: true, render: o => o.clientName || 'Not set' },
                   { key: 'ticketNumber', label: 'Invoice #', render: o => <span className="font-mono text-[10px]">{o.ticketNumber || o.id}</span> },
                   { key: 'product', label: 'Product', render: o => <InvoiceLineItems order={o} compact /> },
                   { key: 'totalAmount', label: 'Amount (GHS)', render: o => <span className="font-bold text-emerald-600">{Number(o.totalAmount ?? 0).toLocaleString()}</span> },
@@ -439,7 +439,7 @@ export default function SalesHistoryView({ ordersList, addNotification }: Props)
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${STATUS_STYLES[o.status] || 'bg-gray-100 text-gray-600'}`}>{STATUS_LABEL[o.status] || o.status}</span>
                       </div>
                       <p className="font-semibold text-sm text-[var(--text-primary)] truncate">{o.clientName}</p>
-                      <p className="text-[10px] text-[var(--text-muted)]">{o.productName || '—'} · Submitted {(o.createdAt || '').split('T')[0]}</p>
+                      <p className="text-[10px] text-[var(--text-muted)]">{o.productName || 'Not set'} · Submitted {(o.createdAt || '').split('T')[0]}</p>
                     </div>
                     <div className="flex items-center gap-3 flex-shrink-0">
                       <span className="font-bold text-emerald-600 text-sm whitespace-nowrap">GHS <CountUp value={Number(o.totalAmount ?? 0)} /></span>
@@ -470,7 +470,7 @@ export default function SalesHistoryView({ ordersList, addNotification }: Props)
             <div className="grid grid-cols-2 gap-3 text-sm">
               {[
                 ['Customer', selectedOrder.clientName],
-                ['Destination', selectedOrder.destination || '—'],
+                ['Destination', selectedOrder.destination || 'Not set'],
                 ['Payment Mode', (selectedOrder.paymentMode || '').replace(/_/g,' ')],
                 ['Date', (selectedOrder.createdAt || '').split('T')[0]],
                 ['Status', selectedOrder.status],

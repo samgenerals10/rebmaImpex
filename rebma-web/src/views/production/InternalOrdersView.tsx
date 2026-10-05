@@ -479,7 +479,7 @@ export default function InternalOrdersView({ productionRequests, addNotification
               }} />
               <div style={{ minWidth: 90 }}>
                 <p style={{ fontWeight: 700, color: 'var(--text-primary)', margin: 0, fontSize: 14 }}>Req #{order.requestNumber || order.id.slice(0, 8)}</p>
-                <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: 12 }}>{order.createdAt ? new Date(order.createdAt).toLocaleDateString() : '—'}</p>
+                <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: 12 }}>{order.createdAt ? new Date(order.createdAt).toLocaleDateString() : 'Not set'}</p>
               </div>
               <div style={{ flex: 1, minWidth: 200 }}>
                 <p style={{ color: 'var(--text-primary)', margin: 0, fontSize: 14, fontWeight: 600 }}>{order.productName}</p>
@@ -526,7 +526,7 @@ export default function InternalOrdersView({ productionRequests, addNotification
           <>
             <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
               <StatusBadge status={selectedOrderDisp ? selectedOrderDisp.statusVal : selectedOrder.status} />
-              <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>Created: {selectedOrder.createdAt ? new Date(selectedOrder.createdAt).toLocaleString() : '—'}</span>
+              <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>Created: {selectedOrder.createdAt ? new Date(selectedOrder.createdAt).toLocaleString() : 'Not set'}</span>
             </div>
             
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
@@ -540,7 +540,7 @@ export default function InternalOrdersView({ productionRequests, addNotification
               </div>
               <div>
                 <p style={{ margin: '0 0 4px', fontSize: 12, color: 'var(--text-muted)' }}>Required By Date</p>
-                <p style={{ margin: 0, fontSize: 14, color: 'var(--text-primary)' }}>{selectedOrder.requiredByDate ? new Date(selectedOrder.requiredByDate).toLocaleDateString() : '—'}</p>
+                <p style={{ margin: 0, fontSize: 14, color: 'var(--text-primary)' }}>{selectedOrder.requiredByDate ? new Date(selectedOrder.requiredByDate).toLocaleDateString() : 'Not set'}</p>
               </div>
               <div>
                 <p style={{ margin: '0 0 4px', fontSize: 12, color: 'var(--text-muted)' }}>Priority</p>
@@ -548,7 +548,7 @@ export default function InternalOrdersView({ productionRequests, addNotification
               </div>
               <div style={{ gridColumn: 'span 2' }}>
                 <p style={{ margin: '0 0 4px', fontSize: 12, color: 'var(--text-muted)' }}>Purpose</p>
-                <p style={{ margin: 0, fontSize: 14, color: 'var(--text-primary)' }}>{selectedOrder.purpose || '—'}</p>
+                <p style={{ margin: 0, fontSize: 14, color: 'var(--text-primary)' }}>{selectedOrder.purpose || 'Not set'}</p>
               </div>
             </div>
 

@@ -20,7 +20,7 @@ function easeOutExpo(x: number): number {
   return x === 1 ? 1 : 1 - Math.pow(2, -10 * x);
 }
 
-export default function CountUp({ value, duration = 900, decimals = 0, prefix = '', suffix = '', format, fallback = '—', style }: Props) {
+export default function CountUp({ value, duration = 900, decimals = 0, prefix = '', suffix = '', format, fallback = 'Not set', style }: Props) {
   const [display, setDisplay] = useState(0);
   const fromRef = useRef(0);
 

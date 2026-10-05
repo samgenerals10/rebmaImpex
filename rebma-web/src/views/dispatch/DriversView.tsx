@@ -524,7 +524,7 @@ export default function DriversView({ addNotification }: Props) {
                 ].map(f => (
                   <div key={f.label}>
                     <p style={{ margin: 0, fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{f.label}</p>
-                    <p style={{ margin: '1px 0 0', fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.value || '—'}</p>
+                    <p style={{ margin: '1px 0 0', fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.value || 'Not set'}</p>
                   </div>
                 ))}
               </div>

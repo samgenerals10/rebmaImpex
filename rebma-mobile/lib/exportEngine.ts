@@ -114,7 +114,7 @@ function legacyLetterheadHtml(title: string): string {
     <div style="padding:14px 14px 8px;display:flex;justify-content:space-between;align-items:flex-start;">
       <div>
         <div style="font-size:16px;font-weight:700;color:#064e29;">REMBA IMPEX GHANA LIMITED</div>
-        <div style="font-size:10px;color:#64748b;margin-top:3px;">${escapeHtml(title)} Report - Confidential Internal Document</div>
+        <div style="font-size:10px;color:#64748b;margin-top:3px;">${escapeHtml(title)} Report, Confidential Internal Document</div>
       </div>
       <div style="font-size:10px;color:#64748b;text-align:right;">Generated: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}</div>
     </div>

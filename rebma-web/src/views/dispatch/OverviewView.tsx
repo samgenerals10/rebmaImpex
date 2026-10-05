@@ -66,7 +66,7 @@ function mapDeliveryRow(row: any): DeliveryRecord {
 function startOfDay(d: Date) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
 function daysAgo(n: number) { return new Date(Date.now() - n * DAY_MS); }
 function formatDuration(ms: number | null) {
-  if (ms == null) return '—';
+  if (ms == null) return 'Not set';
   const totalMin = Math.round(ms / 60000);
   const h = Math.floor(totalMin / 60), m = totalMin % 60;
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
@@ -348,7 +348,7 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">{timeGreeting()}, {firstName} 👋</h1>
-          <p className="text-sm text-[var(--text-secondary)]">Here's your delivery overview today — {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+          <p className="text-sm text-[var(--text-secondary)]">Here's your delivery overview today, {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
         </div>
         <button onClick={handleRefresh} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)] transition-colors">
           <RefreshCw size={14} /> Refresh
@@ -574,7 +574,7 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
           {/* Success Rate */}
           <div className="flex items-end gap-3 mb-5">
             <p className="text-4xl font-bold text-[var(--text-primary)]">
-              {perfNow.rate !== null ? <><CountUp value={perfNow.rate} decimals={1} /><span className="text-xl">%</span></> : <span className="text-2xl text-[var(--text-muted)]">—</span>}
+              {perfNow.rate !== null ? <><CountUp value={perfNow.rate} decimals={1} /><span className="text-xl">%</span></> : <span className="text-2xl text-[var(--text-muted)]">Not set</span>}
             </p>
             <div className="pb-1">
               {successTrend !== null ? (

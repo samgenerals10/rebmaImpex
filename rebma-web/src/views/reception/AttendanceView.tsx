@@ -264,7 +264,7 @@ export default function AttendanceView({ addNotification }: Props) {
                 {
                   key: 'gpsVerified', label: 'GPS', render: r => r.gpsVerified
                     ? <span className="text-emerald-600 text-[10px] font-bold flex items-center gap-0.5"><Navigation className="w-3 h-3" /> Verified</span>
-                    : <span className="text-slate-400 text-[10px]">—</span>
+                    : <span className="text-slate-400 text-[10px]">Not set</span>
                 },
                 {
                   key: 'status', label: 'Status', status: true, render: r => (

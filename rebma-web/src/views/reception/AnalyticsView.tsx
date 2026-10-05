@@ -128,7 +128,7 @@ export default function AnalyticsView({ addNotification }: Props) {
   }, [visitors]);
 
   const peakHour = useMemo(() => {
-    let best = { hour: '—', count: -1 };
+    let best = { hour: 'Not set', count: -1 };
     for (const h of PEAK_HOURS) {
       const total = DAYS.reduce((s, d) => s + (heatmapData[h]?.[d] || 0), 0);
       if (total > best.count) best = { hour: h, count: total };
@@ -309,7 +309,7 @@ export default function AnalyticsView({ addNotification }: Props) {
                   return (
                     <div className="h-7 w-full rounded-lg flex items-center justify-center font-bold text-[10px]"
                       style={{ background: heatColor(v), color: v >= 6 ? 'white' : 'var(--text-muted)' }}>
-                      {v || '—'}
+                      {v || 'Not set'}
                     </div>
                   );
                 }

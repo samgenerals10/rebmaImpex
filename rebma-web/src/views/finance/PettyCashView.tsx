@@ -253,7 +253,7 @@ export default function FinancePettyCashView({ addNotification, currentUser }: P
             { key: 'date', label: 'Date' },
             { key: 'disbursedTo', label: 'Disbursed To' },
             { key: 'category', label: 'Category', render: e => <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--accent-light)] text-[var(--accent)]">{e.category}</span> },
-            { key: 'receipt', label: 'Receipt', render: e => e.receipt ? '✅' : '—' },
+            { key: 'receipt', label: 'Receipt', render: e => e.receipt ? '✅' : 'Not set' },
             { key: 'balanceAfter', label: 'Balance After', render: e => `GHS ${e.balanceAfter.toLocaleString()}` },
           ] as DataColumn<typeof entries[number]>[]}
           data={filtered}

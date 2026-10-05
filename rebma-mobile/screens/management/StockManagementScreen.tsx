@@ -226,13 +226,13 @@ export default function StockManagementScreen() {
   // has since approved — that's the real flow, not a guess.
   const cargoColumns: DataColumn<any>[] = [
     { key: 'product_name', label: 'Product', primary: true },
-    { key: 'company', label: 'Supplier', status: true, render: (c) => <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted }}>{c.company || '—'}</Text> },
+    { key: 'company', label: 'Supplier', status: true, render: (c) => <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted }}>{c.company || 'Not set'}</Text> },
     { key: 'quantity', label: 'Qty', render: (c) => String(c.quantity ?? 0) },
     { key: 'goods_code', label: 'Goods Code', render: (c) => c.goods_code || `CARGO-${String(c.id || '').slice(-6).toUpperCase()}` },
     { key: 'weight', label: 'Weight', render: (c) => `${Number(c.weight || 0).toFixed(1)}T` },
-    { key: 'country', label: 'Country of Origin', render: (c) => c.country || '—' },
-    { key: 'container_number', label: 'Container #', render: (c) => c.container_number || '—' },
-    { key: 'unit_price', label: 'Unit Price', render: (c) => (c.unit_price != null ? `GHS ${c.unit_price}` : '—') },
+    { key: 'country', label: 'Country of Origin', render: (c) => c.country || 'Not set' },
+    { key: 'container_number', label: 'Container #', render: (c) => c.container_number || 'Not set' },
+    { key: 'unit_price', label: 'Unit Price', render: (c) => (c.unit_price != null ? `GHS ${c.unit_price}` : 'Not set') },
     {
       key: 'discrepancies', label: 'Discrepancy',
       render: (c) => c.is_fault_or_damaged || (c.discrepancies && c.discrepancies !== 'None')

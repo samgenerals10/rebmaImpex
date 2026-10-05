@@ -485,13 +485,13 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
                 ['Full Name', selectedCustomer.name],
                 ['Company', selectedCustomer.companyName],
                 ['Phone', selectedCustomer.phone],
-                ['Email', selectedCustomer.email || '—'],
+                ['Email', selectedCustomer.email || 'Not set'],
                 ['Location', selectedCustomer.location],
-                ['House Address', selectedCustomer.houseAddress || '—'],
-                ['Company Address', selectedCustomer.companyAddress || '—'],
-                ['Ghana Card', selectedCustomer.ghanaCard || '—'],
-                ['Second Ghana Card', selectedCustomer.ghanaCard2 || '—'],
-                ['Partner / Second Customer', selectedCustomer.partnerName || '—'],
+                ['House Address', selectedCustomer.houseAddress || 'Not set'],
+                ['Company Address', selectedCustomer.companyAddress || 'Not set'],
+                ['Ghana Card', selectedCustomer.ghanaCard || 'Not set'],
+                ['Second Ghana Card', selectedCustomer.ghanaCard2 || 'Not set'],
+                ['Partner / Second Customer', selectedCustomer.partnerName || 'Not set'],
                 ['Registered', selectedCustomer.registeredAt.split('T')[0]],
               ].map(([k, v]) => (
                 <div key={k}>
@@ -547,7 +547,7 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
             </div>
           ))}
           <div className="rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] p-4 shadow-[var(--box-shadow)]">
-            <p className="text-xs text-[var(--text-muted)] mb-1">Rating — {rating.grade}</p>
+            <p className="text-xs text-[var(--text-muted)] mb-1">Rating, {rating.grade}</p>
             <p className="text-xl font-bold" style={{ color: rating.color }}><CountUp value={rating.score} /><span className="text-xs text-[var(--text-muted)] font-normal">/100</span></p>
             <p className="text-[10px] text-[var(--text-muted)] mt-1">Consistency {rating.consistencyScore} · Volume {rating.volumeScore}</p>
           </div>
@@ -560,7 +560,7 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
           ) : (
             <ResponsiveDataView<typeof custOrders[number]>
               columns={[
-                { key: 'productName', label: 'Product', primary: true, render: o => o.productName || '—' },
+                { key: 'productName', label: 'Product', primary: true, render: o => o.productName || 'Not set' },
                 { key: 'ticketNumber', label: 'Order #', render: o => <span className="font-mono text-xs">{o.ticketNumber || o.id}</span> },
                 { key: 'totalAmount', label: 'Amount', render: o => <span className="text-emerald-600 font-semibold">GHS {o.totalAmount.toLocaleString()}</span> },
                 { key: 'paymentMode', label: 'Payment' },

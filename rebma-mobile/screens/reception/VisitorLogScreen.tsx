@@ -137,7 +137,7 @@ export default function VisitorLogScreen() {
               emphasis="primary"
               tone={stillIn.length > 0 ? 'accent' : 'neutral'}
               label="On Site"
-              value={loading ? '—' : stillIn.length}
+              value={loading ? 'Not set' : stillIn.length}
               sublabel="Active badges"
               icon={<UserCheck size={18} color={t.colors.accent} />}
               onPress={() => navigation.navigate('Visitors')}
@@ -148,7 +148,7 @@ export default function VisitorLogScreen() {
               emphasis="primary"
               tone="info"
               label="Staff Check-ins"
-              value={loading ? '—' : attendanceToday}
+              value={loading ? 'Not set' : attendanceToday}
               sublabel="Today's attendance"
               icon={<Building2 size={18} color={t.colors.status.info.text} />}
               onPress={() => navigation.navigate('EmployeeCheckin')}
@@ -165,7 +165,7 @@ export default function VisitorLogScreen() {
               <MetricCard
                 emphasis="compact"
                 label="Visitors"
-                value={loading ? '—' : visitors.length}
+                value={loading ? 'Not set' : visitors.length}
                 sublabel="Arrivals"
                 icon={<UserPlus size={14} color={t.colors.action.sky} />}
                 tone="info"
@@ -176,7 +176,7 @@ export default function VisitorLogScreen() {
               <MetricCard
                 emphasis="compact"
                 label="Checked Out"
-                value={loading ? '—' : checkedOut.length}
+                value={loading ? 'Not set' : checkedOut.length}
                 sublabel="Departed"
                 icon={<LogOut size={14} color={t.colors.action.amber} />}
                 tone="neutral"

@@ -171,7 +171,7 @@ export async function registerForPushNotifications(userId: string): Promise<Push
   }
 
   if (isExpoGo()) {
-    return { token: null, reason: 'Push notifications are not available in Expo Go on SDK 53+ — this needs a real installed build (eas build), not the Expo Go app.' };
+    return { token: null, reason: 'Push notifications are not available in Expo Go on SDK 53+, this needs a real installed build (eas build), not the Expo Go app.' };
   }
 
   if (!Device.isDevice) {

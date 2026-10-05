@@ -90,7 +90,7 @@ export default function CreditRequestsScreen() {
         {detail && (
           <>
             <SheetSection label="Request Summary">
-              <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>Phone: {detail.phone || '—'}</Text>
+              <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>Phone: {detail.phone || 'Not set'}</Text>
               <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginTop: 4 }}>Amount: GHS {Number(detail.total_amount || 0).toLocaleString()}</Text>
             </SheetSection>
             {(ghanaCardFront || ghanaCardBack || customerPhoto) && (

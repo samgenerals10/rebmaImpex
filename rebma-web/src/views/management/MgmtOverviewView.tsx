@@ -592,7 +592,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">{timeGreeting()}, {firstName} 👋</h1>
-          <p className="text-sm text-[var(--text-secondary)] mt-0.5">Here's what needs your attention today — {new Date().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+          <p className="text-sm text-[var(--text-secondary)] mt-0.5">Here's what needs your attention today, {new Date().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
         </div>
         <button onClick={() => { fetchData(); refreshFeed(); addNotification?.('Dashboard refreshed'); }} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)]">
           <RefreshCw size={14} /> Refresh

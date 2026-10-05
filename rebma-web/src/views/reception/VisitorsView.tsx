@@ -48,7 +48,7 @@ const VISITOR_PASS_HTML = (v: VisitorRecord) => `
     <div class="label">Name</div>
     <h2>${v.fullName}</h2>
     <div class="label">Company</div>
-    <p>${v.company || '—'}</p>
+    <p>${v.company || 'Not set'}</p>
     <div class="label">Purpose</div>
     <p>${v.purpose}</p>
     <div class="label">Host</div>
@@ -308,7 +308,7 @@ export default function VisitorsView({ addNotification }: Props) {
             columns={[
               { key: 'fullName', label: 'Name', primary: true },
               { key: 'badgeNumber', label: 'Badge', render: v => <span className="text-[var(--accent)] font-bold">{v.badgeNumber}</span> },
-              { key: 'company', label: 'Company', render: v => v.company || '—' },
+              { key: 'company', label: 'Company', render: v => v.company || 'Not set' },
               {
                 key: 'purpose', label: 'Purpose', render: v => {
                   const ps = purposeStyle(v.purpose);
@@ -317,7 +317,7 @@ export default function VisitorsView({ addNotification }: Props) {
               },
               { key: 'hostName', label: 'Host' },
               { key: 'checkInTime', label: 'Check-In', render: v => <span className="font-mono">{fmt(v.checkInTime)}</span> },
-              { key: 'checkOutTime', label: 'Check-Out', render: v => <span className="font-mono">{v.checkOutTime ? fmt(v.checkOutTime) : '—'}</span> },
+              { key: 'checkOutTime', label: 'Check-Out', render: v => <span className="font-mono">{v.checkOutTime ? fmt(v.checkOutTime) : 'Not set'}</span> },
               {
                 key: 'status', label: 'Status', status: true, render: v => {
                   const onSite = !v.checkOutTime;
@@ -488,7 +488,7 @@ export default function VisitorsView({ addNotification }: Props) {
 
             <div className="space-y-2 text-xs mb-4">
               {[
-                { label: 'Company', value: detailVisitor.company || '—' },
+                { label: 'Company', value: detailVisitor.company || 'Not set' },
                 { label: 'Purpose', value: detailVisitor.purpose },
                 { label: 'Host', value: detailVisitor.hostName },
                 ...(detailVisitor.idType ? [{ label: 'ID Type', value: detailVisitor.idType }] : []),

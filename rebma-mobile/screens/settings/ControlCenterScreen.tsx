@@ -620,7 +620,7 @@ export default function ControlCenterScreen() {
       setShowExportSheet(true);
       await supabase.from('global_audit_history').insert({
         department: 'CEO',
-        action: `EXPORT: Messenger history — ${exportChannelId ? channelExportLabel(exportChannels.find((c) => c.id === exportChannelId)!) : 'All conversations'} (${rows.length} messages)`,
+        action: `EXPORT: Messenger history, ${exportChannelId ? channelExportLabel(exportChannels.find((c) => c.id === exportChannelId)!) : 'All conversations'} (${rows.length} messages)`,
         performed_by: profile?.fullName || 'CEO',
         reference_id: exportChannelId || null,
         timestamp: new Date().toISOString(),
@@ -1228,8 +1228,8 @@ export default function ControlCenterScreen() {
               <Card key={inv.id}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, marginBottom: t.spacing.xs }}>
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>{inv.full_name || '—'}</Text>
-                    <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted }}>{inv.email || '—'} · {inv.department}</Text>
+                    <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>{inv.full_name || 'Not set'}</Text>
+                    <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted }}>{inv.email || 'Not set'} · {inv.department}</Text>
                   </View>
                   <Badge tone="warning" label={inv.status.toUpperCase()} size="xs" />
                 </View>

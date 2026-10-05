@@ -80,10 +80,10 @@ export default function OverviewScreen() {
 
   const ordersColumns: DataColumn<OrderRow>[] = [
     { key: 'client_name', label: 'Client', primary: true, render: (o) => o.client_name || 'Walk-in' },
-    { key: 'status', label: 'Status', status: true, render: (o) => <Badge tone={statusTone(o.status)} label={o.status || '—'} size="xs" /> },
+    { key: 'status', label: 'Status', status: true, render: (o) => <Badge tone={statusTone(o.status)} label={o.status || 'Not set'} size="xs" /> },
     { key: 'total_amount', label: 'Amount', render: (o) => `GHS ${Number(o.total_amount || 0).toLocaleString()}` },
-    { key: 'payment_mode', label: 'Payment', render: (o) => o.payment_mode || '—' },
-    { key: 'created_at', label: 'Date', render: (o) => (o.created_at ? new Date(o.created_at).toLocaleDateString() : '—') },
+    { key: 'payment_mode', label: 'Payment', render: (o) => o.payment_mode || 'Not set' },
+    { key: 'created_at', label: 'Date', render: (o) => (o.created_at ? new Date(o.created_at).toLocaleDateString() : 'Not set') },
   ];
 
   const clientsColumns: DataColumn<CustomerRow>[] = [
@@ -136,7 +136,7 @@ export default function OverviewScreen() {
                   emphasis="primary"
                   tone="accent"
                   label="Active Orders"
-                  value={loading ? '—' : activeCount}
+                  value={loading ? 'Not set' : activeCount}
                   sublabel={`${orders.length} total orders`}
                   icon={<TrendingUp size={18} color={t.colors.accent} />}
                   onPress={() => setActiveTab('orders')}
@@ -147,7 +147,7 @@ export default function OverviewScreen() {
                   emphasis="primary"
                   tone="info"
                   label="Clients"
-                  value={loading ? '—' : customers.length}
+                  value={loading ? 'Not set' : customers.length}
                   sublabel="Registered customers"
                   icon={<Users size={18} color={t.colors.status.info.text} />}
                   onPress={() => setActiveTab('clients')}
@@ -162,7 +162,7 @@ export default function OverviewScreen() {
                 <MetricCard
                   emphasis="compact"
                   label="Pending"
-                  value={loading ? '—' : pendingCount}
+                  value={loading ? 'Not set' : pendingCount}
                   sublabel="Approvals"
                   icon={<Clock size={14} color={t.colors.action.amber} />}
                   tone="warning"
@@ -173,7 +173,7 @@ export default function OverviewScreen() {
                 <MetricCard
                   emphasis="compact"
                   label="Clients"
-                  value={loading ? '—' : customers.length}
+                  value={loading ? 'Not set' : customers.length}
                   sublabel="Directory"
                   icon={<Users size={14} color={t.colors.action.blue} />}
                   tone="info"
@@ -184,7 +184,7 @@ export default function OverviewScreen() {
                 <MetricCard
                   emphasis="compact"
                   label="Credit"
-                  value={loading ? '—' : `GHS ${(totalCredit / 1000).toFixed(1)}k`}
+                  value={loading ? 'Not set' : `GHS ${(totalCredit / 1000).toFixed(1)}k`}
                   sublabel="Receivables"
                   icon={<CreditCard size={14} color={t.colors.action.rose} />}
                   tone="danger"
@@ -195,7 +195,7 @@ export default function OverviewScreen() {
                 <MetricCard
                   emphasis="compact"
                   label="Catalog"
-                  value={loading ? '—' : `${products.length}`}
+                  value={loading ? 'Not set' : `${products.length}`}
                   sublabel="Products"
                   icon={<Tag size={14} color={t.colors.action.emerald} />}
                   tone="success"

@@ -66,7 +66,7 @@ export default function SpeedGauge({ speedKmh, limitKmh, size = 96 }: SpeedGauge
         />
       </Svg>
       <Text style={{ fontFamily: t.font.extrabold, fontSize: size * 0.28, color: overLimit ? color : t.colors.textPrimary, lineHeight: size * 0.3 }}>
-        {speedKmh != null ? Math.round(speedKmh) : '—'}
+        {speedKmh != null ? Math.round(speedKmh) : 'Not set'}
       </Text>
       <Text style={{ fontFamily: t.font.semibold, fontSize: Math.max(8, size * 0.11), color: t.colors.textMuted }}>
         km/h

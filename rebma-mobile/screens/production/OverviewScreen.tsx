@@ -69,7 +69,7 @@ export default function OverviewScreen() {
               emphasis="primary"
               tone="accent"
               label="Boxes Today"
-              value={loading ? '—' : todayBoxes.toLocaleString()}
+              value={loading ? 'Not set' : todayBoxes.toLocaleString()}
               sublabel={`${todaySachets.toLocaleString()} sachets`}
               icon={<Boxes size={18} color={t.colors.accent} />}
               onPress={() => navigation.navigate('OutputRecording')}
@@ -80,7 +80,7 @@ export default function OverviewScreen() {
               emphasis="primary"
               tone="success"
               label="Quality Pass Rate"
-              value={loading ? '—' : `${passRate}%`}
+              value={loading ? 'Not set' : `${passRate}%`}
               sublabel="Today's output"
               icon={<CheckCircle2 size={18} color={t.colors.status.success.text} />}
               onPress={() => navigation.navigate('OutputRecording')}
@@ -97,7 +97,7 @@ export default function OverviewScreen() {
               <MetricCard
                 emphasis="compact"
                 label="Sachets"
-                value={loading ? '—' : todaySachets.toLocaleString()}
+                value={loading ? 'Not set' : todaySachets.toLocaleString()}
                 sublabel="Daily volume"
                 icon={<Boxes size={14} color={t.colors.action.blue} />}
                 tone="info"
@@ -108,7 +108,7 @@ export default function OverviewScreen() {
               <MetricCard
                 emphasis="compact"
                 label="WIP"
-                value={loading ? '—' : wipCount}
+                value={loading ? 'Not set' : wipCount}
                 sublabel="In progress"
                 icon={<Layers size={14} color={t.colors.action.amber} />}
                 tone="warning"
@@ -119,7 +119,7 @@ export default function OverviewScreen() {
               <MetricCard
                 emphasis="compact"
                 label="Runs"
-                value={loading ? '—' : ordersToday}
+                value={loading ? 'Not set' : ordersToday}
                 sublabel="Batches today"
                 icon={<Factory size={14} color={t.colors.action.teal} />}
                 tone="success"
@@ -130,7 +130,7 @@ export default function OverviewScreen() {
               <MetricCard
                 emphasis="compact"
                 label="QA Pass"
-                value={loading ? '—' : `${passRate}%`}
+                value={loading ? 'Not set' : `${passRate}%`}
                 sublabel="Verification"
                 icon={<CheckCircle2 size={14} color={t.colors.action.emerald} />}
                 tone="success"

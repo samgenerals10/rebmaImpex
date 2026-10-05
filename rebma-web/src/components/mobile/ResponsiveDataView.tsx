@@ -53,7 +53,7 @@ export default function ResponsiveDataView<T>({
   const cardCols = columns.filter(c => c !== primaryCol && !c.mobileHidden);
 
   const cellValue = (col: DataColumn<T>, row: T): ReactNode =>
-    col.render ? col.render(row) : String((row as Record<string, unknown>)[col.key] ?? '—');
+    col.render ? col.render(row) : String((row as Record<string, unknown>)[col.key] ?? 'Not set');
 
   return (
     <>

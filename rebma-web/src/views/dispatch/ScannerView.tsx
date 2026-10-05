@@ -192,15 +192,15 @@ export default function ScannerView({ addNotification }: Props) {
           <div className="flex items-center gap-2 text-emerald-700 font-bold text-sm"><CheckCircle size={18} /> Valid Waybill</div>
           <div className="grid grid-cols-2 gap-3 text-xs">
             <div><span className="text-emerald-600/70">Waybill No.</span><p className="font-mono font-bold text-emerald-800">{result.waybillNumber}</p></div>
-            <div><span className="text-emerald-600/70">Container No.</span><p className="font-semibold text-emerald-800">{result.containerNumber || '—'}</p></div>
+            <div><span className="text-emerald-600/70">Container No.</span><p className="font-semibold text-emerald-800">{result.containerNumber || 'Not set'}</p></div>
             {result.order && <>
               <div><span className="text-emerald-600/70">Customer</span><p className="font-semibold text-emerald-800">{result.order.clientName}</p></div>
               <div><span className="text-emerald-600/70">Destination</span><p className="font-semibold text-emerald-800">{result.order.destination}</p></div>
               <div><span className="text-emerald-600/70">Order Status</span><p className="font-semibold text-emerald-800">{result.order.status?.replace(/_/g, ' ')}</p></div>
             </>}
             {result.delivery && <>
-              <div><span className="text-emerald-600/70">Vehicle</span><p className="font-semibold text-emerald-800">{result.delivery.vehicleId || '—'}</p></div>
-              <div><span className="text-emerald-600/70">Driver</span><p className="font-semibold text-emerald-800">{result.delivery.driverName || '—'}</p></div>
+              <div><span className="text-emerald-600/70">Vehicle</span><p className="font-semibold text-emerald-800">{result.delivery.vehicleId || 'Not set'}</p></div>
+              <div><span className="text-emerald-600/70">Driver</span><p className="font-semibold text-emerald-800">{result.delivery.driverName || 'Not set'}</p></div>
               <div><span className="text-emerald-600/70">Delivery Status</span><p className="font-semibold text-emerald-800">{result.delivery.status?.replace(/_/g, ' ')}</p></div>
             </>}
           </div>

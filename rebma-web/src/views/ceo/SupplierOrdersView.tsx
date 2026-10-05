@@ -890,7 +890,7 @@ function OrderDetailView({ order, onBack, onAuthorise, onNotify, onStatusUpdate,
             <div className="space-y-2 text-sm">
               <div className="flex justify-between"><span className="text-[var(--text-muted)]">Method</span><span>{order.shipping_method}</span></div>
               <div className="flex justify-between"><span className="text-[var(--text-muted)]">Port</span><span>{order.port_of_entry}</span></div>
-              <div className="flex justify-between"><span className="text-[var(--text-muted)]">Expected</span><span className="font-semibold">{order.expected_delivery_date || '—'}</span></div>
+              <div className="flex justify-between"><span className="text-[var(--text-muted)]">Expected</span><span className="font-semibold">{order.expected_delivery_date || 'Not set'}</span></div>
               {order.shipping_details && <div className="flex justify-between"><span className="text-[var(--text-muted)]">Details</span><span className="text-xs text-right max-w-[180px]">{order.shipping_details}</span></div>}
             </div>
           </div>

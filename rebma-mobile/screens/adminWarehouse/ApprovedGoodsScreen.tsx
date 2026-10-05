@@ -187,14 +187,14 @@ export default function ApprovedGoodsScreen() {
   const columns: DataColumn<OrderRow>[] = [
     { key: 'client_name', label: 'Client', primary: true },
     { key: 'status', label: 'Status', status: true, render: (o) => <Badge tone={statusTone(o.status)} label={o.status.replace(/_/g, ' ')} /> },
-    { key: 'ticket_number', label: 'Ticket #', render: (o) => o.ticket_number || '—' },
-    { key: 'product_name', label: 'Product', render: (o) => o.product_name || '—' },
-    { key: 'destination', label: 'Destination', render: (o) => o.destination || '—' },
-    { key: 'payment_mode', label: 'Payment', render: (o) => o.payment_mode || '—' },
+    { key: 'ticket_number', label: 'Ticket #', render: (o) => o.ticket_number || 'Not set' },
+    { key: 'product_name', label: 'Product', render: (o) => o.product_name || 'Not set' },
+    { key: 'destination', label: 'Destination', render: (o) => o.destination || 'Not set' },
+    { key: 'payment_mode', label: 'Payment', render: (o) => o.payment_mode || 'Not set' },
     { key: 'issued_by', label: 'Issued By', render: (o) => o.finance_approved_by || o.created_by || 'Pending record' },
     {
       key: 'waybill', label: 'Waybill',
-      render: (o) => waybills[o.id]?.waybillNumber || '—',
+      render: (o) => waybills[o.id]?.waybillNumber || 'Not set',
     },
   ];
 
@@ -204,16 +204,16 @@ export default function ApprovedGoodsScreen() {
         <View style={{ gap: t.spacing.sm }}>
           <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
             <View style={{ flex: 1 }}>
-            <MetricCard emphasis="compact" label="Approved Cargo Batches" value={loading ? '—' : cargoBatches} icon={<Package size={16} color={t.colors.accent} />} />
+            <MetricCard emphasis="compact" label="Approved Cargo Batches" value={loading ? 'Not set' : cargoBatches} icon={<Package size={16} color={t.colors.accent} />} />
             </View>
             <View style={{ flex: 1 }}>
-            <MetricCard emphasis="compact" label="Total Port Units" value={loading ? '—' : cargoUnits} icon={<PackageCheck size={16} color={t.colors.accent} />} />
+            <MetricCard emphasis="compact" label="Total Port Units" value={loading ? 'Not set' : cargoUnits} icon={<PackageCheck size={16} color={t.colors.accent} />} />
             </View>
             <View style={{ flex: 1 }}>
-            <MetricCard emphasis="compact" label="Awaiting Dispatch" value={loading ? '—' : pendingDispatchCount} icon={<TicketCheck size={16} color={t.colors.status.warning.text} />} tone={pendingDispatchCount > 0 ? 'warning' : undefined} />
+            <MetricCard emphasis="compact" label="Awaiting Dispatch" value={loading ? 'Not set' : pendingDispatchCount} icon={<TicketCheck size={16} color={t.colors.status.warning.text} />} tone={pendingDispatchCount > 0 ? 'warning' : undefined} />
             </View>
             <View style={{ flex: 1 }}>
-            <MetricCard emphasis="compact" label="In Transit" value={loading ? '—' : inTransitCount} icon={<Truck size={16} color={t.colors.accent} />} />
+            <MetricCard emphasis="compact" label="In Transit" value={loading ? 'Not set' : inTransitCount} icon={<Truck size={16} color={t.colors.accent} />} />
             </View>
           </View>
         </View>
@@ -278,10 +278,10 @@ export default function ApprovedGoodsScreen() {
         {target && (
           <View style={{ backgroundColor: t.colors.bgPage, borderRadius: t.radius.lg, borderWidth: 1, borderColor: t.colors.border, padding: t.spacing.md, marginBottom: t.spacing.md, gap: t.spacing.xs }}>
             {[
-              ['Ticket', target.ticket_number || '—'],
+              ['Ticket', target.ticket_number || 'Not set'],
               ['Client', target.client_name],
-              ['Product', target.product_name || '—'],
-              ['Destination', target.destination || '—'],
+              ['Product', target.product_name || 'Not set'],
+              ['Destination', target.destination || 'Not set'],
               ['Payment Mode', target.payment_mode],
               ['Issued By', target.finance_approved_by || target.created_by || 'Pending record'],
             ].map(([k, v]) => (

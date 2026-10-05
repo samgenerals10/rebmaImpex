@@ -253,7 +253,7 @@ export default function RegisterScreen() {
                   <Text style={styles.label}>{f.label}</Text>
                   <View style={styles.inputBox}>
                     {Icon ? <Icon size={18} color={AMBER} /> : null}
-                    <Text style={[styles.input, { paddingVertical: 2 }]}>{f.value || '—'}</Text>
+                    <Text style={[styles.input, { paddingVertical: 2 }]}>{f.value || 'Not set'}</Text>
                   </View>
                 </View>
               );

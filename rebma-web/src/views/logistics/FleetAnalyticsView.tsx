@@ -103,7 +103,7 @@ export default function FleetAnalyticsView({ addNotification: _addNotification }
 
   const totalDistance = Object.values(distanceByVehicle).reduce((s, n) => s + n, 0);
   const totalLitersWithDistance = Object.keys(distanceByVehicle).reduce((s, vid) => s + (litersByVehicle[vid] || 0), 0);
-  const avgFuelEfficiency = totalLitersWithDistance > 0 ? (totalDistance / totalLitersWithDistance).toFixed(1) : '—';
+  const avgFuelEfficiency = totalLitersWithDistance > 0 ? (totalDistance / totalLitersWithDistance).toFixed(1) : 'Not set';
 
   const fuelCostByVehicleData = Object.entries(costByVehicle).map(([vehicle, cost]) => ({ vehicle, cost: Math.round(cost) }));
   const driverPerfData = Object.entries(deliveredByDriver).map(([driver, deliveries]) => ({ driver, deliveries }));
@@ -143,9 +143,9 @@ export default function FleetAnalyticsView({ addNotification: _addNotification }
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16 }}>
         {[
           { label: 'Fleet Utilization', value: `${utilizationRate}%`, color: 'var(--accent)' },
-          { label: 'Cost per Delivery', value: costPerDelivery > 0 ? `GHS ${costPerDelivery}` : '—', color: '#d97706' },
-          { label: 'Avg Fuel Efficiency', value: avgFuelEfficiency !== '—' ? `${avgFuelEfficiency} km/L` : '—', color: '#059669' },
-          { label: 'Total Distance', value: totalDistance > 0 ? `${totalDistance.toLocaleString()} km` : '—', color: '#7c3aed' },
+          { label: 'Cost per Delivery', value: costPerDelivery > 0 ? `GHS ${costPerDelivery}` : 'Not set', color: '#d97706' },
+          { label: 'Avg Fuel Efficiency', value: avgFuelEfficiency !== 'Not set' ? `${avgFuelEfficiency} km/L` : 'Not set', color: '#059669' },
+          { label: 'Total Distance', value: totalDistance > 0 ? `${totalDistance.toLocaleString()} km` : 'Not set', color: '#7c3aed' },
         ].map(c => (
           <div key={c.label} style={{ background: 'var(--bg-card)', borderRadius: 16, padding: '20px', border: '1px solid var(--border)', boxShadow: 'var(--box-shadow)' }}>
             <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '0 0 8px' }}>{c.label}</p>

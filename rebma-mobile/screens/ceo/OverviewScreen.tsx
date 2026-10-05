@@ -81,7 +81,7 @@ export default function OverviewScreen() {
               emphasis="primary"
               tone="accent"
               label="Today's Revenue"
-              value={loading ? '—' : `GHS ${todayRevenue.toLocaleString()}`}
+              value={loading ? 'Not set' : `GHS ${todayRevenue.toLocaleString()}`}
               sublabel="Recorded today"
               icon={<DollarSign size={18} color={t.colors.accent} />}
               onPress={() => navigation.navigate('Accounts')}
@@ -92,7 +92,7 @@ export default function OverviewScreen() {
               emphasis="primary"
               tone="info"
               label="Today's Orders"
-              value={loading ? '—' : todayOrders}
+              value={loading ? 'Not set' : todayOrders}
               sublabel="Commercial orders"
               icon={<ShoppingCart size={18} color={t.colors.status.info.text} />}
               onPress={() => navigation.navigate('Transactions')}
@@ -110,7 +110,7 @@ export default function OverviewScreen() {
             <MetricCard
               emphasis="compact"
               label="Supply"
-              value={loading ? '—' : activeSupplierOrders}
+              value={loading ? 'Not set' : activeSupplierOrders}
               sublabel="Inbound cargo"
               icon={<ShoppingBag size={14} color={t.colors.action.amber} />}
               tone="warning"
@@ -121,7 +121,7 @@ export default function OverviewScreen() {
             <MetricCard
               emphasis="compact"
               label="Fleet In Transit"
-              value={loading ? '—' : inTransit}
+              value={loading ? 'Not set' : inTransit}
               sublabel="Road dispatches"
               icon={<Truck size={14} color={t.colors.action.sky} />}
               tone="info"

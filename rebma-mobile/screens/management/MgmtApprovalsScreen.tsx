@@ -324,7 +324,7 @@ export default function MgmtApprovalsScreen() {
   const columns: DataColumn<ApprovalItem>[] = [
     { key: 'description', label: 'Item', primary: true },
     { key: 'type', label: 'Type', status: true, render: (i) => <Badge tone={TYPE_TONE[i.type] as StatusTone} label={i.type} size="xs" /> },
-    { key: 'amount', label: 'Amount', render: (i) => (i.amount != null ? `GHS ${i.amount.toLocaleString()}` : '—') },
+    { key: 'amount', label: 'Amount', render: (i) => (i.amount != null ? `GHS ${i.amount.toLocaleString()}` : 'Not set') },
     { key: 'date', label: 'Date' },
     { key: 'requestId', label: 'ID' },
   ];

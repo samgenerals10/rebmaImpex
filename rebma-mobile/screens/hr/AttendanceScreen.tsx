@@ -438,13 +438,13 @@ export default function AttendanceScreen() {
   const columns: DataColumn<AttendanceRow>[] = [
     { key: 'fullName', label: 'Name', primary: true },
     { key: 'status', label: 'Status', status: true, render: (r) => <Badge tone={statusTone(r.status)} label={r.status} size="xs" /> },
-    { key: 'employeeNumber', label: 'Employee No.', render: (r) => r.employeeNumber || '—' },
-    { key: 'department', label: 'Department', render: (r) => r.department || '—' },
+    { key: 'employeeNumber', label: 'Employee No.', render: (r) => r.employeeNumber || 'Not set' },
+    { key: 'department', label: 'Department', render: (r) => r.department || 'Not set' },
     { key: 'role', label: 'Role', render: (r) => r.role || (r.hasAppAccount ? 'Staff' : 'No app account') },
     ...(isSingleDay ? [] : [{ key: 'date', label: 'Date', render: (r: AttendanceRow) => new Date(`${r.date}T12:00:00`).toLocaleDateString([], { day: 'numeric', month: 'short' }) }]),
     { key: 'checkInTime', label: 'Check In' },
     { key: 'source', label: 'Source' },
-    { key: 'lateReason', label: 'Late Reason', render: (r) => r.lateReason || '—' },
+    { key: 'lateReason', label: 'Late Reason', render: (r) => r.lateReason || 'Not set' },
   ];
 
   const counts = { present: records.filter((r) => r.status === 'PRESENT').length, late: records.filter((r) => r.status === 'LATE').length, absent: records.filter((r) => r.status === 'ABSENT').length };
@@ -531,7 +531,7 @@ export default function AttendanceScreen() {
             columns={[
               { key: 'deviceName', label: 'Device', primary: true },
               { key: 'isActive', label: 'Health', status: true, render: (d) => { const h = deviceHealth(d); return <Badge tone={h.tone} label={h.label} size="xs" />; } },
-              { key: 'make', label: 'Make and Model', render: (d) => [d.make, d.model].filter(Boolean).join(' ') || '—' },
+              { key: 'make', label: 'Make and Model', render: (d) => [d.make, d.model].filter(Boolean).join(' ') || 'Not set' },
               { key: 'connectionType', label: 'Connection', render: (d) => d.connectionType === 'api' ? `API ${d.apiMode === 'pull' ? 'Pull' : 'Push'}` : 'SDK' },
               { key: 'ipAddress', label: 'Address', render: (d) => d.connectionType === 'api' ? (d.apiMode === 'pull' ? (d.apiUrl || 'Not set') : 'Webhook') : (d.ipAddress ? `${d.ipAddress}${d.port ? `:${d.port}` : ''}` : 'Not set') },
               { key: 'connectorMessage', label: 'Status', render: (d) => deviceHealth(d).detail },

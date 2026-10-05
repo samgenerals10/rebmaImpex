@@ -500,7 +500,7 @@ export default function StaffScreen() {
     { key: 'fullName', label: 'Name', primary: true },
     { key: 'status', label: 'Status', status: true, render: (s) => <Badge tone={s.status === 'ACTIVE' ? 'success' : s.status === 'SUSPENDED' ? 'danger' : 'warning'} label={s.status} size="xs" /> },
     { key: 'department', label: 'Department' },
-    { key: 'employeeNumber', label: 'Employee #', render: (s) => s.employeeNumber || '—' },
+    { key: 'employeeNumber', label: 'Employee #', render: (s) => s.employeeNumber || 'Not set' },
   ];
 
   const isHrOrAdmin = profile?.isAdmin || profile?.department === 'HR' || profile?.department === 'MANAGEMENT';
@@ -521,18 +521,18 @@ export default function StaffScreen() {
     setPerfExporting(true);
     try {
       await exportFieldValueDocument('pdf', `Performance Report: ${selected.fullName}`, {
-        'Employee Number': selected.employeeNumber || '—',
+        'Employee Number': selected.employeeNumber || 'Not set',
         'Full Name': selected.fullName,
         'Department': selected.department,
-        'Role': selected.role || '—',
+        'Role': selected.role || 'Not set',
         'Overall Score': overall !== null ? `${overall}%` : 'Not yet reviewed',
         'Attendance (computed)': attendanceScore !== null ? `${attendanceScore}%` : 'No attendance records',
         'Task Completion': selected.performanceTaskScore != null ? `${selected.performanceTaskScore}%` : 'Not yet reviewed',
         'Team Collaboration': selected.performanceTeamScore != null ? `${selected.performanceTeamScore}%` : 'Not yet reviewed',
         'Quality of Work': selected.performanceQualityScore != null ? `${selected.performanceQualityScore}%` : 'Not yet reviewed',
-        'Notes': selected.performanceNotes || '—',
-        'Reviewed By': selected.performanceReviewedBy || '—',
-        'Reviewed At': selected.performanceReviewedAt ? new Date(selected.performanceReviewedAt).toLocaleString() : '—',
+        'Notes': selected.performanceNotes || 'Not set',
+        'Reviewed By': selected.performanceReviewedBy || 'Not set',
+        'Reviewed At': selected.performanceReviewedAt ? new Date(selected.performanceReviewedAt).toLocaleString() : 'Not set',
       });
     } finally {
       setPerfExporting(false);
@@ -613,11 +613,11 @@ export default function StaffScreen() {
     { key: 'fullName', label: 'Name', primary: true },
     { key: 'status', label: 'Status', status: true, render: (r) => <Badge tone={statusTone(r.status)} label={STATUS_LABEL[r.status] || r.status} size="xs" /> },
     { key: 'kind', label: 'Type', render: (r) => KIND_LABEL[r.kind] },
-    { key: 'department', label: 'Department', render: (r) => r.department || '—' },
-    { key: 'role', label: 'Role', render: (r) => r.role || '—' },
-    { key: 'employeeNumber', label: 'Employee #', render: (r) => r.employeeNumber || '—' },
-    { key: 'devices', label: 'Devices', render: (r) => (r.kind === 'invite' ? '—' : r.devices.length ? r.devices.join(', ') : 'Not enrolled') },
-    { key: 'joinedAt', label: 'Added', render: (r) => r.joinedAt || '—' },
+    { key: 'department', label: 'Department', render: (r) => r.department || 'Not set' },
+    { key: 'role', label: 'Role', render: (r) => r.role || 'Not set' },
+    { key: 'employeeNumber', label: 'Employee #', render: (r) => r.employeeNumber || 'Not set' },
+    { key: 'devices', label: 'Devices', render: (r) => (r.kind === 'invite' ? 'Not set' : r.devices.length ? r.devices.join(', ') : 'Not enrolled') },
+    { key: 'joinedAt', label: 'Added', render: (r) => r.joinedAt || 'Not set' },
   ];
 
   const formerStaffBlock = (r: DirectoryRow | undefined) => {

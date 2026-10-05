@@ -229,7 +229,7 @@ export default function MaintenanceView({ addNotification }: Props) {
           {upcoming.map(r => (
             <div key={r.id} style={{ background: 'rgba(251,191,36,0.08)', borderRadius: 14, padding: '14px 18px', border: '1px solid rgba(251,191,36,0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <div>
-                <p style={{ fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 2px', fontSize: 14 }}>{r.vehicleId} — {r.type}</p>
+                <p style={{ fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 2px', fontSize: 14 }}>{r.vehicleId}, {r.type}</p>
                 <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: 13 }}>{r.description}</p>
               </div>
               <div style={{ textAlign: 'right' }}>

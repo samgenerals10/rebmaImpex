@@ -340,7 +340,7 @@ export default function FinanceCreditMgmtView({ addNotification, currentUser }: 
             { key: 'amountPaid', label: 'Paid', render: item => <span className="text-green-500 font-medium">GHS {item.amountPaid.toLocaleString()}</span> },
             { key: 'outstanding', label: 'Outstanding', render: item => <span className="font-semibold" style={{ color: item.outstanding > 0 ? '#ef4444' : 'var(--text-primary)' }}>GHS {item.outstanding.toLocaleString()}</span> },
             { key: 'dueDate', label: 'Due Date' },
-            { key: 'daysOverdue', label: 'Overdue', render: item => item.daysOverdue > 0 ? <span className="text-red-500 font-semibold text-xs">{item.daysOverdue}d</span> : <span className="text-[var(--text-muted)] text-xs">—</span> },
+            { key: 'daysOverdue', label: 'Overdue', render: item => item.daysOverdue > 0 ? <span className="text-red-500 font-semibold text-xs">{item.daysOverdue}d</span> : <span className="text-[var(--text-muted)] text-xs">Not set</span> },
             { key: 'status', label: 'Status', status: true, render: item => <span className={`text-xs px-2 py-1 rounded-full font-medium ${STATUS_COLORS[item.status]}`}>{item.status}</span> },
           ] as DataColumn<CreditEntry>[]}
           data={filtered}

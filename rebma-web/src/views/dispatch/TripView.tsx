@@ -306,7 +306,7 @@ export default function TripView({ token }: TripViewProps) {
                     {stop.paymentMode && (
                       <p className="text-[11px] text-text-muted mt-1 flex items-center gap-1">
                         <CreditCard className="w-3 h-3 shrink-0" /> {stop.paymentMode}
-                        {typeof stop.totalAmount === 'number' && ` — GHS ${stop.totalAmount.toLocaleString()}`}
+                        {typeof stop.totalAmount === 'number' && `, GHS ${stop.totalAmount.toLocaleString()}`}
                       </p>
                     )}
                     <div className="flex gap-2 mt-2.5">

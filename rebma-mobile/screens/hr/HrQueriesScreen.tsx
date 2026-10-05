@@ -124,7 +124,7 @@ export default function HrQueriesScreen() {
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.xs, marginBottom: 4 }}>
                   <CheckCircle size={12} color={t.colors.status.success.text} />
                   <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta10.size, color: t.colors.textMuted, textTransform: 'uppercase' }}>
-                    HR Response{selected.responded_by ? ` — ${selected.responded_by}` : ''}
+                    HR Response{selected.responded_by ? `, ${selected.responded_by}` : ''}
                   </Text>
                 </View>
                 <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>{selected.response}</Text>

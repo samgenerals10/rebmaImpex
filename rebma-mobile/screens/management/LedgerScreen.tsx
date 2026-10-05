@@ -36,7 +36,7 @@ const DEPT_DOT: Record<string, string> = {
 };
 
 function fmtAgo(iso: string): string {
-  if (!iso) return '—';
+  if (!iso) return 'Not set';
   const diff = Date.now() - new Date(iso).getTime();
   const m = Math.floor(diff / 60000);
   if (m < 1) return 'just now';

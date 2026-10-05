@@ -141,9 +141,9 @@ export default function MaintenanceScreen() {
     { key: 'vehicle_id', label: 'Vehicle', primary: true },
     { key: 'status', label: 'Status', status: true, render: (r) => <Badge tone={STATUS_TONE[r.status] || 'muted'} label={r.status} /> },
     { key: 'type', label: 'Type' },
-    { key: 'description', label: 'Description', render: (r) => r.description || '—' },
+    { key: 'description', label: 'Description', render: (r) => r.description || 'Not set' },
     { key: 'cost', label: 'Cost', render: (r) => `GHS ${r.cost.toLocaleString()}` },
-    { key: 'mechanic', label: 'Mechanic', render: (r) => r.mechanic || '—' },
+    { key: 'mechanic', label: 'Mechanic', render: (r) => r.mechanic || 'Not set' },
   ];
 
   return (
@@ -151,7 +151,7 @@ export default function MaintenanceScreen() {
       footer={<View style={{ padding: t.spacing.lg }}><Button label="Schedule Maintenance" onPress={() => setShowAdd(true)} fullWidth /></View>}
     >
       <View style={{ gap: t.spacing.sm }}>
-        <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Scheduled" value={loading ? '—' : counts.scheduled} icon={<Clock size={16} color={t.colors.status.warning.text} />} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="In Progress" value={loading ? '—' : counts.inProgress} icon={<Wrench size={16} color={t.colors.status.info.text} />} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Completed" value={loading ? '—' : counts.completed} icon={<CheckCircle2 size={16} color={t.colors.status.success.text} />} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Cost (GHS)" value={loading ? '—' : counts.totalCost.toLocaleString()} icon={<Banknote size={16} color={t.colors.accent} />} /></View></View>
+        <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Scheduled" value={loading ? 'Not set' : counts.scheduled} icon={<Clock size={16} color={t.colors.status.warning.text} />} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="In Progress" value={loading ? 'Not set' : counts.inProgress} icon={<Wrench size={16} color={t.colors.status.info.text} />} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Completed" value={loading ? 'Not set' : counts.completed} icon={<CheckCircle2 size={16} color={t.colors.status.success.text} />} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Cost (GHS)" value={loading ? 'Not set' : counts.totalCost.toLocaleString()} icon={<Banknote size={16} color={t.colors.accent} />} /></View></View>
       </View>
 
       {upcoming.length > 0 && (

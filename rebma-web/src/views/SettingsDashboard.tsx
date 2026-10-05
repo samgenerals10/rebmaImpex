@@ -481,7 +481,7 @@ export default function SettingsDashboard({
               </div>
 
               <div className="p-3 bg-[var(--bg)] border border-[var(--border)] rounded-xl space-y-1.5 text-[10px] text-[var(--text-muted)]">
-                <p>Department: <strong className="text-[var(--text-primary)]">{currentUser?.department || '—'}</strong></p>
+                <p>Department: <strong className="text-[var(--text-primary)]">{currentUser?.department || 'Not set'}</strong></p>
                 <p>Role: <strong className="text-[var(--text-primary)]">{currentUser?.isAdmin ? 'Chief Executive Officer' : currentUser?.department}</strong></p>
               </div>
 

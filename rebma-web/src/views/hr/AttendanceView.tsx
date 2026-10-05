@@ -435,8 +435,8 @@ export default function AttendanceView({ addNotification, currentUser }: Props) 
         </div>
       ),
     },
-    { key: 'employeeNumber', label: 'Employee No.', render: (r) => r.employeeNumber || '—' },
-    { key: 'department', label: 'Department', render: (r) => r.department || '—' },
+    { key: 'employeeNumber', label: 'Employee No.', render: (r) => r.employeeNumber || 'Not set' },
+    { key: 'department', label: 'Department', render: (r) => r.department || 'Not set' },
     ...(isSingleDay ? [] : [{ key: 'date', label: 'Date', render: (r: AttendanceTableRow) => new Date(`${r.date}T12:00:00`).toLocaleDateString([], { day: 'numeric', month: 'short' }) }]),
     { key: 'checkInTime', label: 'Check In' },
     { key: 'source', label: 'Source' },
@@ -445,12 +445,12 @@ export default function AttendanceView({ addNotification, currentUser }: Props) 
         <span style={{ padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 700, background: STATUS_STYLE[r.status]?.bg, color: STATUS_STYLE[r.status]?.color }}>{r.status}</span>
       ),
     },
-    { key: 'lateReason', label: 'Late Reason', mobileHidden: true, render: (r) => r.lateReason || '—' },
+    { key: 'lateReason', label: 'Late Reason', mobileHidden: true, render: (r) => r.lateReason || 'Not set' },
   ];
 
   const deviceColumns: DataColumn<PeripheralDeviceRow>[] = [
     { key: 'deviceName', label: 'Device', primary: true, render: (d) => <span style={{ fontWeight: 600 }}>{d.deviceName}</span> },
-    { key: 'make', label: 'Make and Model', render: (d) => [d.make, d.model].filter(Boolean).join(' ') || '—' },
+    { key: 'make', label: 'Make and Model', render: (d) => [d.make, d.model].filter(Boolean).join(' ') || 'Not set' },
     { key: 'connectionType', label: 'Connection', render: (d) => (d.connectionType === 'api' ? `API ${d.apiMode === 'pull' ? 'Pull' : 'Push'}` : 'SDK') },
     { key: 'ipAddress', label: 'Address', render: (d) => (d.connectionType === 'api' ? (d.apiMode === 'pull' ? (d.apiUrl || 'Not set') : 'Webhook') : (d.ipAddress ? `${d.ipAddress}${d.port ? `:${d.port}` : ''}` : 'Not set')) },
     {

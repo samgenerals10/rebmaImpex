@@ -180,16 +180,16 @@ export default function WipStockView({ addNotification }: Props) {
       </head><body>
       <p style="font-size:11px;color:#888;margin:0 0 12px;">REBMA IMPEX, WIP Stock Record</p>
       <h1>${item.productName}</h1>
-      <p style="margin:4px 0 12px;color:#6b7280;font-size:13px;">${item.batchRef || '—'} · Updated: ${item.updatedAt}</p>
+      <p style="margin:4px 0 12px;color:#6b7280;font-size:13px;">${item.batchRef || 'Not set'} · Updated: ${item.updatedAt}</p>
       <span class="badge">${item.stage}</span>
       <table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody>
       <tr><td>Item ID</td><td>${item.id}</td></tr>
       <tr><td>Product</td><td>${item.productName}</td></tr>
-      <tr><td>Batch Reference</td><td>${item.batchRef || '—'}</td></tr>
+      <tr><td>Batch Reference</td><td>${item.batchRef || 'Not set'}</td></tr>
       <tr><td>Stage</td><td>${item.stage}</td></tr>
       <tr><td>Quantity</td><td>${item.qty.toLocaleString()} ${item.unit}</td></tr>
       <tr><td>Last Updated</td><td>${item.updatedAt}</td></tr>
-      <tr><td>Notes</td><td>${item.notes || '—'}</td></tr>
+      <tr><td>Notes</td><td>${item.notes || 'Not set'}</td></tr>
       </tbody></table>
       <div class="footer">Printed from REBMA IMPEX ERP · ${new Date().toLocaleString()}</div>
       </body></html>`);
@@ -275,11 +275,11 @@ export default function WipStockView({ addNotification }: Props) {
             columns={[
               { key: 'productName', label: 'Product', primary: true },
               { key: 'id', label: 'ID', render: item => <span className="font-mono text-xs text-[var(--text-muted)]">{item.id}</span> },
-              { key: 'batchRef', label: 'Batch Ref', render: item => <span className="text-xs font-mono">{item.batchRef || '—'}</span> },
+              { key: 'batchRef', label: 'Batch Ref', render: item => <span className="text-xs font-mono">{item.batchRef || 'Not set'}</span> },
               { key: 'stage', label: 'Stage', status: true, render: item => <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${stageBadgeStyle(item.stage)}`}>{item.stage}</span> },
               { key: 'qty', label: 'Quantity', render: item => <span className="font-semibold">{item.qty.toLocaleString()} <span className="text-[var(--text-muted)] text-xs font-normal">{item.unit}</span></span> },
               { key: 'updatedAt', label: 'Last Updated' },
-              { key: 'notes', label: 'Notes', render: item => item.notes || '—' },
+              { key: 'notes', label: 'Notes', render: item => item.notes || 'Not set' },
             ]}
             data={filtered}
             rowKey={item => item.id}
@@ -418,10 +418,10 @@ export default function WipStockView({ addNotification }: Props) {
             <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${stageBadgeStyle(detailModal.stage)}`}>{detailModal.stage}</span>
             <div className="mt-5 space-y-3">
               {[
-                { label: 'Batch Reference', value: detailModal.batchRef || '—' },
+                { label: 'Batch Reference', value: detailModal.batchRef || 'Not set' },
                 { label: 'Quantity', value: `${detailModal.qty.toLocaleString()} ${detailModal.unit}` },
                 { label: 'Last Updated', value: detailModal.updatedAt },
-                { label: 'Notes', value: detailModal.notes || '—' },
+                { label: 'Notes', value: detailModal.notes || 'Not set' },
               ].map(r => (
                 <div key={r.label} className="flex justify-between py-2 border-b border-[var(--border)]">
                   <span className="text-xs text-[var(--text-muted)] font-semibold">{r.label}</span>

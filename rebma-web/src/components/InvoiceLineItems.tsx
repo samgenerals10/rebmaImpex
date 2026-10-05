@@ -26,7 +26,7 @@ export function getLineItems(order: Order): OrderLineItem[] | null {
  */
 export function getProductSummary(order: Order): string {
   const items = getLineItems(order);
-  if (!items) return order.productName || '—';
+  if (!items) return order.productName || 'Not set';
   return items.map(item => item.productName).join(', ');
 }
 
@@ -38,7 +38,7 @@ export function getProductSummaryWithQty(order: Order): string {
   const items = getLineItems(order);
   if (!items) {
     const qty = order.quantity;
-    const name = order.productName || '—';
+    const name = order.productName || 'Not set';
     return qty ? `${name} (x${qty})` : name;
   }
   return items.map(item => `${item.productName} (x${item.quantity})`).join(', ');
@@ -52,7 +52,7 @@ export default function InvoiceLineItems({ order, compact = false }: Props) {
     if (!items) {
       return (
         <span className="text-[var(--text-secondary)] truncate">
-          {order.productName || '—'}
+          {order.productName || 'Not set'}
         </span>
       );
     }
@@ -73,7 +73,7 @@ export default function InvoiceLineItems({ order, compact = false }: Props) {
     return (
       <div className="rounded-xl border border-[var(--border)] px-4 py-3 flex items-center justify-between">
         <span className="font-medium text-[var(--text-primary)]">
-          {order.productName || '—'}
+          {order.productName || 'Not set'}
         </span>
         <span className="font-bold text-emerald-600">
           GHS {Number(order.totalAmount ?? 0).toLocaleString()}
@@ -109,7 +109,7 @@ export default function InvoiceLineItems({ order, compact = false }: Props) {
                 }
               </td>
               <td className="py-2.5 px-3 text-right font-semibold text-emerald-600">
-                {item.lineTotal > 0 ? `GHS ${item.lineTotal.toLocaleString()}` : '—'}
+                {item.lineTotal > 0 ? `GHS ${item.lineTotal.toLocaleString()}` : 'Not set'}
               </td>
             </tr>
           ))}

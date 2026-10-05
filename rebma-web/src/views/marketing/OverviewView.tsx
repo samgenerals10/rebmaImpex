@@ -360,7 +360,7 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">{timeGreeting()}, {firstName} 👋</h1>
-          <p className="text-sm text-[var(--text-secondary)]">Here's your sales overview today — {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+          <p className="text-sm text-[var(--text-secondary)]">Here's your sales overview today, {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
         </div>
         <button onClick={() => { fetchData(); addNotification?.('Dashboard refreshed'); }} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)]"><RefreshCw size={14} /> Refresh</button>
       </div>
@@ -410,7 +410,7 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
           const qty = stock.filter((s: any) => String(s.product_name || '').toLowerCase().trim() === key).reduce((sum: number, s: any) => sum + (Number(s.quantity) || 0), 0);
           const soldQty = soldLedger.filter((l: any) => String(l.product_name || '').toLowerCase().trim() === key)
             .reduce((sum: number, l: any) => sum + (Number(l.quantity) || 0), 0);
-          return { name: gp.product_name, unitPrice: Number(gp.unit_price || 0), currency: gp.currency || 'GHS', category: gp.category || '—', qty, soldQty, image: gp.product_image || '' };
+          return { name: gp.product_name, unitPrice: Number(gp.unit_price || 0), currency: gp.currency || 'GHS', category: gp.category || 'Not set', qty, soldQty, image: gp.product_image || '' };
         });
         return (
           <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">

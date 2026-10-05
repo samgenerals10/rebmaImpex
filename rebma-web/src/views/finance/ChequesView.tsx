@@ -66,7 +66,7 @@ export default function FinanceChequesView({ addNotification, currentUser }: Pro
     { key: 'chequeDate', label: 'Cheque Date' },
     { key: 'expectedClearing', label: 'Expected Clearing' },
     { key: 'status', label: 'Status' },
-    { key: 'orderRef', label: 'Order Ref', render: c => c.orderRef || '—' },
+    { key: 'orderRef', label: 'Order Ref', render: c => c.orderRef || 'Not set' },
   ];
 
   const handlePrint = () => {
@@ -352,7 +352,7 @@ export default function FinanceChequesView({ addNotification, currentUser }: Pro
             { label: 'Account Name', value: selectedCheque.accountName },
             { label: 'Cheque Date', value: selectedCheque.chequeDate },
             { label: 'Expected Clearing', value: selectedCheque.expectedClearing },
-            { label: 'Order Reference', value: selectedCheque.orderRef || '—' },
+            { label: 'Order Reference', value: selectedCheque.orderRef || 'Not set' },
             { label: 'Status', value: selectedCheque.status },
           ]}
           onClose={() => setSelectedCheque(null)}

@@ -177,7 +177,7 @@ export default function GoodsPriceCatalogView({ addNotification, currentUser, de
                       {item.margin >= 50 ? <TrendingUp size={11} className="text-green-500" /> : <TrendingDown size={11} className="text-red-500" />}
                       <span className={`font-semibold ${item.margin >= 50 ? 'text-green-500' : item.margin >= 40 ? 'text-yellow-500' : 'text-red-500'}`}>{item.margin.toFixed(1)}%</span>
                     </div>
-                  ) : <span className="text-[var(--text-muted)]">—</span>
+                  ) : <span className="text-[var(--text-muted)]">Not set</span>
                 },
               ] as DataColumn<PriceRow>[] : []),
               { key: 'currency', label: 'Currency' },

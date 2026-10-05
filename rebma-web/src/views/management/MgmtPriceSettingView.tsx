@@ -443,7 +443,7 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
           <ArrowLeft size={16} /> Back to Price Catalog
         </button>
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6">
-          <h2 className="text-lg font-bold text-[var(--text-primary)] mb-1">{showHistory.productName} — Price History</h2>
+          <h2 className="text-lg font-bold text-[var(--text-primary)] mb-1">{showHistory.productName}, Price History</h2>
           <p className="text-sm text-[var(--text-secondary)] mb-5">Current price: {showHistory.currency} {showHistory.unitPrice}</p>
           <div className="space-y-3">
             {loadingHistory ? (
@@ -562,7 +562,7 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
                   <span className={`font-semibold text-sm ${item.margin >= 50 ? 'text-green-500' : item.margin >= 40 ? 'text-yellow-500' : 'text-red-500'}`}>
                     {item.margin.toFixed(1)}%
                   </span>
-                ) : <span className="text-[var(--text-muted)]">—</span>
+                ) : <span className="text-[var(--text-muted)]">Not set</span>
               },
               { key: 'currency', label: 'Currency' },
               { key: 'lastUpdated', label: 'Last Updated' },
@@ -612,7 +612,7 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
           <ResponsiveDataView<typeof filteredCustomers[number]>
             columns={[
               { key: 'name', label: 'Customer', primary: true },
-              { key: 'companyName', label: 'Company', render: c => c.companyName || '—' },
+              { key: 'companyName', label: 'Company', render: c => c.companyName || 'Not set' },
               {
                 key: 'flag', label: 'Flag', render: c => (
                   <button

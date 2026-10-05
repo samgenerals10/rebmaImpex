@@ -49,11 +49,11 @@ export default function DailyReportsScreen() {
 
     setVisitorsToday((visData || []).map((v: any) => ({
       id: v.id,
-      name: v.full_name || '—',
-      company: v.company || '—',
-      purpose: v.purpose || '—',
-      host: v.host_name || '—',
-      in: v.check_in_time ? new Date(v.check_in_time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '—',
+      name: v.full_name || 'Not set',
+      company: v.company || 'Not set',
+      purpose: v.purpose || 'Not set',
+      host: v.host_name || 'Not set',
+      in: v.check_in_time ? new Date(v.check_in_time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : 'Not set',
       out: v.check_out_time ? new Date(v.check_out_time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : null,
     })));
 
@@ -101,7 +101,7 @@ export default function DailyReportsScreen() {
     { key: 'company', label: 'Company' },
     { key: 'host', label: 'Host' },
     { key: 'in', label: 'In', render: (r) => r.in },
-    { key: 'out', label: 'Out', render: (r) => r.out || '—' },
+    { key: 'out', label: 'Out', render: (r) => r.out || 'Not set' },
   ];
 
   const pastColumns: DataColumn<PastReportRow>[] = [
