@@ -175,7 +175,8 @@ export default function InvoicesScreen() {
 
   return (
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}
-      footer={<View style={{ padding: t.spacing.lg }}><Button label="Generate Proforma Invoice" onPress={() => setShowAdd(true)} fullWidth /></View>}
+      // Only the Account Department creates proforma invoices; the CEO reads them.
+      footer={profile?.department === 'FINANCE' ? <View style={{ padding: t.spacing.lg }}><Button label="Generate Proforma Invoice" onPress={() => setShowAdd(true)} fullWidth /></View> : undefined}
     >
       <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: t.spacing.md }}>
         <Button label="Export CSV" size="sm" variant="ghost" icon={<Download size={13} color={t.colors.textSecondary} />} onPress={() => setExportOpen(true)} />

@@ -79,7 +79,6 @@ import MgmtOverviewScreen from '../screens/management/MgmtOverviewScreen';
 import MgmtApprovalsScreen from '../screens/management/MgmtApprovalsScreen';
 import MgmtTransactionsScreen from '../screens/management/TransactionsScreen';
 import SetPricesScreen from '../screens/management/SetPricesScreen';
-import MgmtInvoicesScreen from '../screens/management/InvoicesScreen';
 import MgmtReceiptsScreen from '../screens/management/ReceiptsScreen';
 import LedgerScreen from '../screens/management/LedgerScreen';
 import MgmtPayrollScreen from '../screens/management/PayrollScreen';
@@ -400,7 +399,6 @@ export const DEPARTMENT_REGISTRY: Record<string, DepartmentEntry> = {
       { id: 'CreditApproval', label: 'Approvals', icon: ClipboardCheck },
       { id: 'Transactions', label: 'Transactions', icon: ArrowLeftRight },
       { id: 'SetPrices', label: 'Price Setting', icon: Tag },
-      { id: 'Invoices', label: 'Invoices', icon: FileText },
       { id: 'Receipts', label: 'Receipts', icon: Receipt },
       { id: 'Ledger', label: 'Audit Log', icon: History },
       { id: 'Payroll', label: 'Payroll Overview', icon: Banknote },
@@ -413,7 +411,7 @@ export const DEPARTMENT_REGISTRY: Record<string, DepartmentEntry> = {
     ],
     sections: [
       { title: 'Executive Approvals', tabIds: ['CargoApproval', 'CreditApproval', 'SetPrices', 'StockManagement'] },
-      { title: 'Treasury & Audit History', tabIds: ['Transactions', 'Invoices', 'Receipts', 'Ledger', 'Payroll'] },
+      { title: 'Treasury & Audit History', tabIds: ['Transactions', 'Receipts', 'Ledger', 'Payroll'] },
       { title: 'Fleet & Delivery Tracking', tabIds: ['Tracking'] },
       { title: 'Executive Analytics & Performance', tabIds: ['MgmtAnalytics', 'DeptActivity', 'PerformanceAlerts', 'Spreadsheets'] },
     ],
@@ -428,7 +426,6 @@ export const DEPARTMENT_REGISTRY: Record<string, DepartmentEntry> = {
       CreditApproval: MgmtApprovalsScreen,
       Transactions: MgmtTransactionsScreen,
       SetPrices: SetPricesScreen,
-      Invoices: MgmtInvoicesScreen,
       Receipts: MgmtReceiptsScreen,
       Ledger: LedgerScreen,
       Payroll: MgmtPayrollScreen,

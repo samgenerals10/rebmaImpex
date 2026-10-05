@@ -3385,7 +3385,6 @@ export default function App() {
     // Management dedicated sub-tab pages
     if (activeDepartment === 'MANAGEMENT') {
       if (activeSubTab === 'CargoApproval')   return <MgmtOverviewView addNotification={addNotification} setActiveSubTab={setActiveSubTab} currentUser={currentUser} />;
-      if (activeSubTab === 'Invoices')        return <CeoInvoicesView addNotification={addNotification} currentUser={currentUser} />;
       if (activeSubTab === 'Receipts')        return <FinanceReceiptsView addNotification={addNotification} />;
       if (activeSubTab === 'CreditApproval')  return <MgmtApprovalsView addNotification={addNotification} currentUser={currentUser} />;
       if (activeSubTab === 'SetPrices')       return <MgmtPriceSettingView addNotification={addNotification} currentUser={currentUser} />;

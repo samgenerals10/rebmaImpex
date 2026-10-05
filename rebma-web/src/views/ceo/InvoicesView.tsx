@@ -173,6 +173,8 @@ async function printProforma(r: ProformaRow, issuedBy: string, template: Documen
 const emptyLine = (): LineItem => ({ productName: '', quantity: 1, unitPrice: 0 });
 
 export default function InvoicesView({ addNotification, currentUser }: Props) {
+  // Only the Account Department creates proforma invoices; the CEO reads them.
+  const canCreate = (currentUser?.department || '').toUpperCase() === 'FINANCE';
   const [rows, setRows] = useState<ProformaRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
@@ -264,10 +266,12 @@ export default function InvoicesView({ addNotification, currentUser }: Props) {
             className="flex items-center gap-1 px-3 py-1.5 bg-[var(--accent-light)] text-[var(--accent)] text-xs font-semibold rounded-xl cursor-pointer hover:opacity-90">
             <Download className="w-3.5 h-3.5" /> CSV
           </button>
-          <button onClick={() => { resetForm(); setShowGenerate(true); }}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent)] text-white text-xs font-bold rounded-xl cursor-pointer hover:opacity-90">
-            <Plus className="w-3.5 h-3.5" /> Generate Proforma Invoice
-          </button>
+          {canCreate && (
+            <button onClick={() => { resetForm(); setShowGenerate(true); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent)] text-white text-xs font-bold rounded-xl cursor-pointer hover:opacity-90">
+              <Plus className="w-3.5 h-3.5" /> Generate Proforma Invoice
+            </button>
+          )}
         </div>
       </div>
 
