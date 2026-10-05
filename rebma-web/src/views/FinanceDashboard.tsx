@@ -380,17 +380,6 @@ export default function FinanceDashboard({
     addNotification(`Updated receipt record ${pay.id}`);
   };
 
-  const handleDuplicatePayment = (pay: FinancePayment) => {
-    const duplicated: FinancePayment = {
-      ...pay,
-      id: `PAY-${Math.floor(1000 + Math.random() * 9000)}`,
-      createdAt: new Date().toLocaleString()
-    };
-    const updated = [duplicated, ...localPayments];
-    setLocalPayments(updated);
-    setPaymentsList(updated);
-    addNotification(`Duplicated receipt ticket ${pay.id} as ${duplicated.id}`);
-  };
 
   const handleSharePayment = (pay: FinancePayment) => {
     const shareText = `Rebma Receipt: ID: ${pay.id} - Client: ${pay.clientName} - Amt: GHS ${pay.amount} - Mode: ${pay.paymentMode}`;
@@ -408,15 +397,6 @@ export default function FinanceDashboard({
   };
 
   // Warehouse Production Actions
-  const handleDuplicateRequisition = (req: ProductionRequest) => {
-    const duplicated: ProductionRequest = {
-      ...req,
-      id: `PRD-${Math.floor(100 + Math.random() * 900)}`,
-      createdAt: new Date().toLocaleString()
-    };
-    setLocalRequisitions(prev => [duplicated, ...prev]);
-    addNotification(`Duplicated warehouse production entry ${req.id}`);
-  };
 
   const handleShareRequisition = (req: ProductionRequest) => {
     const shareText = `Rebma Warehouse Stock Inflow: Req ID: ${req.id} - Status: ${req.status} - Qty: ${req.items.reduce((s, i) => s + i.quantity, 0)}`;
@@ -696,12 +676,6 @@ export default function FinanceDashboard({
                   >
                     Edit Receipt
                   </button>
-                  <button 
-                    onClick={() => { handleDuplicatePayment(pay); setActiveMobileDetail(null); }}
-                    className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-[var(--border)] dark:border-slate-800 text-slate-750 dark:text-slate-200 cursor-pointer"
-                  >
-                    Duplicate
-                  </button>
                 </div>
                 <button 
                   onClick={() => { handleDeletePayment(pay.id); setActiveMobileDetail(null); }}
@@ -762,12 +736,6 @@ export default function FinanceDashboard({
               {/* Action Buttons */}
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
-                  <button 
-                    onClick={() => { handleDuplicateRequisition(req); setActiveMobileDetail(null); }}
-                    className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-[var(--border)] dark:border-slate-800 text-slate-750 dark:text-slate-200 cursor-pointer"
-                  >
-                    Duplicate Log
-                  </button>
                   <button 
                     onClick={() => { handleShareRequisition(req); }}
                     className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-[var(--border)] dark:border-slate-800 text-slate-750 dark:text-slate-200 cursor-pointer"
@@ -1322,7 +1290,6 @@ export default function FinanceDashboard({
                               <div className="absolute right-5 mt-1 w-44 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1 flex flex-col text-[var(--text-primary)]">
                                 <button onClick={() => setSelectedTicket(pay)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left font-semibold">🎫 View Ticket</button>
                                 <button onClick={() => handleEditPayment(pay)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left font-semibold">✏ Edit Receipt</button>
-                                <button onClick={() => handleDuplicatePayment(pay)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left font-semibold">📋 Duplicate</button>
                                 <button onClick={() => handleSharePayment(pay)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left font-semibold">🔗 Share Link</button>
                                 <div className="h-px bg-[var(--border)] my-1"></div>
                                 <button onClick={() => handleDeletePayment(pay.id)} className="flex items-center gap-2 px-3 py-2 text-xs text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors text-left font-semibold">🗑 Delete</button>
@@ -1536,7 +1503,6 @@ export default function FinanceDashboard({
                             </button>
                             {activeWarehouseMenu === req.id && (
                               <div className="absolute right-5 mt-1 w-44 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1 flex flex-col text-[var(--text-primary)]">
-                                <button onClick={() => handleDuplicateRequisition(req)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left font-semibold">📋 Duplicate Log</button>
                                 <button onClick={() => handleShareRequisition(req)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left font-semibold">🔗 Share Link</button>
                                 <div className="h-px bg-[var(--border)] my-1"></div>
                                 <button onClick={() => handleDeleteRequisition(req.id)} className="flex items-center gap-2 px-3 py-2 text-xs text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors text-left font-semibold">🗑 Delete Log</button>

@@ -198,6 +198,16 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
   const inTransit        = deliveries.filter(d => d.status === 'IN_TRANSIT').length;
   const deliveredToday   = deliveries.filter(d => d.status === 'DELIVERED' && d.deliveredAt && new Date(d.deliveredAt).toDateString() === todayStr).length;
   const pendingAssign    = deliveries.filter(d => d.status === 'PENDING_ASSIGNMENT').length;
+  // Real comparison with yesterday (these used to be fixed "+3" and "+2").
+  const yesterdayStr = new Date(Date.now() - 86400000).toDateString();
+  const yesterdayDeliveries = deliveries.filter(d => new Date(d.dispatchedAt).toDateString() === yesterdayStr).length;
+  const deliveredYesterday  = deliveries.filter(d => d.status === 'DELIVERED' && d.deliveredAt && new Date(d.deliveredAt).toDateString() === yesterdayStr).length;
+  const vsYesterday = (today: number, yesterday: number) => {
+    const diff = today - yesterday;
+    return { change: diff === 0 ? 'same' : `${diff > 0 ? '+' : ''}${diff}`, up: diff >= 0 };
+  };
+  const deliveriesTrend = vsYesterday(todayDeliveries, yesterdayDeliveries);
+  const deliveredTrend = vsYesterday(deliveredToday, deliveredYesterday);
 
   const activeDeliveries = deliveries.filter(d => ['ASSIGNED', 'IN_TRANSIT'].includes(d.status)).slice(0, 6);
   const availableDrivers = drivers.filter(d => d.status === 'ACTIVE');
@@ -365,9 +375,9 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
       {/* ── KPI Cards ─────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         {[
-          { label: 'Deliveries Today',    value: todayDeliveries, change: '+3', up: true,  sub: 'vs yesterday', color: 'var(--accent)',  tab: 'ActiveDeliveries' },
+          { label: 'Deliveries Today',    value: todayDeliveries, change: deliveriesTrend.change, up: deliveriesTrend.up, sub: 'vs yesterday', color: 'var(--accent)',  tab: 'ActiveDeliveries' },
           { label: 'In Transit',          value: inTransit,       change: 'live', up: true, sub: 'tracking active', color: '#3b82f6', tab: 'Tracking' },
-          { label: 'Delivered Today',     value: deliveredToday,  change: '+2', up: true,  sub: 'completed',      color: '#10b981', tab: 'ActiveDeliveries' },
+          { label: 'Delivered Today',     value: deliveredToday,  change: deliveredTrend.change, up: deliveredTrend.up, sub: 'vs yesterday',      color: '#10b981', tab: 'ActiveDeliveries' },
           { label: 'Pending Assignment',  value: pendingAssign,   change: pendingAssign > 3 ? '! urgent' : 'normal', up: pendingAssign <= 3, sub: 'need driver', color: pendingAssign > 3 ? '#ef4444' : '#f59e0b', tab: 'ActiveDeliveries' },
         ].map(({ label, value, change, up, sub, color, tab }, i) => (
           <div key={i} onClick={() => setActiveSubTab?.(tab)}

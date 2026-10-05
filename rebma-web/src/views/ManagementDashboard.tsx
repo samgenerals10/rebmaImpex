@@ -265,14 +265,6 @@ export default function ManagementDashboard({
   };
 
   // Row Action Handlers: Ledger
-  const handleDuplicateLedger = (entry: AuditEntry) => {
-    const duplicated: AuditEntry = {
-      ...entry,
-      id: `AUD-${Date.now().toString().slice(-4)}`,
-      timestamp: new Date().toLocaleString()
-    };
-    setLocalLedger(prev => [duplicated, ...prev]);
-  };
 
   const handleShareLedger = (entry: AuditEntry) => {
     const shareText = `Audit Entry [${entry.timestamp}] Dept: ${entry.department} - Performed by ${entry.performedBy}: ${entry.action} - ${entry.details}`;
@@ -299,23 +291,6 @@ export default function ManagementDashboard({
     }
   };
 
-  const handleDuplicateHistory = (item: any, isCargo: boolean) => {
-    if (isCargo) {
-      const duplicated: IncomingGoods = {
-        ...item,
-        id: `${Math.floor(100 + Math.random() * 900)}`,
-        goodsCode: `GC-${Math.floor(100000 + Math.random() * 900000)}`
-      };
-      setLocalGoods(prev => [duplicated, ...prev]);
-    } else {
-      const duplicated: Order = {
-        ...item,
-        id: `ORD-${Math.floor(100 + Math.random() * 900)}`,
-        ticketNumber: `TKT-${Math.floor(10000 + Math.random() * 90000)}`
-      };
-      setLocalOrders(prev => [duplicated, ...prev]);
-    }
-  };
 
   const handleShareHistory = (item: any, isCargo: boolean) => {
     const shareText = isCargo ?
@@ -1136,7 +1111,6 @@ export default function ManagementDashboard({
                         </button>
                         {activeLedgerMenu === entry.id && (
                           <div className="absolute right-5 mt-1 w-44 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1 flex flex-col">
-                            <button onClick={() => handleDuplicateLedger(entry)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">📋 Duplicate Log</button>
                             <button onClick={() => handleShareLedger(entry)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">🔗 Share Details</button>
                             <div className="h-px bg-[var(--border)] my-1"></div>
                             <button onClick={() => handleDeleteLedger(entry.id)} className="flex items-center gap-2 px-3 py-2 text-xs text-rose-500 hover:bg-rose-50 rounded-lg transition-colors text-left">🗑 Delete Log</button>
@@ -1399,7 +1373,6 @@ export default function ManagementDashboard({
                         {activeHistoryMenu === item.id && (
                           <div className="absolute right-5 mt-1 w-44 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1 flex flex-col">
                             <button onClick={() => handleEditHistory(item.originalItem, item.type === 'CARGO')} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">✏ Edit Item</button>
-                            <button onClick={() => handleDuplicateHistory(item.originalItem, item.type === 'CARGO')} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">📋 Duplicate</button>
                             <button onClick={() => handleShareHistory(item.originalItem, item.type === 'CARGO')} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">🔗 Share Link</button>
                             <div className="h-px bg-[var(--border)] my-1"></div>
                             <button onClick={() => handleDeleteHistory(item.id, item.type === 'CARGO')} className="flex items-center gap-2 px-3 py-2 text-xs text-rose-500 hover:bg-rose-50 rounded-lg transition-colors text-left">🗑 Delete Log</button>

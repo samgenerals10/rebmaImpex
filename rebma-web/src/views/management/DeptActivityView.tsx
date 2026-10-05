@@ -57,11 +57,13 @@ const timeAgo = (iso: string): string => {
 
 interface Props {
   addNotification: (msg: string) => void;
-  currentUser?: { id: string; fullName?: string; department?: string } | null;
+  currentUser?: { id: string; fullName?: string; department?: string; isAdmin?: boolean } | null;
 }
 
 export default function DeptActivityView({ addNotification, currentUser }: Props) {
   const isCeo = currentUser?.department === 'CEO';
+  // Activity history can only be deleted by the CEO, same as the database rule.
+  const canDeleteActivity = !!currentUser?.isAdmin;
   const { getSetting } = useCeoSettings();
   // Other departments only see CEO entries when CEO has explicitly enabled it
   const ceoActivityVisible: boolean = getSetting('ceo_activity_visible_to_others', false);
@@ -129,7 +131,7 @@ export default function DeptActivityView({ addNotification, currentUser }: Props
   };
 
   const handleDelete = async (item: ActivityItem) => {
-    const canDelete = isCeo || item.user === (currentUser?.fullName ?? '');
+    const canDelete = canDeleteActivity;
     if (!canDelete) return;
     await supabase.from('global_audit_history').delete().eq('id', item.id);
     setActivities(prev => prev.filter(a => a.id !== item.id));
@@ -287,7 +289,7 @@ export default function DeptActivityView({ addNotification, currentUser }: Props
           {visible.map(item => {
             const Icon = DEPT_ICONS[item.department] || Building2;
             const color = DEPT_COLORS[item.department] || 'bg-slate-500/10 text-slate-600';
-            const canDelete = isCeo || item.user === (currentUser?.fullName ?? '');
+            const canDelete = canDeleteActivity;
             return (
               <div key={item.id} className="flex items-start gap-4 px-5 py-4 hover:bg-[var(--accent-light)] transition-colors group">
                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${color}`}>
@@ -405,7 +407,7 @@ export default function DeptActivityView({ addNotification, currentUser }: Props
               className="flex items-center gap-1.5 px-3 py-2 bg-[var(--accent-light)] text-[var(--accent)] rounded-xl text-xs font-semibold border border-[var(--border)] cursor-pointer hover:opacity-90">
               <Share2 className="w-3.5 h-3.5" /> Share
             </button>
-            {(isCeo || detailItem.user === (currentUser?.fullName ?? '')) && (
+            {canDeleteActivity && (
               <button onClick={() => handleDelete(detailItem)}
                 className="flex items-center gap-1.5 px-3 py-2 bg-rose-50 dark:bg-rose-950/20 text-rose-500 rounded-xl text-xs font-semibold border border-rose-200 dark:border-rose-900 cursor-pointer hover:opacity-90 ml-auto">
                 <Trash2 className="w-3.5 h-3.5" /> Delete Entry

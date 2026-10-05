@@ -631,16 +631,6 @@ export default function OperationsDashboard({
     setEditingOrder(null);
   };
 
-  const handleDuplicateOrder = (order: Order) => {
-    const duplicated: Order = {
-      ...order,
-      id: `ORD-${Math.floor(100 + Math.random() * 900)}`,
-      ticketNumber: `TKT-${Math.floor(10000 + Math.random() * 90000)}`,
-      createdAt: new Date().toLocaleString()
-    };
-    setLocalOrders(prev => [duplicated, ...prev]);
-    addNotification(`Duplicated order ${order.id} as ${duplicated.id}`);
-  };
 
   const handleShareOrder = (order: Order) => {
     const shareText = `Rebma Sales Order: ${order.id} - Ticket: ${order.ticketNumber} - Client: ${order.clientName} - Amt: GHS ${order.totalAmount}`;
@@ -682,16 +672,6 @@ export default function OperationsDashboard({
     }
   };
 
-  const handleDuplicateCargo = (cargo: IncomingGoods) => {
-    const duplicated: IncomingGoods = {
-      ...cargo,
-      id: `${Math.floor(100 + Math.random() * 900)}`,
-      goodsCode: `GC-${Math.floor(100000 + Math.random() * 900000)}`,
-      createdAt: new Date().toLocaleString()
-    };
-    setLocalCargo(prev => [duplicated, ...prev]);
-    addNotification(`Duplicated cargo record CARGO-${cargo.id}`);
-  };
 
   const handleShareCargo = (cargo: IncomingGoods) => {
     const shareText = `Rebma Cargo Record: GC-${cargo.goodsCode} - ${cargo.productName} - Qty: ${cargo.quantity} - Origin: ${cargo.country}`;
@@ -1032,7 +1012,9 @@ export default function OperationsDashboard({
                     <div className="flex items-center gap-3 flex-shrink-0">
                       {o.expected_delivery_date && <span className="text-xs text-[var(--text-muted)] whitespace-nowrap">ETA: {o.expected_delivery_date}</span>}
                       <button
-                        onClick={() => addNotification(`Log Receipt opened for ${o.order_number}.`)}
+                        // Opens Port Ingestion, where arriving goods are logged
+                        // (this used to only show a message).
+                        onClick={() => { setActiveSubTab?.('PortIngestion'); addNotification(`Log the goods from ${o.order_number} in Port Ingestion.`); }}
                         className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-bold rounded-xl hover:bg-indigo-700 whitespace-nowrap cursor-pointer">
                         Log Receipt
                       </button>
@@ -1729,7 +1711,6 @@ export default function OperationsDashboard({
                               {activeCargoMenu === item.id && (
                                 <div className="absolute right-5 mt-1 w-44 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1 flex flex-col text-left">
                                   <button onClick={() => handleEditCargo(item)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">✏ Edit Ingest</button>
-                                  <button onClick={() => handleDuplicateCargo(item)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">📋 Duplicate</button>
                                   <button onClick={() => handleShareCargo(item)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">🔗 Share Link</button>
                                   <div className="h-px bg-[var(--border)] my-1"></div>
                                   <button onClick={() => handleDeleteCargo(item.id)} className="flex items-center gap-2 px-3 py-2 text-xs text-rose-500 hover:bg-rose-50 rounded-lg transition-colors text-left">🗑 Delete</button>
@@ -1839,7 +1820,6 @@ export default function OperationsDashboard({
                         {activeHistoryMenu === item.id && (
                           <div className="absolute right-0 mt-1 w-44 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1 flex flex-col text-left">
                             <button onClick={() => { setTimelineCargoId(item.id); setActiveHistoryMenu(null); }} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">🕘 View Timeline</button>
-                            <button onClick={() => handleDuplicateCargo(item)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">📋 Duplicate Log</button>
                             <button onClick={() => handleShareCargo(item)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">🔗 Share Link</button>
                             <div className="h-px bg-[var(--border)] my-1"></div>
                             <button onClick={() => handleDeleteCargo(item.id)} className="flex items-center gap-2 px-3 py-2 text-xs text-rose-500 hover:bg-rose-50 rounded-lg transition-colors text-left">🗑 Delete</button>

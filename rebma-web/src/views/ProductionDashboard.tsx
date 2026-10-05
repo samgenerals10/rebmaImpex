@@ -187,15 +187,6 @@ export default function ProductionDashboard({
     addNotification(`Updated materials request ${req.id}`);
   };
 
-  const handleDuplicateRequisition = (req: ProductionRequest) => {
-    const duplicated: ProductionRequest = {
-      ...req,
-      id: `PRD-${Math.floor(100 + Math.random() * 900)}`,
-      createdAt: new Date().toLocaleString()
-    };
-    setProductionRequests(prev => [duplicated, ...prev]);
-    addNotification(`Duplicated materials request ${req.id} as ${duplicated.id}`);
-  };
 
   const handleShareRequisition = (req: ProductionRequest) => {
     const shareText = `Rebma Requisition order: ${req.id} - Status: ${req.status} - Materials: ${req.items.map(i => `${i.materialName} (${i.quantity})`).join(', ')}`;
@@ -221,16 +212,6 @@ export default function ProductionDashboard({
     addNotification(`Updated WIP item details for ${item.id}`);
   };
 
-  const handleDuplicateWip = (item: typeof initialWipStock[0]) => {
-    const duplicated = {
-      ...item,
-      id: `WIP-${Math.floor(100 + Math.random() * 900)}`,
-      productName: `${item.productName} (Copy)`,
-      updatedAt: new Date().toLocaleString()
-    };
-    setLocalWip(prev => [...prev, duplicated]);
-    addNotification(`Duplicated WIP item ${item.id} as ${duplicated.id}`);
-  };
 
   const handleShareWip = (item: typeof initialWipStock[0]) => {
     const shareText = `Rebma WIP Inventory: ${item.productName} (${item.id}) - Stage: ${item.stage} - Qty: ${item.qty}`;
@@ -477,12 +458,6 @@ export default function ProductionDashboard({
                   >
                     Edit Request
                   </button>
-                  <button 
-                    onClick={() => { handleDuplicateRequisition(m.originalReq); setActiveMobileDetail(null); }}
-                    className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-[var(--border)] dark:border-slate-800 text-slate-750 dark:text-slate-200 cursor-pointer"
-                  >
-                    Duplicate
-                  </button>
                 </div>
                 <button 
                   onClick={() => { handleDeleteRequisition(m.reqId); setActiveMobileDetail(null); }}
@@ -544,12 +519,6 @@ export default function ProductionDashboard({
                   >
                     Edit Item
                   </button>
-                  <button 
-                    onClick={() => { handleDuplicateWip(item); setActiveMobileDetail(null); }}
-                    className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-[var(--border)] dark:border-slate-800 text-slate-750 dark:text-slate-200 cursor-pointer"
-                  >
-                    Duplicate
-                  </button>
                 </div>
                 <button 
                   onClick={() => { handleDeleteWip(item.id); setActiveMobileDetail(null); }}
@@ -607,12 +576,6 @@ export default function ProductionDashboard({
 
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
-                  <button 
-                    onClick={() => { handleDuplicateRequisition(req); setActiveMobileDetail(null); }}
-                    className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-[var(--border)] dark:border-slate-800 text-slate-750 dark:text-slate-200 cursor-pointer"
-                  >
-                    Duplicate Order
-                  </button>
                   <button 
                     onClick={() => { handleShareRequisition(req); }}
                     className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-[var(--border)] dark:border-slate-800 text-slate-750 dark:text-slate-200 cursor-pointer"
@@ -1035,7 +998,6 @@ export default function ProductionDashboard({
                         {activeMaterialsMenu === m.flatId && (
                           <div className="absolute right-5 mt-1 w-44 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1 flex flex-col">
                             <button onClick={() => handleEditRequisition(m.originalReq, m.itemIdx)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left cursor-pointer">✏ Edit Request</button>
-                            <button onClick={() => handleDuplicateRequisition(m.originalReq)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left cursor-pointer">📋 Duplicate</button>
                             <button onClick={() => handleShareRequisition(m.originalReq)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left cursor-pointer">🔗 Share Link</button>
                             <div className="h-px bg-[var(--border)] my-1"></div>
                             <button onClick={() => handleDeleteRequisition(m.reqId)} className="flex items-center gap-2 px-3 py-2 text-xs text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors text-left cursor-pointer">🗑 Delete</button>
@@ -1196,7 +1158,6 @@ export default function ProductionDashboard({
                         {activeWipMenu === item.id && (
                           <div className="absolute right-5 mt-1 w-44 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1 flex flex-col">
                             <button onClick={() => handleEditWip(item)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left cursor-pointer">✏ Edit Item</button>
-                            <button onClick={() => handleDuplicateWip(item)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left cursor-pointer">📋 Duplicate</button>
                             <button onClick={() => handleShareWip(item)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left cursor-pointer">🔗 Share Link</button>
                             <div className="h-px bg-[var(--border)] my-1"></div>
                             <button onClick={() => handleDeleteWip(item.id)} className="flex items-center gap-2 px-3 py-2 text-xs text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors text-left cursor-pointer">🗑 Delete</button>
@@ -1380,7 +1341,6 @@ export default function ProductionDashboard({
                         </button>
                         {activeHistoryMenu === req.id && (
                           <div className="absolute right-5 mt-1 w-44 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1 flex flex-col">
-                            <button onClick={() => handleDuplicateRequisition(req)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left cursor-pointer">📋 Duplicate Order</button>
                             <button onClick={() => handleShareRequisition(req)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left cursor-pointer">🔗 Share Details</button>
                             <div className="h-px bg-[var(--border)] my-1"></div>
                             <button onClick={() => handleDeleteRequisition(req.id)} className="flex items-center gap-2 px-3 py-2 text-xs text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors text-left cursor-pointer">🗑 Delete Entry</button>

@@ -751,7 +751,7 @@ export default function DeliveriesView({ addNotification, currentUser, setActive
                       {d.status === 'IN_TRANSIT' && (
                         <button onClick={() => markDelivered(d.id)} className="w-full text-left px-3 py-2 text-xs text-green-600 hover:bg-[var(--bg-input)] flex items-center gap-2"><CheckCircle size={11} /> Submit for Risk Review</button>
                       )}
-                      <button onClick={() => { setMenuOpen(null); addNotification(`Proof of delivery camera opened for ${d.id}`); }} className="w-full text-left px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><Camera size={11} /> Proof of Delivery</button>
+                      <button onClick={() => { setMenuOpen(null); setActiveSubTab?.('ProofOfDelivery'); }} className="w-full text-left px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><Camera size={11} /> Proof of Delivery</button>
                       {d.status !== 'DELIVERED' && d.status !== 'FAILED' && (
                         <button onClick={() => markFailed(d.id)} className="w-full text-left px-3 py-2 text-xs text-red-500 hover:bg-[var(--bg-input)] flex items-center gap-2"><XCircle size={11} /> Mark as Failed</button>
                       )}

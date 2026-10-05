@@ -165,10 +165,12 @@ export default function HrOverviewView({ currentUser, addNotification, setActive
           ]);
         }
 
-        // 6. YoY Staff Growth (headcount by month for 2025 vs 2026) — one
+        // 6. Staff growth: last year vs this year, by month — one
         // server-side aggregate (get_yoy_headcount) instead of up to 24
         // full-table client-side scans (12 months x 2 years).
-        const { data: headcountRows } = await supabase.rpc('get_yoy_headcount', { p_years: [2025, 2026] });
+        const thisYear = today.getFullYear();
+        const lastYear = thisYear - 1;
+        const { data: headcountRows } = await supabase.rpc('get_yoy_headcount', { p_years: [lastYear, thisYear] });
         if (headcountRows) {
           const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
           const currentMonth = today.getMonth();
@@ -177,8 +179,9 @@ export default function HrOverviewView({ currentUser, addNotification, setActive
 
           const growth = months.slice(0, currentMonth + 1).map((m, idx) => ({
             month: m,
-            '2025': byYearMonth[`2025-${idx + 1}`] || 3,
-            '2026': byYearMonth[`2026-${idx + 1}`] || 4,
+            // Months with no data show zero (they used to show made-up 3 and 4).
+            lastYear: byYearMonth[`${lastYear}-${idx + 1}`] || 0,
+            thisYear: byYearMonth[`${thisYear}-${idx + 1}`] || 0,
           }));
           setYoyGrowth(growth);
         }
@@ -516,8 +519,8 @@ export default function HrOverviewView({ currentUser, addNotification, setActive
                 <YAxis stroke="var(--text-muted)" fontSize={10} />
                 <Tooltip contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)', color: 'var(--text-primary)', fontSize: 12 }} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Line type="monotone" dataKey="2025" stroke="#6366f1" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="2026" stroke="var(--accent)" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="lastYear" name={String(new Date().getFullYear() - 1)} stroke="#6366f1" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="thisYear" name={String(new Date().getFullYear())} stroke="var(--accent)" strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>

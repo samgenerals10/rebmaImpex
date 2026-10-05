@@ -61,6 +61,7 @@ import { useIdleTimeout } from './hooks/useIdleTimeout';
 import TwoFactorSetup from './components/TwoFactorSetup';
 import { playNotificationSound, getSavedSound, getSavedVolume, stopAlertSound, setAlertNotifId } from './utils/notificationSound';
 import { showDeviceAlert } from './utils/deviceAlerts';
+import { UNAVAILABLE_TEMPLATES } from './utils/appearanceTemplates';
 import { setVisibleInterval } from './utils/visibleInterval';
 
 // The shared lists App keeps for its screens. See loadSection() below.
@@ -237,6 +238,10 @@ export default function App() {
   const [theme, setTheme] = useState<any>(() => {
     const a = _getAppearance(); return a.template || localStorage.getItem('erp-theme') || 'salespulse';
   });
+  // Designs marked "coming soon" in Settings can't be used yet. Finova and
+  // Finlo Flash were selectable but showed invented money figures, so
+  // they are paused too; anyone who had one saved gets the standard design.
+  const activeTheme: string = UNAVAILABLE_TEMPLATES.includes(theme) ? 'salespulse' : theme;
   const [accentColor, setAccentColor] = useState<string>(() => {
     const a = _getAppearance(); return (a.accentType === 'solid' ? a.accentSolid : a.gradientColor1) || localStorage.getItem('erp-accent') || '#22c55e';
   });
@@ -1666,39 +1671,6 @@ export default function App() {
     }
   }, [currentUser]);
 
-  // Welcome page live trades feed state
-  const [liveTrades, setLiveTrades] = useState([
-    { id: '1', type: 'BUY', item: 'Raw Cocoa Beans', qty: '50 MT', amount: '$160,000', dest: 'Tema Port', time: 'Just now' },
-    { id: '2', type: 'SELL', item: 'Shea Butter', qty: '80 Crates', amount: '$12,500', dest: 'Rotterdam', time: '1 min ago' },
-    { id: '3', type: 'BUY', item: 'Polymer Granules', qty: '200 Bags', amount: '$45,000', dest: 'Accra Depot', time: '3 mins ago' }
-  ]);
-
-  useEffect(() => {
-    if (isAuthenticated) return;
-    const interval = setInterval(() => {
-      const types = ['BUY', 'SELL'];
-      const items = ['Raw Cocoa Beans', 'Shea Butter', 'Gold Ore', 'Industrial Machinery', 'Polymer Granules', 'Timber Logs'];
-      const qts = ['120 Bags', '45 MT', '10 Units', '150 Crates', '300 Bags'];
-      const amounts = ['$24,000', '$148,000', '$95,000', '$18,500', '$62,000'];
-      const dests = ['Tema Port', 'Kumasi Depot', 'Accra Central', 'Hamburg Harbor', 'London Terminal'];
-      
-      const newTrade = {
-        id: Date.now().toString(),
-        type: types[Math.floor(Math.random() * types.length)],
-        item: items[Math.floor(Math.random() * items.length)],
-        qty: qts[Math.floor(Math.random() * qts.length)],
-        amount: amounts[Math.floor(Math.random() * amounts.length)],
-        dest: dests[Math.floor(Math.random() * dests.length)],
-        time: 'Just now'
-      };
-      
-      setLiveTrades(prev => [newTrade, ...prev.slice(0, 4)].map((t, idx) => ({
-        ...t,
-        time: idx === 0 ? 'Just now' : `${idx} min${idx > 1 ? 's' : ''} ago`
-      })));
-    }, 4000);
-    return () => clearInterval(interval);
-  }, [isAuthenticated]);
 
   // Real-Time Chat & Boardroom States
   const [isChatOpen, setIsChatOpen] = useState<boolean>(false);
@@ -1835,8 +1807,8 @@ export default function App() {
   useEffect(() => {
     const body = document.body;
     body.className = body.className.split(' ').filter(c => !c.startsWith('theme-')).join(' ');
-    body.classList.add(`theme-${theme}`);
-  }, [theme]);
+    body.classList.add(`theme-${activeTheme}`);
+  }, [activeTheme]);
 
   // Reset to default sub-tab when switching department
   useEffect(() => {
@@ -3012,35 +2984,8 @@ export default function App() {
           <p className="text-[10px] text-text-muted mt-0.5 font-medium">REMBA IMPEX GHANA LIMITED</p>
         </div>
 
-        <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-100/50">
-          <h4 className="text-[9px] font-bold text-emerald-800 uppercase tracking-widest mb-2 flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            Live Global Trade Pipeline
-          </h4>
-          
-          {/* Scrolling transactions list */}
-          <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-            {liveTrades.map(trade => (
-              <div key={trade.id} className="flex justify-between items-center p-2 bg-bg-card rounded-xl border border-[var(--border)] text-[9px] text-left">
-                <div className="flex items-center gap-1.5">
-                  <span className={`px-1 py-0.2 rounded text-[7px] font-bold ${
-                    trade.type === 'BUY' ? 'bg-emerald-500/20 text-emerald-600 animate-pulse-green' : 'bg-red-500/20 text-red-600 animate-pulse-red'
-                  }`}>
-                    {trade.type}
-                  </span>
-                  <div>
-                    <span className="font-semibold text-text-primary">{trade.item}</span>
-                    <span className="text-text-muted ml-1">({trade.qty})</span>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <span className="text-emerald-600 font-bold">{trade.amount}</span>
-                  <p className="text-[7px] text-text-muted font-mono">{trade.dest} | {trade.time}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        {/* The "Live Global Trade Pipeline" list that was here showed random,
+            made-up trades, so it was removed. */}
 
         {/* Animated graphics of ship bobbing and truck driving */}
         <div className="relative h-16 bg-bg-page border border-[var(--border)] rounded-2xl overflow-hidden p-2 flex items-center justify-between">
@@ -3639,35 +3584,35 @@ export default function App() {
 
   const renderWithShell = () => {
     const content = renderDashboard();
-    if (theme === 'foodie') {
+    if (activeTheme === 'foodie') {
       return (
         <FoodieShell activeDepartment={activeDepartment} currentUser={currentUser}>
           {content}
         </FoodieShell>
       );
     }
-    if (theme === 'finova') {
+    if (activeTheme === 'finova') {
       return (
         <FinovaShell activeDepartment={activeDepartment} currentUser={currentUser}>
           {content}
         </FinovaShell>
       );
     }
-    if (theme === 'aczone') {
+    if (activeTheme === 'aczone') {
       return (
         <AczoneShell activeDepartment={activeDepartment} currentUser={currentUser}>
           {content}
         </AczoneShell>
       );
     }
-    if (theme === 'liamfinance') {
+    if (activeTheme === 'liamfinance') {
       return (
         <LiamFinanceShell activeDepartment={activeDepartment} currentUser={currentUser}>
           {content}
         </LiamFinanceShell>
       );
     }
-    if (theme === 'finloflash') {
+    if (activeTheme === 'finloflash') {
       return (
         <FinloFlashShell activeDepartment={activeDepartment} currentUser={currentUser}>
           {content}

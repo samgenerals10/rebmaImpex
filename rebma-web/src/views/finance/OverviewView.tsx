@@ -459,7 +459,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
       title: `GHS ${calculatedTotalRevenue.toLocaleString()}`,
       sub: 'Approved & delivered sales', icon: DollarSign, clickId: 'revenue',
       color: '#10b981', bg: 'from-emerald-500/10 to-emerald-500/5',
-      change: '+8.2%', up: true,
+      change: 'All time', up: true,  // was a made-up '+8.2%'
     },
     {
       label: 'Total Items Sold', value: totalSoldQty, prefix: '', suffix: ' units',

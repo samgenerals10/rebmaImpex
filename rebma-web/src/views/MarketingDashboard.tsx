@@ -264,16 +264,6 @@ export default function MarketingDashboard({
     addNotification(`Updated customer profile for ${cust.name}`);
   };
 
-  const handleDuplicateCustomer = (cust: Customer) => {
-    const duplicated: Customer = {
-      ...cust,
-      id: `CUST-${Math.floor(100 + Math.random() * 900)}`,
-      name: `${cust.name} (Copy)`,
-      registeredAt: new Date().toLocaleString()
-    };
-    setLocalCustomers(prev => [...prev, duplicated]);
-    addNotification(`Duplicated customer profile for ${cust.name}`);
-  };
 
   const handleShareCustomer = (cust: Customer) => {
     const shareText = `Rebma Customer Account: ${cust.name} - Company: ${cust.companyName} - Phone: ${cust.phone} - Location: ${cust.location}`;
@@ -298,16 +288,6 @@ export default function MarketingDashboard({
     addNotification(`Updated order invoice values for ${order.id}`);
   };
 
-  const handleDuplicateOrder = (order: Order) => {
-    const duplicated: Order = {
-      ...order,
-      id: `ORD-${Math.floor(100 + Math.random() * 900)}`,
-      ticketNumber: `TKT-${Math.floor(10000 + Math.random() * 90000)}`,
-      createdAt: new Date().toLocaleString()
-    };
-    setLocalOrders(prev => [duplicated, ...prev]);
-    addNotification(`Duplicated sales order ${order.id} as ${duplicated.id}`);
-  };
 
   const handleShareOrder = (order: Order) => {
     const shareText = `Rebma Sales Order: ID: ${order.id} - Ticket: ${order.ticketNumber || 'N/A'} - Client: ${order.clientName} - Amt: GHS ${order.totalAmount}`;
@@ -1099,7 +1079,6 @@ export default function MarketingDashboard({
                       <div className="absolute right-5 mt-1 w-44 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1 flex flex-col text-left">
                         <button onClick={() => setSelectedCustomer(cust)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">👤 View Profile</button>
                         <button onClick={() => handleEditCustomer(cust)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">✏ Edit Account</button>
-                        <button onClick={() => handleDuplicateCustomer(cust)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">📋 Duplicate</button>
                         <button onClick={() => handleShareCustomer(cust)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">🔗 Share Link</button>
                         <div className="h-px bg-[var(--border)] my-1"></div>
                         <button onClick={() => handleDeleteCustomer(cust.id)} className="flex items-center gap-2 px-3 py-2 text-xs text-rose-500 hover:bg-rose-50 rounded-lg transition-colors text-left">🗑 Delete</button>
@@ -1302,7 +1281,6 @@ export default function MarketingDashboard({
                       <div className="absolute right-5 mt-1 w-44 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1 flex flex-col text-left">
                         <button onClick={() => setSelectedOrder(order)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">📋 View Order</button>
                         <button onClick={() => handleEditOrder(order)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">✏ Edit Value</button>
-                        <button onClick={() => handleDuplicateOrder(order)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">📋 Duplicate</button>
                         <button onClick={() => handleShareOrder(order)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">🔗 Share Link</button>
                         <div className="h-px bg-[var(--border)] my-1"></div>
                         <button onClick={() => handleDeleteOrder(order.id)} className="flex items-center gap-2 px-3 py-2 text-xs text-rose-500 hover:bg-rose-50 rounded-lg transition-colors text-left">🗑 Delete</button>

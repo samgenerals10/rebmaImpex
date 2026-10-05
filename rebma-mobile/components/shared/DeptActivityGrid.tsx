@@ -13,7 +13,9 @@
 // others" org-wide toggle isn't ported since no CeoSettingsContext exists
 // in mobile yet; a documented simplification, not a silent one), filter
 // pills, search, paginated "Load More", department summary tiles, detail
-// Sheet with a role-gated Delete (isCeo || item.user === currentUser's own
+// Sheet with a Delete only the CEO sees (matches the database rule;
+// previously the entry's own author saw it too, but the delete always failed for them)
+// (was: isCeo || item.user === currentUser's own
 // name, identical to web).
 //
 // CSV/PDF export added (Gap-Closure Backlog, Item 1, D101): CSV keeps
@@ -87,6 +89,8 @@ export default function DeptActivityGrid({ department }: Props) {
   const t = useTheme();
   const { profile } = useAuthStore();
   const isCeo = profile?.department === 'CEO';
+  // Activity history can only be deleted by the CEO, same as the database rule.
+  const canDeleteActivity = !!profile?.isAdmin;
   const showCeoEntries = isCeo;
 
   const [activities, setActivities] = useState<ActivityItem[]>([]);
@@ -117,7 +121,7 @@ export default function DeptActivityGrid({ department }: Props) {
   useEffect(() => { load(); }, [load]);
 
   const handleDelete = (item: ActivityItem) => {
-    const canDelete = isCeo || item.user === (profile?.fullName ?? '');
+    const canDelete = canDeleteActivity;
     if (!canDelete) return;
     Alert.alert('Delete Entry', 'Remove this activity record?', [
       { text: 'Cancel', style: 'cancel' },
@@ -273,7 +277,7 @@ export default function DeptActivityGrid({ department }: Props) {
               By {detailItem.user} · {new Date(detailItem.timestamp).toLocaleString()}
               {detailItem.refId ? ` · Ref: ${detailItem.refId}` : ''}
             </Text>
-            {(isCeo || detailItem.user === (profile?.fullName ?? '')) && (
+            {canDeleteActivity && (
               <Button label="Delete Entry" variant="danger" icon={<Trash2 size={14} color="#fff" />} onPress={() => handleDelete(detailItem)} />
             )}
           </View>

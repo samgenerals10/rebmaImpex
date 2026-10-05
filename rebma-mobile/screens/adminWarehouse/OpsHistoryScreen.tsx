@@ -12,7 +12,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text } from 'react-native';
 import { Alert } from '../../lib/appAlert';
 import * as Clipboard from 'expo-clipboard';
-import { History, Copy, Share2, Trash2 } from 'lucide-react-native';
+import { History, Share2, Trash2 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../theme/ThemeProvider';
 import Screen from '../../components/ui/Screen';
@@ -119,17 +119,6 @@ export default function OpsHistoryScreen() {
     setLoading(false);
     setRefreshing(false);
   }, []);
-
-  // Local-only, matching web's own handleDuplicateCargo exactly — it never
-  // inserts into cargo_intake either, just prepends a copy to the in-memory
-  // list. A real functional gap would be adding a genuine DB insert here
-  // that web doesn't actually do.
-  const duplicateLog = (r: CargoRow) => {
-    const dup: CargoRow = { ...r, id: `${Math.floor(100 + Math.random() * 900)}`, goods_code: `GC-${Math.floor(100000 + Math.random() * 900000)}`, created_at: new Date().toISOString() };
-    setRows((prev) => [dup, ...prev]);
-    setMenuTarget(null);
-    Alert.alert('Duplicated', `Duplicated cargo record CARGO-${r.id}.`);
-  };
 
   const shareLog = async (r: CargoRow) => {
     const text = `Rebma Cargo Record: ${r.goods_code || r.id}, ${r.product_name || 'Unnamed'}, Qty: ${r.quantity ?? '—'}, Origin: ${r.country || '—'}`;
@@ -238,7 +227,6 @@ export default function OpsHistoryScreen() {
         {menuTarget && (
           <View style={{ gap: t.spacing.sm }}>
             <Button label="View Timeline" variant="ghost" icon={<History size={14} color={t.colors.textSecondary} />} onPress={() => { setTimelineId(menuTarget.id); setMenuTarget(null); }} fullWidth />
-            <Button label="Duplicate Log" variant="ghost" icon={<Copy size={14} color={t.colors.textSecondary} />} onPress={() => duplicateLog(menuTarget)} fullWidth />
             <Button label="Share Link" variant="ghost" icon={<Share2 size={14} color={t.colors.textSecondary} />} onPress={() => shareLog(menuTarget)} fullWidth />
             <Button label="Delete" variant="danger" icon={<Trash2 size={14} color={t.colors.onAccent} />} onPress={() => deleteLog(menuTarget)} fullWidth />
           </View>
