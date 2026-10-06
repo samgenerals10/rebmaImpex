@@ -6,7 +6,7 @@
 // (data.totp.qr_code) is already a rendered data:image/... URI on the
 // wire (confirmed by source: web renders it via a plain <img>), so this
 // renders it via a plain RN <Image> — no QR-generation dependency needed.
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { View, Text, Image } from 'react-native';
 import { Alert } from '../../lib/appAlert';
 import { ShieldCheck, ShieldOff, Smartphone } from 'lucide-react-native';
@@ -17,7 +17,9 @@ import Card from '../../components/ui/Card';
 import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
 
-export default function TwoFactorScreen() {
+// Also used, with a heading and a sign-out link, as the gate the CEO's
+// "Force 2FA" settings put in front of the app (navigation/ForcedTwoFactorGate.tsx).
+export default function TwoFactorScreen({ onEnrolled, header, footer }: { onEnrolled?: () => void; header?: ReactNode; footer?: ReactNode } = {}) {
   const t = useTheme();
   const [loading, setLoading] = useState(true);
   const [enrolledFactorId, setEnrolledFactorId] = useState<string | null>(null);
@@ -79,6 +81,7 @@ export default function TwoFactorScreen() {
       setSecret(null);
       setCode('');
       setEnrolling(false);
+      onEnrolled?.();
     } catch (e: any) {
       Alert.alert('Failed', e.message);
     } finally {
@@ -115,6 +118,7 @@ export default function TwoFactorScreen() {
 
   return (
     <Screen>
+      {header}
       <Card>
         {enrolledFactorId ? (
           <View style={{ gap: t.spacing.md }}>
@@ -165,6 +169,7 @@ export default function TwoFactorScreen() {
           </View>
         )}
       </Card>
+      {footer}
     </Screen>
   );
 }

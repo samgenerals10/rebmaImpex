@@ -21,12 +21,15 @@ import DriverShell from './DriverShell';
 import AppShell from './AppShell';
 import MessengerStack from './MessengerStack';
 import { navigationRef } from './navigationRef';
+import ForcedTwoFactorGate, { useTwoFactorRequired } from './ForcedTwoFactorGate';
 
 const Stack = createNativeStackNavigator();
 
 export default function RootNavigator() {
   const t = useTheme();
   const { initializing, profile, driver } = useAuthStore();
+  // Only when the CEO has switched on "Force 2FA" for this person's department.
+  const [twoFactorRequired, markTwoFactorDone] = useTwoFactorRequired();
 
   // App.tsx now owns kicking off auth.initialize() (in parallel with the
   // animated splash's logo, which is the app's one and only loading
@@ -67,6 +70,11 @@ export default function RootNavigator() {
           </>
         ) : driver ? (
           <Stack.Screen name="DriverTracking" component={DriverShell} />
+        ) : twoFactorRequired === null ? (
+          // Checking the CEO's Force 2FA setting; the splash has only just gone.
+          <Stack.Screen name="TwoFactorCheck">{() => null}</Stack.Screen>
+        ) : twoFactorRequired ? (
+          <Stack.Screen name="TwoFactorRequired">{() => <ForcedTwoFactorGate onDone={markTwoFactorDone} />}</Stack.Screen>
         ) : (
           <>
             <Stack.Screen name="App" component={AppShell} />
