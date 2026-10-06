@@ -56,8 +56,9 @@ import { View, Text, Pressable, Platform, Linking, Animated, Easing, Modal, Imag
 import { WebView } from 'react-native-webview';
 import {
   X, Gauge, Navigation, Phone, MessageCircle, Search, Layers, Locate, Maximize2, Minimize2,
-  Landmark, Play, Pause,
+  Landmark, Play, Pause, ChevronLeft, ChevronRight, Warehouse, Truck, Clock,
 } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabaseClient';
 import { Alert } from '../../lib/appAlert';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -1047,6 +1048,10 @@ interface FleetMapProps {
 
 export default function FleetMap({ onSelectedChange }: FleetMapProps = {}) {
   const t = useTheme();
+  const insets = useSafeAreaInsets();
+  // The search, map style, fit, places buttons stay hidden behind one
+  // arrow so they don't cover the map (matches the web map).
+  const [toolsOpen, setToolsOpen] = useState(false);
   const { profile } = useAuthStore();
   const isRisk = (profile?.department || '').toUpperCase() === 'RISK' || profile?.isAdmin;
   const webviewRef = useRef<WebView>(null);
@@ -1674,18 +1679,14 @@ export default function FleetMap({ onSelectedChange }: FleetMapProps = {}) {
     // shorter screens, pushing it to visually bleed under the tab bar —
     // the fullscreen button above is the intended way to see it bigger,
     // not a forced minimum size.
-    <View style={{ flex: 1, borderRadius: fullscreen ? 0 : t.radius.lg, overflow: 'hidden' }}>
-      {/* Very visible, live, Risk-configured fleet speed limit — real
-          policy value (see lib/fleetSpeedLimit.ts), not the road's own
-          legal limit shown lower in the selected-driver panel. Every
-          marker on this map already glows red the moment that specific
-          driver exceeds this exact number (see markerColor/overLimit),
-          so this banner is the legend for that, not just a label. */}
+    <View style={{ flex: 1, gap: t.spacing.sm, paddingTop: fullscreen ? insets.top + t.spacing.sm : 0, paddingHorizontal: fullscreen ? t.spacing.md : 0, paddingBottom: fullscreen ? insets.bottom + t.spacing.sm : 0 }}>
+      {/* Speed limit and each moving driver's live speed, above the map.
+          Every marker turns red the moment its driver goes over this
+          Risk-set limit (see markerColor/overLimit). */}
       <View
         style={{
-          position: 'absolute', top: t.spacing.md, left: t.spacing.md, right: t.spacing.md, zIndex: 10,
           backgroundColor: t.colors.bgCard, borderRadius: t.radius.lg, paddingVertical: t.spacing.sm, paddingHorizontal: t.spacing.md,
-          flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, ...t.shadow('raised'),
+          flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: t.spacing.sm,
         }}
       >
         <Gauge size={16} color={t.colors.accent} />
@@ -1694,12 +1695,12 @@ export default function FleetMap({ onSelectedChange }: FleetMapProps = {}) {
             <View style={{ flex: 1 }}>
               <Input value={limitDraft} onChangeText={setLimitDraft} keyboardType="number-pad" placeholder="km/h" style={{ paddingVertical: 4 }} />
             </View>
-            <Button label={savingLimit ? 'Saving…' : 'Save'} size="sm" onPress={saveFleetSpeedLimit} disabled={savingLimit} loading={savingLimit} />
+            <Button label={savingLimit ? 'Saving...' : 'Save'} size="sm" onPress={saveFleetSpeedLimit} disabled={savingLimit} loading={savingLimit} />
             <Pressable onPress={() => setEditingLimit(false)} hitSlop={8}><X size={16} color={t.colors.textMuted} /></Pressable>
           </>
         ) : (
           <>
-            <Text style={{ flex: 1, fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>
+            <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>
               Fleet Speed Limit: {fleetSpeedLimit} km/h
             </Text>
             {isRisk && (
@@ -1710,16 +1711,86 @@ export default function FleetMap({ onSelectedChange }: FleetMapProps = {}) {
                 <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta10.size, color: t.colors.accent }}>Edit</Text>
               </Pressable>
             )}
+            <View style={{ flex: 1 }} />
+            <Pressable
+              onPress={() => setFullscreen((f) => !f)}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: t.colors.bgPage, borderRadius: t.radius.pill, paddingVertical: 4, paddingHorizontal: 10 }}
+            >
+              {fullscreen ? <Minimize2 size={13} color={t.colors.textSecondary} /> : <Maximize2 size={13} color={t.colors.textSecondary} />}
+              <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta10.size, color: t.colors.textSecondary }}>{fullscreen ? 'Collapse' : 'Expand'}</Text>
+            </Pressable>
           </>
         )}
+        {(() => {
+          const moving = drivers
+            .map((d) => ({ d, kmh: speedKmh(d.speed) }))
+            .filter((x): x is { d: DriverPoint; kmh: number } => x.d.hasRealLocation && !isDriverStale(x.d) && x.kmh != null && x.kmh > 2)
+            .sort((a, b) => b.kmh - a.kmh);
+          return (
+            <View style={{ width: '100%', flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+              {moving.length === 0 ? (
+                <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta11.size, color: t.colors.textMuted }}>No vehicle moving right now</Text>
+              ) : moving.slice(0, 6).map(({ d, kmh }) => {
+                const over = kmh > fleetSpeedLimit;
+                return (
+                  <Pressable key={d.id} onPress={() => focusOnDriver(d)}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: t.radius.pill, paddingVertical: 3, paddingHorizontal: 9,
+                      backgroundColor: over ? 'rgba(239,68,68,0.12)' : t.colors.accentSoft }}>
+                    <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta11.size, color: t.colors.textPrimary }}>{d.full_name.split(' ')[0]}</Text>
+                    <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta11.size, color: over ? '#ef4444' : t.colors.accent }}>{`${kmh} km/h`}</Text>
+                  </Pressable>
+                );
+              })}
+              {moving.length > 6 ? <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted }}>{`+${moving.length - 6} more`}</Text> : null}
+            </View>
+          );
+        })()}
       </View>
+
+      {/* The four fleet counts, using the same states as the markers */}
+      {(() => {
+        const moving = (d: DriverPoint) => isMovingWithNoJob(d);
+        const counts = [
+          { key: 'avail', label: 'Available at the depot', color: '#22c55e', Icon: Warehouse, list: drivers.filter((d) => !d.deliveryStatus && !moving(d)) },
+          { key: 'going', label: 'Going out on delivery', color: '#3b82f6', Icon: Truck, list: drivers.filter((d) => d.deliveryStatus === 'IN_TRANSIT') },
+          { key: 'back', label: 'Coming back', color: '#14b8a6', Icon: Navigation, list: drivers.filter((d) => moving(d)) },
+          { key: 'assigned', label: 'Assigned to a delivery', color: '#f59e0b', Icon: Clock, list: drivers.filter((d) => d.deliveryStatus === 'ASSIGNED') },
+        ];
+        return (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.sm }}>
+            {counts.map((c) => (
+              <Pressable key={c.key} onPress={() => c.list[0] && focusOnDriver(c.list[0])}
+                style={{ flexGrow: 1, flexBasis: '45%', flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, backgroundColor: t.colors.bgCard, borderRadius: t.radius.lg, paddingVertical: t.spacing.sm, paddingHorizontal: t.spacing.md }}>
+                <View style={{ width: 30, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: `${c.color}1f` }}>
+                  <c.Icon size={15} color={c.color} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontFamily: t.font.extrabold ?? t.font.bold, fontSize: t.type.base16.size, color: c.color }}>{c.list.length}</Text>
+                  <Text numberOfLines={1} style={{ fontFamily: t.font.semibold, fontSize: t.type.meta10.size, color: t.colors.textSecondary }}>{c.label}</Text>
+                </View>
+              </Pressable>
+            ))}
+          </View>
+        );
+      })()}
+
+    <View style={{ flex: 1, minHeight: 240, borderRadius: t.radius.lg, overflow: 'hidden' }}>
+      {/* One arrow opens the map tools */}
+      <Pressable
+        onPress={() => setToolsOpen((o) => !o)}
+        style={{ position: 'absolute', top: t.spacing.md, right: t.spacing.md, zIndex: 12, width: 36, height: 36, borderRadius: 18,
+          alignItems: 'center', justifyContent: 'center', backgroundColor: toolsOpen ? t.colors.accent : t.colors.bgCard }}
+      >
+        {toolsOpen ? <ChevronRight size={18} color="#fff" /> : <ChevronLeft size={18} color={t.colors.textPrimary} />}
+      </Pressable>
 
       {/* Search, basemap toggle, fit-all, fullscreen, and structures/
           places, a small vertical column of icon controls, kept clear
           of the Fleet Speed Limit banner above it. Places needs a
           selected driver (it queries around that position), so it's
           greyed out and inert until one is tapped. */}
-      <View style={{ position: 'absolute', top: 108, right: t.spacing.md, zIndex: 11, gap: t.spacing.sm }}>
+      {toolsOpen && (
+      <View style={{ position: 'absolute', top: 56, right: t.spacing.md, zIndex: 11, gap: t.spacing.sm }}>
         <Pressable onPress={() => setSearchOpen((o) => !o)} style={toolbarBtn}>
           <Search size={16} color={searchOpen ? t.colors.accent : t.colors.textPrimary} />
         </Pressable>
@@ -1728,9 +1799,6 @@ export default function FleetMap({ onSelectedChange }: FleetMapProps = {}) {
         </Pressable>
         <Pressable onPress={fitAll} style={toolbarBtn}>
           <Locate size={16} color={t.colors.textPrimary} />
-        </Pressable>
-        <Pressable onPress={() => setFullscreen((f) => !f)} style={toolbarBtn}>
-          {fullscreen ? <Minimize2 size={16} color={t.colors.textPrimary} /> : <Maximize2 size={16} color={t.colors.textPrimary} />}
         </Pressable>
         <Pressable
           onPress={() => selected && setPlacesEnabled((v) => !v)}
@@ -1747,13 +1815,14 @@ export default function FleetMap({ onSelectedChange }: FleetMapProps = {}) {
           )}
         </Pressable>
       </View>
+      )}
 
       {/* Weather at the selected driver's own position — a compact
           floating chip on the map itself, not a panel text row. */}
       {!!selected && (
         <View
           style={{
-            position: 'absolute', top: 108, left: t.spacing.md, zIndex: 11,
+            position: 'absolute', top: t.spacing.md, left: t.spacing.md, zIndex: 11,
             backgroundColor: t.colors.bgCard, borderRadius: t.radius.pill,
             paddingVertical: 6, paddingHorizontal: 10,
             flexDirection: 'row', alignItems: 'center', gap: 6, ...t.shadow('raised'),
@@ -1772,7 +1841,7 @@ export default function FleetMap({ onSelectedChange }: FleetMapProps = {}) {
       {searchOpen && (
         <View
           style={{
-            position: 'absolute', top: 108, left: t.spacing.md, right: t.spacing.md + 44, zIndex: 12,
+            position: 'absolute', top: 56, left: t.spacing.md, right: t.spacing.md + 44, zIndex: 12,
             backgroundColor: t.colors.bgCard, borderRadius: t.radius.lg, padding: t.spacing.sm, ...t.shadow('raised'), maxHeight: 240,
           }}
         >
@@ -2090,6 +2159,7 @@ export default function FleetMap({ onSelectedChange }: FleetMapProps = {}) {
           </Pressable>
         </Pressable>
       </Modal>
+    </View>
     </View>
   );
 

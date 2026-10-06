@@ -480,9 +480,10 @@ export default function Sidebar({
               className={`w-full flex items-center ${isActualCollapsed ? 'justify-center py-2 px-0' : 'justify-between py-2 px-3'} bg-[var(--bg)] hover:bg-[var(--accent-light)] text-[var(--text-primary)] rounded-xl text-xs focus:outline-none transition-all cursor-pointer font-semibold`}
               title="Switch Department">
               <div className="flex items-center gap-2">
-                {(() => { const I = getIconForDept(activeDepartment); return <I className="w-4 h-4 text-[var(--accent)] shrink-0" />; })()}
+                {(() => { const I = activeDepartment === 'SETTINGS' ? Building2 : getIconForDept(activeDepartment); return <I className="w-4 h-4 text-[var(--accent)] shrink-0" />; })()}
                 <span className={`transition-all duration-300 ${isActualCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>
-                  {allDepts.find(d => d.value === activeDepartment)?.label || activeDepartment}
+                  {/* Settings isn't a department (it has its own button below), so the switcher doesn't name it. */}
+                  {activeDepartment === 'SETTINGS' ? 'Choose a department' : (allDepts.find(d => d.value === activeDepartment)?.label || activeDepartment)}
                 </span>
               </div>
               <span className={`text-[10px] text-[var(--text-secondary)] opacity-75 transition-all duration-300 ${isActualCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>▼</span>
@@ -697,7 +698,7 @@ export default function Sidebar({
           <div className={`px-2 flex items-center ${isActualCollapsed ? 'flex-col gap-2 justify-center' : 'justify-between'}`}>
             <button type="button" onClick={openMyProfile} title="Open my profile"
               className={`flex items-center ${isActualCollapsed ? 'justify-center' : 'gap-2'} truncate min-w-0 text-left rounded-lg p-1 -m-1 hover:bg-[var(--accent-light)] transition-colors cursor-pointer`}>
-              <div className="w-8 h-8 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-card overflow-hidden relative">
+              <div className="w-8 h-8 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-xs shrink-0 overflow-hidden relative">
                 {currentUser?.photo ? (
                   <img src={currentUser.photo} className="w-full h-full object-cover" alt="Profile" />
                 ) : (

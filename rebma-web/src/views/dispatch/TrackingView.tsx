@@ -1,26 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { MapPin, Truck, Clock, Info, Phone, CreditCard, Package, Navigation } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import DispatchMap, { type DispatchMapDelivery } from '../../components/dispatch/DispatchMap';
+import { useFleetVehicles, vehiclesToMapDeliveries, type DriverState, type VehicleRecord } from '../../components/dispatch/useFleetVehicles';
 import SidePanel from '../../components/ui/SidePanel';
-
-type DriverState = 'ON_THE_WAY' | 'AT_COMPANY' | 'RETURNING' | 'ASSIGNED';
-
-interface VehicleRecord {
-  id: string;
-  driverId: string;
-  driverName: string;
-  truckId: string;
-  status: 'IN_TRANSIT' | 'ACTIVE' | 'OFFLINE';
-  driverState: DriverState;
-  phone: string;
-  ghanaCard: string;
-  licenseNumber: string;
-  photo?: string;
-  lastKnownLocation: string;
-  lastUpdated: string;
-  lastDelivery?: { id: string; destination: string; status: string; coordinates?: { lat: number; lng: number } | null } | null;
-}
 
 const fmtAgo = (iso: string) => {
   const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
@@ -39,102 +22,14 @@ const stateConfig: Record<DriverState, { color: string; bg: string; label: strin
 interface Props { addNotification: (msg: string) => void }
 
 export default function TrackingView({ addNotification: _addNotification }: Props) {
-  const [vehicles, setVehicles] = useState<VehicleRecord[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { vehicles, loading } = useFleetVehicles();
   const [selected, setSelected] = useState<VehicleRecord | null>(null);
 
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        const { data } = await supabase
-          .from('drivers')
-          .select('id, driver_id, full_name, vehicle_id, status, phone, ghana_card_id, license_number, photo, returned_at')
-          .neq('status', 'OFFLINE');
-        if (data && data.length > 0) {
-          const driverIds = data.map((d: any) => d.driver_id).filter(Boolean);
+  const locationText = (v: VehicleRecord) => v.lastPingAt
+    ? `Live GPS · updated ${fmtAgo(v.lastPingAt)}`
+    : 'No GPS ping yet, driver hasn’t opened the mobile app during a delivery';
 
-          const { data: pings } = await supabase
-            .from('driver_locations')
-            .select('driver_id, recorded_at')
-            .in('driver_id', driverIds)
-            .order('recorded_at', { ascending: false })
-            .limit(200);
-          const lastPingByDriver: Record<string, string> = {};
-          for (const p of (pings || []) as any[]) {
-            if (!lastPingByDriver[p.driver_id]) lastPingByDriver[p.driver_id] = p.recorded_at;
-          }
-
-          // Most recent delivery per driver decides "on the way" / "returning" /
-          // "at the company" — there's no dedicated driver-location-state field,
-          // so this infers it from what actually happened on their last job.
-          const driverRowIds = data.map((d: any) => d.id).filter(Boolean);
-          const { data: recentDeliveries } = await supabase
-            .from('delivery_logs')
-            .select('id, driver_id, delivery_address, status, created_at, delivered_at, destination_lat, destination_lng')
-            .in('driver_id', driverRowIds)
-            .order('created_at', { ascending: false })
-            .limit(200);
-          const lastDeliveryByDriverRow: Record<string, any> = {};
-          for (const row of (recentDeliveries || []) as any[]) {
-            if (!lastDeliveryByDriverRow[row.driver_id]) lastDeliveryByDriverRow[row.driver_id] = row;
-          }
-
-          setVehicles(data.map((d: any) => {
-            const lastPing = lastPingByDriver[d.driver_id];
-            const lastDelivery = lastDeliveryByDriverRow[d.id];
-            let driverState: DriverState = 'AT_COMPANY';
-            if (lastDelivery) {
-              if (['IN_TRANSIT', 'OUT_FOR_DELIVERY'].includes(lastDelivery.status)) driverState = 'ON_THE_WAY';
-              else if (lastDelivery.status === 'ASSIGNED') driverState = 'ASSIGNED';
-              else if (lastDelivery.status === 'DELIVERED') {
-                const returnedAt = d.returned_at ? new Date(d.returned_at).getTime() : 0;
-                const deliveredAt = lastDelivery.delivered_at ? new Date(lastDelivery.delivered_at).getTime() : 0;
-                driverState = returnedAt > deliveredAt ? 'AT_COMPANY' : 'RETURNING';
-              }
-            }
-            return {
-              id: d.id,
-              driverId: d.driver_id,
-              driverName: d.full_name,
-              truckId: d.vehicle_id || 'Not set',
-              status: d.status === 'ON_DELIVERY' ? 'IN_TRANSIT' : (d.status as VehicleRecord['status']),
-              driverState,
-              phone: d.phone || 'Not set',
-              ghanaCard: d.ghana_card_id || 'Not set',
-              licenseNumber: d.license_number || 'Not set',
-              photo: d.photo || undefined,
-              lastKnownLocation: lastPing ? `Live GPS · updated ${fmtAgo(lastPing)}` : 'No GPS ping yet, driver hasn’t opened the mobile app during a delivery',
-              lastUpdated: lastPing || new Date().toISOString(),
-              lastDelivery: lastDelivery ? {
-                id: lastDelivery.id,
-                destination: lastDelivery.delivery_address || 'Not set',
-                status: lastDelivery.status,
-                coordinates: (lastDelivery.destination_lat != null && lastDelivery.destination_lng != null)
-                  ? { lat: Number(lastDelivery.destination_lat), lng: Number(lastDelivery.destination_lng) }
-                  : null,
-              } : null,
-            };
-          }));
-        } else {
-          setVehicles([]);
-        }
-      } catch {
-        setVehicles([]);
-      }
-      setLoading(false);
-    };
-    load();
-  }, []);
-
-  const mapDeliveries: DispatchMapDelivery[] = vehicles.map(v => ({
-    id: v.id,
-    driverId: v.driverId,
-    driverName: v.driverName,
-    vehicleId: v.truckId,
-    driverState: v.driverState,
-    destinationCoordinates: v.lastDelivery?.coordinates || null,
-  }));
+  const mapDeliveries: DispatchMapDelivery[] = vehiclesToMapDeliveries(vehicles);
 
   const onTheWay = vehicles.filter(v => v.driverState === 'ON_THE_WAY').length;
   const assignedWaiting = vehicles.filter(v => v.driverState === 'ASSIGNED').length;
@@ -222,7 +117,7 @@ export default function TrackingView({ addNotification: _addNotification }: Prop
                   </div>
                   <p style={{ margin: '2px 0 0', color: 'var(--text-secondary)', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
                     <MapPin size={12} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
-                    {v.lastKnownLocation}
+                    {locationText(v)}
                   </p>
                 </div>
                 <div style={{ flexShrink: 0, textAlign: 'right' }}>
@@ -281,7 +176,7 @@ export default function TrackingView({ addNotification: _addNotification }: Prop
                   { icon: <Phone size={14} />, label: 'Phone', value: selected.phone },
                   { icon: <CreditCard size={14} />, label: 'Ghana Card', value: selected.ghanaCard },
                   { icon: <CreditCard size={14} />, label: 'License Number', value: selected.licenseNumber },
-                  { icon: <MapPin size={14} />, label: 'Location', value: selected.lastKnownLocation },
+                  { icon: <MapPin size={14} />, label: 'Location', value: locationText(selected) },
                   { icon: <Clock size={14} />, label: 'Last Update', value: fmtAgo(selected.lastUpdated) },
                 ].map(row => (
                   <div key={row.label} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>

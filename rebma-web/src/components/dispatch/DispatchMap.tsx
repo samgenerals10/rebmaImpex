@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Tooltip, Polyline, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { Truck, Satellite, Map as MapIcon, Box, ArrowRight, Anchor, Navigation, Phone, CheckCircle2, Gauge, X } from 'lucide-react';
+import { Truck, Satellite, Map as MapIcon, Box, ArrowRight, Anchor, Navigation, Gauge, X, ChevronRight, ChevronLeft, Maximize2, Minimize2, Warehouse, Clock } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useRealtimeChannel } from '../../hooks/useRealtimeChannel';
 import { documentTemplates } from '../../services/apiClient';
@@ -186,6 +186,8 @@ interface Props {
   onMarkerClick?: (delivery: DispatchMapDelivery) => void;
   followFirstMarker?: boolean;
   showTrails?: boolean;
+  /** Show the four fleet counts (available, going, coming back, assigned) above the map. */
+  showStatusSummary?: boolean;
 }
 
 const STATUS_COLOR: Record<string, string> = {
@@ -221,6 +223,24 @@ function tiltCoverScale(height: number): number {
   const needed = 1 / (shrink * Math.cos(tilt));
   return Math.round(needed * 1.04 * 1000) / 1000; // a little spare so no sliver shows
 }
+
+// Leaflet measures its box once; after expanding or collapsing the map it
+// has to be told the box changed size, or tiles stay missing.
+function InvalidateOnResize({ signature }: { signature: string }) {
+  const map = useMap();
+  useEffect(() => {
+    const t = setTimeout(() => map.invalidateSize(), 220);
+    return () => clearTimeout(t);
+  }, [signature]);
+  return null;
+}
+
+const SUMMARY_STATES: { key: 'AT_COMPANY' | 'ON_THE_WAY' | 'RETURNING' | 'ASSIGNED'; label: string }[] = [
+  { key: 'AT_COMPANY', label: 'Available at the depot' },
+  { key: 'ON_THE_WAY', label: 'Going out on delivery' },
+  { key: 'RETURNING', label: 'Coming back' },
+  { key: 'ASSIGNED', label: 'Assigned to a delivery' },
+];
 
 function Recenter({ center }: { center: [number, number] }) {
   const map = useMap();
@@ -298,7 +318,7 @@ function AnimatedTruckMarker({ position, icon, eventHandlers, children }: {
   );
 }
 
-export default function DispatchMap({ deliveries, focusDeliveryId, height = 540, compact = false, pollIntervalSeconds = 20, onMarkerClick, followFirstMarker = false, showTrails = false }: Props) {
+export default function DispatchMap({ deliveries, focusDeliveryId, height = 540, compact = false, pollIntervalSeconds = 20, onMarkerClick, followFirstMarker = false, showTrails = false, showStatusSummary = false }: Props) {
   const [latestByDriver, setLatestByDriver] = useState<Record<string, LivePoint>>({});
   const [trail, setTrail] = useState<LivePoint[]>([]);
   const [trailsByDriver, setTrailsByDriver] = useState<Record<string, LivePoint[]>>({});
@@ -308,6 +328,21 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 540,
   const [companyLocation, setCompanyLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [panTarget, setPanTarget] = useState<[number, number] | null>(null);
   const mountedRef = useRef(true);
+  // The chips, depot card, map style switch and driver bubble stay hidden
+  // behind one arrow so they don't cover the map.
+  const [toolsOpen, setToolsOpen] = useState(false);
+  // Expanded fills the screen; pressing again (or Escape) collapses it.
+  const [expanded, setExpanded] = useState(false);
+  const [viewportH, setViewportH] = useState(() => (typeof window !== 'undefined' ? window.innerHeight : 800));
+  useEffect(() => {
+    if (!expanded) return;
+    const onResize = () => setViewportH(window.innerHeight);
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setExpanded(false); };
+    onResize();
+    window.addEventListener('resize', onResize);
+    window.addEventListener('keydown', onKey);
+    return () => { window.removeEventListener('resize', onResize); window.removeEventListener('keydown', onKey); };
+  }, [expanded]);
 
   useEffect(() => { getCompanyLocation().then(loc => { if (mountedRef.current) setCompanyLocation(loc); }); }, []);
 
@@ -503,24 +538,112 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 540,
   const activeFocusDelivery = focusDeliveryId ? deliveries.find(d => d.id === focusDeliveryId) : markers[0]?.delivery;
   const activeRoute = activeFocusDelivery ? routesByDelivery[activeFocusDelivery.id] : null;
 
-  return (
-    <div style={{ height, borderRadius: compact ? 16 : 24, overflow: 'hidden', border: '1px solid var(--border)', position: 'relative', zIndex: 0, background: '#0F172A' }}>
-      
-      {/* 3D Perspective Glowing HUD Bounding Frame Overlay */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: compact ? 8 : 14,
-          borderRadius: compact ? 18 : 24,
-          border: '2px solid rgba(255, 255, 255, 0.85)',
-          boxShadow: '0 0 25px rgba(255, 255, 255, 0.45), inset 0 0 30px rgba(91, 77, 255, 0.16)',
-          pointerEvents: 'none',
-          zIndex: 400,
-        }}
-      />
+  // Each moving driver's live speed, for the strip above the map.
+  const movingNow = markers
+    .map(m => {
+      const fresh = m.isLive && isPingFresh(m.point);
+      const kmh = fresh ? speedKmh(m.point.speed) : null;
+      return kmh != null && kmh > 2 ? { m, kmh, over: kmh > fleetSpeedLimit } : null;
+    })
+    .filter((x): x is { m: typeof markers[number]; kmh: number; over: boolean } => !!x)
+    .sort((a, b) => b.kmh - a.kmh);
 
-      {/* Layer Toggle Strip */}
-      <div style={{ position: 'absolute', top: 16, right: 18, zIndex: 1000, display: 'flex', background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: 12, padding: 3, gap: 2, boxShadow: '0 4px 15px rgba(0,0,0,0.12)' }}>
+  const stateCounts = SUMMARY_STATES.map(st => ({
+    ...st,
+    count: deliveries.filter(d => d.driverState === st.key).length,
+    first: markers.find(m => m.delivery.driverState === st.key),
+  }));
+
+  const mapHeight = expanded ? Math.max(320, viewportH - (showStatusSummary ? 190 : 140)) : height;
+  const chipBtn: React.CSSProperties = {
+    display: 'flex', alignItems: 'center', gap: 7,
+    background: 'rgba(255,255,255,0.94)', backdropFilter: 'blur(12px)',
+    border: '1px solid rgba(255,255,255,0.85)', borderRadius: 999, padding: '6px 12px', cursor: 'pointer',
+  };
+
+  return (
+    <div
+      style={expanded
+        ? { position: 'fixed', inset: 12, zIndex: 3000, background: 'var(--bg-card)', borderRadius: 20, padding: 14, display: 'flex', flexDirection: 'column', gap: 10, boxShadow: '0 20px 60px rgba(15,23,42,0.35)' }
+        : { display: 'flex', flexDirection: 'column', gap: compact ? 6 : 10 }}
+    >
+      <style>{'@keyframes fleetOverLimitPulse { 0% { transform: scale(.8); opacity: .8 } 100% { transform: scale(1.8); opacity: 0 } }'}</style>
+
+      {/* Speed limit and each moving driver's live speed, above the map */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', background: 'var(--bg)', borderRadius: 14, padding: compact ? '5px 8px' : '8px 12px' }}>
+        <Gauge size={15} color="var(--accent)" />
+        {editingLimit ? (
+          <>
+            <input
+              type="number" min={1} max={300} value={limitDraft} autoFocus
+              onChange={e => { setLimitDraft(e.target.value); setLimitError(''); }}
+              onKeyDown={e => e.key === 'Enter' && saveFleetSpeedLimit()}
+              placeholder="km/h"
+              style={{ width: 70, padding: '3px 6px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 12, color: 'var(--text-primary)', background: 'var(--bg-card)' }}
+            />
+            <button onClick={saveFleetSpeedLimit} disabled={savingLimit} style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 999, padding: '4px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>{savingLimit ? 'Saving...' : 'Save'}</button>
+            <button onClick={() => { setEditingLimit(false); setLimitError(''); }} title="Cancel" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}><X size={14} /></button>
+            {limitError && <span style={{ fontSize: 10, fontWeight: 600, color: '#ef4444' }}>{limitError}</span>}
+          </>
+        ) : (
+          <>
+            <span style={{ fontSize: compact ? 11 : 12, fontWeight: 800, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>Fleet Speed Limit: {fleetSpeedLimit} km/h</span>
+            {canEditLimit && !compact && (
+              <button onClick={() => { setLimitDraft(String(fleetSpeedLimit)); setEditingLimit(true); }} style={{ background: 'rgba(34,197,94,0.12)', color: 'var(--accent)', border: 'none', borderRadius: 999, padding: '3px 10px', fontSize: 10, fontWeight: 800, cursor: 'pointer' }}>Edit</button>
+            )}
+          </>
+        )}
+        <span style={{ width: 1, alignSelf: 'stretch', background: 'var(--border)', margin: '0 2px' }} />
+        {movingNow.length === 0 ? (
+          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)' }}>No vehicle moving right now</span>
+        ) : movingNow.slice(0, compact ? 2 : 6).map(({ m, kmh, over }) => (
+          <button key={m.delivery.id} onClick={() => setPanTarget([m.point.lat, m.point.lng])} title={over ? `Over the ${fleetSpeedLimit} km/h limit` : 'Within the limit'}
+            style={{ display: 'flex', alignItems: 'center', gap: 5, border: 'none', cursor: 'pointer', borderRadius: 999, padding: '3px 9px', fontSize: 11, fontWeight: 700,
+              background: over ? 'rgba(239,68,68,0.12)' : 'rgba(34,197,94,0.12)', color: over ? '#ef4444' : 'var(--accent)' }}>
+            <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{(m.delivery.driverName || 'Driver').split(' ')[0]}</span>
+            {kmh} km/h
+          </button>
+        ))}
+        {movingNow.length > (compact ? 2 : 6) && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>+{movingNow.length - (compact ? 2 : 6)} more</span>}
+        <button onClick={() => setExpanded(e => !e)} title={expanded ? 'Collapse map' : 'Expand map'}
+          style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5, border: 'none', cursor: 'pointer', borderRadius: 999, padding: compact ? '3px 8px' : '5px 11px', fontSize: 11, fontWeight: 700, background: 'var(--bg-card)', color: 'var(--text-secondary)' }}>
+          {expanded ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+          {!compact && (expanded ? 'Collapse' : 'Expand')}
+        </button>
+      </div>
+
+      {/* The four fleet counts */}
+      {showStatusSummary && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8 }}>
+          {stateCounts.map(st => {
+            const color = DRIVER_STATE_COLOR[st.key];
+            const Icon = st.key === 'AT_COMPANY' ? Warehouse : st.key === 'ON_THE_WAY' ? Truck : st.key === 'RETURNING' ? Navigation : Clock;
+            return (
+              <button key={st.key} onClick={() => st.first && setPanTarget([st.first.point.lat, st.first.point.lng])}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, border: 'none', textAlign: 'left', cursor: st.first ? 'pointer' : 'default', borderRadius: 14, padding: '8px 12px', background: 'var(--bg)' }}>
+                <span style={{ width: 30, height: 30, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${color}1f`, color, flexShrink: 0 }}><Icon size={15} /></span>
+                <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                  <span style={{ fontSize: 18, fontWeight: 800, color, lineHeight: 1.1 }}>{st.count}</span>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{st.label}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+    <div style={{ height: mapHeight, flex: expanded ? 1 : undefined, borderRadius: compact ? 16 : 20, overflow: 'hidden', position: 'relative', zIndex: 0, background: '#0F172A' }}>
+
+      {/* One arrow opens the map tools, so they don't cover the map */}
+      <button onClick={() => setToolsOpen(o => !o)} title={toolsOpen ? 'Hide map tools' : 'Show map tools'}
+        style={{ position: 'absolute', top: compact ? 8 : 12, left: compact ? 8 : 12, zIndex: 1001, width: compact ? 26 : 32, height: compact ? 26 : 32, borderRadius: 999, border: 'none', cursor: 'pointer',
+          background: toolsOpen ? 'var(--accent)' : 'rgba(255,255,255,0.95)', color: toolsOpen ? '#fff' : '#0F172A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {toolsOpen ? <ChevronLeft size={compact ? 14 : 17} /> : <ChevronRight size={compact ? 14 : 17} />}
+      </button>
+
+      {/* Map style switch */}
+      {toolsOpen && (
+      <div style={{ position: 'absolute', top: compact ? 8 : 12, right: compact ? 8 : 12, zIndex: 1000, display: 'flex', background: 'rgba(255,255,255,0.94)', backdropFilter: 'blur(10px)', borderRadius: 12, padding: 3, gap: 2 }}>
         {([
           { key: '3d' as MapLayer, label: '3D View', icon: Box },
           { key: 'street' as MapLayer, label: 'Map', icon: MapIcon },
@@ -543,53 +666,25 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 540,
           </button>
         ))}
       </div>
+      )}
 
-      {/* Floating Waypoint Chips Bar (Aczone Pattern: Green Port, Amber Transit, Rose Client) */}
-      {!compact && (
-        <div style={{ position: 'absolute', top: 16, left: 18, zIndex: 999, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {/* Central Hub Chip */}
-          <button
-            onClick={() => setPanTarget(companyLocation ? [companyLocation.lat, companyLocation.lng] : ACCRA)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 7,
-              background: 'rgba(255,255,255,0.94)', backdropFilter: 'blur(12px)',
-              border: '1px solid rgba(255,255,255,0.85)', borderRadius: 999, padding: '6px 12px',
-              boxShadow: '0 4px 12px rgba(15,23,42,0.1)', cursor: 'pointer',
-            }}
-          >
+      {/* Place chips */}
+      {toolsOpen && !compact && (
+        <div style={{ position: 'absolute', top: 12, left: 52, zIndex: 999, display: 'flex', gap: 8, flexWrap: 'wrap', maxWidth: 'calc(100% - 320px)' }}>
+          <button onClick={() => setPanTarget(companyLocation ? [companyLocation.lat, companyLocation.lng] : ACCRA)} style={chipBtn}>
             <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
               <Truck size={11} />
             </div>
             <span style={{ fontSize: 11, fontWeight: 700, color: '#0F172A' }}>Central Depot</span>
           </button>
-
-          {/* Tema Port Intake Chip */}
-          <button
-            onClick={() => setPanTarget(TEMA_PORT)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 7,
-              background: 'rgba(255,255,255,0.94)', backdropFilter: 'blur(12px)',
-              border: '1px solid rgba(255,255,255,0.85)', borderRadius: 999, padding: '6px 12px',
-              boxShadow: '0 4px 12px rgba(15,23,42,0.1)', cursor: 'pointer',
-            }}
-          >
+          <button onClick={() => setPanTarget(TEMA_PORT)} style={chipBtn}>
             <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#10B981', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
               <Anchor size={11} />
             </div>
             <span style={{ fontSize: 11, fontWeight: 700, color: '#0F172A' }}>Port Intake</span>
           </button>
-
-          {/* En Route Active Chip */}
           {enRoute.length > 0 && (
-            <button
-              onClick={() => setPanTarget([enRoute[0].point.lat, enRoute[0].point.lng])}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 7,
-                background: 'rgba(255,255,255,0.94)', backdropFilter: 'blur(12px)',
-                border: '1px solid rgba(255,255,255,0.85)', borderRadius: 999, padding: '6px 12px',
-                boxShadow: '0 4px 12px rgba(15,23,42,0.1)', cursor: 'pointer',
-              }}
-            >
+            <button onClick={() => setPanTarget([enRoute[0].point.lat, enRoute[0].point.lng])} style={chipBtn}>
               <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#F59E0B', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
                 <Navigation size={11} />
               </div>
@@ -600,34 +695,18 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 540,
         </div>
       )}
 
-      {/* Primary Floating Action Card (modeled on the "First-Time Buyer" card in reference) */}
-      {!compact && (
+      {/* Depot or selected driver card */}
+      {toolsOpen && !compact && (
         <div
           style={{
-            position: 'absolute',
-            top: 64,
-            left: 18,
-            zIndex: 999,
-            width: 250,
-            background: 'rgba(255, 255, 255, 0.95)',
-            backdropFilter: 'blur(16px)',
-            borderRadius: 20,
-            padding: '14px 16px',
-            boxShadow: '0 16px 36px rgba(15, 23, 42, 0.18), 0 0 0 1px rgba(255,255,255,0.8)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 8,
+            position: 'absolute', top: 56, left: 12, zIndex: 999, width: 240,
+            background: 'rgba(255, 255, 255, 0.96)', backdropFilter: 'blur(16px)',
+            borderRadius: 18, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8,
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div
-              style={{
-                width: 36, height: 36, borderRadius: 10,
-                background: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: '#fff', flexShrink: 0,
-              }}
-            >
-              <Truck size={18} />
+            <div style={{ width: 34, height: 34, borderRadius: 10, background: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', flexShrink: 0 }}>
+              <Truck size={17} />
             </div>
             <div style={{ minWidth: 0, flex: 1 }}>
               <div style={{ fontSize: 14, fontWeight: 800, color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -638,13 +717,11 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 540,
               </div>
             </div>
           </div>
-
           {activeFocusDelivery?.driverState && (
             <div style={{ fontSize: 11, fontWeight: 700, color: DRIVER_STATE_COLOR[activeFocusDelivery.driverState] || '#64748B' }}>
               {DRIVER_STATE_LABEL[activeFocusDelivery.driverState]}
             </div>
           )}
-
           {activeRoute && (
             <div style={{ fontSize: 11, fontWeight: 700, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 4 }}>
               <span>ETA: {formatDuration(activeRoute.durationSeconds)}</span>
@@ -652,28 +729,12 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 540,
               <span>{formatDistance(activeRoute.distanceMeters)}</span>
             </div>
           )}
-
           <button
             onClick={() => {
               if (activeFocusDelivery && onMarkerClick) onMarkerClick(activeFocusDelivery);
               else setPanTarget(companyLocation ? [companyLocation.lat, companyLocation.lng] : ACCRA);
             }}
-            style={{
-              marginTop: 2,
-              background: '#0B2A63',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 999,
-              padding: '8px 14px',
-              fontSize: 12,
-              fontWeight: 700,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 6,
-              cursor: 'pointer',
-              transition: 'background 0.2s ease',
-            }}
+            style={{ marginTop: 2, background: '#0B2A63', color: '#fff', border: 'none', borderRadius: 999, padding: '8px 14px', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer' }}
           >
             <span>{activeFocusDelivery ? 'Inspect Delivery' : 'View Operations'}</span>
             <ArrowRight size={13} />
@@ -681,8 +742,8 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 540,
         </div>
       )}
 
-      {/* Floating Driver Avatar Badge (Bottom Right) */}
-      {!compact && markers.length > 0 && (
+      {/* First driver bubble */}
+      {toolsOpen && !compact && markers.length > 0 && (
         <div
           onClick={() => {
             const first = markers[0].delivery;
@@ -690,23 +751,7 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 540,
             setPanTarget([markers[0].point.lat, markers[0].point.lng]);
           }}
           title={markers[0].delivery.driverName || 'Driver'}
-          style={{
-            position: 'absolute',
-            bottom: 22,
-            right: 22,
-            zIndex: 999,
-            width: 48,
-            height: 48,
-            borderRadius: '50%',
-            background: '#FFFFFF',
-            border: '2.5px solid #FFFFFF',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            overflow: 'hidden',
-          }}
+          style={{ position: 'absolute', bottom: 18, right: 18, zIndex: 999, width: 46, height: 46, borderRadius: '50%', background: '#FFFFFF', border: '2.5px solid #FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', overflow: 'hidden' }}
         >
           <div style={{ width: '100%', height: '100%', background: '#F8FAFC', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: 'var(--accent)', fontSize: 16 }}>
             {markers[0].delivery.driverName ? markers[0].delivery.driverName.charAt(0) : 'D'}
@@ -714,33 +759,6 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 540,
           <div style={{ position: 'absolute', bottom: 2, right: 2, width: 10, height: 10, borderRadius: '50%', background: markers[0].isLive && isPingFresh(markers[0].point) ? '#10B981' : '#94A3B8', border: '1.5px solid #fff' }} />
         </div>
       )}
-
-      {/* Risk's company speed limit, the legend for the red pins */}
-      <style>{'@keyframes fleetOverLimitPulse { 0% { transform: scale(.8); opacity: .8 } 100% { transform: scale(1.8); opacity: 0 } }'}</style>
-      <div style={{ position: 'absolute', bottom: compact ? 10 : 22, left: compact ? 10 : 18, zIndex: 999, display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.95)', borderRadius: 14, padding: compact ? '5px 10px' : '8px 12px', boxShadow: '0 4px 15px rgba(0,0,0,0.15)', maxWidth: 'calc(100% - 100px)' }}>
-        <Gauge size={15} color="var(--accent)" />
-        {editingLimit ? (
-          <>
-            <input
-              type="number" min={1} max={300} value={limitDraft} autoFocus
-              onChange={e => { setLimitDraft(e.target.value); setLimitError(''); }}
-              onKeyDown={e => e.key === 'Enter' && saveFleetSpeedLimit()}
-              placeholder="km/h"
-              style={{ width: 70, padding: '3px 6px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 12, color: '#0f172a', background: '#fff' }}
-            />
-            <button onClick={saveFleetSpeedLimit} disabled={savingLimit} style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 999, padding: '4px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>{savingLimit ? 'Saving…' : 'Save'}</button>
-            <button onClick={() => { setEditingLimit(false); setLimitError(''); }} title="Cancel" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', display: 'flex' }}><X size={14} /></button>
-            {limitError && <span style={{ fontSize: 10, fontWeight: 600, color: '#ef4444' }}>{limitError}</span>}
-          </>
-        ) : (
-          <>
-            <span style={{ fontSize: compact ? 11 : 12, fontWeight: 800, color: '#0f172a', whiteSpace: 'nowrap' }}>Fleet Speed Limit: {fleetSpeedLimit} km/h</span>
-            {canEditLimit && !compact && (
-              <button onClick={() => { setLimitDraft(String(fleetSpeedLimit)); setEditingLimit(true); }} style={{ background: 'rgba(34,197,94,0.12)', color: 'var(--accent)', border: 'none', borderRadius: 999, padding: '3px 10px', fontSize: 10, fontWeight: 800, cursor: 'pointer' }}>Edit</button>
-            )}
-          </>
-        )}
-      </div>
 
       <MapContainer
         center={center}
@@ -751,7 +769,7 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 540,
           // Tilting the map back makes its top edge shrink, which left empty
           // dark corners. Scale it up just enough to cover the whole box at
           // this map's height (worked out from the same 900px perspective).
-          transform: layer === '3d' ? `perspective(900px) rotateX(18deg) scale(${tiltCoverScale(height)})` : 'none',
+          transform: layer === '3d' ? `perspective(900px) rotateX(18deg) scale(${tiltCoverScale(mapHeight)})` : 'none',
           transformOrigin: 'center 75%',
           transition: 'transform 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
         }}
@@ -764,6 +782,7 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 540,
         />
 
         <MapFlyTo target={panTarget} />
+        <InvalidateOnResize signature={`${expanded}:${mapHeight}`} />
 
         {/* Ground Glowing Neon Halos */}
         {/* 1. Central Depot Ground Halo (Blue Neon Glow) */}
@@ -931,11 +950,12 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 540,
       </MapContainer>
 
       {markers.length === 0 && (
-        <div style={{ position: 'relative', top: -height, height, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', color: 'var(--text-muted)', gap: 6 }}>
+        <div style={{ position: 'absolute', inset: 0, zIndex: 500, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', color: 'var(--text-muted)', gap: 6 }}>
           <Truck size={28} style={{ opacity: 0.4 }} />
           <p style={{ fontSize: 12, margin: 0, background: 'var(--bg-card)', padding: '4px 10px', borderRadius: 8 }}>No active vehicle positions yet</p>
         </div>
       )}
+    </div>
     </div>
   );
 }

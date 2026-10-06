@@ -9,6 +9,7 @@ import CountUp from '../components/CountUp';
 import PendingApprovalsAlert from '../components/global/PendingApprovalsAlert';
 import ActivityFeed from '../components/global/ActivityFeed';
 import DispatchMap from '../components/dispatch/DispatchMap';
+import { useFleetVehicles, vehiclesToMapDeliveries } from '../components/dispatch/useFleetVehicles';
 import ProductCatalogCard from '../components/ProductCatalogCard';
 import MobileMetricCard from '../components/mobile/MobileMetricCard';
 import MobileSectionHeader from '../components/mobile/MobileSectionHeader';
@@ -91,6 +92,9 @@ export default function CeoDashboard({
   
   // Live GPS tracking state
   const [transitVehicles, setTransitVehicles] = useState<any[]>([]);
+  // Every driver and the state their truck is in, for the maps and the four fleet counts.
+  const { vehicles: fleetVehicles } = useFleetVehicles(60);
+  const fleetMapDeliveries = vehiclesToMapDeliveries(fleetVehicles);
   const [goodsPrices, setGoodsPrices] = useState<any[]>([]);
   const [stockList, setStockList] = useState<any[]>([]);
   const [soldLedger, setSoldLedger] = useState<any[]>([]);
@@ -550,7 +554,7 @@ export default function CeoDashboard({
         <div className="bg-bg-card rounded-2xl border border-[var(--border)] shadow-card p-4 space-y-3">
           <MobileSectionHeader title="Live Fleet Tracking" badge={<span className="text-[10px] text-text-muted font-mono">Refresh: {gpsInterval}s</span>} />
           <DispatchMap
-            deliveries={transitVehicles.map(v => ({ id: v.id, driverId: v.driver_id, driverName: v.driver_name, vehicleId: v.vehicle_id, status: v.status, active_coordinates: v.active_coordinates }))}
+            deliveries={fleetMapDeliveries}
             height={128}
             compact
             pollIntervalSeconds={gpsInterval}
@@ -809,9 +813,10 @@ export default function CeoDashboard({
               </div>
               
               <DispatchMap
-                deliveries={transitVehicles.map(v => ({ id: v.id, driverId: v.driver_id, driverName: v.driver_name, vehicleId: v.vehicle_id, status: v.status, active_coordinates: v.active_coordinates }))}
-                height={256}
+                deliveries={fleetMapDeliveries}
+                height={300}
                 pollIntervalSeconds={gpsInterval}
+                showStatusSummary
               />
               <div className="mt-4 flex items-center justify-between text-xs text-[var(--text-muted)]">
                 <span>Map Provider: OpenStreetMap</span>

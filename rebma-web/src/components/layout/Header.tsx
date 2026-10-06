@@ -262,7 +262,7 @@ export default function Header({
           <div className="relative">
             <button 
               onClick={() => setShowAvatarDropdown(prev => !prev)}
-              className="w-10 h-10 rounded-full bg-[var(--accent,#068d5c)] text-white flex items-center justify-center font-extrabold text-sm shadow-card cursor-pointer hover:scale-105 active:scale-95 transition-all overflow-hidden"
+              className="w-10 h-10 rounded-full bg-[var(--accent,#068d5c)] text-white flex items-center justify-center font-extrabold text-sm cursor-pointer hover:scale-105 active:scale-95 transition-all overflow-hidden"
             >
               {currentUser?.photo ? (
                 <img src={currentUser.photo} className="w-full h-full object-cover" alt="Profile" />
@@ -480,12 +480,12 @@ export default function Header({
       </div>
 
       {/* 2. DESKTOP HEADER */}
-      <div className="header-shell hidden lg:flex items-center h-[64px] pl-2 pr-2 rounded-full relative gap-2 w-full">
+      <div className="header-shell hidden lg:flex items-center h-[64px] pl-2 pr-2 rounded-full relative gap-2 w-full" style={{ boxShadow: 'none' }}>
         {/* Collapse sidebar toggle — far left, matches reference */}
         {onToggleSidebar && (
           <button
             onClick={onToggleSidebar}
-            className="w-12 h-12 rounded-full flex items-center justify-center bg-[var(--bg-card)] ring-4 ring-[var(--accent-light)] shadow-[0_4px_14px_rgba(15,23,42,0.08)] text-[var(--accent)] hover:scale-105 active:scale-95 transition-transform shrink-0 cursor-pointer"
+            className="w-12 h-12 rounded-full flex items-center justify-center bg-[var(--bg-card)] text-[var(--accent)] hover:scale-105 active:scale-95 transition-transform shrink-0 cursor-pointer"
             title="Toggle Sidebar"
           >
             <Menu className="w-5 h-5" />
@@ -499,7 +499,7 @@ export default function Header({
         </div>
 
         {/* Raised tray holding search and the quick controls */}
-        <div className="flex-1 min-w-0 flex items-center gap-1 h-12 pl-1.5 pr-1.5 rounded-full bg-[var(--bg-page)] shadow-[inset_0_1px_4px_rgba(15,23,42,0.07)]">
+        <div className="flex-1 min-w-0 flex items-center gap-1 h-12 pl-1.5 pr-1.5 rounded-full bg-[var(--bg-page)]">
 
         {/* Search bar — center, pill shape, matches reference */}
         <div className="relative flex items-center flex-1 min-w-0">
@@ -674,7 +674,7 @@ export default function Header({
           <div className="relative shrink-0">
             <button
               onClick={() => setShowAvatarDropdown(prev => !prev)}
-              className="flex items-center gap-2.5 pl-1 pr-1 xl:pr-3 py-1 rounded-full bg-[var(--bg-card)] ring-4 ring-[var(--accent-light)] shadow-[0_4px_14px_rgba(15,23,42,0.08)] hover:scale-[1.03] active:scale-95 transition-transform cursor-pointer"
+              className="flex items-center gap-2.5 pl-1 pr-1 xl:pr-3 py-1 rounded-full bg-[var(--bg-card)] hover:scale-[1.03] active:scale-95 transition-transform cursor-pointer"
             >
               <div className="w-10 h-10 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden relative">
                 {currentUser?.photo ? (
