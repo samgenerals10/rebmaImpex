@@ -12,8 +12,8 @@
 //
 // CSV escaping is a byte-for-byte port of exportToCSV (utils/export.ts:23-44).
 // The legacy letterhead is a byte-for-byte port of drawLetterhead()
-// (utils/export.ts:62-78) — including the literal "REMBA IMPEX GHANA
-// LIMITED" typo in the real web source, preserved deliberately, not fixed.
+// (utils/export.ts:62-78), including the "REBMA IMPEX GHANA LIMITED"
+// company name (both apps once misspelt it; corrected on both together).
 // The branded letterhead matches exportToPDFWithWatermark's visual
 // (gradient stripe, diagonal watermark, dynamic document_templates data),
 // always reading the 'RECEIPT' doc type regardless of what's being
@@ -113,7 +113,7 @@ function legacyLetterheadHtml(title: string): string {
     <div style="height:3px;background:#0298d0;"></div>
     <div style="padding:14px 14px 8px;display:flex;justify-content:space-between;align-items:flex-start;">
       <div>
-        <div style="font-size:16px;font-weight:700;color:#064e29;">REMBA IMPEX GHANA LIMITED</div>
+        <div style="font-size:16px;font-weight:700;color:#064e29;">REBMA IMPEX GHANA LIMITED</div>
         <div style="font-size:10px;color:#64748b;margin-top:3px;">${escapeHtml(title)} Report, Confidential Internal Document</div>
       </div>
       <div style="font-size:10px;color:#64748b;text-align:right;">Generated: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}</div>
@@ -123,7 +123,7 @@ function legacyLetterheadHtml(title: string): string {
 }
 
 function legacyFooterHtml(): string {
-  return `<div style="margin-top:16px;padding:10px 14px;border-top:1px solid #e2e8f0;font-size:8px;color:#94a3b8;text-align:center;">REMBA IMPEX GHANA LIMITED Enterprise Resource Planning. This document is system-generated and confidential.</div>`;
+  return `<div style="margin-top:16px;padding:10px 14px;border-top:1px solid #e2e8f0;font-size:8px;color:#94a3b8;text-align:center;">REBMA IMPEX GHANA LIMITED Enterprise Resource Planning. This document is system-generated and confidential.</div>`;
 }
 
 // ── Branded letterhead — matches exportToPDFWithWatermark's visual ──────

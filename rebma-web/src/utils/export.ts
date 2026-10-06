@@ -65,7 +65,7 @@ function drawLetterhead(doc: jsPDF, title: string) {
   doc.setFontSize(16);
   doc.setTextColor(6, 78, 41);
   doc.setFont('helvetica', 'bold');
-  doc.text('REMBA IMPEX GHANA LIMITED', 14, 18);
+  doc.text('REBMA IMPEX GHANA LIMITED', 14, 18);
   doc.setFontSize(10);
   doc.setTextColor(100, 116, 139);
   doc.setFont('helvetica', 'normal');
@@ -85,7 +85,7 @@ function drawFooter(doc: jsPDF) {
     doc.setFontSize(8);
     doc.setTextColor(148, 163, 184);
     doc.text(
-      'REMBA IMPEX GHANA LIMITED Enterprise Resource Planning. This document is system-generated and confidential.',
+      'REBMA IMPEX GHANA LIMITED Enterprise Resource Planning. This document is system-generated and confidential.',
       doc.internal.pageSize.getWidth() / 2, pageHeight - 10, { align: 'center' }
     );
   }

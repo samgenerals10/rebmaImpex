@@ -45,10 +45,25 @@ interface AuthState {
   error: string;
   profile: MobileUser | null;
   driver: DriverRow | null;
+  /** Set when the password was right but this account has two-factor
+   *  switched on: the 6-digit code is still needed before signing in. */
+  pendingMfa: { factorId: string; userId: string; keepLoggedIn: boolean } | null;
   initialize: () => Promise<void>;
   signIn: (email: string, password: string, keepLoggedIn?: boolean) => Promise<void>;
+  verifyMfa: (code: string) => Promise<void>;
+  cancelMfa: () => Promise<void>;
   signOut: () => Promise<void>;
   clearError: () => void;
+}
+
+// Same check the web app makes after the password (App.tsx handleLogin):
+// two-factor is optional per person, so this only returns a factor when
+// this account has switched it on and the code hasn't been entered yet.
+async function factorStillNeeded(): Promise<string | null> {
+  const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (!aal || aal.nextLevel !== 'aal2' || aal.currentLevel === 'aal2') return null;
+  const { data: factors } = await supabase.auth.mfa.listFactors();
+  return factors?.totp.find((f) => f.status === 'verified')?.id || null;
 }
 
 // rebma-web/src/services/apiClient.ts's login()/me() four distinct
@@ -156,6 +171,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   error: '',
   profile: null,
   driver: null,
+  pendingMfa: null,
 
   initialize: async () => {
     // Real "Keep me logged in" enforcement — off means the next cold
@@ -174,6 +190,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const userId = data.session?.user?.id;
     if (!userId) {
       set({ initializing: false });
+      return;
+    }
+    // A session whose two-factor code was never entered isn't signed in yet.
+    const restoredFactor = await factorStillNeeded().catch(() => null);
+    if (restoredFactor) {
+      set({ initializing: false, pendingMfa: { factorId: restoredFactor, userId, keepLoggedIn: true } });
       return;
     }
     const { profile, driver, error } = await loadProfileAndDriver(userId);
@@ -197,6 +219,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set({ loading: false, error: error?.message || 'Sign in failed.' });
         return;
       }
+      // Password was right. If this person switched on two-factor, the code comes next.
+      const factorId = await factorStillNeeded().catch(() => null);
+      if (factorId) {
+        set({ loading: false, pendingMfa: { factorId, userId: data.user.id, keepLoggedIn } });
+        return;
+      }
       const { profile, driver, error: loadErr } = await loadProfileAndDriver(data.user.id);
       if (loadErr || !profile) {
         await supabase.auth.signOut();
@@ -213,11 +241,44 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
+  verifyMfa: async (code: string) => {
+    const pending = get().pendingMfa;
+    if (!pending) return;
+    set({ loading: true, error: '' });
+    try {
+      const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({ factorId: pending.factorId });
+      if (challengeError || !challenge) {
+        set({ loading: false, error: challengeError?.message || 'Could not start the code check.' });
+        return;
+      }
+      const { error: verifyError } = await supabase.auth.mfa.verify({ factorId: pending.factorId, challengeId: challenge.id, code });
+      if (verifyError) {
+        set({ loading: false, error: 'Incorrect code. Check your authenticator app and try again.' });
+        return;
+      }
+      const { profile, driver, error: loadErr } = await loadProfileAndDriver(pending.userId);
+      if (loadErr || !profile) {
+        await supabase.auth.signOut();
+        set({ loading: false, pendingMfa: null, error: loadErr || 'Sign in failed.' });
+        return;
+      }
+      await setKeepLoggedIn(pending.keepLoggedIn);
+      set({ loading: false, pendingMfa: null, profile, driver });
+    } catch (e: any) {
+      set({ loading: false, error: e.message || 'Sign in failed.' });
+    }
+  },
+
+  cancelMfa: async () => {
+    await supabase.auth.signOut();
+    set({ pendingMfa: null, error: '', loading: false });
+  },
+
   signOut: async () => {
     const userId = get().profile?.id;
     if (userId) await unregisterPushNotifications(userId);
     await supabase.auth.signOut();
-    set({ profile: null, driver: null, error: '' });
+    set({ profile: null, driver: null, pendingMfa: null, error: '' });
   },
 
   clearError: () => set({ error: '' }),

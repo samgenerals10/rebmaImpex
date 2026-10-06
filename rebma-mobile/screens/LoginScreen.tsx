@@ -29,7 +29,7 @@ import {
   Platform,
   Pressable,
 } from 'react-native';
-import { Eye, EyeOff, Mail, Lock } from 'lucide-react-native';
+import { Eye, EyeOff, Mail, Lock, ShieldCheck } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../lib/supabaseClient';
 import { useAuthStore } from '../store/authStore';
@@ -47,7 +47,8 @@ const noWebOutline = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) :
 export default function LoginScreen() {
   const t = useTheme();
   const navigation = useNavigation<any>();
-  const { signIn, loading, error } = useAuthStore();
+  const { signIn, loading, error, pendingMfa, verifyMfa, cancelMfa } = useAuthStore();
+  const [mfaCode, setMfaCode] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -96,7 +97,11 @@ export default function LoginScreen() {
             they were (right under the back button) — only the title
             ("Sign in"/"Reset password") pushes down, via
             titleMarginTop, not a wrapper around the whole header. */}
-        <AuthBrandHeader title={forgotOpen ? 'Reset password' : 'Sign in'} titleMarginTop={76} />
+        <AuthBrandHeader
+          title={pendingMfa ? 'Two-factor verification' : forgotOpen ? 'Reset password' : 'Sign in'}
+          subtitle={pendingMfa ? 'Enter the 6-digit code from your authenticator app.' : undefined}
+          titleMarginTop={76}
+        />
 
         {error ? (
           <View style={styles.errorBox}>
@@ -104,7 +109,39 @@ export default function LoginScreen() {
           </View>
         ) : null}
 
-        {forgotOpen ? (
+        {pendingMfa ? (
+          // Only people who switched on two-factor in their settings see this.
+          <View>
+            <View style={styles.field}>
+              <Text style={styles.label}>Code</Text>
+              <View style={styles.inputBox}>
+                <ShieldCheck size={18} color={AMBER} />
+                <TextInput
+                  value={mfaCode}
+                  onChangeText={(v) => setMfaCode(v.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="000000"
+                  placeholderTextColor={MUTED}
+                  keyboardType="number-pad"
+                  autoFocus
+                  maxLength={6}
+                  textContentType="oneTimeCode"
+                  autoComplete="one-time-code"
+                  style={[styles.input, { letterSpacing: 6, textAlign: 'center' }, noWebOutline]}
+                />
+              </View>
+            </View>
+            <View style={{ marginTop: t.spacing.xs }}>
+              <AuthGradientButton
+                label={loading ? 'Checking…' : 'Verify & sign in'}
+                onPress={() => verifyMfa(mfaCode)}
+                disabled={loading || mfaCode.length !== 6}
+              />
+            </View>
+            <Pressable onPress={() => { setMfaCode(''); cancelMfa(); }} style={{ marginTop: t.spacing.md }}>
+              <Text style={styles.resetCancel}>Back to sign in</Text>
+            </Pressable>
+          </View>
+        ) : forgotOpen ? (
           <View style={styles.resetBox}>
             <Text style={styles.resetHint}>We'll email you a link to set a new password.</Text>
 
@@ -191,11 +228,11 @@ export default function LoginScreen() {
           </>
         )}
 
-        <Pressable onPress={() => navigation.navigate('Register')} style={{ marginTop: t.spacing.lg }}>
+        {!pendingMfa && <Pressable onPress={() => navigation.navigate('Register')} style={{ marginTop: t.spacing.lg }}>
           <Text style={styles.switchText}>
             Don't have an account? <Text style={styles.switchLink}>Register</Text>
           </Text>
-        </Pressable>
+        </Pressable>}
 
         <Text style={styles.footer}>© {new Date().getFullYear()} REBMA IMPEX GHANA LIMITED.</Text>
       </ScrollView>

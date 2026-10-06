@@ -1731,7 +1731,7 @@ export default function App() {
     });
   };
   const [boardroomMinutes, setBoardroomMinutes] = useState<string>(
-    "REMBA IMPEX GHANA LIMITED Boardroom Log, May 24, 2026\n1. Target fleet tracking refresh set to 10s.\n2. Ghana card formats must validate correctly."
+    "REBMA IMPEX GHANA LIMITED Boardroom Log, May 24, 2026\n1. Target fleet tracking refresh set to 10s.\n2. Ghana card formats must validate correctly."
   );
 
   // Unread internal email count (for sidebar badge)
