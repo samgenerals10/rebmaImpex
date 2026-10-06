@@ -8,6 +8,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { exportToCSV, downloadRowPDF } from '../../utils/export';
 import EntityDetailPanel from '../../components/global/EntityDetailPanel';
 import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
+import { cleanDisplayText, formatAuditAction } from '../../utils/displayText';
 
 interface StatementRow {
   key: string;
@@ -280,7 +281,7 @@ export default function StatementView({ addNotification }: Props) {
                     <strong>{a.department}</strong>
                     <span style={{ color: 'var(--text-muted)' }}>{new Date(a.timestamp).toLocaleString()}</span>
                   </div>
-                  <p style={{ margin: 0, color: 'var(--text-secondary)' }}>{a.details || a.action}</p>
+                  <p style={{ margin: 0, color: 'var(--text-secondary)' }}>{cleanDisplayText(a.details) || formatAuditAction(a.action)}</p>
                 </div>
               ))}
             </div>

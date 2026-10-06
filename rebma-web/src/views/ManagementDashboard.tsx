@@ -14,6 +14,7 @@ import { exportToCSV, exportToPDF } from '../utils/export';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { useCeoSettings } from '../contexts/CeoSettingsContext';
 import { useRealtimeChannel } from '../hooks/useRealtimeChannel';
+import { cleanDisplayText, formatAuditAction } from '../utils/displayText';
 
 interface ManagementDashboardProps {
   incomingGoodsList: IncomingGoods[];
@@ -728,7 +729,7 @@ export default function ManagementDashboard({
                   <div key={n.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-[var(--bg)] border border-[var(--border)] rounded-xl">
                     <div>
                       <p className="text-xs font-semibold text-[var(--text-primary)]">Order: <span className="font-mono text-[var(--accent)]">{n.order_id}</span></p>
-                      <p className="text-xs text-[var(--text-muted)] mt-0.5">{n.message}</p>
+                      <p className="text-xs text-[var(--text-muted)] mt-0.5">{cleanDisplayText(n.message)}</p>
                       <p className="text-[10px] text-[var(--text-muted)] mt-0.5">{n.created_at ? new Date(n.created_at).toLocaleString() : ''}</p>
                     </div>
                     <button
@@ -1100,8 +1101,8 @@ export default function ManagementDashboard({
                         <span className="px-2 py-0.5 bg-[var(--accent-light)] text-[var(--accent)] rounded-full text-[10px] font-bold">{entry.department}</span>
                       </td>
                       <td className="py-3.5 px-3 font-semibold text-[13px] text-[var(--text-primary)] hidden sm:table-cell">{entry.performedBy}</td>
-                      <td className="py-3.5 px-3 font-bold text-[var(--text-primary)]">{entry.action}</td>
-                      <td className="py-3.5 px-3 text-[var(--text-muted)]">{entry.details}</td>
+                      <td className="py-3.5 px-3 font-bold text-[var(--text-primary)]">{formatAuditAction(entry.action)}</td>
+                      <td className="py-3.5 px-3 text-[var(--text-muted)]">{cleanDisplayText(entry.details)}</td>
                       <td className="py-3.5 px-5 text-center relative" onClick={(e) => e.stopPropagation()}>
                         <button
                           onClick={() => setActiveLedgerMenu(activeLedgerMenu === entry.id ? null : entry.id)}

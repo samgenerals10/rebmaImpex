@@ -358,7 +358,7 @@ export default function DailyReportsView({ addNotification }: Props) {
                   <div key={d.name}>
                     <div className="flex items-center justify-between text-xs mb-1">
                       <span className="font-semibold text-[var(--text-primary)]">{d.name}</span>
-                      <span className="text-[var(--text-muted)]">{d.present}/{d.total} — {pct}%</span>
+                      <span className="text-[var(--text-muted)]">{d.present}/{d.total}, {pct}%</span>
                     </div>
                     <div className="h-2 bg-[var(--bg-input)] rounded-full overflow-hidden">
                       <div className={`h-2 rounded-full transition-all ${pct >= 90 ? 'bg-emerald-500' : pct >= 70 ? 'bg-amber-500' : 'bg-rose-500'}`} style={{ width: `${pct}%` }} />

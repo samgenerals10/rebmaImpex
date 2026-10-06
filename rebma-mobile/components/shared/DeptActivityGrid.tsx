@@ -50,6 +50,7 @@ import { SkeletonList } from '../ui/Skeleton';
 import EmptyState from '../ui/EmptyState';
 import ExportSheet from './ExportSheet';
 import type { ExportColumn } from '../../lib/exportEngine';
+import { cleanDisplayText, formatAuditAction } from '../../utils/displayText';
 
 interface ActivityItem {
   id: string;
@@ -245,7 +246,7 @@ export default function DeptActivityGrid({ department }: Props) {
                   <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
                     <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: isReject ? t.colors.status.danger.text : color, marginTop: 5 }} />
                     <View style={{ flex: 1 }}>
-                      <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.textPrimary }} numberOfLines={2}>{item.action}</Text>
+                      <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.textPrimary }} numberOfLines={2}>{formatAuditAction(item.action)}</Text>
                       <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted, marginTop: 2 }}>
                         {item.department} · {item.user} · {timeAgo(item.timestamp)}
                       </Text>
@@ -271,8 +272,8 @@ export default function DeptActivityGrid({ department }: Props) {
       >
         {detailItem && (
           <View style={{ gap: t.spacing.md }}>
-            <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary }}>{detailItem.action}</Text>
-            {detailItem.details ? <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>{detailItem.details}</Text> : null}
+            <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary }}>{formatAuditAction(detailItem.action)}</Text>
+            {detailItem.details ? <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>{cleanDisplayText(detailItem.details)}</Text> : null}
             <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted }}>
               By {detailItem.user} · {new Date(detailItem.timestamp).toLocaleString()}
               {detailItem.refId ? ` · Ref: ${detailItem.refId}` : ''}

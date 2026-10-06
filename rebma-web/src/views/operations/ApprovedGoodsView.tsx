@@ -272,7 +272,7 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
           <p className="text-[11px] mt-0.5" style={{ color: '#2d7a50' }}>
             Account Department approves payment, then order appears here as <strong>APPROVED</strong>
             Operations verifies quantity, clicks <strong>"Load to Dispatch"</strong>
-            stock ledger updated → Risk assigns vehicle and driver → Driver delivers → <strong>DELIVERED</strong>.
+            stock ledger updated, then Risk assigns the vehicle and driver, then the driver delivers and the order shows as <strong>DELIVERED</strong>.
             Print the <strong>Waybill</strong> (Ops keeps, travels with the shipment) · <strong>Invoice</strong> goes via Marketing to customer.
           </p>
         </div>

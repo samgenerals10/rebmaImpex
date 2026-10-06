@@ -25,6 +25,7 @@ import SearchableDropdown from '../components/ui/SearchableDropdown';
 import ResponsiveDataView, { type DataColumn } from '../components/mobile/ResponsiveDataView';
 import RequestTimelinePanel from '../components/global/RequestTimelinePanel';
 import { setVisibleInterval } from '../utils/visibleInterval';
+import { cleanDisplayText } from '../utils/displayText';
 
 interface OperationsDashboardProps {
   ordersList: Order[];
@@ -1007,7 +1008,7 @@ export default function OperationsDashboard({
                       <p className="text-xs text-[var(--text-muted)]">
                         {Array.isArray(o.products) ? o.products.map((p: any) => `${p.product_name} (${p.quantity} ${p.unit})`).join(', ') : 'Not set'}
                       </p>
-                      {o.message && <p className="text-[11px] text-indigo-600 dark:text-indigo-400 italic">{o.message}</p>}
+                      {o.message && <p className="text-[11px] text-indigo-600 dark:text-indigo-400 italic">{cleanDisplayText(o.message)}</p>}
                     </div>
                     <div className="flex items-center gap-3 flex-shrink-0">
                       {o.expected_delivery_date && <span className="text-xs text-[var(--text-muted)] whitespace-nowrap">ETA: {o.expected_delivery_date}</span>}

@@ -6,6 +6,8 @@ import EntityDetailPanel from '../../components/global/EntityDetailPanel';
 import SidePanel from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
 import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
+import { LEAVE_TYPES as BALANCE_TYPES, loadEntitlements, saveEntitlements, computeBalances, type Entitlements, type BalanceRow, type LeaveType } from '../../utils/leaveBalances';
+import { loadDirectory } from '../../utils/staffDirectory';
 
 interface LeaveRequest {
   id: string;
@@ -45,17 +47,6 @@ interface Props {
   currentUser: CurrentUser | null;
   addNotification: (msg: string) => void;
 }
-
-const LEAVE_BALANCES = [
-  { name: 'Kwame Mensah', dept: 'Operations', annual: 21, used: 5, sick: 10, usedSick: 2 },
-  { name: 'Abena Owusu', dept: 'Account Department', annual: 21, used: 7, sick: 10, usedSick: 4 },
-  { name: 'Kofi Asante', dept: 'Logistics', annual: 21, used: 1, sick: 10, usedSick: 0 },
-  { name: 'Ama Boateng', dept: 'HR', annual: 21, used: 3, sick: 10, usedSick: 1 },
-  { name: 'Yaw Darko', dept: 'Marketing', annual: 21, used: 8, sick: 10, usedSick: 3 },
-  { name: 'Nana Agyei', dept: 'Production', annual: 21, used: 4, sick: 10, usedSick: 5 },
-  { name: 'Kojo Amponsah', dept: 'Logistics', annual: 21, used: 2, sick: 10, usedSick: 1 },
-  { name: 'Adwoa Sarpong', dept: 'Operations', annual: 21, used: 0, sick: 10, usedSick: 0 },
-];
 
 function CalendarView({ leaves }: { leaves: LeaveRequest[] }) {
   // The current month (this used to be fixed on 14 June 2026).
@@ -451,27 +442,7 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
       )}
 
       {activeTab === 'balances' && (
-        <div style={{ background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border)', overflow: 'hidden' }}>
-          <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)' }}>
-            <h3 style={{ margin: 0, color: 'var(--text-primary)', fontWeight: 700, fontSize: 15 }}>Leave Balances, {new Date().getFullYear()}</h3>
-          </div>
-          <div style={{ padding: '0.75rem' }}>
-            <ResponsiveDataView<typeof LEAVE_BALANCES[number]>
-              columns={[
-                { key: 'name', label: 'Employee', primary: true },
-                { key: 'dept', label: 'Department' },
-                { key: 'annual', label: 'Annual (Total)' },
-                { key: 'used', label: 'Annual (Used)', render: row => <span style={{ color: '#f59e0b', fontWeight: 600 }}>{row.used}</span> },
-                { key: 'annualRemaining', label: 'Annual (Remaining)', render: row => <span style={{ color: '#10b981', fontWeight: 700 }}>{row.annual - row.used}</span> },
-                { key: 'sick', label: 'Sick (Total)' },
-                { key: 'usedSick', label: 'Sick (Used)', render: row => <span style={{ color: '#ef4444', fontWeight: 600 }}>{row.usedSick}</span> },
-                { key: 'sickRemaining', label: 'Sick (Remaining)', render: row => <span style={{ color: '#10b981', fontWeight: 700 }}>{row.sick - row.usedSick}</span> },
-              ]}
-              data={LEAVE_BALANCES}
-              rowKey={row => row.name}
-            />
-          </div>
-        </div>
+        <LeaveBalancesTab leaves={leaves} canEdit={!!canApprove} currentUser={currentUser} addNotification={addNotification} />
       )}
 
       {viewLeave && (() => {
@@ -610,6 +581,141 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
             </div>
         )}
       </SidePanel>
+    </div>
+  );
+}
+
+function LeaveBalancesTab({ leaves, canEdit, currentUser, addNotification }: {
+  leaves: LeaveRequest[]; canEdit: boolean; currentUser: CurrentUser | null; addNotification: (msg: string) => void;
+}) {
+  const year = new Date().getFullYear();
+  const [ent, setEnt] = useState<Entitlements>({});
+  const [draft, setDraft] = useState<Record<LeaveType, string>>({ Annual: '', Sick: '', Personal: '', Emergency: '' });
+  const [staff, setStaff] = useState<{ key: string; fullName: string; department: string }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState('');
+
+  const fillDraft = (e: Entitlements) => setDraft({
+    Annual: e.Annual != null ? String(e.Annual) : '', Sick: e.Sick != null ? String(e.Sick) : '',
+    Personal: e.Personal != null ? String(e.Personal) : '', Emergency: e.Emergency != null ? String(e.Emergency) : '',
+  });
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      try {
+        const [e, dir] = await Promise.all([loadEntitlements(), loadDirectory()]);
+        setEnt(e); fillDraft(e);
+        setStaff(dir.filter(r => r.kind !== 'invite' && r.status === 'ACTIVE' && !r.isCeo)
+          .map(r => ({ key: r.key, fullName: r.fullName, department: r.department })));
+        setLoadError('');
+      } catch (err: any) {
+        setLoadError(err?.message || 'Could not load leave balances.');
+      }
+      setLoading(false);
+    })();
+  }, []);
+
+  const dirty = BALANCE_TYPES.some(t => draft[t] !== (ent[t] != null ? String(ent[t]) : ''));
+
+  const save = async () => {
+    const next: Entitlements = {};
+    for (const t of BALANCE_TYPES) {
+      const v = draft[t].trim();
+      if (!v) continue;
+      const n = Number(v);
+      if (!Number.isInteger(n) || n < 0 || n > 366) { addNotification(`${t} leave must be a whole number of days from 0 to 366.`); return; }
+      next[t] = n;
+    }
+    setSaving(true);
+    try {
+      await saveEntitlements(next, currentUser?.fullName || 'HR');
+      setEnt(next);
+      addNotification('Leave allowances saved.');
+    } catch (err: any) {
+      addNotification(`Could not save the allowances: ${err?.message || 'unknown error'}`);
+    }
+    setSaving(false);
+  };
+
+  const rows: BalanceRow[] = computeBalances(staff, leaves.map(l => ({
+    staffName: l.employeeName, leaveType: l.leaveType, startDate: l.startDate, days: l.days, status: l.status,
+  })), ent, year);
+
+  const cell = (b: BalanceRow['byType'][LeaveType]) => {
+    if (b.allowed === null) {
+      return <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>{b.used > 0 ? `${b.used} used` : 'Not set'}</span>;
+    }
+    const over = (b.left ?? 0) < 0;
+    return (
+      <span style={{ display: 'inline-flex', flexDirection: 'column', lineHeight: 1.3 }}>
+        <span style={{ fontWeight: 700, color: over ? '#ef4444' : '#10b981' }}>{over ? `${Math.abs(b.left!)} over` : `${b.left} left`}</span>
+        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{b.used} of {b.allowed} used</span>
+      </span>
+    );
+  };
+
+  const columns: DataColumn<BalanceRow>[] = [
+    { key: 'name', label: 'Employee', primary: true },
+    { key: 'department', label: 'Department' },
+    ...BALANCE_TYPES.map(t => ({ key: t, label: t, render: (r: BalanceRow) => cell(r.byType[t]) })),
+  ];
+
+  const inputStyle: React.CSSProperties = { width: '100%', padding: '9px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border)', padding: '1rem 1.25rem' }}>
+        <h3 style={{ margin: 0, color: 'var(--text-primary)', fontWeight: 700, fontSize: 15 }}>Yearly leave allowance</h3>
+        <p style={{ margin: '4px 0 14px', color: 'var(--text-muted)', fontSize: 12 }}>
+          {canEdit
+            ? 'Set how many days each person gets per year. Everyone gets the same. Leave a box empty if that leave type has no yearly limit.'
+            : 'Days each person gets per year, set by HR.'}
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
+          {BALANCE_TYPES.map(t => (
+            <label key={t} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>{t} leave (days)</span>
+              {canEdit ? (
+                <input type="number" min={0} max={366} step={1} inputMode="numeric" placeholder="No limit"
+                  value={draft[t]} onChange={e => setDraft(d => ({ ...d, [t]: e.target.value }))} style={inputStyle} disabled={loading} />
+              ) : (
+                <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>{ent[t] != null ? ent[t] : 'Not set'}</span>
+              )}
+            </label>
+          ))}
+        </div>
+        {canEdit && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14 }}>
+            <button onClick={save} disabled={!dirty || saving || loading}
+              style={{ padding: '9px 20px', borderRadius: 999, border: 'none', background: 'var(--accent)', color: '#fff', fontWeight: 600, fontSize: 13, cursor: !dirty || saving ? 'not-allowed' : 'pointer', opacity: !dirty || saving ? 0.6 : 1 }}>
+              {saving ? 'Saving...' : 'Save allowances'}
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div style={{ background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border)', overflow: 'hidden' }}>
+        <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)' }}>
+          <h3 style={{ margin: 0, color: 'var(--text-primary)', fontWeight: 700, fontSize: 15 }}>Leave balances, {year}</h3>
+          <p style={{ margin: '4px 0 0', color: 'var(--text-muted)', fontSize: 12 }}>Used days count approved leave that starts this year.</p>
+        </div>
+        <div style={{ padding: '0.75rem' }}>
+          {loadError ? (
+            <p style={{ color: '#ef4444', fontSize: 13, margin: 8 }}>{loadError}</p>
+          ) : (
+            <ResponsiveDataView<BalanceRow>
+              columns={columns}
+              data={rows}
+              rowKey={r => r.key}
+              loading={loading}
+              exportTitle={`Leave Balances ${year}`}
+              emptyTitle="No active staff yet"
+            />
+          )}
+        </div>
+      </div>
     </div>
   );
 }

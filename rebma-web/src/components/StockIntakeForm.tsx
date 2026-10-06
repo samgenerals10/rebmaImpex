@@ -325,7 +325,7 @@ export default function StockIntakeForm({
                     }}
                     className="w-full px-3 py-2 bg-[var(--bg)] text-[var(--text-primary)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl text-xs focus:outline-none"
                   >
-                    <option value="">— Select a completed production batch —</option>
+                    <option value="">Select a completed production batch</option>
                     {productionOutputs.map((req) => (
                       <option key={req.id} value={req.id}>
                         {req.id} · {req.items?.[0]?.materialName || 'Batch'} ({req.status})

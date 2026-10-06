@@ -17,6 +17,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../theme/ThemeProvider';
 import Card from '../ui/Card';
 import { SkeletonList } from '../ui/Skeleton';
+import { cleanDisplayText, formatAuditAction } from '../../utils/displayText';
 
 interface HistoryRow {
   id: string;
@@ -74,8 +75,8 @@ export default function ApprovalHistoryPanel({ department, title = 'Previous App
             <View key={row.id} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: t.spacing.sm, padding: t.spacing.lg, borderBottomWidth: 1, borderBottomColor: t.colors.border }}>
               {isReject ? <XCircle size={14} color={t.colors.status.danger.text} style={{ marginTop: 2 }} /> : <CheckCircle size={14} color={t.colors.status.success.text} style={{ marginTop: 2 }} />}
               <View style={{ flex: 1 }}>
-                <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>{row.action}</Text>
-                {row.details ? <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted, marginTop: 2 }}>{row.details}</Text> : null}
+                <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>{formatAuditAction(row.action)}</Text>
+                {row.details ? <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted, marginTop: 2 }}>{cleanDisplayText(row.details)}</Text> : null}
                 <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted, marginTop: 2 }}>
                   {row.performed_by || 'System'} · {row.timestamp ? new Date(row.timestamp).toLocaleString() : ''}
                 </Text>

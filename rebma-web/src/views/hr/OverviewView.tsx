@@ -13,6 +13,7 @@ import {
 } from 'recharts';
 import { supabase } from '../../lib/supabaseClient';
 import type { StaffMember, PendingRegistration, Attendance, CurrentUser } from '../../types/erp';
+import { formatAuditAction } from '../../utils/displayText';
 
 interface Props {
   currentUser: CurrentUser | null;
@@ -538,7 +539,7 @@ export default function HrOverviewView({ currentUser, addNotification, setActive
             <div key={i} className="flex items-start gap-2 p-2.5 bg-[var(--bg)] rounded-xl border border-[var(--border)]">
               <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] mt-1.5 shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-xs text-[var(--text-primary)] leading-snug">{entry.action}</p>
+                <p className="text-xs text-[var(--text-primary)] leading-snug">{formatAuditAction(entry.action)}</p>
                 <p className="text-[10px] text-[var(--text-muted)] mt-0.5">{entry.by} · {entry.time}</p>
               </div>
             </div>

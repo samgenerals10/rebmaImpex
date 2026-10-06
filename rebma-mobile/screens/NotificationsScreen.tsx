@@ -25,6 +25,7 @@ import Button from '../components/ui/Button';
 import EmptyState from '../components/ui/EmptyState';
 import { SkeletonList } from '../components/ui/Skeleton';
 import { setActiveInterval } from '../lib/activeInterval';
+import { cleanDisplayText } from '../utils/displayText';
 
 interface DbNotification {
   id: string; title: string; message: string; type: string; read: boolean;
@@ -161,13 +162,13 @@ export default function NotificationsScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: t.spacing.sm }}>
-                  <Text style={{ flex: 1, fontFamily: t.font.semibold, fontSize: t.type.meta11.size, color: t.colors.textPrimary }} numberOfLines={2}>{n.title}</Text>
+                  <Text style={{ flex: 1, fontFamily: t.font.semibold, fontSize: t.type.meta11.size, color: t.colors.textPrimary }} numberOfLines={2}>{cleanDisplayText(n.title)}</Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                     {n.action_url ? <ExternalLink size={11} color={t.colors.accent} /> : null}
                     {!n.read && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: t.colors.accent }} />}
                   </View>
                 </View>
-                <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textSecondary, marginTop: 2 }}>{n.message}</Text>
+                <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textSecondary, marginTop: 2 }}>{cleanDisplayText(n.message)}</Text>
                 <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted, marginTop: 4 }}>{timeAgo(n.created_at)}</Text>
               </View>
             </Pressable>

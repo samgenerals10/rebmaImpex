@@ -8,6 +8,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { History, CheckCircle, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useRealtimeChannel } from '../../hooks/useRealtimeChannel';
+import { cleanDisplayText, formatAuditAction } from '../../utils/displayText';
 
 interface Props {
   department: string;
@@ -71,8 +72,8 @@ export default function ApprovalHistoryPanel({ department, title = 'Previous App
                 ? <XCircle size={14} color="#dc2626" style={{ marginTop: 2, flexShrink: 0 }} />
                 : <CheckCircle size={14} color="#059669" style={{ marginTop: 2, flexShrink: 0 }} />}
               <div style={{ minWidth: 0, flex: 1 }}>
-                <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{row.action}</p>
-                {row.details && <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--text-muted)' }}>{row.details}</p>}
+                <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{formatAuditAction(row.action)}</p>
+                {row.details && <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--text-muted)' }}>{cleanDisplayText(row.details)}</p>}
                 <p style={{ margin: '2px 0 0', fontSize: 10, color: 'var(--text-muted)' }}>
                   {row.performed_by || 'System'} · {row.timestamp ? new Date(row.timestamp).toLocaleString() : ''}
                 </p>

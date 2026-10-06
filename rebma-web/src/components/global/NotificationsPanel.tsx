@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Bell, CheckCheck, Trash2, BellOff, ExternalLink } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { stopAlertSound, setAlertNotifId, playNotificationSound, getSavedSound, getSavedVolume } from '../../utils/notificationSound';
+import { cleanDisplayText } from '../../utils/displayText';
 
 interface DbNotification {
   id: string;
@@ -237,13 +238,13 @@ export default function NotificationsPanel({ notifications = [], onNavigate, onC
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2">
-                  <p className="text-xs font-semibold text-[var(--text-primary)] leading-tight">{n.title}</p>
+                  <p className="text-xs font-semibold text-[var(--text-primary)] leading-tight">{cleanDisplayText(n.title)}</p>
                   <div className="flex items-center gap-1 flex-shrink-0">
                     {n.action_url && <ExternalLink className="w-3 h-3 text-[var(--accent)] opacity-70" />}
                     {!n.read && <span className="w-2 h-2 rounded-full bg-[var(--accent)]" />}
                   </div>
                 </div>
-                <p className="text-xs text-[var(--text-secondary)] mt-0.5 leading-relaxed">{n.message}</p>
+                <p className="text-xs text-[var(--text-secondary)] mt-0.5 leading-relaxed">{cleanDisplayText(n.message)}</p>
                 {n.action_label && (
                   <span className="inline-block mt-1 text-[10px] font-semibold text-[var(--accent)] underline underline-offset-2">{n.action_label}</span>
                 )}

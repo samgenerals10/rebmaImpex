@@ -24,6 +24,7 @@ import { exportToCSV } from '../../utils/export';
 import DeletionRequestsPanel from '../../components/hr/DeletionRequestsPanel';
 import DepartmentChangesPanel from '../../components/hr/DepartmentChangesPanel';
 import CountBadge from '../../components/ui/CountBadge';
+import { cleanDisplayText, formatAuditAction } from '../../utils/displayText';
 
 interface Approval {
   id: string;
@@ -146,7 +147,7 @@ export default function ApprovalsView({ currentUser, addNotification }: Props) {
                 : 'registration',
           requester: log.performed_by || 'System',
           department: log.department || 'GENERAL',
-          description: log.details || log.action,
+          description: cleanDisplayText(log.details) || formatAuditAction(log.action),
           date_submitted: log.timestamp ? log.timestamp.split('T')[0] : '',
           status: log.action.toLowerCase().includes('reject') ? 'rejected' : 'approved',
         }));

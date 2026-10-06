@@ -19,6 +19,7 @@ import Card from '../../components/ui/Card';
 import SearchablePicker from '../../components/ui/SearchablePicker';
 import { SkeletonList } from '../../components/ui/Skeleton';
 import EmptyState from '../../components/ui/EmptyState';
+import { cleanDisplayText, formatAuditAction } from '../../utils/displayText';
 
 interface AuditEntry {
   id: string;
@@ -123,8 +124,8 @@ export default function LedgerScreen() {
                     <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta10.size, color: DEPT_DOT[e.department] || t.colors.textMuted }}>{e.department}</Text>
                     <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted }}>{fmtAgo(e.timestamp)}</Text>
                   </View>
-                  <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>{e.action.replace(/_/g, ' ')}</Text>
-                  {e.details ? <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textSecondary, marginTop: 2 }}>{e.details}</Text> : null}
+                  <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>{formatAuditAction(e.action)}</Text>
+                  {e.details ? <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textSecondary, marginTop: 2 }}>{cleanDisplayText(e.details)}</Text> : null}
                   <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted, marginTop: 2 }}>{e.performedBy}</Text>
                 </View>
               </View>

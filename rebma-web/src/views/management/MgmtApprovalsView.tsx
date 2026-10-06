@@ -17,6 +17,7 @@ import RequestTimelinePanel from '../../components/global/RequestTimelinePanel';
 import { useFullscreenToggle, FullscreenButton } from '../../components/global/FullscreenToggle';
 import CountUp from '../../components/CountUp';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
+import { cleanDisplayText } from '../../utils/displayText';
 
 interface ApprovalItem {
   id: string;
@@ -144,7 +145,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
           if (!m) return null;
           const [, verb, requestId, rest] = m;
           const noteMatch = rest.match(/^(.*?)(?:\s*\|\s*Note:\s*(.*))?$/);
-          const description = noteMatch?.[1]?.trim() || rest;
+          const description = cleanDisplayText(noteMatch?.[1]?.trim() || rest);
           const reason = noteMatch?.[2]?.trim();
           const inferredType: ApprovalItem['type'] =
             requestId.startsWith('CARGO') ? 'Cargo Intake'

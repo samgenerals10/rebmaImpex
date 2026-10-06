@@ -10,6 +10,7 @@ import { exportToCSV, exportToPDF } from '../../utils/export';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import CountUp from '../../components/CountUp';
 import { setVisibleInterval } from '../../utils/visibleInterval';
+import { cleanDisplayText, formatAuditAction } from '../../utils/displayText';
 
 interface ActivityItem {
   id: string;
@@ -233,7 +234,7 @@ export default function DeptActivityView({ addNotification, currentUser }: Props
               <p className="text-[10px] text-[var(--text-muted)] mt-0.5">{ds.lastActivity ?? 'No activity yet'}</p>
               <div className="mt-2 space-y-0.5">
                 {recentActivities.map(a => (
-                  <p key={a.id} className="text-[10px] text-[var(--text-muted)] truncate">{a.action}</p>
+                  <p key={a.id} className="text-[10px] text-[var(--text-muted)] truncate">{formatAuditAction(a.action)}</p>
                 ))}
               </div>
             </div>
@@ -300,9 +301,9 @@ export default function DeptActivityView({ addNotification, currentUser }: Props
                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${color}`}>{item.department}</span>
                     <span className="text-xs font-bold text-[var(--text-primary)]">{item.user}</span>
                     <span className="text-xs text-[var(--text-muted)]">·</span>
-                    <span className="text-xs font-semibold text-[var(--text-secondary)]">{item.action}</span>
+                    <span className="text-xs font-semibold text-[var(--text-secondary)]">{formatAuditAction(item.action)}</span>
                   </div>
-                  <p className="text-xs text-[var(--text-muted)] mt-0.5 leading-relaxed">{item.details}</p>
+                  <p className="text-xs text-[var(--text-muted)] mt-0.5 leading-relaxed">{cleanDisplayText(item.details)}</p>
                   <div className="flex items-center gap-3 mt-1">
                     <div className="flex items-center gap-1 text-[10px] text-[var(--text-muted)]">
                       <Clock className="w-3 h-3" />

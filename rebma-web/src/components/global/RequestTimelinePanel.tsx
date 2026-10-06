@@ -12,6 +12,7 @@ import { History, CheckCircle, XCircle, RotateCcw, ArrowUpCircle, Clock } from '
 import { supabase } from '../../lib/supabaseClient';
 import { useRealtimeChannel } from '../../hooks/useRealtimeChannel';
 import SidePanel from '../ui/SidePanel';
+import { cleanDisplayText, formatAuditAction } from '../../utils/displayText';
 
 interface Props {
   open: boolean;
@@ -87,8 +88,8 @@ export default function RequestTimelinePanel({ open, onClose, referenceId, displ
                     <div className="absolute -left-6 top-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center" style={{ background: 'var(--bg-card)' }}>
                       <Icon size={14} style={{ color }} />
                     </div>
-                    <p className="text-xs font-semibold text-[var(--text-primary)]">{row.action}</p>
-                    {row.details && <p className="text-xs text-[var(--text-secondary)] mt-1">{row.details}</p>}
+                    <p className="text-xs font-semibold text-[var(--text-primary)]">{formatAuditAction(row.action)}</p>
+                    {row.details && <p className="text-xs text-[var(--text-secondary)] mt-1">{cleanDisplayText(row.details)}</p>}
                     <p className="text-[10px] text-[var(--text-muted)] mt-1">
                       {row.performed_by || 'System'} · {row.department} · {row.timestamp ? new Date(row.timestamp).toLocaleString() : ''}
                     </p>

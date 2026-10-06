@@ -5,6 +5,7 @@ import { Activity, RefreshCw, User, Clock, Lock } from 'lucide-react';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import { useRealtimeChannel } from '../../hooks/useRealtimeChannel';
 import SearchableDropdown from '../ui/SearchableDropdown';
+import { cleanDisplayText, formatAuditAction } from '../../utils/displayText';
 
 interface AuditEntry {
   id: string;
@@ -187,7 +188,7 @@ export default function ActivityFeed({ departments, limit = 30, compact = false,
                   <span className="text-[10px] text-[var(--text-muted)]">·</span>
                   <span className="text-[10px] text-[var(--text-muted)]">{fmtAgo(e.timestamp)}</span>
                 </div>
-                <p className="text-[11px] text-[var(--text-secondary)] truncate">{e.details}</p>
+                <p className="text-[11px] text-[var(--text-secondary)] truncate">{cleanDisplayText(e.details) || formatAuditAction(e.action)}</p>
                 <p className="text-[10px] text-[var(--text-muted)] flex items-center gap-1 mt-0.5">
                   <User size={8} /> {e.performedBy}
                 </p>
@@ -265,13 +266,13 @@ export default function ActivityFeed({ departments, limit = 30, compact = false,
                       {e.department}
                     </span>
                     <span className="text-[10px] font-semibold text-[var(--text-secondary)]">
-                      {e.action.replace(/_/g, ' ')}
+                      {formatAuditAction(e.action)}
                     </span>
                     <span className="text-[10px] text-[var(--text-muted)] ml-auto flex items-center gap-1">
                       <Clock size={8} />{fmtAgo(e.timestamp)}
                     </span>
                   </div>
-                  <p className="text-xs text-[var(--text-primary)] leading-snug">{e.details}</p>
+                  <p className="text-xs text-[var(--text-primary)] leading-snug">{cleanDisplayText(e.details)}</p>
                   <div className="flex items-center gap-1 mt-1.5">
                     <User size={9} className="text-[var(--text-muted)]" />
                     <span className="text-[10px] text-[var(--text-muted)]">{e.performedBy}</span>

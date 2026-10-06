@@ -1,12 +1,11 @@
 // rebma-mobile/screens/hr/LeaveManagementScreen.tsx
 // Ports: rebma-web/src/views/hr/LeaveManagementView.tsx (610 lines, read
-// in full) — D55. Only the real "Requests" tab: full CRUD against
-// leave_requests. Web's "Calendar" tab is fixed to a hardcoded date
-// (new Date('2026-06-14')) and its "Balances" tab is an 8-row hardcoded
-// mock array — both confirmed non-real and dropped, matching the
-// established D16 "don't port mock/seed UI" precedent.
+// in full). The Requests tab is full CRUD against leave_requests. The
+// Balances tab matches web: HR sets each leave type's yearly allowance
+// (leave_entitlements) and every active person's used and remaining days
+// are worked out from their approved requests (lib/leaveBalances.ts).
 import { useCallback, useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { View, Text } from 'react-native';
 import { Alert } from '../../lib/appAlert';
 import { CheckCircle, XCircle, Trash2, Edit2 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
@@ -19,6 +18,10 @@ import Button from '../../components/ui/Button';
 import SearchablePicker from '../../components/ui/SearchablePicker';
 import DataList, { type DataColumn } from '../../components/ui/DataList';
 import Sheet from '../../components/ui/Sheet';
+import Card from '../../components/ui/Card';
+import Tabs from '../../components/ui/Tabs';
+import { LEAVE_TYPES as BALANCE_TYPES, loadEntitlements, saveEntitlements, computeBalances, type Entitlements, type BalanceRow, type LeaveType } from '../../lib/leaveBalances';
+import { loadDirectory } from '../../lib/staffDirectory';
 
 const LEAVE_TYPES = ['Annual', 'Sick', 'Personal', 'Emergency'];
 const STATUS_TONE: Record<string, 'success' | 'danger' | 'warning'> = { APPROVED: 'success', REJECTED: 'danger', PENDING: 'warning' };
@@ -69,6 +72,7 @@ export default function LeaveManagementScreen() {
   const [showReject, setShowReject] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [tab, setTab] = useState<'requests' | 'balances'>('requests');
 
   const canApprove = profile?.isAdmin || profile?.department === 'HR';
 
@@ -170,11 +174,19 @@ export default function LeaveManagementScreen() {
     <Screen
       refreshing={refreshing}
       onRefresh={() => { setRefreshing(true); load(); }}
-      footer={<View style={{ padding: t.spacing.lg }}><Button label="Submit Leave Request" onPress={openAdd} fullWidth /></View>}
+      footer={tab === 'requests' ? <View style={{ padding: t.spacing.lg }}><Button label="Submit Leave Request" onPress={openAdd} fullWidth /></View> : undefined}
     >
       <View style={{ gap: t.spacing.lg }}>
-        <Input value={search} onChangeText={setSearch} placeholder="Search by employee or department..." />
-        <DataList exportTitle="Leave Requests" columns={columns} data={filtered} rowKey={(l) => l.id} loading={loading} emptyTitle="No leave requests" onRowPress={setSelected} />
+        <Tabs variant="segmented" value={tab} onChange={(v) => setTab(v as 'requests' | 'balances')}
+          options={[{ value: 'requests', label: 'Requests' }, { value: 'balances', label: 'Leave Balances' }]} />
+        {tab === 'requests' ? (
+          <>
+            <Input value={search} onChangeText={setSearch} placeholder="Search by employee or department..." />
+            <DataList exportTitle="Leave Requests" columns={columns} data={filtered} rowKey={(l) => l.id} loading={loading} emptyTitle="No leave requests" onRowPress={setSelected} />
+          </>
+        ) : (
+          <LeaveBalances leaves={leaves} canEdit={!!canApprove} updatedBy={profile?.fullName || 'HR'} />
+        )}
       </View>
 
       <Sheet open={!!selected && !showReject} onClose={() => setSelected(null)} title={selected?.employeeName} subtitle={selected?.leaveType} side="bottom" maxHeight={480}>
@@ -213,5 +225,122 @@ export default function LeaveManagementScreen() {
         <Field label="Reason"><Input value={form.reason} onChangeText={(v) => setForm((f) => ({ ...f, reason: v }))} multiline numberOfLines={3} style={{ minHeight: 72, textAlignVertical: 'top' }} placeholder="Reason for this leave request..." /></Field>
       </Sheet>
     </Screen>
+  );
+}
+
+function LeaveBalances({ leaves, canEdit, updatedBy }: { leaves: LeaveRequest[]; canEdit: boolean; updatedBy: string }) {
+  const t = useTheme();
+  const year = new Date().getFullYear();
+  const [ent, setEnt] = useState<Entitlements>({});
+  const [draft, setDraft] = useState<Record<LeaveType, string>>({ Annual: '', Sick: '', Personal: '', Emergency: '' });
+  const [staff, setStaff] = useState<{ key: string; fullName: string; department: string }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState('');
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const [e, dir] = await Promise.all([loadEntitlements(), loadDirectory()]);
+        setEnt(e);
+        setDraft({
+          Annual: e.Annual != null ? String(e.Annual) : '', Sick: e.Sick != null ? String(e.Sick) : '',
+          Personal: e.Personal != null ? String(e.Personal) : '', Emergency: e.Emergency != null ? String(e.Emergency) : '',
+        });
+        setStaff(dir.filter((r) => r.kind !== 'invite' && r.status === 'ACTIVE' && !r.isCeo)
+          .map((r) => ({ key: r.key, fullName: r.fullName, department: r.department })));
+        setLoadError('');
+      } catch (err: any) {
+        setLoadError(err?.message || 'Could not load leave balances.');
+      }
+      setLoading(false);
+    })();
+  }, []);
+
+  const dirty = BALANCE_TYPES.some((ty) => draft[ty] !== (ent[ty] != null ? String(ent[ty]) : ''));
+
+  const save = async () => {
+    const next: Entitlements = {};
+    for (const ty of BALANCE_TYPES) {
+      const v = draft[ty].trim();
+      if (!v) continue;
+      const n = Number(v);
+      if (!Number.isInteger(n) || n < 0 || n > 366) { Alert.alert('Check the days', `${ty} leave must be a whole number of days from 0 to 366.`); return; }
+      next[ty] = n;
+    }
+    setSaving(true);
+    try {
+      await saveEntitlements(next, updatedBy);
+      setEnt(next);
+      Alert.alert('Saved', 'Leave allowances saved.');
+    } catch (err: any) {
+      Alert.alert('Could not save', err?.message || 'Unknown error');
+    }
+    setSaving(false);
+  };
+
+  const rows: BalanceRow[] = computeBalances(staff, leaves.map((l) => ({
+    staffName: l.employeeName, leaveType: l.leaveType, startDate: l.startDate, days: l.days, status: l.status,
+  })), ent, year);
+
+  const cell = (b: BalanceRow['byType'][LeaveType]) => {
+    if (b.allowed === null) {
+      return <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textMuted }}>{b.used > 0 ? `${b.used} used` : 'Not set'}</Text>;
+    }
+    const over = (b.left ?? 0) < 0;
+    return (
+      <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: over ? '#ef4444' : '#10b981' }}>
+        {over ? `${Math.abs(b.left!)} over` : `${b.left} left`}
+        <Text style={{ fontFamily: t.font.regular, color: t.colors.textMuted }}>{`, ${b.used} of ${b.allowed} used`}</Text>
+      </Text>
+    );
+  };
+
+  const columns: DataColumn<BalanceRow>[] = [
+    { key: 'name', label: 'Employee', primary: true },
+    { key: 'department', label: 'Department' },
+    ...BALANCE_TYPES.map((ty) => ({ key: ty, label: ty, render: (r: BalanceRow) => cell(r.byType[ty]) })),
+  ];
+
+  return (
+    <View style={{ gap: t.spacing.lg }}>
+      <Card>
+        <View style={{ gap: t.spacing.sm }}>
+          <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary }}>Yearly leave allowance</Text>
+          <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textMuted }}>
+            {canEdit
+              ? 'Set how many days each person gets per year. Everyone gets the same. Leave a box empty if that leave type has no yearly limit.'
+              : 'Days each person gets per year, set by HR.'}
+          </Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.sm }}>
+            {BALANCE_TYPES.map((ty) => (
+              <View key={ty} style={{ width: '48%' }}>
+                {canEdit ? (
+                  <Field label={`${ty} (days)`}>
+                    <Input value={draft[ty]} onChangeText={(v) => setDraft((d) => ({ ...d, [ty]: v.replace(/[^0-9]/g, '') }))}
+                      keyboardType="number-pad" placeholder="No limit" editable={!loading} />
+                  </Field>
+                ) : (
+                  <Field label={`${ty} (days)`}>
+                    <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary }}>{ent[ty] != null ? String(ent[ty]) : 'Not set'}</Text>
+                  </Field>
+                )}
+              </View>
+            ))}
+          </View>
+          {canEdit && (
+            <Button label={saving ? 'Saving...' : 'Save allowances'} onPress={save} loading={saving} disabled={!dirty || saving || loading} fullWidth />
+          )}
+        </View>
+      </Card>
+
+      <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary }}>{`Leave balances, ${year}`}</Text>
+      <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textMuted, marginTop: -t.spacing.md }}>Used days count approved leave that starts this year.</Text>
+      {loadError ? (
+        <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: '#ef4444' }}>{loadError}</Text>
+      ) : (
+        <DataList exportTitle={`Leave Balances ${year}`} columns={columns} data={rows} rowKey={(r) => r.key} loading={loading} emptyTitle="No active staff yet" />
+      )}
+    </View>
   );
 }

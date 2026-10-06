@@ -17,6 +17,7 @@ import { useTheme } from '../../theme/ThemeProvider';
 import Sheet from '../ui/Sheet';
 import { SkeletonList } from '../ui/Skeleton';
 import EmptyState from '../ui/EmptyState';
+import { cleanDisplayText, formatAuditAction } from '../../utils/displayText';
 
 interface TimelineRow {
   id: string;
@@ -86,8 +87,8 @@ export default function RequestTimelineSheet({ open, onClose, referenceId, displ
                   <Icon size={12} color={color} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>{row.action}</Text>
-                  {row.details ? <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textSecondary, marginTop: 2 }}>{row.details}</Text> : null}
+                  <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>{formatAuditAction(row.action)}</Text>
+                  {row.details ? <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textSecondary, marginTop: 2 }}>{cleanDisplayText(row.details)}</Text> : null}
                   <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted, marginTop: 2 }}>
                     {row.performed_by || 'System'} · {row.department} · {row.timestamp ? new Date(row.timestamp).toLocaleString() : ''}
                   </Text>

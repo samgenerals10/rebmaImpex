@@ -21,6 +21,7 @@ import DateRangeField from '../../components/ui/DateRangeField';
 import type { CalendarValue } from '../../components/ui/CalendarPicker';
 import { dayKey, trendBuckets, bucketKeyFor } from '../../utils/dateRange';
 import { setVisibleInterval } from '../../utils/visibleInterval';
+import { formatAuditAction } from '../../utils/displayText';
 interface Props {
   addNotification?: (msg: string) => void;
   setActiveSubTab?: (tab: string) => void;
@@ -993,7 +994,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
                     <Icon size={14} style={{ color: a.color }} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-[var(--text-primary)] leading-snug truncate">{a.action}</p>
+                    <p className="text-xs font-medium text-[var(--text-primary)] leading-snug truncate">{formatAuditAction(a.action)}</p>
                     <p className="text-xs text-[var(--text-muted)] mt-0.5">{a.dept} · {a.time}</p>
                   </div>
                 </div>
