@@ -1,8 +1,9 @@
 // Leave balances: HR sets how many days per year each leave type gives
 // everyone (leave_entitlements), and each person's used days come from
-// their APPROVED leave requests that start in the chosen year. Leave
-// requests are stored by name (staff_name), not by id, so people are
-// matched on their name with case and extra spaces ignored.
+// their APPROVED leave requests that start in the chosen year. A request
+// saved with a staff_id counts toward that person by id; older requests
+// with no staff_id are matched on name, ignoring case and extra spaces.
+import { loadDirectory } from './staffDirectory';
 import { supabase } from '../lib/supabaseClient';
 
 export const LEAVE_TYPES = ['Annual', 'Sick', 'Personal', 'Emergency'] as const;
@@ -37,8 +38,8 @@ export async function saveEntitlements(next: Entitlements, updatedBy: string): P
   }
 }
 
-export interface LeaveRow { staffName: string; leaveType: string; startDate: string; days: number; status: string }
-export interface StaffRow { key: string; fullName: string; department: string }
+export interface LeaveRow { staffId?: string | null; staffName: string; leaveType: string; startDate: string; days: number; status: string }
+export interface StaffRow { key: string; id: string; fullName: string; department: string }
 
 export interface TypeBalance { allowed: number | null; used: number; left: number | null }
 export interface BalanceRow { key: string; name: string; department: string; byType: Record<LeaveType, TypeBalance> }
@@ -50,16 +51,44 @@ export function computeBalances(staff: StaffRow[], leaves: LeaveRow[], ent: Enti
   for (const l of leaves) {
     if (String(l.status).toUpperCase() !== 'APPROVED') continue;
     if (!l.startDate || Number(l.startDate.slice(0, 4)) !== year) continue;
-    const k = `${norm(l.staffName)}|${l.leaveType}`;
+    const k = l.staffId ? `id:${l.staffId}|${l.leaveType}` : `name:${norm(l.staffName)}|${l.leaveType}`;
     used.set(k, (used.get(k) || 0) + (Number(l.days) || 0));
   }
   return staff.map(s => {
     const byType = {} as Record<LeaveType, TypeBalance>;
     for (const t of LEAVE_TYPES) {
-      const u = used.get(`${norm(s.fullName)}|${t}`) || 0;
+      const u = (used.get(`id:${s.id}|${t}`) || 0) + (used.get(`name:${norm(s.fullName)}|${t}`) || 0);
       const allowed = ent[t] ?? null;
       byType[t] = { allowed, used: u, left: allowed === null ? null : allowed - u };
     }
     return { key: s.key, name: s.fullName, department: s.department, byType };
   }).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** Active staff (app users and staff without the app), CEO excluded, for pickers and balances. */
+export async function loadActiveStaff(): Promise<StaffRow[]> {
+  const dir = await loadDirectory();
+  return dir.filter(r => r.kind !== 'invite' && r.status === 'ACTIVE' && !r.isCeo)
+    .map(r => ({ key: r.key, id: r.id, fullName: r.fullName, department: r.department }))
+    .sort((a, b) => a.fullName.localeCompare(b.fullName));
+}
+
+const missingStaffIdColumn = (e: any) =>
+  !!e && /staff_id/i.test(String(e.message || '')) && (e.code === 'PGRST204' || e.code === '42703' || /column/i.test(String(e.message || '')));
+
+/**
+ * Insert or update a leave request. If the staff_id column has not been
+ * added yet (supabase_leave_requests_lockdown.sql not run), the write is
+ * retried without it so saving still works.
+ */
+export async function writeLeaveRequest(row: Record<string, any>, id?: string): Promise<{ data: any; error: any }> {
+  const run = (payload: Record<string, any>) => id
+    ? supabase.from('leave_requests').update(payload).eq('id', id).select().single()
+    : supabase.from('leave_requests').insert([payload]).select().single();
+  let res = await run(row);
+  if (res.error && missingStaffIdColumn(res.error) && 'staff_id' in row) {
+    const { staff_id: _drop, ...rest } = row;
+    res = await run(rest);
+  }
+  return { data: res.data, error: res.error };
 }

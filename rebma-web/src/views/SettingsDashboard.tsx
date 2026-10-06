@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import DeleteAccountRequest from '../components/hr/DeleteAccountRequest';
 import DepartmentChangeCard from '../components/hr/DepartmentChangeCard';
-import { Settings, User, Lock, Trash2, Camera, ShieldCheck, Eye, EyeOff, Volume2, VolumeX, Play, Bell } from 'lucide-react';
+import { Settings, User, Lock, Trash2, Camera, ShieldCheck, Eye, EyeOff, Volume2, VolumeX, Play, Bell, ArrowUp } from 'lucide-react';
 import type { CurrentUser } from '../types/erp';
 import { auth } from '../services/apiClient';
 import { supabase } from '../lib/supabaseClient';
@@ -880,13 +880,13 @@ export default function SettingsDashboard({
                   <div className="space-y-1.5">
                     <span className="text-[10px] text-[var(--text-muted)] font-semibold uppercase tracking-wider">Gradient Flow Angle</span>
                     <div className="flex gap-1.5">
-                      {[{ v: '45deg', icon: '↗ 45°' }, { v: '90deg', icon: '→ 90°' }, { v: '135deg', icon: '↘ 135°' }, { v: '180deg', icon: '↓ 180°' }].map(d => (
-                        <button key={d.v} type="button" onClick={() => setDraftGradDir(d.v)}
+                      {[{ v: '45deg', deg: 45 }, { v: '90deg', deg: 90 }, { v: '135deg', deg: 135 }, { v: '180deg', deg: 180 }].map(d => (
+                        <button key={d.v} type="button" onClick={() => setDraftGradDir(d.v)} aria-label={`${d.deg} degrees`}
                           className={`flex-1 py-1.5 border rounded-lg text-xs font-bold cursor-pointer transition-all ${
                             draftGradDir === d.v
                               ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
                               : 'border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--accent)]'
-                          }`}>{d.icon}</button>
+                          } inline-flex items-center justify-center gap-1`}><ArrowUp size={12} style={{ transform: `rotate(${d.deg}deg)` }} />{d.deg}°</button>
                       ))}
                     </div>
                   </div>

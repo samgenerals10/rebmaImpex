@@ -4,6 +4,7 @@
 // Balances tab matches web: HR sets each leave type's yearly allowance
 // (leave_entitlements) and every active person's used and remaining days
 // are worked out from their approved requests (lib/leaveBalances.ts).
+// The Calendar tab matches web's: approved leave across the current month.
 import { useCallback, useEffect, useState } from 'react';
 import { View, Text } from 'react-native';
 import { Alert } from '../../lib/appAlert';
@@ -20,26 +21,26 @@ import DataList, { type DataColumn } from '../../components/ui/DataList';
 import Sheet from '../../components/ui/Sheet';
 import Card from '../../components/ui/Card';
 import Tabs from '../../components/ui/Tabs';
-import { LEAVE_TYPES as BALANCE_TYPES, loadEntitlements, saveEntitlements, computeBalances, type Entitlements, type BalanceRow, type LeaveType } from '../../lib/leaveBalances';
-import { loadDirectory } from '../../lib/staffDirectory';
+import { LEAVE_TYPES as BALANCE_TYPES, loadEntitlements, saveEntitlements, computeBalances, loadActiveStaff, writeLeaveRequest, type Entitlements, type BalanceRow, type LeaveType, type StaffRow } from '../../lib/leaveBalances';
 
 const LEAVE_TYPES = ['Annual', 'Sick', 'Personal', 'Emergency'];
 const STATUS_TONE: Record<string, 'success' | 'danger' | 'warning'> = { APPROVED: 'success', REJECTED: 'danger', PENDING: 'warning' };
 
 interface LeaveRequest {
-  id: string; employeeName: string; department: string; leaveType: string; startDate: string; endDate: string;
+  id: string; staffId?: string; employeeName: string; department: string; leaveType: string; startDate: string; endDate: string;
   days: number; reason: string; status: string; rejectionReason?: string;
 }
 
 function mapToUI(db: any): LeaveRequest {
   return {
-    id: db.id, employeeName: db.staff_name || '', department: db.department || '', leaveType: db.leave_type || 'Annual',
+    id: db.id, staffId: db.staff_id || undefined, employeeName: db.staff_name || '', department: db.department || '', leaveType: db.leave_type || 'Annual',
     startDate: db.start_date || '', endDate: db.end_date || '', days: db.days_count || 0, reason: db.reason || '',
     status: db.status || 'PENDING', rejectionReason: db.rejection_reason,
   };
 }
 function mapToDB(ui: Partial<LeaveRequest>): Record<string, any> {
   const db: Record<string, any> = {};
+  if (ui.staffId) db.staff_id = ui.staffId;
   if (ui.employeeName !== undefined) db.staff_name = ui.employeeName;
   if (ui.department !== undefined) db.department = ui.department;
   if (ui.leaveType !== undefined) db.leave_type = ui.leaveType;
@@ -57,7 +58,7 @@ function calcDays(start: string, end: string): number {
   return Math.max(1, Math.floor(diff / 86400000) + 1);
 }
 
-const blankForm = { employeeName: '', department: '', leaveType: 'Annual', startDate: '', endDate: '', reason: '' };
+const blankForm = { staffId: '', employeeName: '', department: '', leaveType: 'Annual', startDate: '', endDate: '', reason: '' };
 
 export default function LeaveManagementScreen() {
   const t = useTheme();
@@ -72,7 +73,10 @@ export default function LeaveManagementScreen() {
   const [showReject, setShowReject] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [tab, setTab] = useState<'requests' | 'balances'>('requests');
+  const [tab, setTab] = useState<'requests' | 'calendar' | 'balances'>('requests');
+  const [staffList, setStaffList] = useState<StaffRow[]>([]);
+
+  useEffect(() => { loadActiveStaff().then(setStaffList).catch(() => setStaffList([])); }, []);
 
   const canApprove = profile?.isAdmin || profile?.department === 'HR';
 
@@ -121,22 +125,23 @@ export default function LeaveManagementScreen() {
 
   const openAdd = () => { setForm(blankForm); setShowForm('add'); };
   const openEdit = (l: LeaveRequest) => {
-    setForm({ employeeName: l.employeeName, department: l.department, leaveType: l.leaveType, startDate: l.startDate, endDate: l.endDate, reason: l.reason });
+    setForm({ staffId: l.staffId || '', employeeName: l.employeeName, department: l.department, leaveType: l.leaveType, startDate: l.startDate, endDate: l.endDate, reason: l.reason });
     setShowForm('edit');
   };
 
   const saveForm = async () => {
+    if (showForm === 'add' && !form.staffId) { Alert.alert('Choose the employee', 'Pick who this leave is for.'); return; }
     setSubmitting(true);
     try {
       const days = calcDays(form.startDate, form.endDate);
       if (showForm === 'add') {
         const dbData = mapToDB({ ...form, days, status: 'PENDING' });
-        const { data: inserted, error } = await supabase.from('leave_requests').insert([dbData]).select().single();
+        const { data: inserted, error } = await writeLeaveRequest(dbData);
         if (error) throw error;
         setLeaves((prev) => [mapToUI(inserted), ...prev]);
       } else if (selected) {
         const updated = { ...selected, ...form, days };
-        const { error } = await supabase.from('leave_requests').update(mapToDB(updated)).eq('id', selected.id);
+        const { error } = await writeLeaveRequest(mapToDB(updated), selected.id);
         if (error) throw error;
         setLeaves((prev) => prev.map((l) => (l.id === selected.id ? updated : l)));
         setSelected(updated);
@@ -177,13 +182,15 @@ export default function LeaveManagementScreen() {
       footer={tab === 'requests' ? <View style={{ padding: t.spacing.lg }}><Button label="Submit Leave Request" onPress={openAdd} fullWidth /></View> : undefined}
     >
       <View style={{ gap: t.spacing.lg }}>
-        <Tabs variant="segmented" value={tab} onChange={(v) => setTab(v as 'requests' | 'balances')}
-          options={[{ value: 'requests', label: 'Requests' }, { value: 'balances', label: 'Leave Balances' }]} />
+        <Tabs variant="segmented" value={tab} onChange={(v) => setTab(v as 'requests' | 'calendar' | 'balances')}
+          options={[{ value: 'requests', label: 'Requests' }, { value: 'calendar', label: 'Calendar' }, { value: 'balances', label: 'Balances' }]} />
         {tab === 'requests' ? (
           <>
             <Input value={search} onChangeText={setSearch} placeholder="Search by employee or department..." />
             <DataList exportTitle="Leave Requests" columns={columns} data={filtered} rowKey={(l) => l.id} loading={loading} emptyTitle="No leave requests" onRowPress={setSelected} />
           </>
+        ) : tab === 'calendar' ? (
+          <LeaveCalendar leaves={leaves} />
         ) : (
           <LeaveBalances leaves={leaves} canEdit={!!canApprove} updatedBy={profile?.fullName || 'HR'} />
         )}
@@ -215,8 +222,12 @@ export default function LeaveManagementScreen() {
 
       <Sheet open={!!showForm} onClose={() => setShowForm(null)} title={showForm === 'add' ? 'Submit Leave Request' : 'Edit Leave Request'} side="bottom" maxHeight={560}
         footer={<Button label={submitting ? 'Saving…' : 'Save'} onPress={saveForm} loading={submitting} disabled={submitting} fullWidth />}>
-        <Field label="Employee Name"><Input value={form.employeeName} onChangeText={(v) => setForm((f) => ({ ...f, employeeName: v }))} placeholder="e.g. Kofi Mensah" /></Field>
-        <Field label="Department"><Input value={form.department} onChangeText={(v) => setForm((f) => ({ ...f, department: v }))} placeholder="e.g. HR" /></Field>
+        <Field label="Employee">
+          <SearchablePicker value={form.staffId} placeholder={form.employeeName || 'Choose the employee'} label="Choose the employee"
+            options={staffList.map((p) => ({ value: p.id, label: p.fullName, sublabel: p.department }))}
+            onChange={(v) => { const p = staffList.find((x) => x.id === v); setForm((f) => ({ ...f, staffId: v, employeeName: p?.fullName || f.employeeName, department: p?.department || f.department })); }} />
+        </Field>
+        <Field label="Department"><Input value={form.department || 'Filled in from the employee'} editable={false} /></Field>
         <Field label="Leave Type"><SearchablePicker value={form.leaveType} onChange={(v) => setForm((f) => ({ ...f, leaveType: v }))} options={LEAVE_TYPES.map((l) => ({ value: l, label: l }))} /></Field>
         <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
           <View style={{ flex: 1 }}><Field label="Start Date"><Input value={form.startDate} onChangeText={(v) => setForm((f) => ({ ...f, startDate: v }))} placeholder="YYYY-MM-DD" /></Field></View>
@@ -233,7 +244,7 @@ function LeaveBalances({ leaves, canEdit, updatedBy }: { leaves: LeaveRequest[];
   const year = new Date().getFullYear();
   const [ent, setEnt] = useState<Entitlements>({});
   const [draft, setDraft] = useState<Record<LeaveType, string>>({ Annual: '', Sick: '', Personal: '', Emergency: '' });
-  const [staff, setStaff] = useState<{ key: string; fullName: string; department: string }[]>([]);
+  const [staff, setStaff] = useState<StaffRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [loadError, setLoadError] = useState('');
@@ -241,14 +252,13 @@ function LeaveBalances({ leaves, canEdit, updatedBy }: { leaves: LeaveRequest[];
   useEffect(() => {
     (async () => {
       try {
-        const [e, dir] = await Promise.all([loadEntitlements(), loadDirectory()]);
+        const [e, people] = await Promise.all([loadEntitlements(), loadActiveStaff()]);
         setEnt(e);
         setDraft({
           Annual: e.Annual != null ? String(e.Annual) : '', Sick: e.Sick != null ? String(e.Sick) : '',
           Personal: e.Personal != null ? String(e.Personal) : '', Emergency: e.Emergency != null ? String(e.Emergency) : '',
         });
-        setStaff(dir.filter((r) => r.kind !== 'invite' && r.status === 'ACTIVE' && !r.isCeo)
-          .map((r) => ({ key: r.key, fullName: r.fullName, department: r.department })));
+        setStaff(people);
         setLoadError('');
       } catch (err: any) {
         setLoadError(err?.message || 'Could not load leave balances.');
@@ -280,7 +290,7 @@ function LeaveBalances({ leaves, canEdit, updatedBy }: { leaves: LeaveRequest[];
   };
 
   const rows: BalanceRow[] = computeBalances(staff, leaves.map((l) => ({
-    staffName: l.employeeName, leaveType: l.leaveType, startDate: l.startDate, days: l.days, status: l.status,
+    staffId: l.staffId, staffName: l.employeeName, leaveType: l.leaveType, startDate: l.startDate, days: l.days, status: l.status,
   })), ent, year);
 
   const cell = (b: BalanceRow['byType'][LeaveType]) => {
@@ -342,5 +352,61 @@ function LeaveBalances({ leaves, canEdit, updatedBy }: { leaves: LeaveRequest[];
         <DataList exportTitle={`Leave Balances ${year}`} columns={columns} data={rows} rowKey={(r) => r.key} loading={loading} emptyTitle="No active staff yet" />
       )}
     </View>
+  );
+}
+
+const TYPE_COLOR: Record<string, string> = { Annual: '#6366f1', Sick: '#ef4444', Personal: '#f59e0b', Emergency: '#dc2626' };
+
+function LeaveCalendar({ leaves }: { leaves: LeaveRequest[] }) {
+  const t = useTheme();
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = today.getMonth();
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const monthName = today.toLocaleString('default', { month: 'long', year: 'numeric' });
+  const monthStart = new Date(year, month, 1);
+  const monthEnd = new Date(year, month + 1, 0, 23, 59, 59);
+  const inMonth = leaves.filter((l) => l.status === 'APPROVED' && new Date(l.startDate) <= monthEnd && new Date(l.endDate) >= monthStart);
+  const forDay = (day: number) => {
+    const d = new Date(year, month, day);
+    return inMonth.filter((l) => d >= new Date(l.startDate) && d <= new Date(l.endDate));
+  };
+  const cells: (number | null)[] = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
+  while (cells.length % 7) cells.push(null);
+
+  return (
+    <Card>
+      <View style={{ gap: t.spacing.sm }}>
+        <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary }}>{monthName}</Text>
+        <View style={{ flexDirection: 'row' }}>
+          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
+            <Text key={d} style={{ flex: 1, textAlign: 'center', fontFamily: t.font.bold, fontSize: t.type.meta10.size, color: t.colors.textMuted }}>{d}</Text>
+          ))}
+        </View>
+        {Array.from({ length: cells.length / 7 }, (_, w) => (
+          <View key={w} style={{ flexDirection: 'row', gap: 3 }}>
+            {cells.slice(w * 7, w * 7 + 7).map((day, i) => {
+              if (!day) return <View key={i} style={{ flex: 1 }} />;
+              const list = forDay(day);
+              const isToday = day === today.getDate();
+              return (
+                <View key={i} style={{ flex: 1, minHeight: 48, borderRadius: 8, padding: 2, borderWidth: 1,
+                  borderColor: isToday ? t.colors.accent : t.colors.border, backgroundColor: isToday ? t.colors.accentSoft : t.colors.bgPage }}>
+                  <Text style={{ textAlign: 'right', fontFamily: t.font.bold, fontSize: t.type.meta10.size, color: isToday ? t.colors.accent : t.colors.textMuted }}>{day}</Text>
+                  {list.slice(0, 2).map((l, li) => (
+                    <Text key={li} numberOfLines={1} style={{ fontFamily: t.font.semibold, fontSize: 8, color: TYPE_COLOR[l.leaveType] || t.colors.accent }}>
+                      {l.employeeName.split(' ')[0]}
+                    </Text>
+                  ))}
+                  {list.length > 2 ? <Text style={{ fontSize: 8, color: t.colors.textMuted }}>{`+${list.length - 2}`}</Text> : null}
+                </View>
+              );
+            })}
+          </View>
+        ))}
+        <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted }}>Shows approved leave this month.</Text>
+      </View>
+    </Card>
   );
 }

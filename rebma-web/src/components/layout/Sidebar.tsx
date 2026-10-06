@@ -277,6 +277,22 @@ export default function Sidebar({
     return d.value === normalizedUserDept;
   });
 
+  // Settings has its own button at the bottom of the sidebar, so it isn't
+  // repeated in the department dropdown.
+  const switcherDepts = availableDepts.filter(d => d.value !== 'SETTINGS');
+
+  const myDeptLabel = (() => {
+    const code = normalizeDeptCode(currentUser?.department || '');
+    return allDepts.find(d => d.value === code)?.label || currentUser?.department || '';
+  })();
+  // Switching department resets the page to that department's default
+  // (App.tsx), so the Profile page is chosen once that reset has run.
+  const openMyProfile = () => {
+    if (activeDepartment === 'SETTINGS') setActiveSubTab('Profile');
+    else { setActiveDepartment('SETTINGS'); setTimeout(() => setActiveSubTab('Profile'), 60); }
+    onClose?.();
+  };
+
   const getIconForDept = (val: string) => {
     if (val === 'CEO') return ShieldCheck;
     if (val === 'RISK') return ShieldAlert;
@@ -388,7 +404,8 @@ export default function Sidebar({
             )}
           </div>
           {/* User */}
-          <div className="py-4 flex items-center gap-2.5 border-b border-[var(--border)] shrink-0">
+          <button type="button" onClick={openMyProfile} title="Open my profile"
+            className="py-4 w-full text-left flex items-center gap-2.5 border-b border-[var(--border)] shrink-0 cursor-pointer">
             <div className="w-10 h-10 rounded-full bg-[var(--accent,#068d5c)] text-white flex items-center justify-center font-bold text-sm shrink-0 relative overflow-hidden">
               {currentUser?.photo ? (
                 <img src={currentUser.photo} className="w-full h-full object-cover" alt="Profile" />
@@ -399,15 +416,15 @@ export default function Sidebar({
             </div>
             <div className="truncate flex-1">
               <p className="text-xs font-bold leading-none truncate text-[var(--text-primary)]">{currentUser?.fullName}</p>
-              <p className="text-[10px] text-text-secondary leading-none mt-1 truncate">{currentUser?.department}</p>
+              <p className="text-[10px] text-text-secondary leading-none mt-1 truncate">{myDeptLabel}</p>
             </div>
-          </div>
+          </button>
           {/* Channels */}
           <div className="flex-1 overflow-y-auto pt-4 space-y-4">
             <div>
               <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest px-2 mb-1.5">Channels</p>
               <div className="space-y-1">
-                {availableDepts.map(dept => {
+                {switcherDepts.map(dept => {
                   const isSelected = dept.value === activeDepartment;
                   return (
                     <button key={dept.value} type="button" onClick={() => { setActiveDepartment(dept.value); onClose?.(); }}
@@ -460,7 +477,7 @@ export default function Sidebar({
           <div className="mb-3 px-1 relative shrink-0">
             <label className={`block text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-1 transition-all duration-300 ${isActualCollapsed ? 'opacity-0 h-0 overflow-hidden' : ''}`}>Switch Department</label>
             <button type="button" onClick={() => setIsSwitcherOpen(prev => !prev)}
-              className={`w-full flex items-center ${isActualCollapsed ? 'justify-center py-2 px-0' : 'justify-between py-2 px-3'} bg-[var(--bg)] hover:bg-[var(--accent-light)] border border-[var(--border)] text-[var(--text-primary)] rounded-xl text-xs focus:outline-none transition-all cursor-pointer font-semibold`}
+              className={`w-full flex items-center ${isActualCollapsed ? 'justify-center py-2 px-0' : 'justify-between py-2 px-3'} bg-[var(--bg)] hover:bg-[var(--accent-light)] text-[var(--text-primary)] rounded-xl text-xs focus:outline-none transition-all cursor-pointer font-semibold`}
               title="Switch Department">
               <div className="flex items-center gap-2">
                 {(() => { const I = getIconForDept(activeDepartment); return <I className="w-4 h-4 text-[var(--accent)] shrink-0" />; })()}
@@ -474,9 +491,9 @@ export default function Sidebar({
               <>
                 <div className="fixed inset-0 bg-black/60 z-[250] lg:hidden" onClick={() => setIsSwitcherOpen(false)} />
                 <div className="fixed inset-0 z-[250] hidden lg:block" onClick={() => setIsSwitcherOpen(false)} />
-                <div className={`fixed inset-x-0 bottom-0 lg:absolute lg:top-full lg:bottom-auto max-h-[80vh] lg:max-h-72 bg-[var(--bg-card)] border-t lg:border border-[var(--border)] rounded-t-3xl lg:rounded-xl p-4 lg:p-1.5 z-[260] overflow-y-auto shadow-xl flex flex-col gap-0.5 ${isActualCollapsed ? 'lg:w-[200px] lg:left-0' : 'lg:inset-x-0'}`}>
+                <div className={`fixed inset-x-0 bottom-0 lg:absolute lg:top-full lg:bottom-auto max-h-[80vh] lg:max-h-72 bg-[var(--bg-card)] rounded-t-3xl lg:rounded-xl p-4 lg:p-1.5 z-[260] overflow-y-auto flex flex-col gap-0.5 ${isActualCollapsed ? 'lg:w-[200px] lg:left-0' : 'lg:inset-x-0'}`}>
                   <div className="lg:hidden w-12 h-1 bg-bg-card/20 rounded-full mx-auto mb-2 shrink-0" />
-                  {availableDepts.map(dept => {
+                  {switcherDepts.map(dept => {
                     const isSelected = dept.value === activeDepartment;
                     const DI = getIconForDept(dept.value);
                     const hasAlert = (tabAlerts[dept.value] || 0) > 0;
@@ -678,7 +695,8 @@ export default function Sidebar({
           </button>
 
           <div className={`px-2 flex items-center ${isActualCollapsed ? 'flex-col gap-2 justify-center' : 'justify-between'}`}>
-            <div className={`flex items-center ${isActualCollapsed ? 'justify-center' : 'gap-2'} truncate`}>
+            <button type="button" onClick={openMyProfile} title="Open my profile"
+              className={`flex items-center ${isActualCollapsed ? 'justify-center' : 'gap-2'} truncate min-w-0 text-left rounded-lg p-1 -m-1 hover:bg-[var(--accent-light)] transition-colors cursor-pointer`}>
               <div className="w-8 h-8 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-card overflow-hidden relative">
                 {currentUser?.photo ? (
                   <img src={currentUser.photo} className="w-full h-full object-cover" alt="Profile" />
@@ -688,9 +706,9 @@ export default function Sidebar({
               </div>
               <div className={`truncate transition-all duration-300 ${isActualCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>
                 <p className="text-xs font-semibold text-[var(--text-primary)] leading-none truncate">{currentUser?.fullName}</p>
-                <p className="text-[10px] text-[var(--text-secondary)] leading-none mt-1 truncate">{currentUser?.department}</p>
+                <p className="text-[10px] text-[var(--text-secondary)] leading-none mt-1 truncate">{myDeptLabel}</p>
               </div>
-            </div>
+            </button>
             <button onClick={onLogout} className="p-1.5 hover:bg-[var(--accent-light)] rounded-lg text-rose-500 cursor-pointer shrink-0 transition-colors" title="Sign out">
               <LogOut className="w-4 h-4" />
             </button>

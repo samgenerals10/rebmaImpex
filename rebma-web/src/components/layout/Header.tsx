@@ -252,7 +252,7 @@ export default function Header({
   const dept = activeDepartment || currentUser?.department || '';
 
   return (
-    <header className="relative mb-0 lg:mb-6">
+    <header className="relative mb-0 lg:mb-4">
       {/* 1. MOBILE HERO HEADER */}
       <div className="lg:hidden bg-transparent px-5 py-4 pb-2 relative flex flex-col gap-3">
         {/* Top Bar */}
@@ -480,7 +480,7 @@ export default function Header({
       </div>
 
       {/* 2. DESKTOP HEADER */}
-      <div className="header-shell hidden lg:flex items-center h-[76px] pl-3 pr-3 rounded-full border border-[var(--border)] relative gap-4 w-full">
+      <div className="header-shell hidden lg:flex items-center h-[64px] pl-2 pr-2 rounded-full relative gap-2 w-full">
         {/* Collapse sidebar toggle — far left, matches reference */}
         {onToggleSidebar && (
           <button
@@ -499,7 +499,7 @@ export default function Header({
         </div>
 
         {/* Raised tray holding search and the quick controls */}
-        <div className="flex-1 min-w-0 flex items-center gap-1 h-14 pl-2 pr-2 rounded-full bg-[var(--bg-page)] shadow-[inset_0_1px_4px_rgba(15,23,42,0.07)]">
+        <div className="flex-1 min-w-0 flex items-center gap-1 h-12 pl-1.5 pr-1.5 rounded-full bg-[var(--bg-page)] shadow-[inset_0_1px_4px_rgba(15,23,42,0.07)]">
 
         {/* Search bar — center, pill shape, matches reference */}
         <div className="relative flex items-center flex-1 min-w-0">

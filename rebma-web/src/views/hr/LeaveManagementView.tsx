@@ -6,11 +6,11 @@ import EntityDetailPanel from '../../components/global/EntityDetailPanel';
 import SidePanel from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
 import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
-import { LEAVE_TYPES as BALANCE_TYPES, loadEntitlements, saveEntitlements, computeBalances, type Entitlements, type BalanceRow, type LeaveType } from '../../utils/leaveBalances';
-import { loadDirectory } from '../../utils/staffDirectory';
+import { LEAVE_TYPES as BALANCE_TYPES, loadEntitlements, saveEntitlements, computeBalances, loadActiveStaff, writeLeaveRequest, type Entitlements, type BalanceRow, type LeaveType, type StaffRow } from '../../utils/leaveBalances';
 
 interface LeaveRequest {
   id: string;
+  staffId?: string;
   employeeName: string;
   department: string;
   leaveType: 'Annual' | 'Sick' | 'Personal' | 'Emergency';
@@ -23,7 +23,7 @@ interface LeaveRequest {
 }
 
 
-const DEPARTMENTS = ['All', 'Operations', 'Account Department', 'Logistics', 'HR', 'Marketing', 'Reception', 'Production', 'Management'];
+const DEPARTMENTS = ['All', 'Admin & Warehouse', 'Account Department', 'HR', 'Marketing', 'Reception', 'Production', 'Management', 'Risk'];
 const LEAVE_TYPES = ['All', 'Annual', 'Sick', 'Personal', 'Emergency'];
 const STATUSES = ['All', 'PENDING', 'APPROVED', 'REJECTED'];
 
@@ -117,6 +117,7 @@ function CalendarView({ leaves }: { leaves: LeaveRequest[] }) {
 
 const mapToUI = (db: any): LeaveRequest => ({
   id: db.id,
+  staffId: db.staff_id || undefined,
   employeeName: db.staff_name || '',
   department: db.department || '',
   leaveType: (db.leave_type || 'Annual') as LeaveRequest['leaveType'],
@@ -131,6 +132,7 @@ const mapToUI = (db: any): LeaveRequest => ({
 const mapToDB = (ui: Partial<LeaveRequest>) => {
   const db: any = {};
   if (ui.id !== undefined) db.id = ui.id;
+  if (ui.staffId) db.staff_id = ui.staffId;
   if (ui.employeeName !== undefined) db.staff_name = ui.employeeName;
   if (ui.department !== undefined) db.department = ui.department;
   if (ui.leaveType !== undefined) db.leave_type = ui.leaveType;
@@ -156,7 +158,8 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
   const [editForm, setEditForm] = useState<LeaveRequest | null>(null);
   const [rejectId, setRejectId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
-  const [form, setForm] = useState({ employeeName: '', department: 'Operations', leaveType: 'Annual' as LeaveRequest['leaveType'], startDate: '', endDate: '', reason: '' });
+  const [staffList, setStaffList] = useState<StaffRow[]>([]);
+  const [form, setForm] = useState({ staffId: '', employeeName: '', department: '', leaveType: 'Annual' as LeaveRequest['leaveType'], startDate: '', endDate: '', reason: '' });
   const [viewLeave, setViewLeave] = useState<LeaveRequest | null>(null);
 
   const canApprove = currentUser?.isAdmin || currentUser?.department === 'HR';
@@ -174,6 +177,11 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
     };
     load();
   }, []);
+
+  useEffect(() => { loadActiveStaff().then(setStaffList).catch(() => setStaffList([])); }, []);
+
+  const staffOptions = staffList.map(p => ({ value: p.id, label: p.fullName, sublabel: p.department }));
+  const deptFilterOptions = Array.from(new Set([...DEPARTMENTS, ...leaves.map(l => l.department).filter(Boolean)]));
 
   const filtered = leaves.filter(l => {
     const matchDept = deptFilter === 'All' || l.department === deptFilter;
@@ -221,16 +229,17 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
 
   const handleAdd = async () => {
     if (submitting) return;
+    if (!form.staffId) { alert('Choose the employee first.'); return; }
     setSubmitting(true);
     try {
       const days = calcDays(form.startDate, form.endDate);
       const dbData = mapToDB({ ...form, days, status: 'PENDING' });
-      const { data: inserted, error } = await supabase.from('leave_requests').insert([dbData]).select().single();
+      const { data: inserted, error } = await writeLeaveRequest(dbData);
       if (!error) {
         setLeaves(prev => [mapToUI(inserted), ...prev]);
         addNotification(`Leave request submitted for ${form.employeeName}`);
         setShowAdd(false);
-        setForm({ employeeName: '', department: 'Operations', leaveType: 'Annual', startDate: '', endDate: '', reason: '' });
+        setForm({ staffId: '', employeeName: '', department: '', leaveType: 'Annual', startDate: '', endDate: '', reason: '' });
       } else {
         alert(error.message || 'Failed to submit leave request');
       }
@@ -254,7 +263,7 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
       const days = calcDays(editForm.startDate, editForm.endDate);
       const updated = { ...editForm, days };
       const dbData = mapToDB(updated);
-      const { error } = await supabase.from('leave_requests').update(dbData).eq('id', editForm.id);
+      const { error } = await writeLeaveRequest(dbData, editForm.id);
       if (!error) {
         setLeaves(prev => prev.map(l => l.id === editForm.id ? updated : l));
         addNotification(`Leave request updated for ${editForm.employeeName}`);
@@ -291,7 +300,8 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
 
   const totalPending = leaves.filter(l => l.status === 'PENDING').length;
   const totalApproved = leaves.filter(l => l.status === 'APPROVED').length;
-  const onLeaveNow = leaves.filter(l => l.status === 'APPROVED' && l.startDate <= '2026-06-12' && l.endDate >= '2026-06-12').length;
+  const todayIso = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })();
+  const onLeaveNow = leaves.filter(l => l.status === 'APPROVED' && l.startDate <= todayIso && l.endDate >= todayIso).length;
 
   return (
     <div style={{ padding: '1.5rem', maxWidth: 1100, margin: '0 auto' }}>
@@ -344,7 +354,7 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
 
       <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap', alignItems: 'center' }}>
         <Filter size={14} style={{ color: 'var(--text-muted)' }} />
-        <SearchableDropdown value={deptFilter} onChange={setDeptFilter} options={DEPARTMENTS.map(d => ({ value: d, label: d }))} className="w-40" />
+        <SearchableDropdown value={deptFilter} onChange={setDeptFilter} options={deptFilterOptions.map(d => ({ value: d, label: d }))} className="w-40" />
         <SearchableDropdown value={typeFilter} onChange={setTypeFilter} options={LEAVE_TYPES.map(t => ({ value: t, label: t }))} className="w-40" />
         <SearchableDropdown value={statusFilter} onChange={setStatusFilter} options={STATUSES.map(s => ({ value: s, label: s }))} className="w-36" />
       </div>
@@ -493,12 +503,12 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
             <div style={{ display: 'grid', gap: '0.75rem' }}>
               <div>
                 <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Employee Name</label>
-                <input placeholder="Enter employee name" value={form.employeeName} onChange={e => setForm(p => ({ ...p, employeeName: e.target.value }))}
-                  style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }} />
+                <SearchableDropdown value={form.staffId} placeholder="Choose the employee" options={staffOptions}
+                  onChange={v => { const p = staffList.find(x => x.id === v); setForm(f => ({ ...f, staffId: v, employeeName: p?.fullName || '', department: p?.department || '' })); }} />
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Department</label>
-                <SearchableDropdown value={form.department} onChange={v => setForm(p => ({ ...p, department: v }))} options={DEPARTMENTS.filter(d => d !== 'All').map(d => ({ value: d, label: d }))} />
+                <div style={{ padding: '0.5rem 0.75rem', borderRadius: 8, background: 'var(--bg)', color: form.department ? 'var(--text-primary)' : 'var(--text-muted)', fontSize: 14 }}>{form.department || 'Filled in from the employee'}</div>
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Leave Type</label>
@@ -539,12 +549,12 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
             <div style={{ display: 'grid', gap: '0.75rem' }}>
               <div>
                 <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Employee Name</label>
-                <input placeholder="Enter employee name" value={editForm.employeeName} onChange={e => setEditForm(p => p ? ({ ...p, employeeName: e.target.value }) : null)}
-                  style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }} />
+                <SearchableDropdown value={editForm.staffId || ''} placeholder={editForm.employeeName || 'Choose the employee'} options={staffOptions}
+                  onChange={v => { const p = staffList.find(x => x.id === v); setEditForm(f => f ? ({ ...f, staffId: v, employeeName: p?.fullName || f.employeeName, department: p?.department || f.department }) : null); }} />
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Department</label>
-                <SearchableDropdown value={editForm.department} onChange={v => setEditForm(p => p ? ({ ...p, department: v }) : null)} options={DEPARTMENTS.filter(d => d !== 'All').map(d => ({ value: d, label: d }))} />
+                <div style={{ padding: '0.5rem 0.75rem', borderRadius: 8, background: 'var(--bg)', color: editForm.department ? 'var(--text-primary)' : 'var(--text-muted)', fontSize: 14 }}>{editForm.department || 'Filled in from the employee'}</div>
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Leave Type</label>
@@ -591,7 +601,7 @@ function LeaveBalancesTab({ leaves, canEdit, currentUser, addNotification }: {
   const year = new Date().getFullYear();
   const [ent, setEnt] = useState<Entitlements>({});
   const [draft, setDraft] = useState<Record<LeaveType, string>>({ Annual: '', Sick: '', Personal: '', Emergency: '' });
-  const [staff, setStaff] = useState<{ key: string; fullName: string; department: string }[]>([]);
+  const [staff, setStaff] = useState<StaffRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [loadError, setLoadError] = useState('');
@@ -605,10 +615,9 @@ function LeaveBalancesTab({ leaves, canEdit, currentUser, addNotification }: {
     (async () => {
       setLoading(true);
       try {
-        const [e, dir] = await Promise.all([loadEntitlements(), loadDirectory()]);
+        const [e, people] = await Promise.all([loadEntitlements(), loadActiveStaff()]);
         setEnt(e); fillDraft(e);
-        setStaff(dir.filter(r => r.kind !== 'invite' && r.status === 'ACTIVE' && !r.isCeo)
-          .map(r => ({ key: r.key, fullName: r.fullName, department: r.department })));
+        setStaff(people);
         setLoadError('');
       } catch (err: any) {
         setLoadError(err?.message || 'Could not load leave balances.');
@@ -640,7 +649,7 @@ function LeaveBalancesTab({ leaves, canEdit, currentUser, addNotification }: {
   };
 
   const rows: BalanceRow[] = computeBalances(staff, leaves.map(l => ({
-    staffName: l.employeeName, leaveType: l.leaveType, startDate: l.startDate, days: l.days, status: l.status,
+    staffId: l.staffId, staffName: l.employeeName, leaveType: l.leaveType, startDate: l.startDate, days: l.days, status: l.status,
   })), ent, year);
 
   const cell = (b: BalanceRow['byType'][LeaveType]) => {
