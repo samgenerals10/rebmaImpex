@@ -31,7 +31,7 @@ export default function MaintenancePage({ onAccessRestored }: Props) {
   return (
     <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#0f172a] text-white p-6">
       <div className="flex flex-col items-center text-center max-w-lg space-y-6">
-        <img src="/logo.png" alt="REBMA IMPEX" className="w-16 h-16 object-contain rounded-2xl" />
+        <img src="/logo-mark.png" alt="REBMA IMPEX" className="h-14 w-auto" />
         <Settings className="w-20 h-20 text-emerald-400 animate-spin" style={{ animationDuration: '4s' }} />
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight">System Under Maintenance</h1>

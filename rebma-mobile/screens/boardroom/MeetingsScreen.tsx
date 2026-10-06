@@ -35,6 +35,8 @@ import Sheet, { SheetSection } from '../../components/ui/Sheet';
 import EmptyState from '../../components/ui/EmptyState';
 import Tabs from '../../components/ui/Tabs';
 import GroupCallSheet from '../../components/shared/GroupCallSheet';
+import MeetingLobbySheet from '../../components/shared/MeetingLobbySheet';
+import { messenger } from '../../lib/messenger';
 import CalendarPicker, { toKey, type CalendarValue } from '../../components/ui/CalendarPicker';
 import { setActiveInterval } from '../../lib/activeInterval';
 import { useIsFocused } from '@react-navigation/native';
@@ -53,7 +55,8 @@ interface Meeting {
   duration_minutes: number; organizer_id: string | null; jitsi_room: string;
   recap_notes: string | null; status: string; myRsvp?: string;
 }
-interface AttendeeProfile { id: string; fullName: string; department: string }
+interface AttendeeProfile { id: string; fullName: string; department: string; photo?: string | null }
+type LobbyChoice = { title: string; inviteeIds: string[]; micOn: boolean; camOn: boolean };
 
 const STATUS_TONE: Record<string, StatusTone> = {
   SCHEDULED: 'info', IN_PROGRESS: 'success', COMPLETED: 'muted', CANCELLED: 'danger',
@@ -73,7 +76,9 @@ export default function MeetingsScreen() {
   const [attendeeProfiles, setAttendeeProfiles] = useState<AttendeeProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeCall, setActiveCall] = useState<{ room: string; title: string; meetingId: string } | null>(null);
+  const [activeCall, setActiveCall] = useState<{ room: string; title: string; meetingId: string; micOn?: boolean; camOn?: boolean; isHost?: boolean } | null>(null);
+  // Every way into a meeting goes through the lobby first, same as the web app.
+  const [lobby, setLobby] = useState<{ mode: 'start' | 'join'; title: string; code: string; go: (c: LobbyChoice) => Promise<void> } | null>(null);
   // A calendar instead of Today / Scheduled tabs (Part C): days with a
   // meeting are marked; tap one to see its meetings, past or upcoming.
   const [calMonth, setCalMonth] = useState(new Date());
@@ -111,8 +116,8 @@ export default function MeetingsScreen() {
   useEffect(() => {
     if (!myId) return;
     load();
-    supabase.from('profiles_directory').select('id, full_name, role').eq('status', 'ACTIVE').order('full_name', { ascending: true }).then(({ data }) => {
-      setAttendeeProfiles((data || []).map((p: any) => ({ id: p.id, fullName: p.full_name || 'Unknown', department: p.role || '' })).filter((p: any) => p.id !== myId));
+    supabase.from('profiles_directory').select('id, full_name, role, photo').eq('status', 'ACTIVE').order('full_name', { ascending: true }).then(({ data }) => {
+      setAttendeeProfiles((data || []).map((p: any) => ({ id: p.id, fullName: p.full_name || 'Unknown', department: p.role || '', photo: p.photo || null })).filter((p: any) => p.id !== myId));
     });
   }, [myId, load, loadMeetings]);
 
@@ -172,15 +177,28 @@ export default function MeetingsScreen() {
   const startInstantMeeting = async () => {
     let room: string;
     try { room = await slugRoom('Now'); } catch (e: any) { Alert.alert('Failed', e?.message || 'Could not start the meeting.'); return; }
-    const { data: created, error } = await supabase.from('meetings').insert({
-      title: 'Quick Meeting', description: '', scheduled_at: new Date().toISOString(), duration_minutes: 30,
-      organizer_id: myId, jitsi_room: room, status: 'IN_PROGRESS',
-    }).select();
-    if (error || !created) { Alert.alert('Failed', error?.message || 'Could not start the meeting.'); return; }
-    const meeting = created[0];
-    await supabase.from('meeting_attendees').insert({ meeting_id: meeting.id, user_id: myId, rsvp_status: 'ACCEPTED', joined_at: new Date().toISOString() });
-    setActiveCall({ room, title: meeting.title, meetingId: meeting.id });
-    loadMeetings();
+    const first = (profile?.fullName || 'My').split(' ')[0];
+    setLobby({
+      mode: 'start', title: `${first}'s meeting`, code: room,
+      go: async ({ title, inviteeIds, micOn, camOn }) => {
+        const { data: created, error } = await supabase.from('meetings').insert({
+          title, description: '', scheduled_at: new Date().toISOString(), duration_minutes: 30,
+          organizer_id: myId, jitsi_room: room, status: 'IN_PROGRESS',
+        }).select();
+        if (error || !created) { Alert.alert('Failed', error?.message || 'Could not start the meeting.'); throw new Error('not started'); }
+        const meeting = created[0];
+        const invitees = Array.from(new Set(inviteeIds.filter((id) => id && id !== myId)));
+        await supabase.from('meeting_attendees').insert([
+          { meeting_id: meeting.id, user_id: myId, rsvp_status: 'ACCEPTED', joined_at: new Date().toISOString() },
+          ...invitees.map((uid) => ({ meeting_id: meeting.id, user_id: uid, rsvp_status: 'INVITED' })),
+        ]);
+        if (invitees.length > 0) {
+          await messenger.notifyUsers(invitees, 'meeting_invite', `${profile?.fullName || 'A colleague'} started "${title}"`, `Happening now. Join from Meetings or with the code ${room}.`, meeting.id).catch(() => {});
+        }
+        setActiveCall({ room, title: meeting.title, meetingId: meeting.id, micOn, camOn, isHost: true });
+        loadMeetings();
+      },
+    });
   };
 
   // "Join meeting" (the reference's second action card) — join a
@@ -199,8 +217,8 @@ export default function MeetingsScreen() {
       if (error || !row) { Alert.alert('Not found', error?.message || 'No meeting matches that code. Check it and try again.'); return; }
       setShowJoinByCode(false);
       setJoinCode('');
-      setActiveCall({ room: row.room, title: row.title, meetingId: row.meeting_id });
       loadMeetings();
+      setLobby({ mode: 'join', title: row.title, code: row.room, go: async ({ micOn, camOn }) => { setActiveCall({ room: row.room, title: row.title, meetingId: row.meeting_id, micOn, camOn }); } });
     } finally {
       setJoiningByCode(false);
     }
@@ -211,11 +229,16 @@ export default function MeetingsScreen() {
     await loadMeetings();
   };
 
-  const handleJoin = async (mtg: Meeting) => {
-    await supabase.from('meeting_attendees').update({ joined_at: new Date().toISOString() }).eq('meeting_id', mtg.id).eq('user_id', myId);
-    await supabase.from('meetings').update({ status: 'IN_PROGRESS' }).eq('id', mtg.id).eq('status', 'SCHEDULED');
-    setActiveCall({ room: mtg.jitsi_room, title: mtg.title, meetingId: mtg.id });
-    await loadMeetings();
+  const handleJoin = (mtg: Meeting) => {
+    setLobby({
+      mode: 'join', title: mtg.title, code: mtg.jitsi_room,
+      go: async ({ micOn, camOn }) => {
+        await supabase.from('meeting_attendees').update({ joined_at: new Date().toISOString() }).eq('meeting_id', mtg.id).eq('user_id', myId);
+        await supabase.from('meetings').update({ status: 'IN_PROGRESS' }).eq('id', mtg.id).eq('status', 'SCHEDULED');
+        setActiveCall({ room: mtg.jitsi_room, title: mtg.title, meetingId: mtg.id, micOn, camOn });
+        await loadMeetings();
+      },
+    });
   };
 
   const meetingDay = (iso: string) => (iso ? toKey(new Date(iso)) : '');
@@ -355,12 +378,23 @@ export default function MeetingsScreen() {
         </SheetSection>
       </Sheet>
 
+      {lobby && (
+        <MeetingLobbySheet
+          mode={lobby.mode} title={lobby.title} code={lobby.code}
+          myName={profile?.fullName || 'Me'} people={attendeeProfiles}
+          onCancel={() => setLobby(null)}
+          onConfirm={async (choice) => { const l = lobby; await l.go(choice); setLobby(null); }}
+        />
+      )}
+
       {activeCall && (
         <GroupCallSheet
           room={activeCall.room}
           title={activeCall.title}
           meetingId={activeCall.meetingId}
-          isHost={meetings.find((m) => m.id === activeCall.meetingId)?.organizer_id === myId}
+          isHost={activeCall.isHost || meetings.find((m) => m.id === activeCall.meetingId)?.organizer_id === myId}
+          startWithCamera={activeCall.camOn ?? true}
+          startWithMic={activeCall.micOn ?? true}
           onClose={() => setActiveCall(null)}
         />
       )}

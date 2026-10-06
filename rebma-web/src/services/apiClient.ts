@@ -2048,10 +2048,10 @@ export interface DocumentTemplate {
 }
 
 const DOC_TEMPLATE_FALLBACKS: Record<DocumentTemplate['docType'], DocumentTemplate> = {
-  RECEIPT: { docType: 'RECEIPT', logoUrl: '/logo.png', companyName: 'REBMA IMPEX', subtitle: 'Official Payment Receipt', companyAddress: 'Accra Business District, Accra, Ghana', companyLat: null, companyLng: null, companyPhone: '', companyEmail: '', website: 'rebmaimpex.com', footerNote: 'This receipt is issued by REBMA IMPEX Ghana Limited Account Department. It confirms payment has been received and recorded against the order referenced above.' },
-  TICKET: { docType: 'TICKET', logoUrl: '/logo.png', companyName: 'REBMA IMPEX', subtitle: 'Operations Dispatch Ticket', companyAddress: 'Accra Business District, Accra, Ghana', companyLat: null, companyLng: null, companyPhone: '', companyEmail: '', website: 'rebmaimpex.com', footerNote: 'This ticket is issued by REBMA IMPEX Ghana Limited Operations. It authorises the loading and dispatch of the above goods to the stated destination.' },
-  WAYBILL: { docType: 'WAYBILL', logoUrl: '/logo.png', companyName: 'REBMA IMPEX', subtitle: 'Waybill', companyAddress: 'Accra Business District, Accra, Ghana', companyLat: null, companyLng: null, companyPhone: '', companyEmail: '', website: 'rebmaimpex.com', footerNote: 'This waybill is issued by REBMA IMPEX Ghana Limited Risk. It travels with the goods and must be shown on request.' },
-  INVOICE: { docType: 'INVOICE', logoUrl: '/logo.png', companyName: 'REBMA IMPEX', subtitle: 'Proforma Invoice, Quote Only', companyAddress: 'Accra Business District, Accra, Ghana', companyLat: null, companyLng: null, companyPhone: '', companyEmail: '', website: 'rebmaimpex.com', footerNote: 'This is a proforma invoice, a quotation only, not a demand for payment or a tax invoice.' },
+  RECEIPT: { docType: 'RECEIPT', logoUrl: '/logo-mark.png', companyName: 'REBMA IMPEX', subtitle: 'Official Payment Receipt', companyAddress: 'Accra Business District, Accra, Ghana', companyLat: null, companyLng: null, companyPhone: '', companyEmail: '', website: 'rebmaimpex.com', footerNote: 'This receipt is issued by REBMA IMPEX Ghana Limited Account Department. It confirms payment has been received and recorded against the order referenced above.' },
+  TICKET: { docType: 'TICKET', logoUrl: '/logo-mark.png', companyName: 'REBMA IMPEX', subtitle: 'Operations Dispatch Ticket', companyAddress: 'Accra Business District, Accra, Ghana', companyLat: null, companyLng: null, companyPhone: '', companyEmail: '', website: 'rebmaimpex.com', footerNote: 'This ticket is issued by REBMA IMPEX Ghana Limited Operations. It authorises the loading and dispatch of the above goods to the stated destination.' },
+  WAYBILL: { docType: 'WAYBILL', logoUrl: '/logo-mark.png', companyName: 'REBMA IMPEX', subtitle: 'Waybill', companyAddress: 'Accra Business District, Accra, Ghana', companyLat: null, companyLng: null, companyPhone: '', companyEmail: '', website: 'rebmaimpex.com', footerNote: 'This waybill is issued by REBMA IMPEX Ghana Limited Risk. It travels with the goods and must be shown on request.' },
+  INVOICE: { docType: 'INVOICE', logoUrl: '/logo-mark.png', companyName: 'REBMA IMPEX', subtitle: 'Proforma Invoice, Quote Only', companyAddress: 'Accra Business District, Accra, Ghana', companyLat: null, companyLng: null, companyPhone: '', companyEmail: '', website: 'rebmaimpex.com', footerNote: 'This is a proforma invoice, a quotation only, not a demand for payment or a tax invoice.' },
 };
 
 function mapDocTemplate(row: any, docType: DocumentTemplate['docType']): DocumentTemplate {
@@ -2126,6 +2126,11 @@ export const documentTemplates = {
 // ── Messenger (channels, DMs, reactions, reads, ad-hoc calls) ──────────
 // A meeting code works like an invitation (anyone with it can join a
 // meeting), so the random part comes from the browser's secure generator.
+/** A fresh, hard-to-guess meeting code (the lobby shows it before the meeting starts). */
+export function newMeetingCode() {
+  return slugRoom('Now');
+}
+
 function slugRoom(prefix: string) {
   const bytes = new Uint8Array(6);
   crypto.getRandomValues(bytes);
@@ -2595,15 +2600,29 @@ export const meetingsApi = {
   },
 
   // Meet Now: starts a meeting straight away, with the organizer in it.
-  startInstantMeeting: async (userId: string) => {
-    const room = slugRoom('Now');
+  // Set up first in the lobby: a title, and anyone invited is added and
+  // notified so they can join from their alerts or the meeting code.
+  startInstantMeeting: async (userId: string, opts?: { title?: string; inviteeIds?: string[]; organizerName?: string; room?: string }) => {
+    const room = opts?.room || slugRoom('Now');
+    const title = opts?.title?.trim() || 'Quick Meeting';
     const { data: created, error } = await supabase.from('meetings').insert({
-      title: 'Quick Meeting', description: '', scheduled_at: new Date().toISOString(), duration_minutes: 30,
+      title, description: '', scheduled_at: new Date().toISOString(), duration_minutes: 30,
       organizer_id: userId, jitsi_room: room, status: 'IN_PROGRESS',
     }).select();
     if (error || !created || !created[0]) throw new Error(error?.message || 'Could not start the meeting.');
-    await supabase.from('meeting_attendees').insert({ meeting_id: created[0].id, user_id: userId, rsvp_status: 'ACCEPTED', joined_at: new Date().toISOString() });
-    return { id: created[0].id as string, room, title: created[0].title as string };
+    const invitees = Array.from(new Set((opts?.inviteeIds || []).filter(id => id && id !== userId)));
+    await supabase.from('meeting_attendees').insert([
+      { meeting_id: created[0].id, user_id: userId, rsvp_status: 'ACCEPTED', joined_at: new Date().toISOString() },
+      ...invitees.map(uid => ({ meeting_id: created[0].id, user_id: uid, rsvp_status: 'INVITED' })),
+    ]);
+    if (invitees.length > 0) {
+      await messenger.notifyUsers(
+        invitees, 'meeting_invite',
+        `${opts?.organizerName || 'A colleague'} started "${title}"`,
+        `Happening now. Join from Meetings or with the code ${room}.`, created[0].id,
+      ).catch(() => {});
+    }
+    return { id: created[0].id as string, room, title };
   },
 
   // Join by code: the code works as the invitation (database function

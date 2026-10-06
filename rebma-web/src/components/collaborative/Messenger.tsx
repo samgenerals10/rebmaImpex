@@ -38,7 +38,20 @@ interface Props {
   targetChannelId?: string | null;
   // Set when someone accepts an incoming call: join that call on open.
   joinCallMeetingId?: string | null;
+  /** The Boardroom lives inside the chat (same as the phone app). Which
+   *  section is open, or null for the chats. */
+  boardroomTab?: string | null;
+  onBoardroomTabChange?: (tab: string | null) => void;
+  /** Draws a Boardroom section (the App owns its data). */
+  renderBoardroom?: (tab: string) => React.ReactNode;
 }
+
+const BOARDROOM_TABS: { id: string; label: string }[] = [
+  { id: 'VideoConf', label: 'Video Meeting' },
+  { id: 'Meetings', label: 'Meetings' },
+  { id: 'Announcements', label: 'Announcements' },
+  { id: 'DirectMessages', label: 'Department Messages' },
+];
 
 interface Profile { id: string; fullName: string; department: string; email: string; photo?: string | null; }
 interface Channel { id: string; name: string | null; type: 'group' | 'dm' | 'everyone'; created_by: string | null; created_at: string; photo_url?: string | null; }
@@ -148,7 +161,7 @@ function SidebarRow({
   );
 }
 
-export default function Messenger({ isOpen, onClose, currentUser, targetUserId, targetChannelId, joinCallMeetingId }: Props) {
+export default function Messenger({ isOpen, onClose, currentUser, targetUserId, targetChannelId, joinCallMeetingId, boardroomTab = null, onBoardroomTabChange, renderBoardroom }: Props) {
   const { getSetting } = useCeoSettings();
   const globalChatEnabled = getSetting('global_chat_enabled', true);
   const departmentChatEnabled = getSetting('department_chat_enabled', true);
@@ -1048,7 +1061,31 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
             initial={{ scale: 0.97, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.97, opacity: 0 }}
             className="messenger-shell bg-[var(--bg-card)] rounded-none sm:rounded-2xl shadow-2xl w-full max-w-5xl h-full sm:h-[85vh] flex overflow-hidden"
           >
-          {checkingAccess ? (
+          {boardroomTab && renderBoardroom ? (
+            // ── Boardroom, inside the chat ──
+            <div className="flex-1 flex flex-col min-w-0">
+              <div className="flex items-center gap-2 px-3 sm:px-4 py-3 border-b border-[var(--border)] shrink-0">
+                <button onClick={() => onBoardroomTabChange?.(null)} className="p-2 -ml-1 rounded-lg hover:bg-[var(--bg-input)] text-[var(--text-secondary)] cursor-pointer shrink-0" title="Back to chats">
+                  <ArrowLeft size={18} />
+                </button>
+                <span className="w-9 h-9 rounded-full bg-[var(--accent)] text-white flex items-center justify-center shrink-0"><Video size={16} /></span>
+                <div className="min-w-0 mr-auto">
+                  <p className="text-sm font-bold text-[var(--text-primary)]">Boardroom</p>
+                  <p className="text-[11px] text-[var(--text-muted)]">Meetings, announcements and department messages</p>
+                </div>
+                <button onClick={onClose} className="p-2 rounded-lg hover:bg-[var(--bg-input)] text-[var(--text-muted)] cursor-pointer shrink-0" title="Close"><X size={16} /></button>
+              </div>
+              <div className="flex gap-1 px-3 sm:px-4 pt-2 border-b border-[var(--border)] overflow-x-auto shrink-0">
+                {BOARDROOM_TABS.map(tb => (
+                  <button key={tb.id} onClick={() => onBoardroomTabChange?.(tb.id)}
+                    className={`px-3 py-2 text-xs font-bold whitespace-nowrap border-b-2 -mb-px cursor-pointer ${boardroomTab === tb.id ? 'border-[var(--accent)] text-[var(--accent)]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
+                    {tb.label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex-1 overflow-y-auto p-3 sm:p-5">{renderBoardroom(boardroomTab)}</div>
+            </div>
+          ) : checkingAccess ? (
             <div className="flex-1 flex items-center justify-center">
               <p className="text-xs text-[var(--text-muted)]">Loading…</p>
             </div>
@@ -1068,6 +1105,11 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
                   <MessageSquare className="w-4 h-4 text-[var(--accent)]" /> Messenger
                 </h3>
                 <div className="flex items-center gap-1">
+                  {renderBoardroom && (
+                    <button onClick={() => onBoardroomTabChange?.('VideoConf')} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[var(--accent-light)] text-[var(--accent)] text-[11px] font-bold cursor-pointer hover:opacity-90" title="Boardroom: meetings and announcements">
+                      <Video size={13} /> Boardroom
+                    </button>
+                  )}
                   <button onClick={() => setShowInvites(true)} className="relative p-1.5 rounded-lg hover:bg-[var(--accent-light)] text-[var(--accent)] cursor-pointer" title="Chat invites">
                     <UserPlus size={16} />
                     {pendingInvites.length > 0 && (

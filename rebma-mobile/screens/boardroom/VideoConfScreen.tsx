@@ -30,6 +30,8 @@ import Input from '../../components/ui/Input';
 import SectionHeader from '../../components/ui/SectionHeader';
 import ModuleLauncher from '../../components/chrome/ModuleLauncher';
 import GroupCallSheet from '../../components/shared/GroupCallSheet';
+import { useAuthStore } from '../../store/authStore';
+import MeetingLobbySheet from '../../components/shared/MeetingLobbySheet';
 
 const ROOM_ID = 'RembaImpexGhanaExecutiveBoardroom_101';
 
@@ -39,6 +41,10 @@ export default function VideoConfScreen() {
   const dept = getDepartmentEntry('BOARDROOM');
   const [minutes, setMinutes] = useState('');
   const [inCall, setInCall] = useState(false);
+  // The lobby comes first (camera and mic check), same as the web app.
+  const profile = useAuthStore((st) => st.profile);
+  const [lobbyOpen, setLobbyOpen] = useState(false);
+  const [callChoice, setCallChoice] = useState({ micOn: true, camOn: true });
 
   return (
     <Screen>
@@ -49,7 +55,7 @@ export default function VideoConfScreen() {
             <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary }}>Executive Boardroom</Text>
           </View>
           <Pressable
-            onPress={() => setInCall(true)}
+            onPress={() => setLobbyOpen(true)}
             style={{ height: 160, borderRadius: t.radius.md, backgroundColor: t.colors.accentSoft, alignItems: 'center', justifyContent: 'center', gap: t.spacing.sm }}
           >
             <Video size={32} color={t.colors.accent} />
@@ -73,8 +79,15 @@ export default function VideoConfScreen() {
         <ModuleLauncher dept={dept} exclude={['VideoConf']} onSelect={(id) => navigation.navigate(id)} />
       </View>
 
+      {lobbyOpen && (
+        <MeetingLobbySheet
+          mode="join" title="Executive Boardroom" code={ROOM_ID} myName={profile?.fullName || 'Me'}
+          onCancel={() => setLobbyOpen(false)}
+          onConfirm={({ micOn, camOn }) => { setCallChoice({ micOn, camOn }); setLobbyOpen(false); setInCall(true); }}
+        />
+      )}
       {inCall && (
-        <GroupCallSheet room={ROOM_ID} title="Executive Boardroom" onClose={() => setInCall(false)} />
+        <GroupCallSheet room={ROOM_ID} title="Executive Boardroom" startWithCamera={callChoice.camOn} startWithMic={callChoice.micOn} onClose={() => setInCall(false)} />
       )}
     </Screen>
   );

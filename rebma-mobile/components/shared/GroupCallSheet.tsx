@@ -142,6 +142,9 @@ interface Props {
    *  brings everyone back (sent on the main room's channel). */
   onEndBreakouts?: () => void;
   onClose: () => void;
+  /** Chosen in the lobby: join with the camera / microphone off. */
+  startWithCamera?: boolean;
+  startWithMic?: boolean;
 }
 
 interface Peer {
@@ -159,15 +162,15 @@ interface ReactionBubble { id: string; emoji: string; from: string }
 
 const REACTION_SET = ['👍', '❤️', '😂', '👏', '🎉', '😮'];
 
-export default function GroupCallSheet({ room, title, meetingId, isHost = false, onEndBreakouts, onClose }: Props) {
+export default function GroupCallSheet({ room, title, meetingId, isHost = false, onEndBreakouts, onClose, startWithCamera = true, startWithMic = true }: Props) {
   const t = useTheme();
   const me = useAuthStore((s) => s.profile);
   const myId = me?.id || '';
   const myName = me?.fullName || 'Me';
 
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
-  const [micOn, setMicOn] = useState(true);
-  const [camOn, setCamOn] = useState(true);
+  const [micOn, setMicOn] = useState(startWithMic);
+  const [camOn, setCamOn] = useState(startWithCamera);
   const [frontCamera, setFrontCamera] = useState(true);
   const [, forceRender] = useState(0);
 
@@ -332,6 +335,8 @@ export default function GroupCallSheet({ room, title, meetingId, isHost = false,
         return;
       }
       if (cancelled) { stream.getTracks().forEach((tr) => tr.stop()); return; }
+      if (!startWithCamera) stream.getVideoTracks().forEach((tr) => { tr.enabled = false; });
+      if (!startWithMic) stream.getAudioTracks().forEach((tr) => { tr.enabled = false; });
       localStreamRef.current = stream;
       setLocalStream(stream);
 
@@ -768,6 +773,8 @@ export default function GroupCallSheet({ room, title, meetingId, isHost = false,
         isHost={isHost}
         onEndBreakouts={isHost ? endBreakoutForEveryone : undefined}
         onClose={returnToMainRoom}
+        startWithCamera={camOn}
+        startWithMic={micOn}
       />
     );
   }

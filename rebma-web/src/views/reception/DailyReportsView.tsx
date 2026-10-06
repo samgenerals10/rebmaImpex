@@ -311,7 +311,7 @@ export default function DailyReportsView({ addNotification }: Props) {
             <h3 className="text-sm font-bold text-[var(--text-primary)]">Visitor Summary</h3>
           </div>
           <div className="p-3">
-            <ResponsiveDataView<typeof visitorsToday[number]>
+            <ResponsiveDataView<typeof visitorsToday[number]> dateFilter={false}
               columns={[
                 { key: 'name', label: 'Name', primary: true },
                 { key: 'purpose', label: 'Purpose' },
@@ -396,7 +396,7 @@ export default function DailyReportsView({ addNotification }: Props) {
           <h3 className="text-sm font-bold text-[var(--text-primary)]">Past Reports, Last 7 Days</h3>
         </div>
         <div className="p-3">
-          <ResponsiveDataView<typeof pastReports[number]>
+          <ResponsiveDataView<typeof pastReports[number]> dateFilter={false}
             columns={[
               { key: 'date', label: 'Date', primary: true, render: r => new Date(r.date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) },
               { key: 'visitors', label: 'Visitors' },

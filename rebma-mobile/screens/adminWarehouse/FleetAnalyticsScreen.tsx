@@ -181,7 +181,7 @@ export default function FleetAnalyticsScreen() {
           <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginBottom: t.spacing.md }}>Fuel Efficiency by Vehicle</Text>
           {efficiencyTable.length === 0 ? (
             <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textMuted, textAlign: 'center', paddingVertical: t.spacing.lg }}>Not enough fuel log data yet.</Text>
-          ) : <DataList exportTitle="Fuel Efficiency by Vehicle" collapsible columns={efficiencyCols} data={efficiencyTable} rowKey={(r) => r.vehicleId} />}
+          ) : <DataList dateFilter={false} exportTitle="Fuel Efficiency by Vehicle" collapsible columns={efficiencyCols} data={efficiencyTable} rowKey={(r) => r.vehicleId} />}
         </Card>
       </View>
     </Screen>

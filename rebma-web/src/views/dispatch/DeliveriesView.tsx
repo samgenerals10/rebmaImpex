@@ -683,7 +683,7 @@ export default function DeliveriesView({ addNotification, currentUser, setActive
           <div className="text-center py-16 text-[var(--text-muted)]">Loading deliveries...</div>
         ) : (
           <div className="p-3">
-            <ResponsiveDataView<DeliveryRecord>
+            <ResponsiveDataView<DeliveryRecord> dateFilter={false}
               columns={[
                 { key: 'clientName', label: 'Customer', primary: true },
                 { key: 'id', label: 'Delivery ID', render: d => <span className="font-mono text-xs font-bold" style={{ color: 'var(--accent)' }}>{d.id}</span> },

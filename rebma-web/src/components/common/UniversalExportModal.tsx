@@ -83,7 +83,7 @@ export default function UniversalExportModal({ open, onClose, title, data, colum
     companyEmail: '',
     website: 'rebmaimpex.com',
     footerNote: 'REBMA IMPEX Ghana Limited Enterprise Resource Planning. This document is system-generated and confidential.',
-    logoUrl: '/logo.png',
+    logoUrl: '/logo-mark.png',
   } as DocumentTemplate;
 
   const logoSrc = t.logoUrl.startsWith('http') || t.logoUrl.startsWith('data:')

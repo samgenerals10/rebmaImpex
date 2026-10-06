@@ -56,6 +56,8 @@ interface CeoDashboardProps {
   gpsInterval: number;
   onNavigateToSupplierOrders?: () => void;
   setActiveSubTab?: (tab: string) => void;
+  /** Opens a page in any department (a KPI card's number may live elsewhere). */
+  openPage?: (dept: string, tab: string) => void;
   addNotification?: (msg: string, link?: { dept?: string; tab: string }) => void;
 }
 
@@ -64,7 +66,7 @@ const COUNTRY_FLAGS: Record<string, string> = { Poland: '🇵🇱', Turkey: '�
 export default function CeoDashboard({
   gpsInterval,
   onNavigateToSupplierOrders,
-  setActiveSubTab,
+  setActiveSubTab, openPage,
   addNotification,
 }: CeoDashboardProps) {
   const [recentOrders, setRecentOrders] = useState<SupplierOrderSummary[]>([]);
@@ -613,26 +615,31 @@ export default function CeoDashboard({
           {/* Pending approvals alert */}
           <PendingApprovalsAlert department="CEO" onNavigate={setActiveSubTab} addNotification={addNotification} />
 
-          {/* Operational KPI Counters */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
+          {/* KPI cards: same design as every department's dashboard. Each card
+              opens the page behind its number. */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { title: 'Global Ingestion Flow', value: kpiIngestion, suffix: ' Tons', data: [30,45,35,60,40,70,55], tab: 'Cargo' },
-              { title: 'Processing Invoices',   value: kpiInvoices, suffix: kpiInvoices !== null ? ` Invoice${kpiInvoices !== 1 ? 's' : ''}` : '', data: [20,35,25,50,30,55,45], tab: 'Orders' },
-              { title: 'Active Fleet Vehicles',  value: kpiFleet, suffix: kpiFleet !== null ? ` Truck${kpiFleet !== 1 ? 's' : ''}` : '', data: [40,40,40,40,40,40,40], tab: 'Fleet' },
-              { title: 'Total Registered Staff', value: kpiStaff, suffix: ' Active', data: [15,25,20,35,25,40,30], tab: 'Staff' }
-            ].map((card, idx) => (
-              <button key={idx} className="kpi-card group text-left cursor-pointer hover:ring-2 hover:ring-[var(--accent)] transition-all" onClick={() => setActiveSubTab?.(card.tab)}>
-                <div className="flex items-start justify-between gap-2">
-                  <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wide font-semibold leading-tight">{card.title}</span>
-                  <MoreVertical className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" />
-                </div>
-                <div className="flex items-end justify-between mt-2 gap-2">
-                  <div>
-                    <h3 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] leading-none"><CountUp value={card.value} suffix={card.suffix} /></h3>
-                    <p className="flex items-center gap-0.5 text-[10px] font-semibold mt-1.5 text-[var(--text-muted)]">Not set</p>
+              { label: 'Approved Cargo', value: kpiIngestion, suffix: ' t', sub: 'Total weight approved into stock', icon: Layers, color: '#0ea5e9', go: () => openPage?.('MANAGEMENT', 'StockManagement') },
+              { label: 'Awaiting Account Dept', value: kpiInvoices, suffix: '', sub: 'Orders waiting for payment review', icon: FileText, color: '#f59e0b', go: () => openPage?.('FINANCE', 'OrdersQueue') },
+              { label: 'Trucks on the Road', value: kpiFleet, suffix: '', sub: 'Deliveries in transit now', icon: Truck, color: '#8b5cf6', go: () => setActiveSubTab?.('Tracking') },
+              { label: 'Active Staff', value: kpiStaff, suffix: '', sub: 'Staff with active accounts', icon: Users, color: '#10b981', go: () => setActiveSubTab?.('Staff') },
+            ].map(({ label, value, suffix, sub, icon: Icon, color, go }) => (
+              <button
+                key={label}
+                onClick={go}
+                className="text-left bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 cursor-pointer hover:shadow-lg hover:border-[var(--accent)] transition-all group"
+              >
+                <div className="flex items-start justify-between mb-3 gap-2">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${color}15` }}>
+                    <Icon size={17} style={{ color }} />
                   </div>
-                  <MiniSparkline data={card.data} color="var(--accent)" width={60} height={36} />
+                  <ChevronRight className="w-4 h-4 text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
+                <span className="text-sm sm:text-base lg:text-lg xl:text-xl font-extrabold text-[var(--text-primary)] leading-tight truncate w-full block mb-1">
+                  <CountUp value={value} suffix={suffix} />
+                </span>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-secondary)] mb-0.5">{label}</p>
+                <p className="text-xs text-[var(--text-muted)] truncate">{sub}</p>
               </button>
             ))}
           </div>

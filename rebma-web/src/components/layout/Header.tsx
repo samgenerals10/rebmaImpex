@@ -9,11 +9,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import type { CurrentUser } from '../../types/erp';
 import { normalizeDeptCode, DEFAULT_SUBTAB } from '../../utils/departments';
 import CountUp from '../CountUp';
+import LivePresenceButton from './LivePresenceButton';
 
 interface HeaderProps {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   onOpenChat: () => void;
+  /** Opens a chat with one person (from the Live list). */
+  onMessageUser?: (userId: string) => void;
   chatUnreadCount?: number;
   networkOnline?: boolean;
   notifications?: Array<{ id: string; msg: string; time: string }>;
@@ -50,6 +53,7 @@ export default function Header({
   searchQuery,
   setSearchQuery,
   onOpenChat,
+  onMessageUser,
   chatUnreadCount = 0,
   networkOnline = true,
   notifications = [],
@@ -91,7 +95,7 @@ export default function Header({
     { value: 'FINANCE', label: 'Account Department', icon: DollarSign },
     { value: 'PRODUCTION', label: 'Production Line', icon: Clipboard },
     { value: 'RECEPTION', label: 'Reception Terminal', icon: Users },
-    { value: 'BOARDROOM', label: 'Executive Boardroom', icon: Video },
+    // The Boardroom isn't a department any more: it opens inside the chat.
     { value: 'SETTINGS', label: 'ERP Settings', icon: Settings },
   ];
 
@@ -99,7 +103,7 @@ export default function Header({
     if (isSuperAdmin || isAdmin) return true;
     const rawDept = currentUser?.department || '';
     const normalizedUserDept = normalizeDeptCode(rawDept);
-    if (d.value === 'BOARDROOM' || d.value === 'SETTINGS') return true;
+    if (d.value === 'SETTINGS') return true;
     if (normalizedUserDept === 'HR') return d.value === 'HR';
     return d.value === normalizedUserDept;
   });
@@ -557,11 +561,14 @@ export default function Header({
         {/* Status badges & Widgets */}
         <div className="flex items-center gap-1 relative shrink-0">
           <span className="w-px h-6 bg-[var(--border)] mx-1" aria-hidden />
-          {/* LIVE indicator: green and pulsing online, red and still offline */}
-          <div className={`flex items-center gap-1.5 text-[10px] px-3 py-1 rounded-full font-bold uppercase tracking-wider ${networkOnline ? 'text-[var(--accent)] bg-[var(--accent-light)]' : 'text-rose-600 bg-rose-50'}`}>
-            <Wifi className={`w-3.5 h-3.5 ${networkOnline ? 'animate-pulse' : ''}`} />
-            <span>{networkOnline ? 'Live' : 'Offline'}</span>
-          </div>
+          {/* Live: how many people are online, and who (green and pulsing online, red offline) */}
+          <LivePresenceButton
+            networkOnline={networkOnline}
+            myId={currentUser?.id}
+            canManage={!!isAdmin}
+            onOpenLiveUsers={() => { setActiveDepartment?.('CEO'); setActiveSubTab?.('LiveUsers'); }}
+            onMessageUser={(id) => (onMessageUser ? onMessageUser(id) : onOpenChat())}
+          />
 
           {/* Chat Button */}
           <button

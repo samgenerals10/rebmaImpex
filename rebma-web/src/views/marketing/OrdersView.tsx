@@ -414,7 +414,7 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
         </div>
 
         <div className="p-3">
-          <ResponsiveDataView<Order> exportTitle="Orders"
+          <ResponsiveDataView<Order> dateFilter={false} exportTitle="Orders"
             columns={[
               {
                 key: 'clientName', label: 'Customer', primary: true, render: o => (
@@ -689,7 +689,7 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
                   {lineItems && lineItems.length > 0 ? (
                     <div className="rounded-xl border border-[var(--border)] overflow-hidden">
                       <div className="p-3">
-                        <ResponsiveDataView<typeof lineItems[number]> exportTitle="Order Items"
+                        <ResponsiveDataView<typeof lineItems[number]> dateFilter={false} exportTitle="Order Items"
                           columns={[
                             { key: 'productName', label: 'Product', primary: true },
                             { key: 'quantity', label: 'Qty', align: 'center' },

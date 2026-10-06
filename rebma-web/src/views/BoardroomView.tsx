@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { Video, Users, FileSpreadsheet, FileText, Send, Calendar, Clock, Check, X as XIcon, Phone } from 'lucide-react';
 import { exportToCSV, exportToPDF } from '../utils/export';
 import { supabase } from '../lib/supabaseClient';
-import { meetingsApi } from '../services/apiClient';
+import { meetingsApi, newMeetingCode } from '../services/apiClient';
+import MeetingLobby from '../components/collaborative/MeetingLobby';
 import { useRealtimeChannel } from '../hooks/useRealtimeChannel';
 import WebGroupCallModal from '../components/collaborative/WebGroupCallModal';
 import CountUp from '../components/CountUp';
@@ -30,7 +31,7 @@ interface RealMeeting {
   duration_minutes: number; organizer_id: string | null; jitsi_room: string;
   recap_notes: string | null; status: string; myRsvp?: string;
 }
-interface AttendeeProfile { id: string; fullName: string; department: string; }
+interface AttendeeProfile { id: string; fullName: string; department: string; photo?: string | null; }
 
 export default function BoardroomView({
   boardroomMinutes,
@@ -72,7 +73,11 @@ export default function BoardroomView({
   // The company Boardroom room and scheduled meetings use the same
   // WebRTC group call as the phone app (WebGroupCallModal), so web and
   // phone users meet in the same room. The room name matches the phone's.
-  const [activeCall, setActiveCall] = useState<{ room: string; title: string; meetingId?: string; isHost?: boolean } | null>(null);
+  const [activeCall, setActiveCall] = useState<{ room: string; title: string; meetingId?: string; isHost?: boolean; micOn?: boolean; camOn?: boolean } | null>(null);
+  // Every way into a meeting goes through the lobby first (camera and mic
+  // check, title and invites when starting). Nothing joins until confirmed.
+  type LobbyChoice = { title: string; inviteeIds: string[]; micOn: boolean; camOn: boolean };
+  const [lobby, setLobby] = useState<{ mode: 'start' | 'join'; title: string; code: string; go: (c: LobbyChoice) => Promise<void> } | null>(null);
 
   const myId = currentUser?.id || '';
 
@@ -86,8 +91,8 @@ export default function BoardroomView({
     if (activeSubTab !== 'Meetings' || !myId) return;
     loadMeetings();
     (async () => {
-      const { data } = await supabase.from('profiles_directory').select('id, full_name, role').eq('status', 'ACTIVE').order('full_name', { ascending: true });
-      setAttendeeProfiles((data || []).map((p: any) => ({ id: p.id, fullName: p.full_name || 'Unknown', department: p.role || '' })).filter(p => p.id !== myId));
+      const { data } = await supabase.from('profiles_directory').select('id, full_name, role, photo').eq('status', 'ACTIVE').order('full_name', { ascending: true });
+      setAttendeeProfiles((data || []).map((p: any) => ({ id: p.id, fullName: p.full_name || 'Unknown', department: p.role || '', photo: p.photo || null })).filter(p => p.id !== myId));
     })();
   }, [activeSubTab, myId, loadMeetings]);
 
@@ -125,22 +130,42 @@ export default function BoardroomView({
     loadMeetings();
   };
 
-  const handleJoinMeeting = async (mtg: RealMeeting) => {
-    await meetingsApi.markJoined(mtg.id, myId);
-    setActiveCall({ room: mtg.jitsi_room, title: mtg.title, meetingId: mtg.id, isHost: mtg.organizer_id === myId });
+  const handleJoinMeeting = (mtg: RealMeeting) => {
+    setLobby({
+      mode: 'join', title: mtg.title, code: mtg.jitsi_room,
+      go: async ({ micOn, camOn }) => {
+        await meetingsApi.markJoined(mtg.id, myId);
+        setActiveCall({ room: mtg.jitsi_room, title: mtg.title, meetingId: mtg.id, isHost: mtg.organizer_id === myId, micOn, camOn });
+      },
+    });
+  };
+
+  const joinBoardroomRoom = () => {
+    setLobby({
+      mode: 'join', title: 'Executive Boardroom', code: BOARDROOM_ROOM,
+      go: async ({ micOn, camOn }) => { setActiveCall({ room: BOARDROOM_ROOM, title: 'Executive Boardroom', micOn, camOn }); },
+    });
   };
 
   const [joinCode, setJoinCode] = useState('');
   const [joiningByCode, setJoiningByCode] = useState(false);
 
-  const handleMeetNow = async () => {
-    try {
-      const m = await meetingsApi.startInstantMeeting(myId);
-      setActiveCall({ room: m.room, title: m.title, meetingId: m.id, isHost: true });
-      loadMeetings();
-    } catch (e: any) {
-      alert(e?.message || 'Could not start the meeting.');
-    }
+  const handleMeetNow = () => {
+    const code = newMeetingCode();
+    const first = (currentUser?.fullName || 'My').split(' ')[0];
+    setLobby({
+      mode: 'start', title: `${first}'s meeting`, code,
+      go: async ({ title, inviteeIds, micOn, camOn }) => {
+        try {
+          const m = await meetingsApi.startInstantMeeting(myId, { title, inviteeIds, organizerName: currentUser?.fullName || 'A colleague', room: code });
+          setActiveCall({ room: m.room, title: m.title, meetingId: m.id, isHost: true, micOn, camOn });
+          loadMeetings();
+        } catch (e: any) {
+          alert(e?.message || 'Could not start the meeting.');
+          throw e;
+        }
+      },
+    });
   };
 
   const handleJoinByCode = async (e: React.FormEvent) => {
@@ -150,8 +175,11 @@ export default function BoardroomView({
     try {
       const m = await meetingsApi.joinByCode(joinCode);
       setJoinCode('');
-      setActiveCall({ room: m.room, title: m.title, meetingId: m.id, isHost: false });
       loadMeetings();
+      setLobby({
+        mode: 'join', title: m.title, code: m.room,
+        go: async ({ micOn, camOn }) => { setActiveCall({ room: m.room, title: m.title, meetingId: m.id, isHost: false, micOn, camOn }); },
+      });
     } catch (err: any) {
       alert(err?.message || 'No meeting matches that code. Check it and try again.');
     } finally {
@@ -278,7 +306,7 @@ export default function BoardroomView({
                       <p className="text-[10px] text-text-muted font-mono">{mtg.date} at {mtg.time}</p>
                     </div>
                   </div>
-                  <button onClick={() => setActiveCall({ room: BOARDROOM_ROOM, title: 'Executive Boardroom' })} className="px-2 py-1 bg-emerald-50 text-emerald-700 rounded text-[10px] font-bold cursor-pointer">
+                  <button onClick={joinBoardroomRoom} className="px-2 py-1 bg-emerald-50 text-emerald-700 rounded text-[10px] font-bold cursor-pointer">
                     Join Boardroom
                   </button>
                 </div>
@@ -365,7 +393,7 @@ export default function BoardroomView({
                     <Video className="w-12 h-12 text-white/40" />
                     <p className="text-sm font-semibold text-white">Company wide video room</p>
                     <p className="text-xs text-white/60 max-w-xs">Staff on the web and on the phone app join the same call.</p>
-                    <button onClick={() => setActiveCall({ room: BOARDROOM_ROOM, title: 'Executive Boardroom' })} className="px-5 py-2.5 rounded-full bg-[var(--accent)] text-white text-sm font-bold cursor-pointer hover:opacity-90">
+                    <button onClick={joinBoardroomRoom} className="px-5 py-2.5 rounded-full bg-[var(--accent)] text-white text-sm font-bold cursor-pointer hover:opacity-90">
                       Join Boardroom
                     </button>
                   </div>
@@ -723,10 +751,21 @@ export default function BoardroomView({
         </div>
       </div>
 
+      {lobby && (
+        <MeetingLobby
+          mode={lobby.mode} title={lobby.title} code={lobby.code}
+          myName={currentUser?.fullName || 'Me'} people={attendeeProfiles}
+          onCancel={() => setLobby(null)}
+          onConfirm={async (choice) => { const l = lobby; await l.go(choice); setLobby(null); }}
+        />
+      )}
+
       {activeCall && (
         <WebGroupCallModal
           room={activeCall.room} title={activeCall.title} myId={myId} myName={currentUser?.fullName || 'Me'}
-          meetingId={activeCall.meetingId} isHost={activeCall.isHost} onClose={() => setActiveCall(null)}
+          meetingId={activeCall.meetingId} isHost={activeCall.isHost}
+          startWithCamera={activeCall.camOn ?? true} startWithMic={activeCall.micOn ?? true}
+          onClose={() => setActiveCall(null)}
         />
       )}
     </>

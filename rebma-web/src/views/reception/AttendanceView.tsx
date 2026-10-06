@@ -239,7 +239,7 @@ export default function AttendanceView({ addNotification }: Props) {
       ) : (
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden">
           <div className="p-3">
-            <ResponsiveDataView<AttendanceRow>
+            <ResponsiveDataView<AttendanceRow> dateFilter={false}
               columns={[
                 {
                   key: 'fullName', label: 'Name', primary: true, render: r => (

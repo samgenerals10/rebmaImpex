@@ -52,6 +52,8 @@ interface Props {
   isHost?: boolean;
   /** Voice calls start with the camera off. */
   startWithCamera?: boolean;
+  /** Chosen in the lobby: join with the microphone off. */
+  startWithMic?: boolean;
   /** Set only on a breakout room's own window: ends every breakout and
    *  brings everyone back (sent on the main room's channel). */
   onEndBreakouts?: () => void;
@@ -82,10 +84,10 @@ function MediaTile({ stream, muted, mirror }: { stream: MediaStream | null; mute
 
 const fmtTimer = (secs: number) => `${Math.floor(secs / 60).toString().padStart(2, '0')}:${(secs % 60).toString().padStart(2, '0')}`;
 
-export default function WebGroupCallModal({ room, title, myId, myName, meetingId, isHost = false, startWithCamera = true, onEndBreakouts, onClose }: Props) {
+export default function WebGroupCallModal({ room, title, myId, myName, meetingId, isHost = false, startWithCamera = true, startWithMic = true, onEndBreakouts, onClose }: Props) {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [mediaError, setMediaError] = useState('');
-  const [micOn, setMicOn] = useState(true);
+  const [micOn, setMicOn] = useState(startWithMic);
   const [camOn, setCamOn] = useState(startWithCamera);
   const [, forceRender] = useState(0);
   const bump = () => forceRender((n) => n + 1);
@@ -224,6 +226,7 @@ export default function WebGroupCallModal({ room, title, myId, myName, meetingId
       }
       if (cancelled) { stream.getTracks().forEach((tr) => tr.stop()); return; }
       if (!startWithCamera) stream.getVideoTracks().forEach((tr) => { tr.enabled = false; });
+      if (!startWithMic) stream.getAudioTracks().forEach((tr) => { tr.enabled = false; });
       localStreamRef.current = stream;
       setLocalStream(stream);
 
@@ -584,6 +587,7 @@ export default function WebGroupCallModal({ room, title, myId, myName, meetingId
         myName={myName}
         isHost={isHost}
         startWithCamera={camOn}
+        startWithMic={micOn}
         onEndBreakouts={isHost ? endBreakoutForEveryone : undefined}
         onClose={returnToMainRoom}
       />

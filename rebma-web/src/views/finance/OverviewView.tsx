@@ -669,7 +669,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
     }));
 
     return (
-      <ResponsiveDataView
+      <ResponsiveDataView dateFilter={false}
         columns={columns}
         data={data}
         rowKey={(item: any) => String(item.id ?? item.name ?? item.code ?? JSON.stringify(item))}
@@ -1069,7 +1069,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
 
               {/* Table Logs */}
               <div className="p-6 min-h-[250px]">
-                <ResponsiveDataView
+                <ResponsiveDataView dateFilter={false}
                   columns={[
                     { key: 'movement_type', label: 'Movement', primary: true, render: e => <span className={`px-2 py-0.5 rounded text-[10px] uppercase tracking-wide font-bold ${e.movement_type === 'ADD' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-red-500/10 text-red-500'}`}>{e.movement_type}</span> },
                     { key: 'created_at', label: 'Date', render: e => <span className="font-mono">{new Date(e.created_at).toLocaleDateString('en-GB')} {new Date(e.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span> },
@@ -1134,7 +1134,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
                 </div>
               ))}
             </div>
-            <ResponsiveDataView
+            <ResponsiveDataView dateFilter={false}
               columns={[
                 { key: 'name', label: 'Product', primary: true },
                 {
@@ -1518,7 +1518,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
           </span>
         </div>
 
-        <ResponsiveDataView
+        <ResponsiveDataView dateFilter={false}
           columns={[
             { key: 'productName', label: 'Product Name', primary: true },
             { key: 'id', label: 'Cargo ID', render: d => <span className="font-mono text-[10px]">{d.id.slice(0, 8).toUpperCase()}</span> },

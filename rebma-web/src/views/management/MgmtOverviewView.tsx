@@ -767,7 +767,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
             </div>
           </div>
           <div className="p-3">
-            <ResponsiveDataView<typeof inventoryItems[number]> exportTitle="Inventory Valuation"
+            <ResponsiveDataView<typeof inventoryItems[number]> dateFilter={false} exportTitle="Inventory Valuation"
               columns={[
                 { key: 'name', label: 'Product', primary: true },
                 { key: 'qty', label: 'Stock Qty', render: item => item.qty.toLocaleString() },
@@ -1156,7 +1156,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
         </div>
 
         <div className="p-3">
-          <ResponsiveDataView<typeof cargoDiscrepancies[number]> exportTitle="Cargo Discrepancies"
+          <ResponsiveDataView<typeof cargoDiscrepancies[number]> dateFilter={false} exportTitle="Cargo Discrepancies"
             columns={[
               { key: 'productName', label: 'Product Name', primary: true },
               { key: 'id', label: 'Cargo ID', render: d => <span className="font-mono text-[10px]">{d.id.slice(0, 8).toUpperCase()}</span> },
@@ -1212,7 +1212,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
 
             {/* Modal Body */}
             <div className="overflow-y-auto p-5 flex-1">
-              <ResponsiveDataView<typeof inventoryItems[number]> exportTitle="Product Revenue Breakdown"
+              <ResponsiveDataView<typeof inventoryItems[number]> dateFilter={false} exportTitle="Product Revenue Breakdown"
                 columns={[
                   { key: 'name', label: 'Product Name', primary: true },
                   { key: 'costPrice', label: 'Unit Cost (GHS)', align: 'right', render: item => item.costPrice.toLocaleString() },

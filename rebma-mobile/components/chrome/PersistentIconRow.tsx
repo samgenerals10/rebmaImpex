@@ -31,6 +31,7 @@ import { navigationRef } from '../../navigation/navigationRef';
 import { useBlink } from '../../hooks/useBlink';
 import { NOTIFICATION_SOUNDS } from '../../lib/notificationSounds';
 import Avatar from '../ui/Avatar';
+import LivePresenceIcon from './LivePresenceIcon';
 import Sheet from '../ui/Sheet';
 import { setActiveInterval } from '../../lib/activeInterval';
 
@@ -146,13 +147,16 @@ export default function PersistentIconRow({ topInset }: Props) {
             }}
           >
             <Pressable onPress={openDepartmentSwitcher} hitSlop={8} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                <Image source={require('../../assets/logo.png')} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+              {/* The cropped logo, as on the sign-in pages, on a white backing the logo's own shape so it reads on the teal bar */}
+              <View style={{ paddingHorizontal: 6, paddingVertical: 3, borderRadius: 8, backgroundColor: '#FFFFFF' }}>
+                <Image source={require('../../assets/logo-mark.png')} style={{ height: 24, width: 24 * 398 / 237 }} resizeMode="contain" />
               </View>
               <ChevronDown size={16} color="#FFFFFF" />
             </Pressable>
 
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              {/* How many people are online, and who */}
+              <LivePresenceIcon iconStyle={iconBgStyle} badgeStyle={badgeStyle} badgeTextStyle={badgeTextStyle} borderColor={t.colors.accentPressed} />
               <Pressable hitSlop={8} onPress={() => navigationRef.isReady() && navigationRef.navigate('Messenger' as never)} style={iconBgStyle}>
                 <MessageSquare size={18} color="#FFFFFF" />
                 {chatUnreadCount > 0 && <View style={[dotStyle, { borderColor: t.colors.accentPressed }]} />}

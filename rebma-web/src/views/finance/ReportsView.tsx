@@ -323,7 +323,7 @@ export default function FinanceReportsView({ addNotification, currentUser }: Pro
           <h3 className="font-semibold text-[var(--text-primary)]">Report History</h3>
           <button onClick={() => exportToCSV(reportHistory, ['date', 'type', 'period', 'generatedBy'], 'report_history')} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border)] text-xs text-[var(--text-secondary)] hover:bg-[var(--bg-input)]"><Download size={12} /> Export</button>
         </div>
-        <ResponsiveDataView
+        <ResponsiveDataView dateFilter={false}
           columns={[
             { key: 'type', label: 'Report Type', primary: true },
             { key: 'date', label: 'Date' },

@@ -304,7 +304,7 @@ export default function VisitorsView({ addNotification }: Props) {
       {loading && <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="animate-pulse h-10 bg-slate-200 dark:bg-slate-700 rounded mb-2" />)}</div>}
       {!loading && <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden">
         <div className="p-3">
-          <ResponsiveDataView<VisitorRecord>
+          <ResponsiveDataView<VisitorRecord> dateFilter={false}
             columns={[
               { key: 'fullName', label: 'Name', primary: true },
               { key: 'badgeNumber', label: 'Badge', render: v => <span className="text-[var(--accent)] font-bold">{v.badgeNumber}</span> },

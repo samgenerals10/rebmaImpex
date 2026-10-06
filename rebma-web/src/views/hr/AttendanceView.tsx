@@ -518,7 +518,7 @@ export default function AttendanceView({ addNotification, currentUser }: Props) 
       </div>
 
       <div className="rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] overflow-hidden">
-        <ResponsiveDataView<AttendanceTableRow>
+        <ResponsiveDataView<AttendanceTableRow> dateFilter={false}
           columns={columns}
           data={filtered}
           rowKey={(r) => r.id}
@@ -543,7 +543,7 @@ export default function AttendanceView({ addNotification, currentUser }: Props) 
           <button className={`${btn} text-white`} style={{ background: 'var(--accent)' }} onClick={openAddDevice}><Plus className="w-3.5 h-3.5" /> Add Device</button>
         </div>
         <p className="text-xs text-[var(--text-muted)]">Fingerprint, face and card terminals that check staff in by themselves. Add any device by typing its details, whether it connects by API or through its SDK.</p>
-        <ResponsiveDataView<PeripheralDeviceRow>
+        <ResponsiveDataView<PeripheralDeviceRow> dateFilter={false}
           columns={deviceColumns}
           data={devices}
           rowKey={(d) => d.id}

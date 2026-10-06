@@ -78,9 +78,7 @@ export default function DepartmentSwitcherSheet({ onSelectDepartment, onOpenSett
               borderBottomColor: t.colors.border,
             }}
           >
-            <View style={{ width: 30, height: 30, borderRadius: 15, overflow: 'hidden' }}>
-              <Image source={require('../../assets/logo.png')} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-            </View>
+            <Image source={require('../../assets/logo-mark.png')} style={{ height: 22, width: 22 * 398 / 237 }} resizeMode="contain" />
             <Text style={{ flex: 1, fontFamily: t.font.extrabold, fontSize: t.type.body12.size, letterSpacing: 0.3, color: t.colors.textPrimary }}>
               REBMA IMPEX
             </Text>
@@ -168,8 +166,8 @@ export default function DepartmentSwitcherSheet({ onSelectDepartment, onOpenSett
         </View>
       ) : (
         <View style={{ flex: 1, alignItems: 'center', paddingTop: t.spacing.sm }}>
-          <View style={{ width: 30, height: 30, borderRadius: 15, overflow: 'hidden', marginBottom: t.spacing.lg }}>
-            <Image source={require('../../assets/logo.png')} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+          <View style={{ marginBottom: t.spacing.lg }}>
+            <Image source={require('../../assets/logo-mark.png')} style={{ height: 18, width: 18 * 398 / 237 }} resizeMode="contain" />
           </View>
 
           <View style={{ gap: 10, flex: 1 }}>

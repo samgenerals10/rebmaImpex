@@ -297,7 +297,7 @@ export default function AnalyticsView({ addNotification }: Props) {
       <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4">
         <h3 className="font-bold text-[var(--text-primary)] text-sm mb-4">Peak Hours Heatmap, Visitors per Hour per Day (last 4 weeks)</h3>
         <div>
-          <ResponsiveDataView<string>
+          <ResponsiveDataView<string> dateFilter={false}
             columns={[
               { key: 'hour', label: 'Hour', primary: true, render: h => h },
               ...DAYS.map(d => ({

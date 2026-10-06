@@ -255,7 +255,7 @@ export default function TransactionsView({ addNotification }: Props) {
       {/* Table */}
       <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden shadow-[var(--box-shadow)]">
         <div className="p-3">
-          <ResponsiveDataView<Transaction>
+          <ResponsiveDataView<Transaction> dateFilter={false}
             columns={[
               { key: 'description', label: 'Description', primary: true },
               { key: 'date', label: 'Date', render: row => <span className="font-mono">{row.date}</span> },

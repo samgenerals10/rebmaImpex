@@ -1,4 +1,6 @@
-import { isValidElement, type ReactNode } from 'react';
+import { isValidElement, useMemo, useState, type ReactNode } from 'react';
+import DateRangeField from '../ui/DateRangeField';
+import { toKey, type CalendarValue } from '../ui/CalendarPicker';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { Download } from 'lucide-react';
 import { openExportPreview } from '../../utils/exportPreview';
@@ -36,6 +38,25 @@ interface ResponsiveDataViewProps<T> {
    *  (PDF, Word or CSV) with exactly what the table shows; nothing
    *  downloads until the person confirms. The title heads the document. */
   exportTitle?: string;
+  /** The row field holding each record's date, for the built-in calendar
+   *  filter and newest/oldest sort. Found automatically when left out. */
+  dateKey?: string;
+  /** Set false where the page already has its own calendar. */
+  dateFilter?: boolean;
+}
+
+// Fields that usually hold a record's date, most specific first.
+const DATE_KEYS = [
+  'createdAt', 'created_at', 'date', 'timestamp', 'dateReceived', 'date_received', 'paymentDate', 'payment_date',
+  'paidAt', 'paid_at', 'checkInTime', 'check_in_time', 'startDate', 'start_date', 'recordedAt', 'recorded_at',
+  'requestedAt', 'requested_at', 'scheduledDate', 'scheduled_date', 'dueDate', 'due_date', 'updatedAt', 'updated_at',
+];
+
+function rowDate(row: unknown, key: string): Date | null {
+  const v = (row as Record<string, unknown>)?.[key];
+  if (v == null || v === '') return null;
+  const d = new Date(String(v));
+  return isNaN(d.getTime()) ? null : d;
 }
 
 // The text a cell shows on screen, for the export: formatted amounts,
@@ -70,7 +91,41 @@ export default function ResponsiveDataView<T>({
   emptyDescription,
   emptyIcon,
   exportTitle,
+  dateKey,
+  dateFilter = true,
 }: ResponsiveDataViewProps<T>) {
+  // The calendar filter and sort, switched on wherever rows carry a date.
+  const activeDateKey = useMemo(() => {
+    if (!dateFilter) return null;
+    if (dateKey) return dateKey;
+    const sample = data.slice(0, 5);
+    return DATE_KEYS.find(k => sample.some(row => rowDate(row, k))) || null;
+  }, [dateFilter, dateKey, data]);
+  const [range, setRange] = useState<CalendarValue>({ start: null, end: null });
+  const [order, setOrder] = useState<'as-is' | 'newest' | 'oldest'>('as-is');
+  const allData = data;
+  data = useMemo(() => {
+    if (!activeDateKey) return allData;
+    let rows = allData;
+    if (range.start) {
+      const from = range.start, to = range.end || range.start;
+      rows = rows.filter(row => {
+        const d = rowDate(row, activeDateKey);
+        if (!d) return false;
+        const k = toKey(d);
+        return k >= from && k <= to;
+      });
+    }
+    if (order !== 'as-is') {
+      rows = [...rows].sort((a, b) => {
+        const da = rowDate(a, activeDateKey)?.getTime() ?? 0;
+        const db = rowDate(b, activeDateKey)?.getTime() ?? 0;
+        return order === 'newest' ? db - da : da - db;
+      });
+    }
+    return rows;
+  }, [allData, activeDateKey, range, order]);
+
   const primaryCol = columns.find(c => c.primary) ?? columns[0];
   const cardCols = columns.filter(c => c !== primaryCol && !c.mobileHidden);
 
@@ -88,16 +143,31 @@ export default function ResponsiveDataView<T>({
 
   return (
     <>
-      {exportTitle && !loading && data.length > 0 && (
-        <div className="flex justify-end mb-2">
-          <button
+      {((activeDateKey && allData.length > 0) || (exportTitle && data.length > 0)) && !loading && (
+        <div className="flex flex-wrap items-center justify-end gap-2 mb-2">
+          {activeDateKey && allData.length > 0 && (
+            <>
+              <DateRangeField value={range} onChange={setRange} allowClear align="right" />
+              <select
+                value={order}
+                onChange={e => setOrder(e.target.value as 'as-is' | 'newest' | 'oldest')}
+                aria-label="Sort by date"
+                className="h-[34px] px-3 rounded-full text-xs font-semibold border border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-primary)] cursor-pointer"
+              >
+                <option value="as-is">Default order</option>
+                <option value="newest">Newest first</option>
+                <option value="oldest">Oldest first</option>
+              </select>
+            </>
+          )}
+          {exportTitle && data.length > 0 && <button
             type="button"
             onClick={openExport}
             title={`Export ${exportTitle}`}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-primary)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors cursor-pointer"
           >
             <Download className="w-3.5 h-3.5" /> Export
-          </button>
+          </button>}
         </div>
       )}
       {/* ── Mobile: card list ── */}

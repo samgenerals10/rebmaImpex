@@ -379,7 +379,7 @@ export default function FinReportsScreen() {
         footer={<Button label="Export" icon={<Download size={14} color="#fff" />} onPress={() => setExportOpen(true)} fullWidth />}
       >
         <SheetSection label="Results">
-          <DataList collapsible columns={resultColumns} data={resultRows} rowKey={(r) => String(r.id ?? r.metric ?? r.payment_method ?? r.Report ?? '')} emptyTitle="No data for this period" />
+          <DataList dateFilter={false} collapsible columns={resultColumns} data={resultRows} rowKey={(r) => String(r.id ?? r.metric ?? r.payment_method ?? r.Report ?? '')} emptyTitle="No data for this period" />
         </SheetSection>
       </Sheet>
 

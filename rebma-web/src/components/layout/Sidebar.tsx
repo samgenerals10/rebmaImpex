@@ -375,7 +375,7 @@ export default function Sidebar({
           {/* Header */}
           <div className="flex items-center justify-between pb-4 border-b border-[var(--border)]">
             <div className="flex items-center gap-2">
-              <img src="/logo.png" className="w-8 h-8 object-contain rounded bg-bg-card/20 p-0.5" alt="REBMA IMPEX Logo" />
+              <img src="/logo-mark.png" className="h-7 w-auto select-none" alt="REBMA IMPEX Logo" />
               <div>
                 <h2 className="font-extrabold text-xs tracking-wider leading-tight text-[var(--text-primary)]">REBMA IMPEX</h2>
                 <span className="text-[10px] uppercase text-[var(--accent,#068d5c)] font-mono tracking-widest leading-none">GHANA</span>
@@ -438,7 +438,7 @@ export default function Sidebar({
           {/* Logo */}
           <div className={`flex items-center justify-between ${isActualCollapsed ? 'px-1' : 'px-2'} mb-4 shrink-0`}>
             <div className="flex items-center gap-3">
-              <img src="/logo.png" className="w-9 h-9 object-contain rounded-lg bg-bg-card p-0.5 shrink-0 shadow-card" alt="REBMA IMPEX Logo" />
+              <img src="/logo-mark.png" className={`${isActualCollapsed ? "h-6" : "h-8"} w-auto shrink-0 select-none`} alt="REBMA IMPEX Logo" />
               <div className={`transition-all duration-300 ${isActualCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>
                 <h2 className="font-bold text-sm tracking-wide leading-none text-[var(--text-primary)]">REBMA IMPEX</h2>
                 <span className="text-[10px] uppercase text-[var(--accent)] tracking-widest font-bold font-mono">GHANA</span>

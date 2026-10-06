@@ -14,7 +14,10 @@
 // same renderActions, nothing about a caller's existing DataColumn[]
 // definition has to change. Every screen NOT opted into `collapsible`
 // keeps its exact current always-expanded behavior; this is additive.
-import { isValidElement, useState, type ComponentType, type ReactNode } from 'react';
+import { isValidElement, useMemo, useState, type ComponentType, type ReactNode } from 'react';
+import DateRangeField from './DateRangeField';
+import { toKey, type CalendarValue } from './CalendarPicker';
+import { ArrowUpDown } from 'lucide-react-native';
 import { View, Text, Pressable } from 'react-native';
 import { ChevronRight, ChevronDown, Download } from 'lucide-react-native';
 import ExportSheet from '../shared/ExportSheet';
@@ -72,7 +75,28 @@ interface Props<T> {
    *  opens the branded preview with PDF, Word and CSV, exported only on
    *  confirm. The title heads the document. */
   exportTitle?: string;
+  /** The row field holding each record's date, for the built-in calendar
+   *  filter and newest/oldest sort. Found automatically when left out. */
+  dateKey?: string;
+  /** Set false where the screen already has its own calendar. */
+  dateFilter?: boolean;
 }
+
+// Fields that usually hold a record's date, most specific first (same list as the web table).
+const DATE_KEYS = [
+  'createdAt', 'created_at', 'date', 'timestamp', 'dateReceived', 'date_received', 'paymentDate', 'payment_date',
+  'paidAt', 'paid_at', 'checkInTime', 'check_in_time', 'startDate', 'start_date', 'recordedAt', 'recorded_at',
+  'requestedAt', 'requested_at', 'scheduledDate', 'scheduled_date', 'dueDate', 'due_date', 'updatedAt', 'updated_at',
+];
+
+function rowDate(row: unknown, key: string): Date | null {
+  const v = (row as any)?.[key];
+  if (v == null || v === '') return null;
+  const d = new Date(String(v));
+  return isNaN(d.getTime()) ? null : d;
+}
+
+const ORDER_LABEL = { 'as-is': 'Default order', newest: 'Newest first', oldest: 'Oldest first' } as const;
 
 // The words a cell shows, for the export: walks the cell's contents for
 // text (and a badge's `label`), so formatted amounts and status names come
@@ -102,10 +126,42 @@ export default function DataList<T>({
   columns, data, rowKey, onRowPress, renderCard, renderActions, rowIcon, rowThumbnail,
   collapsible = false, defaultExpandedKeys,
   loading, skeletonRows = 5, emptyTitle = 'Nothing here yet', emptyDescription, emptyIcon, exportTitle,
+  dateKey, dateFilter = true,
 }: Props<T>) {
   const t = useTheme();
   const [expanded, setExpanded] = useState<Set<string>>(new Set(defaultExpandedKeys));
   const [exportOpen, setExportOpen] = useState(false);
+
+  // The calendar filter and sort, switched on wherever rows carry a date.
+  const activeDateKey = useMemo(() => {
+    if (!dateFilter) return null;
+    if (dateKey) return dateKey;
+    const sample = data.slice(0, 5);
+    return DATE_KEYS.find((k) => sample.some((row) => rowDate(row, k))) || null;
+  }, [dateFilter, dateKey, data]);
+  const [range, setRange] = useState<CalendarValue>({ start: null, end: null });
+  const [order, setOrder] = useState<'as-is' | 'newest' | 'oldest'>('as-is');
+  const rows = useMemo(() => {
+    if (!activeDateKey) return data;
+    let list = data;
+    if (range.start) {
+      const from = range.start, to = range.end || range.start;
+      list = list.filter((row) => {
+        const d = rowDate(row, activeDateKey);
+        if (!d) return false;
+        const k = toKey(d);
+        return k >= from && k <= to;
+      });
+    }
+    if (order !== 'as-is') {
+      list = [...list].sort((a, b) => {
+        const da = rowDate(a, activeDateKey)?.getTime() ?? 0;
+        const db = rowDate(b, activeDateKey)?.getTime() ?? 0;
+        return order === 'newest' ? db - da : da - db;
+      });
+    }
+    return list;
+  }, [data, activeDateKey, range, order]);
 
   if (loading) return <SkeletonList rows={skeletonRows} />;
   if (data.length === 0) return <EmptyState title={emptyTitle} description={emptyDescription} icon={emptyIcon} />;
@@ -141,9 +197,24 @@ export default function DataList<T>({
 
   return (
     <View>
-      {exportTitle ? (
-        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: t.spacing.sm }}>
-          <Pressable
+      {(exportTitle || activeDateKey) ? (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end', gap: t.spacing.sm, marginBottom: t.spacing.sm }}>
+          {activeDateKey ? (
+            <>
+              <View style={{ flexGrow: 1, minWidth: 150 }}>
+                <DateRangeField value={range} onChange={setRange} allowClear title="Filter by date" />
+              </View>
+              <Pressable
+                onPress={() => setOrder((o) => (o === 'as-is' ? 'newest' : o === 'newest' ? 'oldest' : 'as-is'))}
+                accessibilityLabel={`Sort: ${ORDER_LABEL[order]}`}
+                style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, borderWidth: 1, borderColor: order === 'as-is' ? t.colors.border : t.colors.accent, backgroundColor: pressed ? t.colors.accentSoft : t.colors.bgCard })}
+              >
+                <ArrowUpDown size={14} color={order === 'as-is' ? t.colors.textSecondary : t.colors.accent} />
+                <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>{ORDER_LABEL[order]}</Text>
+              </Pressable>
+            </>
+          ) : null}
+          {exportTitle ? <Pressable
             onPress={() => setExportOpen(true)}
             accessibilityLabel={`Export ${exportTitle}`}
             style={({ pressed }) => ({
@@ -155,11 +226,12 @@ export default function DataList<T>({
           >
             <Download size={14} color={t.colors.accent} />
             <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>Export</Text>
-          </Pressable>
-          <ExportSheet open={exportOpen} onClose={() => setExportOpen(false)} title={exportTitle} data={data as any[]} columns={exportColumns} />
+          </Pressable> : null}
+          {exportTitle ? <ExportSheet open={exportOpen} onClose={() => setExportOpen(false)} title={exportTitle} data={rows as any[]} columns={exportColumns} /> : null}
         </View>
       ) : null}
-      {data.map((item, index) => {
+      {rows.length === 0 ? <EmptyState title="Nothing in these dates" description="Pick other dates or clear the calendar." /> : null}
+      {rows.map((item, index) => {
         const key = rowKey(item);
         const isOpen = !collapsible || expanded.has(key);
         const row = (() => {

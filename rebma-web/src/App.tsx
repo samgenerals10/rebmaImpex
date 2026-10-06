@@ -1689,6 +1689,15 @@ export default function App() {
   const [messengerTargetChannelId, setMessengerTargetChannelId] = useState<string | null>(null);
   // Set when an incoming call is accepted: the chat opens and joins it.
   const [messengerJoinCallId, setMessengerJoinCallId] = useState<string | null>(null);
+  // The Boardroom lives inside the chat, as on the phone. Which section is
+  // open there (null shows the chats).
+  const [messengerBoardroomTab, setMessengerBoardroomTab] = useState<string | null>(null);
+  const openBoardroomInChat = (tab: string = 'VideoConf') => {
+    setMessengerTargetUserId(null);
+    setMessengerTargetChannelId(null);
+    setMessengerBoardroomTab(['VideoConf', 'Meetings', 'Announcements', 'DirectMessages'].includes(tab) ? tab : 'VideoConf');
+    setIsChatOpen(true);
+  };
   // Phase 11.0 gap fix — the Messenger's own unread badges only exist
   // while it's open; this keeps the header's chat icon dotted even when
   // it's closed, polled independently so it doesn't depend on Messenger
@@ -3265,7 +3274,7 @@ export default function App() {
     if (activeSubTab === 'DepartmentManager') return <DepartmentManager currentUser={currentUser} addNotification={addNotification} />;
     if (activeSubTab === 'Payroll') return <PayrollPanel currentUser={currentUser} addNotification={addNotification} />;
     if (activeSubTab === 'PerformanceAlerts') return <PerformanceAlertsPanel currentUser={currentUser} addNotification={addNotification} />;
-    if (activeSubTab === 'Messages') { setActiveDepartment('BOARDROOM'); setActiveSubTab('VideoConf'); return null; }
+    if (activeSubTab === 'Messages') { setTimeout(() => { setActiveSubTab(DEFAULT_SUBTAB[activeDepartment] || 'Overview'); openBoardroomInChat('VideoConf'); }, 0); return null; }
     if (activeSubTab === 'Spreadsheets') return <SpreadsheetView currentUser={currentUser} department={activeDepartment} addNotification={addNotification} />;
 
     // CEO dedicated sub-tab pages
@@ -3415,6 +3424,7 @@ export default function App() {
           <CeoDashboard
             gpsInterval={gpsInterval}
             onNavigateToSupplierOrders={() => setActiveSubTab('SupplierOrders')}
+            openPage={(dept: string, tab: string) => { setActiveDepartment(dept); setActiveSubTab(tab); }}
             setActiveSubTab={setActiveSubTab}
             addNotification={addNotification}
           />
@@ -3495,19 +3505,13 @@ export default function App() {
             addNotification={addNotification}
           />
         );
-      case 'BOARDROOM':
-        return (
-          <BoardroomView
-            boardroomMinutes={boardroomMinutes}
-            setBoardroomMinutes={setBoardroomMinutes}
-            activeSubTab={activeSubTab}
-            chatMessages={chatMessages}
-            setChatMessages={setChatMessages}
-            currentUser={currentUser}
-            meetingsList={meetingsList}
-            setMeetingsList={setMeetingsList}
-          />
-        );
+      case 'BOARDROOM': {
+        // The Boardroom is no longer a department page; an old saved page
+        // or link lands in the chat's Boardroom instead.
+        const home = normalizeDeptCode(currentUser?.department || 'CEO');
+        setTimeout(() => { openBoardroomInChat(activeSubTab); setActiveDepartment(home === 'BOARDROOM' ? 'CEO' : home); setActiveSubTab(DEFAULT_SUBTAB[home] || 'Overview'); }, 0);
+        return null;
+      }
       case 'SETTINGS':
         // Lives under Settings rather than its own CEO nav item, but stays
         // gated to CEO/admin here too — not just by hiding the sidebar
@@ -3663,15 +3667,9 @@ export default function App() {
         setActiveSubTab('Attendance');
         setActiveMobileView('dashboard');
       } else if (actionName === 'Schedule Meeting') {
-        setActiveDepartment('BOARDROOM');
-        sessionStorage.setItem('rebma-last-dept', 'BOARDROOM');
-        setActiveSubTab('Meetings');
-        setActiveMobileView('dashboard');
+        openBoardroomInChat('Meetings');
       } else if (actionName === 'Send Announcement') {
-        setActiveDepartment('BOARDROOM');
-        sessionStorage.setItem('rebma-last-dept', 'BOARDROOM');
-        setActiveSubTab('Announcements');
-        setActiveMobileView('dashboard');
+        openBoardroomInChat('Announcements');
       }
     } else if (dept === 'CEO') {
       if (actionName === 'View Reports') {
@@ -3680,15 +3678,9 @@ export default function App() {
         setActiveSubTab('Overview');
         setActiveMobileView('dashboard');
       } else if (actionName === 'Schedule Boardroom') {
-        setActiveDepartment('BOARDROOM');
-        sessionStorage.setItem('rebma-last-dept', 'BOARDROOM');
-        setActiveSubTab('Meetings');
-        setActiveMobileView('dashboard');
+        openBoardroomInChat('Meetings');
       } else if (actionName === 'Send Alert') {
-        setActiveDepartment('BOARDROOM');
-        sessionStorage.setItem('rebma-last-dept', 'BOARDROOM');
-        setActiveSubTab('Announcements');
-        setActiveMobileView('dashboard');
+        openBoardroomInChat('Announcements');
       } else if (actionName === 'View All Departments') {
         setIsSidebarOpen(true);
       }
@@ -4144,6 +4136,11 @@ export default function App() {
         messengerTargetChannelId={messengerTargetChannelId}
         messengerJoinCallId={messengerJoinCallId}
         setMessengerJoinCallId={setMessengerJoinCallId}
+        messengerBoardroomTab={messengerBoardroomTab}
+        setMessengerBoardroomTab={setMessengerBoardroomTab}
+        meetingsList={meetingsList}
+        setMeetingsList={setMeetingsList}
+        setChatMessages={setChatMessages}
         chatUnreadCount={chatUnreadCount}
         setMessengerTargetUserId={setMessengerTargetUserId}
         chatMessages={chatMessages}
@@ -4151,7 +4148,7 @@ export default function App() {
         boardroomMinutes={boardroomMinutes}
         setBoardroomMinutes={setBoardroomMinutes}
         onLogout={async () => { await auth.signOut(); setIsAuthenticated(false); setCurrentUser(null); setCurrentDriver(null); }}
-        openBoardroom={() => { setActiveDepartment('BOARDROOM'); setActiveSubTab('VideoConf'); }}
+        openBoardroom={() => openBoardroomInChat('VideoConf')}
         sidebarCollapsed={sidebarCollapsed}
         setSidebarCollapsed={setSidebarCollapsed}
         unreadEmailCount={unreadEmailCount}
@@ -4204,7 +4201,7 @@ function AppInner({
   currentUser, reducedMotion, motionSetting, activeDepartment, setActiveDepartment,
   activeSubTab, setActiveSubTab, theme, notifications, setNotifications,
   addNotification, goToNotificationLink, renderDashboard, renderAlertModal, renderPromptModal,
-  renderConfirmModal, isChatOpen, setIsChatOpen, messengerTargetUserId, setMessengerTargetUserId, messengerTargetChannelId, setMessengerTargetChannelId, messengerJoinCallId, setMessengerJoinCallId, chatUnreadCount, chatMessages, sendChatMessage,
+  renderConfirmModal, isChatOpen, setIsChatOpen, messengerTargetUserId, setMessengerTargetUserId, messengerTargetChannelId, setMessengerTargetChannelId, messengerJoinCallId, setMessengerJoinCallId, messengerBoardroomTab, setMessengerBoardroomTab, meetingsList, setMeetingsList, setChatMessages, chatUnreadCount, chatMessages, sendChatMessage,
   boardroomMinutes, setBoardroomMinutes, onLogout, openBoardroom,
   sidebarCollapsed, setSidebarCollapsed, unreadEmailCount,
   setIsAuthenticated, setCurrentUser, setCurrentDriver, isSidebarOpen, setIsSidebarOpen,
@@ -4290,7 +4287,7 @@ function AppInner({
             setCurrentDriver(null);
           }}
           addNotification={addNotification}
-          openBoardroom={() => { setActiveDepartment('BOARDROOM'); sessionStorage.setItem('rebma-last-dept', 'BOARDROOM'); setActiveSubTab('VideoConf'); }}
+          openBoardroom={openBoardroom}
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
           sidebarCollapsed={sidebarCollapsed}
@@ -4325,6 +4322,7 @@ function AppInner({
               staffList={staffList}
               customersList={customersList}
               onOpenChat={() => setIsChatOpen(true)}
+              onMessageUser={(userId: string) => { setMessengerTargetUserId(userId); setIsChatOpen(true); }}
               chatUnreadCount={chatUnreadCount}
               notifications={notifications}
               onClearNotifications={() => { setNotifications([]); setActiveToastIds(new Set()); }}
@@ -4440,11 +4438,25 @@ function AppInner({
         {/* 8. COLLABORATIVE MESSENGER (chat + calls) */}
         <Messenger
           isOpen={isChatOpen}
-          onClose={() => { setIsChatOpen(false); setMessengerTargetUserId(null); setMessengerTargetChannelId(null); setMessengerJoinCallId(null); }}
+          onClose={() => { setIsChatOpen(false); setMessengerTargetUserId(null); setMessengerTargetChannelId(null); setMessengerJoinCallId(null); setMessengerBoardroomTab(null); }}
           currentUser={currentUser}
           targetUserId={messengerTargetUserId}
           targetChannelId={messengerTargetChannelId}
           joinCallMeetingId={messengerJoinCallId}
+          boardroomTab={messengerBoardroomTab}
+          onBoardroomTabChange={setMessengerBoardroomTab}
+          renderBoardroom={(tab: string) => (
+            <BoardroomView
+              boardroomMinutes={boardroomMinutes}
+              setBoardroomMinutes={setBoardroomMinutes}
+              activeSubTab={tab}
+              chatMessages={chatMessages}
+              setChatMessages={setChatMessages}
+              currentUser={currentUser}
+              meetingsList={meetingsList}
+              setMeetingsList={setMeetingsList}
+            />
+          )}
         />
 
         {/* Every export opens here first: preview, pick a format, confirm */}

@@ -394,7 +394,7 @@ export default function MgmtAnalyticsView({ addNotification }: Props) {
           <div className="py-12 text-center text-[var(--text-muted)] text-sm">No activity data recorded yet</div>
         ) : (
           <div className="p-3">
-            <ResponsiveDataView<typeof performanceHeatmap[number]>
+            <ResponsiveDataView<typeof performanceHeatmap[number]> dateFilter={false}
               columns={[
                 { key: 'dept', label: 'Department', primary: true },
                 { key: 'w1', label: 'Week 1 (28d ago)', align: 'center', render: row => <span className={`inline-block w-12 py-1 rounded-lg text-[10px] font-bold ${heatColor(row.w1)}`}>{row.w1}</span> },
@@ -422,7 +422,7 @@ export default function MgmtAnalyticsView({ addNotification }: Props) {
           <button onClick={handleExport} className="text-xs text-[var(--accent)] hover:underline font-semibold cursor-pointer">Export CSV</button>
         </div>
         <div className="p-3">
-          <ResponsiveDataView<typeof recentDecisions[number]>
+          <ResponsiveDataView<typeof recentDecisions[number]> dateFilter={false}
             columns={[
               { key: 'description', label: 'Description', primary: true },
               { key: 'date', label: 'Date' },

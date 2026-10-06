@@ -335,7 +335,7 @@ export default function ProductionAnalyticsView({ addNotification }: Props) {
               </button>
             </div>
             <div className="p-3">
-              <ResponsiveDataView<typeof summaryTable[number]>
+              <ResponsiveDataView<typeof summaryTable[number]> dateFilter={false}
                 columns={[
                   { key: 'product', label: 'Product', primary: true },
                   { key: 'batches', label: 'Batches' },
