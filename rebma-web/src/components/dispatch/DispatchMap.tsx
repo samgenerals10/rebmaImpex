@@ -210,6 +210,18 @@ const DRIVER_STATE_LABEL: Record<string, string> = {
   AT_COMPANY: 'At the company',
 };
 
+// How much the tilted 3D map must be enlarged so its shrunken top edge
+// still reaches both sides and the top of a box of this height.
+function tiltCoverScale(height: number): number {
+  const perspective = 900;
+  const tilt = (18 * Math.PI) / 180;
+  const above = height * 0.75; // distance from the tilt pivot up to the top edge
+  const depth = above * Math.sin(tilt);
+  const shrink = perspective / (perspective + depth);
+  const needed = 1 / (shrink * Math.cos(tilt));
+  return Math.round(needed * 1.04 * 1000) / 1000; // a little spare so no sliver shows
+}
+
 function Recenter({ center }: { center: [number, number] }) {
   const map = useMap();
   useEffect(() => { map.setView(center); }, [center[0], center[1]]);
@@ -736,7 +748,10 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 540,
         style={{
           height: '100%',
           width: '100%',
-          transform: layer === '3d' ? 'perspective(900px) rotateX(18deg)' : 'none',
+          // Tilting the map back makes its top edge shrink, which left empty
+          // dark corners. Scale it up just enough to cover the whole box at
+          // this map's height (worked out from the same 900px perspective).
+          transform: layer === '3d' ? `perspective(900px) rotateX(18deg) scale(${tiltCoverScale(height)})` : 'none',
           transformOrigin: 'center 75%',
           transition: 'transform 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
         }}
