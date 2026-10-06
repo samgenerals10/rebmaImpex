@@ -96,7 +96,7 @@ export default function RiskDashboard({ addNotification, setActiveSubTab, curren
   const goToCredit = () => setActiveSubTab?.('CustomerCredit');
 
   const tiles = [
-    { label: verificationRequired ? 'Customers Awaiting Verification (Required)' : 'Customers Awaiting Verification', value: customersCount, icon: UserCheck, color: verificationRequired && customersCount > 0 ? '#ef4444' : '#8b5cf6', onClick: goToApprovals },
+    { label: 'Customers Awaiting Verification', badge: verificationRequired ? 'Required' : undefined, value: customersCount, icon: UserCheck, color: verificationRequired && customersCount > 0 ? '#ef4444' : '#8b5cf6', onClick: goToApprovals },
     { label: 'Cargo Awaiting Review', value: cargoCount, icon: Package, color: '#0ea5e9', onClick: goToApprovals },
     { label: 'Orders Awaiting Review', value: ordersCount, icon: CreditCard, color: '#6366f1', onClick: goToApprovals },
     { label: 'Awaiting Final Release', value: finalReleaseCount, icon: ShieldCheck, color: '#e11d48', onClick: goToApprovals },
@@ -118,32 +118,37 @@ export default function RiskDashboard({ addNotification, setActiveSubTab, curren
 
       <PendingApprovalsAlert department="RISK" onNavigate={setActiveSubTab} addNotification={addNotification} />
 
-      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
-        {tiles.map(({ label, value, icon: Icon, color, onClick }) => (
+      {/* Three per row on wide screens, so each label has room to read
+          on one or two lines instead of being squeezed into a thin column. */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+        {tiles.map(({ label, badge, value, icon: Icon, color, onClick }) => (
           <button
             key={label}
             onClick={onClick}
-            className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 flex items-center gap-4 text-left hover:border-[var(--accent)] transition-colors cursor-pointer w-full"
+            className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 flex flex-col gap-3 text-left hover:border-[var(--accent)] transition-colors cursor-pointer w-full"
           >
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${color}20` }}>
-              <Icon size={20} style={{ color }} />
+            <div className="flex items-center justify-between gap-3">
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${color}20` }}>
+                <Icon size={21} style={{ color }} />
+              </div>
+              <p className="text-3xl font-bold leading-none" style={{ color: value > 0 ? color : 'var(--text-primary)' }}><CountUp value={value} /></p>
             </div>
-            <div>
-              <p className="text-xs text-[var(--text-muted)]">{label}</p>
-              <p className="text-xl font-bold text-[var(--text-primary)]"><CountUp value={value} /></p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="text-sm font-semibold text-[var(--text-secondary)] leading-snug">{label}</p>
+              {badge && <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-500">{badge}</span>}
             </div>
           </button>
         ))}
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4">
-          <p className="text-xs text-[var(--text-muted)]">Approved Today</p>
-          <p className="text-xl font-bold text-emerald-500"><CountUp value={approvedToday} /></p>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 flex items-center justify-between gap-3">
+          <p className="text-sm font-semibold text-[var(--text-secondary)]">Approved Today</p>
+          <p className="text-3xl font-bold leading-none text-emerald-500"><CountUp value={approvedToday} /></p>
         </div>
-        <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4">
-          <p className="text-xs text-[var(--text-muted)]">Rejected Today</p>
-          <p className="text-xl font-bold text-rose-500"><CountUp value={rejectedToday} /></p>
+        <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 flex items-center justify-between gap-3">
+          <p className="text-sm font-semibold text-[var(--text-secondary)]">Rejected Today</p>
+          <p className="text-3xl font-bold leading-none text-rose-500"><CountUp value={rejectedToday} /></p>
         </div>
       </div>
 

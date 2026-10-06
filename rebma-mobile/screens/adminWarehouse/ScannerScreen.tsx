@@ -15,6 +15,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '../../theme/ThemeProvider';
 import { lookupProductBarcode, type ProductLookupResult } from '../../lib/barcodeLookup';
+import { readScannedCode, notADeliveryPaper } from '../../lib/scanCode';
 import Screen from '../../components/ui/Screen';
 import Card from '../../components/ui/Card';
 import Input from '../../components/ui/Input';
@@ -31,6 +32,10 @@ interface WaybillResult {
   status: string | null;
   scannedAt: string | null;
   scannedBy: string | null;
+  /** Shown when the scan was an older dispatch ticket rather than a waybill. */
+  note?: string;
+  /** False when the order was found but no waybill has been printed yet. */
+  hasWaybill: boolean;
 }
 
 export default function ScannerScreen() {
@@ -40,7 +45,7 @@ export default function ScannerScreen() {
   const [manualNumber, setManualNumber] = useState('');
   const [scanning, setScanning] = useState(true);
   const [result, setResult] = useState<WaybillResult | null>(null);
-  const [notFound, setNotFound] = useState(false);
+  const [notFound, setNotFound] = useState<string | null>(null); // a readable reason the lookup failed
   const [looking, setLooking] = useState(false);
   const [confirming, setConfirming] = useState(false);
   // A code that isn't a REBMA waybill falls back to an external product
@@ -51,32 +56,68 @@ export default function ScannerScreen() {
   const [lookingProduct, setLookingProduct] = useState(false);
   const lastScanned = useRef<string | null>(null);
 
-  const lookupWaybill = useCallback(async (waybillNumber: string) => {
-    setLooking(true);
-    setNotFound(false);
-    setResult(null);
-    const { data: wb } = await supabase.from('waybills').select('waybill_number, container_number, order_id, delivery_log_id, scanned_at, scanned_by').eq('waybill_number', waybillNumber).maybeSingle();
-    if (!wb) {
-      setLooking(false);
-      setNotFound(true);
-      return;
-    }
+  const describeWaybill = async (wb: any, note?: string): Promise<WaybillResult> => {
     const [orderRes, deliveryRes] = await Promise.all([
       wb.order_id ? supabase.from('orders').select('client_name, destination').eq('id', wb.order_id).maybeSingle() : Promise.resolve({ data: null }),
       wb.delivery_log_id ? supabase.from('delivery_logs').select('vehicle_id, driver_name, status').eq('id', wb.delivery_log_id).maybeSingle() : Promise.resolve({ data: null }),
     ]);
-    setLooking(false);
-    setResult({
+    return {
       waybillNumber: wb.waybill_number,
       containerNumber: wb.container_number,
-      clientName: orderRes.data?.client_name || null,
-      destination: orderRes.data?.destination || null,
-      vehicleId: deliveryRes.data?.vehicle_id || null,
-      driverName: deliveryRes.data?.driver_name || null,
-      status: deliveryRes.data?.status || null,
+      clientName: (orderRes as any).data?.client_name || null,
+      destination: (orderRes as any).data?.destination || null,
+      vehicleId: (deliveryRes as any).data?.vehicle_id || null,
+      driverName: (deliveryRes as any).data?.driver_name || null,
+      status: (deliveryRes as any).data?.status || null,
       scannedAt: wb.scanned_at || null,
       scannedBy: wb.scanned_by || null,
-    });
+      note,
+      hasWaybill: true,
+    };
+  };
+
+  // Accepts a waybill code, an older dispatch ticket (found by its ticket
+  // number), or a number typed by hand. Same rules as the web Scanner.
+  const lookupWaybill = useCallback(async (raw: string) => {
+    if (!raw || !raw.trim()) return;
+    setLooking(true);
+    setNotFound(null);
+    setResult(null);
+    try {
+      const code = readScannedCode(raw);
+      const wrongPaper = notADeliveryPaper(code);
+      if (wrongPaper) { setNotFound(wrongPaper); return; }
+      const cols = 'waybill_number, container_number, order_id, delivery_log_id, scanned_at, scanned_by';
+
+      if (code.kind === 'waybill') {
+        const { data: wb } = await supabase.from('waybills').select(cols).eq('waybill_number', code.waybillNumber.trim()).maybeSingle();
+        if (!wb) { setNotFound(`Waybill ${code.waybillNumber} isn't on record. Double-check the number, or the code may have been tampered with.`); return; }
+        setResult(await describeWaybill(wb));
+        return;
+      }
+
+      if (code.kind === 'ticket') {
+        const { data: o } = await supabase.from('orders').select('id, client_name, destination').eq('ticket_number', code.ticketNumber).limit(1).maybeSingle();
+        if (!o) { setNotFound(`Dispatch ticket ${code.ticketNumber} doesn't match any order on record.`); return; }
+        const { data: wb } = await supabase.from('waybills').select(cols).eq('order_id', o.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
+        if (wb) {
+          setResult(await describeWaybill(wb, `Found from older dispatch ticket ${code.ticketNumber}. Reprint the waybill for this order.`));
+          return;
+        }
+        const { data: d } = await supabase.from('delivery_logs').select('vehicle_id, driver_name, status').eq('order_id', o.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
+        setResult({
+          waybillNumber: 'Not printed yet', containerNumber: null,
+          clientName: o.client_name || null, destination: o.destination || null,
+          vehicleId: d?.vehicle_id || null, driverName: d?.driver_name || null, status: d?.status || null,
+          scannedAt: null, scannedBy: null, hasWaybill: false,
+          note: `Older dispatch ticket ${code.ticketNumber}. This order has no waybill yet, so print one before the goods leave.`,
+        });
+      }
+    } catch {
+      setNotFound('Could not check that code right now. Please try again.');
+    } finally {
+      setLooking(false);
+    }
   }, []);
 
   // The physical control the user asked for: goods can't leave until Risk
@@ -122,13 +163,10 @@ export default function ScannerScreen() {
     if (event.data === lastScanned.current) return;
     lastScanned.current = event.data;
     setScanning(false);
-    try {
-      const parsed = JSON.parse(event.data);
-      if (!parsed.waybillNumber) throw new Error('No waybill number in code.');
-      lookupWaybill(parsed.waybillNumber);
-    } catch {
-      tryProductLookup(event.data);
-    }
+    const code = readScannedCode(event.data);
+    // Not one of our papers at all: maybe a product barcode.
+    if (code.kind === 'unknown') { tryProductLookup(event.data); return; }
+    lookupWaybill(event.data);
   }, [lookupWaybill, tryProductLookup]);
 
   const requestCamera = async () => {
@@ -140,7 +178,7 @@ export default function ScannerScreen() {
 
   const resetScan = () => {
     setResult(null);
-    setNotFound(false);
+    setNotFound(null);
     setProductResult(null);
     lastScanned.current = null;
     setScanning(true);
@@ -187,7 +225,7 @@ export default function ScannerScreen() {
           </Text>
           <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
             <View style={{ flex: 1 }}>
-              <Input value={manualNumber} onChangeText={setManualNumber} placeholder="E.g., WB-000123" autoCapitalize="characters" />
+              <Input value={manualNumber} onChangeText={setManualNumber} placeholder="Waybill or ticket number, e.g. WB-000123" autoCapitalize="characters" />
             </View>
             <Button label="Look Up" onPress={() => manualNumber.trim() && lookupWaybill(manualNumber.trim())} loading={looking} disabled={looking || !manualNumber.trim()} />
           </View>
@@ -204,7 +242,7 @@ export default function ScannerScreen() {
             <View style={{ alignItems: 'center', gap: t.spacing.sm }}>
               <CircleX size={28} color={t.colors.status.danger.text} />
               <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.status.danger.text }}>Not Found</Text>
-              <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textMuted, textAlign: 'center' }}>No waybill matches that number.</Text>
+              <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textMuted, textAlign: 'center' }}>{notFound}</Text>
             </View>
           </Card>
         )}
@@ -213,8 +251,11 @@ export default function ScannerScreen() {
           <Card style={{ borderColor: t.colors.status.success.text }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, marginBottom: t.spacing.md }}>
               <CircleCheckBig size={20} color={t.colors.status.success.text} />
-              <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.status.success.text }}>Valid Waybill</Text>
+              <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.status.success.text }}>{result.hasWaybill ? 'Valid Waybill' : 'Order Found'}</Text>
             </View>
+            {result.note ? (
+              <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta11.size, color: t.colors.status.warning.text, backgroundColor: t.colors.status.warning.bg, borderRadius: t.radius.md, padding: t.spacing.sm, marginBottom: t.spacing.sm }}>{result.note}</Text>
+            ) : null}
             <DetailRow label="Waybill" value={result.waybillNumber} />
             <DetailRow label="Container" value={result.containerNumber || 'Not set'} />
             <DetailRow label="Client" value={result.clientName || 'Not set'} />
@@ -224,7 +265,11 @@ export default function ScannerScreen() {
             {result.status && <View style={{ marginTop: t.spacing.sm }}><Badge tone="info" label={result.status.replace(/_/g, ' ')} /></View>}
 
             <View style={{ marginTop: t.spacing.md, paddingTop: t.spacing.md, borderTopWidth: 1, borderTopColor: t.colors.border }}>
-              {result.scannedAt ? (
+              {!result.hasWaybill ? (
+                <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted }}>
+                  Print the waybill for this order first. It can be cleared for dispatch once it has one.
+                </Text>
+              ) : result.scannedAt ? (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm }}>
                   <ShieldCheck size={18} color={t.colors.status.success.text} />
                   <View style={{ flex: 1 }}>
