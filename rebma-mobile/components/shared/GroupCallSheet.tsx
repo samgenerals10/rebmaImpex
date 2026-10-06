@@ -80,6 +80,7 @@
 // — this machine can't produce one.
 import { useEffect, useRef, useState } from 'react';
 import { Modal, View, Text, Pressable, ScrollView, TextInput } from 'react-native';
+import { CallAvatar, useRingback } from './callUi';
 import { Alert } from '../../lib/appAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
@@ -698,6 +699,10 @@ export default function GroupCallSheet({ room, title, meetingId, isHost = false,
   const participantCount = peers.length + 1;
   const pinnedPeer = pinnedUserId ? peers.find((p) => p.userId === pinnedUserId) : null;
   const gridPeers = pinnedPeer ? peers.filter((p) => p.userId !== pinnedUserId) : peers;
+  // Phone style: while nobody else is here yet, show who you're calling and
+  // play the ringing tone, for the first 45 seconds only (same as the web).
+  const stillCalling = peers.length === 0 && elapsedSeconds < 45;
+  useRingback(stillCalling);
   const tileWidth = gridPeers.length === 0 ? '100%' : gridPeers.length === 1 && !pinnedPeer ? '100%' : '48%';
 
   const fmtTimer = (secs: number) => {
@@ -811,6 +816,17 @@ export default function GroupCallSheet({ room, title, meetingId, isHost = false,
           </View>
 
           <ScrollView contentContainerStyle={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, padding: 6 }}>
+            {peers.length === 0 && (
+              <View style={{ width: '100%', alignItems: 'center', paddingVertical: 36, gap: 16 }}>
+                <CallAvatar name={title} size={116} ringing={stillCalling} />
+                <View style={{ alignItems: 'center' }}>
+                  <Text style={{ fontFamily: t.font.bold, fontSize: 22, color: '#fff', textAlign: 'center' }} numberOfLines={1}>{title}</Text>
+                  <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body14.size, color: 'rgba(255,255,255,0.65)', marginTop: 4 }}>
+                    {stillCalling ? 'Calling…' : 'Waiting for others to join'}
+                  </Text>
+                </View>
+              </View>
+            )}
             {pinnedPeer && (
               <View style={{ width: '100%', aspectRatio: 4 / 3, borderRadius: 12, overflow: 'hidden', backgroundColor: '#1a1a22' }}>
                 {pinnedPeer.remoteStream ? (

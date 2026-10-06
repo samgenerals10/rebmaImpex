@@ -312,7 +312,7 @@ export default function RegisterScreen() {
 
         <Pressable onPress={() => navigation.navigate('Login')} style={{ marginTop: t.spacing.lg }}>
           <Text style={styles.switchText}>
-            Already have account ? <Text style={styles.switchLink}>Log In</Text>
+            Already have an account? <Text style={styles.switchLink}>Log in</Text>
           </Text>
         </Pressable>
 

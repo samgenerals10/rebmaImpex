@@ -24,7 +24,7 @@ import Sheet from '../components/ui/Sheet';
 import Button from '../components/ui/Button';
 import EmptyState from '../components/ui/EmptyState';
 
-interface Profile { id: string; fullName: string; department: string; email: string; }
+interface Profile { id: string; fullName: string; department: string; email: string; photo?: string; }
 
 function initials(name: string) {
   return (name || '').split(' ').slice(0, 2).map((n) => n[0]).join('').toUpperCase();
@@ -84,8 +84,8 @@ export default function MessengerChannelsScreen({ navigation, onOpenBoardroom }:
 
   const load = useCallback(async () => {
     if (!myId) return;
-    const { data } = await supabase.from('profiles_directory').select('id, full_name, department, email').eq('status', 'ACTIVE').order('full_name', { ascending: true });
-    setProfiles((data || []).map((row: any) => ({ id: row.id, fullName: row.full_name || 'Unknown', department: row.department || '', email: row.email || '' })).filter((pr: Profile) => pr.id !== myId));
+    const { data } = await supabase.from('profiles_directory').select('id, full_name, department, email, photo').eq('status', 'ACTIVE').order('full_name', { ascending: true });
+    setProfiles((data || []).map((row: any) => ({ id: row.id, fullName: row.full_name || 'Unknown', department: row.department || '', email: row.email || '', photo: row.photo || undefined })).filter((pr: Profile) => pr.id !== myId));
 
     const everyoneId = await messenger.ensureEveryoneChannel();
     if (everyoneId) await messenger.joinChannel(everyoneId, myId);
@@ -448,7 +448,7 @@ export default function MessengerChannelsScreen({ navigation, onOpenBoardroom }:
                   key={c.id}
                   title={c.fullName}
                   subtitle={online ? 'Online' : c.department}
-                  photo={undefined}
+                  photo={c.photo}
                   initialsText={initials(c.fullName)}
                   online={online}
                   unread={dm ? unreadCounts[dm.id] : undefined}
@@ -472,7 +472,7 @@ export default function MessengerChannelsScreen({ navigation, onOpenBoardroom }:
               const selected = newGroupMembers.includes(item.id);
               return (
                 <Pressable onPress={() => toggleGroupMember(item.id)} style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, paddingVertical: t.spacing.sm }}>
-                  <Avatar name={item.fullName} size={32} />
+                  <Avatar name={item.fullName} photo={item.photo} size={32} />
                   <View style={{ flex: 1 }}>
                     <Text style={{ ...p.body, fontFamily: t.font.semibold }}>{item.fullName}</Text>
                     <Text style={p.meta}>{item.department}</Text>

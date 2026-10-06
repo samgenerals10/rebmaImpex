@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import type { FormEvent } from 'react';
 import { motion, AnimatePresence, MotionConfig, type Transition } from 'framer-motion';
-import { Eye, EyeOff, Check, X, ArrowRight, Lock, Mail, User, CreditCard, Phone, AlertCircle, Info, CheckCircle, Camera, Send, Globe, ChevronRight, Settings, LogOut, Users, MessagesSquare, Home, Search, Plus, Bell, UserPlus, ClipboardList, Calendar, Megaphone, UserCheck, BarChart3, Video, Building2, Ship, Ticket, Flag, Truck, DollarSign, BookOpen, ShoppingCart, TrendingUp, Download, Boxes, Hammer, PackagePlus, MapPin, LogIn, Map, GitMerge, Tag, ShieldAlert, FileText, CheckSquare } from 'lucide-react';
+import { Eye, EyeOff, Check, X, ArrowRight, Lock, Mail, User, CreditCard, Phone, AlertCircle, Info, CheckCircle, Camera, Send, Globe, ChevronRight, Settings, LogOut, Users, MessagesSquare, Home, Search, Plus, Bell, UserPlus, ClipboardList, Calendar, Megaphone, UserCheck, BarChart3, Video, Building2, Ship, Ticket, Flag, Truck, DollarSign, BookOpen, ShoppingCart, TrendingUp, Download, Boxes, Hammer, PackagePlus, MapPin, LogIn, Map, GitMerge, Tag, ShieldAlert, FileText, CheckSquare, Link2 } from 'lucide-react';
 import type { Order, IncomingGoods, ProductionRequest, Visitor, Attendance, ChatMessage, BoardroomMeeting, FinancePayment, Customer, GoodsPrice, AuditEntry, PendingRegistration, StaffMember, CurrentUser } from './types/erp';
 
 import Sidebar from './components/layout/Sidebar';
@@ -12,6 +12,8 @@ import { MobileSearch } from './components/layout/MobileSearch';
 import { MobileNotifications } from './components/layout/MobileNotifications';
 import { applyAccentOverride } from './utils/accentOverride';
 import Messenger from './components/collaborative/Messenger';
+import IncomingCallAlert from './components/collaborative/IncomingCallAlert';
+import AuthBrand, { authCls } from './components/auth/AuthBrand';
 
 import CeoDashboard from './views/CeoDashboard';
 import ManagementDashboard from './views/ManagementDashboard';
@@ -544,6 +546,10 @@ export default function App() {
   const [staySignedIn, setStaySignedIn] = useState<boolean>(true);
   const [forgotEmail, setForgotEmail] = useState<string>('');
   const [forgotSubmitted, setForgotSubmitted] = useState<boolean>(false);
+  const [forgotError, setForgotError] = useState<string>('');
+  const [forgotSending, setForgotSending] = useState<boolean>(false);
+  // Register without a link in the address: paste the link or code HR sent.
+  const [inviteLinkInput, setInviteLinkInput] = useState<string>('');
   const [isLoggingIn, setIsLoggingIn] = useState<boolean>(false);
   const [loginError, setLoginError] = useState<string>('');
   // Set when a password login succeeds but the account has a verified TOTP
@@ -1680,6 +1686,8 @@ export default function App() {
   // Phase 11.2 — set when a chat notification is tapped, so the Messenger
   // opens straight into that exact channel (Everyone/group/DM alike).
   const [messengerTargetChannelId, setMessengerTargetChannelId] = useState<string | null>(null);
+  // Set when an incoming call is accepted: the chat opens and joins it.
+  const [messengerJoinCallId, setMessengerJoinCallId] = useState<string | null>(null);
   // Phase 11.0 gap fix — the Messenger's own unread badges only exist
   // while it's open; this keeps the header's chat icon dotted even when
   // it's closed, polled independently so it doesn't depend on Messenger
@@ -2306,7 +2314,7 @@ export default function App() {
                 <input 
                   type="email" 
                   required 
-                  placeholder="name@rembaimpex.com"
+                  placeholder="example12@gmail.com"
                   value={privEmail}
                   onChange={(e) => setPrivEmail(e.target.value)}
                   className="w-full bg-transparent border-0 p-0 text-sm text-text-primary placeholder-slate-400 focus:ring-0 focus:outline-none"
@@ -2410,83 +2418,90 @@ export default function App() {
           onSubmit={handleLogin} 
           className="space-y-4 text-slate-800"
         >
-          <div className="text-center pb-1">
-            <h3 className="text-2xl font-black text-slate-900 tracking-tight">Sign in</h3>
-            <div className="w-8 h-1 bg-emerald-500 mx-auto rounded-full mt-1.5" />
-            <p className="text-[11px] text-slate-500 mt-1 font-medium tracking-wider">REMBA IMPEX ERP GATEWAY</p>
-          </div>
+          <AuthBrand title="Sign in" />
 
           {loginError && (
-            <div className="p-3 bg-rose-50 border border-rose-200/80 rounded-2xl text-center text-xs text-rose-700 font-semibold leading-normal whitespace-pre-wrap">
+            <div className={authCls.error}>
               {loginError}
             </div>
           )}
 
           {/* Email Input */}
-          <div className="space-y-1">
-            <label className="block text-xs font-semibold text-slate-600 ml-1">Email Address</label>
-            <div className="flex items-center gap-3 px-4 py-3 bg-slate-100/80 focus-within:bg-white border border-slate-200 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 rounded-2xl transition-all">
-              <Mail className="w-4 h-4 text-slate-400 shrink-0" />
+          <div>
+            <label className={authCls.label}>Email address</label>
+            <div className={authCls.field}>
+              <Mail className={authCls.icon} />
               <input 
                 type="email" 
                 required 
-                placeholder="name@rembaimpex.com"
+                placeholder="example12@gmail.com"
                 value={loginEmail}
                 onChange={(e) => setLoginEmail(e.target.value)}
-                className="w-full bg-transparent border-0 p-0 text-sm text-slate-900 placeholder-slate-400 focus:ring-0 focus:outline-none"
+                autoComplete="email"
+                className={authCls.input}
               />
             </div>
           </div>
 
           {/* Password Input */}
-          <div className="space-y-1">
-            <label className="block text-xs font-semibold text-slate-600 ml-1">Password</label>
-            <div className="flex items-center gap-3 px-4 py-3 bg-slate-100/80 focus-within:bg-white border border-slate-200 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 rounded-2xl transition-all">
-              <Lock className="w-4 h-4 text-slate-400 shrink-0" />
+          <div>
+            <label className={authCls.label}>Password</label>
+            <div className={authCls.field}>
+              <Lock className={authCls.icon} />
               <input 
                 type={showPassword ? "text" : "password"} 
                 required
-                placeholder="Password"
+                placeholder="Enter password"
                 value={loginPassword}
                 onChange={(e) => setLoginPassword(e.target.value)}
-                className="w-full bg-transparent border-0 p-0 text-sm text-slate-900 placeholder-slate-400 focus:ring-0 focus:outline-none"
+                autoComplete="current-password"
+                className={authCls.input}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="text-slate-400 hover:text-slate-600 cursor-pointer transition-colors"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                className="text-[#6b7280] hover:text-[#111827] cursor-pointer transition-colors"
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
           </div>
 
-          <div className="flex items-center justify-between text-xs text-slate-600 select-none pt-0.5">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input 
-                type="checkbox" 
-                checked={staySignedIn} 
-                onChange={(e) => setStaySignedIn(e.target.checked)}
-                className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer" 
-              />
-              <span className="text-slate-600 font-medium">Keep me logged in</span>
-            </label>
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-xs select-none">
+            {/* Same switch as the phone app's "Keep me logged in" */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={staySignedIn}
+                aria-label="Keep me logged in"
+                onClick={() => setStaySignedIn(!staySignedIn)}
+                className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer ${staySignedIn ? 'bg-[#02afd9]' : 'bg-slate-300'}`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${staySignedIn ? 'translate-x-4' : ''}`} />
+              </button>
+              <span className="font-semibold text-[#111827] cursor-pointer" onClick={() => setStaySignedIn(!staySignedIn)}>Keep me logged in</span>
+            </div>
             <button 
               type="button" 
               onClick={(e) => {
                 e.preventDefault();
+                setForgotEmail(loginEmail);
+                setForgotError('');
+                setForgotSubmitted(false);
                 setAuthScreen('forgot');
               }} 
-              className="text-amber-600 hover:text-amber-700 hover:underline font-bold cursor-pointer transition-colors"
+              className={authCls.link}
             >
-              Forgot Password?
+              Forgot password?
             </button>
           </div>
 
           <button 
             type="submit" 
             disabled={isLoggingIn}
-            className="w-full py-3.5 bg-gradient-to-r from-amber-500 via-rose-500 to-amber-600 hover:from-amber-600 hover:to-rose-600 disabled:from-slate-300 disabled:to-slate-400 disabled:cursor-not-allowed rounded-full text-sm font-bold text-white shadow-lg shadow-rose-500/20 hover:shadow-xl transition-all cursor-pointer text-center flex items-center justify-center gap-2 mt-2"
+            className={authCls.button}
           >
             {isLoggingIn ? (
               <>
@@ -2494,10 +2509,10 @@ export default function App() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
-                <span>Signing In...</span>
+                <span>Signing in…</span>
               </>
             ) : (
-              <span>Submit</span>
+              <span>Log in</span>
             )}
           </button>
         </motion.form>
@@ -2592,26 +2607,49 @@ export default function App() {
     //               candidate — it's all what HR already entered.
     const renderRegisterForm = () => {
       if (inviteState === 'none') {
+        // No link in the address: paste the link or code HR sent (same as the phone app).
+        const openInvite = () => {
+          const raw = inviteLinkInput.trim();
+          const fromLink = raw.match(/[?&]token=([^&#\s]+)/);
+          const token = fromLink ? decodeURIComponent(fromLink[1]) : (/^[a-z0-9]+$/i.test(raw) ? raw : '');
+          if (!token) { setInviteError('That is not an invite link or code. Paste the whole link HR sent you.'); return; }
+          window.location.href = `/register?token=${encodeURIComponent(token)}`;
+        };
         return (
-          <motion.div key="register-none" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="space-y-4 text-center py-4">
-            <h3 className="text-2xl font-black text-slate-900 tracking-tight">Invite Required</h3>
-            <p className="text-sm text-slate-600">Registration requires an invite link from HR. If you were expecting one, check your email, SMS, or WhatsApp, or ask HR to send it again.</p>
+          <motion.div key="register-none" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="space-y-4">
+            <AuthBrand title="Create an account" subtitle="Paste the invite link HR sent you to get started." />
+            <div>
+              <label className={authCls.label}>Invite link or code</label>
+              <div className={authCls.field}>
+                <Link2 className={authCls.icon} />
+                <input
+                  value={inviteLinkInput}
+                  onChange={(e) => { setInviteLinkInput(e.target.value); setInviteError(''); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') openInvite(); }}
+                  placeholder="https://.../register?token=... or the code"
+                  className={authCls.input}
+                />
+              </div>
+            </div>
+            {inviteError && <div className={authCls.error}>{inviteError}</div>}
+            <button type="button" onClick={openInvite} className={authCls.button}>Continue</button>
           </motion.div>
         );
       }
       if (inviteState === 'invalid') {
         return (
-          <motion.div key="register-invalid" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="space-y-4 text-center py-4">
-            <h3 className="text-2xl font-black text-slate-900 tracking-tight">Link No Longer Valid</h3>
-            <p className="text-sm text-rose-600">{inviteError || 'This invite link is no longer valid.'}</p>
-            <p className="text-sm text-slate-600">Ask HR to send a new one.</p>
+          <motion.div key="register-invalid" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="space-y-4">
+            <AuthBrand title="Link not valid" subtitle="This invite link has expired or was already used." />
+            <div className={authCls.error}>{inviteError || 'This invite link is no longer valid. Ask HR to send a new one.'}</div>
+            <button type="button" onClick={() => { window.location.href = '/register'; }} className={authCls.outlineButton}>Try again</button>
           </motion.div>
         );
       }
       if (inviteState === 'checking') {
         return (
-          <motion.div key="register-checking" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-8 text-sm text-slate-500">
-            Verifying your invite…
+          <motion.div key="register-checking" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="py-8">
+            <AuthBrand title="Create an account" />
+            <p className="text-center text-sm font-bold text-[#6b7280]">Verifying your invite…</p>
           </motion.div>
         );
       }
@@ -2622,94 +2660,73 @@ export default function App() {
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: 10 }}
           onSubmit={handleRegister}
-          className="space-y-3.5 text-slate-800"
+          className="space-y-3"
         >
-          <div className="text-center pb-0.5">
-            <h3 className="text-2xl font-black text-slate-900 tracking-tight">Confirm Your Details</h3>
-            <div className="w-8 h-1 bg-emerald-500 mx-auto rounded-full mt-1.5" />
-            <p className="text-xs text-slate-500 mt-2">HR already entered your record. Confirm it's you and choose a password.</p>
-          </div>
-
+          <AuthBrand title="Almost there" subtitle="HR already entered your record. Confirm it's you and choose a password." />
           {[
-            { label: 'Full Name', value: registerName, icon: <User className="w-4 h-4 text-slate-400 shrink-0" /> },
-            { label: 'Email', value: registerEmail, icon: <Mail className="w-4 h-4 text-slate-400 shrink-0" /> },
-            { label: 'Department', value: registerDept, icon: <CreditCard className="w-4 h-4 text-slate-400 shrink-0" /> },
-            { label: 'Role', value: registerRole || registerDept, icon: <User className="w-4 h-4 text-slate-400 shrink-0" /> },
-            { label: 'Phone', value: registerPhone, icon: <Phone className="w-4 h-4 text-slate-400 shrink-0" /> },
+            { label: 'Full name', value: registerName, icon: <User className={authCls.icon} /> },
+            { label: 'Email', value: registerEmail, icon: <Mail className={authCls.icon} /> },
+            { label: 'Department', value: registerDept, icon: <CreditCard className={authCls.icon} /> },
+            { label: 'Role', value: registerRole || registerDept, icon: <User className={authCls.icon} /> },
+            { label: 'Phone', value: registerPhone, icon: <Phone className={authCls.icon} /> },
           ].map(f => (
-            <div key={f.label} className="space-y-1">
-              <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider ml-1">{f.label}</label>
-              <div className="flex items-center gap-3 px-3.5 py-2.5 bg-slate-100/80 border border-slate-200 rounded-2xl">
+            <div key={f.label}>
+              <label className={authCls.label}>{f.label}</label>
+              <div className={authCls.field}>
                 {f.icon}
-                <span className="text-sm text-slate-900">{f.value || 'Not set'}</span>
+                <span className="text-sm font-semibold text-[#111827] truncate">{f.value || 'Not set'}</span>
               </div>
             </div>
           ))}
-
           {[
-            { label: 'Choose a Password', value: regPassword, set: setRegPassword, placeholder: 'At least 8 characters, with a letter and a number' },
-            { label: 'Confirm Password', value: regPasswordConfirm, set: setRegPasswordConfirm, placeholder: 'Type the same password again' },
+            { label: 'Choose a password', value: regPassword, set: setRegPassword, placeholder: 'At least 8 characters, with a letter and a number' },
+            { label: 'Confirm password', value: regPasswordConfirm, set: setRegPasswordConfirm, placeholder: 'Type the same password again' },
           ].map((f, i) => (
-            <div key={f.label} className="space-y-1">
-              <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider ml-1">{f.label}</label>
-              <div className="flex items-center gap-3 px-3.5 py-2.5 bg-white border border-slate-200 rounded-2xl focus-within:border-emerald-500">
-                <Lock className="w-4 h-4 text-slate-400 shrink-0" />
+            <div key={f.label}>
+              <label className={authCls.label}>{f.label}</label>
+              <div className={authCls.field}>
+                <Lock className={authCls.icon} />
                 <input
                   type={showRegPassword ? 'text' : 'password'}
                   value={f.value}
                   onChange={(e) => { f.set(e.target.value); setRegError(''); }}
                   placeholder={f.placeholder}
                   autoComplete="new-password"
-                  className="flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400"
+                  className={authCls.input}
                 />
                 {i === 0 && (
-                  <button type="button" onClick={() => setShowRegPassword(v => !v)} aria-label={showRegPassword ? 'Hide password' : 'Show password'} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+                  <button type="button" onClick={() => setShowRegPassword(v => !v)} aria-label={showRegPassword ? 'Hide password' : 'Show password'} className="text-[#6b7280] hover:text-[#111827] cursor-pointer">
                     {showRegPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 )}
               </div>
             </div>
           ))}
-
-          <p className="flex items-start gap-1.5 text-[11px] text-slate-500">
+          <p className="flex items-start gap-1.5 text-xs font-semibold text-[#6b7280]">
             <MapPin className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-            When you register, we record the browser you're using and ask for your location. You can say no to the location request.
+            When you register, we record the device you're using and ask for your location. You can say no to the location request.
           </p>
-
-          {regError && <p className="text-xs text-rose-600 text-center">{regError}</p>}
-
-          <button
-            type="submit"
-            disabled={!!regStep}
-            className="w-full py-3 bg-gradient-to-r from-amber-500 via-rose-500 to-amber-600 hover:from-amber-600 hover:to-rose-600 rounded-full text-xs font-bold text-white shadow-lg shadow-rose-500/20 hover:shadow-xl transition-all cursor-pointer text-center disabled:opacity-60"
-          >
-            {regStep || 'Confirm & Register'}
+          {regError && <div className={authCls.error}>{regError}</div>}
+          <button type="submit" disabled={!!regStep} className={authCls.button}>
+            {regStep || 'Create account'}
           </button>
         </motion.form>
       );
     };
-
     const renderForgotForm = () => {
       const handleForgotPassword = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!forgotEmail) {
-          alert('Please enter your email address.');
-          return;
-        }
-        try {
-          const { error } = await supabase.auth.resetPasswordForEmail(
-            forgotEmail.trim().toLowerCase(),
-            {
-              redirectTo: 'https://rebma-impex.vercel.app',
-            }
-          );
-          if (error) throw error;
-          setForgotSubmitted(true);
-        } catch (err: any) {
-          alert(err.message || 'Failed to send reset email. Please try again.');
-        }
+        const target = forgotEmail.trim().toLowerCase();
+        if (!target) { setForgotError('Enter your email address first.'); return; }
+        setForgotError('');
+        setForgotSending(true);
+        // Back to whichever address this page was opened on (live site or a preview).
+        const { error } = await supabase.auth.resetPasswordForEmail(target, { redirectTo: window.location.origin });
+        setForgotSending(false);
+        if (error) { setForgotError(error.message || 'Could not send the reset email.'); return; }
+        setForgotSubmitted(true);
       };
-
+      const backToSignIn = () => { setForgotSubmitted(false); setForgotError(''); setAuthScreen('login'); };
       return (
         <motion.form
           key="forgot"
@@ -2717,61 +2734,40 @@ export default function App() {
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: 10 }}
           onSubmit={handleForgotPassword}
-          className="space-y-4 text-text-primary"
+          className="space-y-4"
         >
-          <div className="text-center">
-            <h3 className="text-xl font-bold text-accent">Reset Password</h3>
-          </div>
-
+          <AuthBrand title="Reset password" subtitle="We'll email you a link to set a new password." />
           {forgotSubmitted ? (
-            <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 text-xs text-emerald-800 text-center space-y-2">
-              <p>A password reset link has been sent to <strong>{forgotEmail}</strong>. Check your inbox and click the link to reset your password.</p>
-              <button
-                type="button"
-                onClick={() => {
-                  setForgotSubmitted(false);
-                  setForgotEmail('');
-                  setAuthScreen('login');
-                }}
-                className="text-accent hover:underline font-bold text-xs mt-3 block mx-auto cursor-pointer"
-              >
-                Back to Login
-              </button>
-            </div>
+            <div className={authCls.success}>Check your inbox at {forgotEmail.trim()} for the reset link.</div>
           ) : (
             <>
-              <div className="flex items-center gap-2 border-b border-[var(--border)] focus-within:border-emerald-600 pb-1.5 transition-colors">
-                <Mail className="w-4 h-4 text-text-muted" />
-                <input
-                  type="email"
-                  required
-                  placeholder="name@rembaimpex.com"
-                  value={forgotEmail}
-                  onChange={(e) => setForgotEmail(e.target.value)}
-                  className="w-full bg-transparent border-0 p-0 text-sm text-text-primary placeholder-slate-400 focus:ring-0 focus:outline-none"
-                />
+              <div>
+                <label className={authCls.label}>Email address</label>
+                <div className={authCls.field}>
+                  <Mail className={authCls.icon} />
+                  <input
+                    type="email"
+                    required
+                    placeholder="example12@gmail.com"
+                    value={forgotEmail}
+                    onChange={(e) => { setForgotEmail(e.target.value); setForgotError(''); }}
+                    autoComplete="email"
+                    className={authCls.input}
+                  />
+                </div>
               </div>
-
-              <button
-                type="submit"
-                className="w-full py-2.5 bg-gradient-to-r from-[#5ce1ab] to-[#34d399] hover:from-[#4fd69e] hover:to-[#059669] rounded-full text-xs font-bold text-text-primary shadow-card hover:shadow-lg transition-all cursor-pointer text-center"
-              >
-                Send Reset Link
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setAuthScreen('login')}
-                className="w-full text-center text-xs text-text-muted hover:text-text-secondary transition-colors font-semibold"
-              >
-                Cancel and Return
+              {forgotError && <div className={authCls.error}>{forgotError}</div>}
+              <button type="submit" disabled={forgotSending} className={authCls.button}>
+                {forgotSending ? 'Sending…' : 'Send Reset Link'}
               </button>
             </>
           )}
+          <button type="button" onClick={backToSignIn} className={`w-full text-center text-xs ${authCls.link}`}>
+            Back to sign in
+          </button>
         </motion.form>
       );
     };
-
     const pwStrength = (pw: string) => {
       if (!pw) return null;
       const checks = [
@@ -2838,9 +2834,7 @@ export default function App() {
           onSubmit={handleUpdatePassword}
           className="space-y-4 text-text-primary"
         >
-          <div className="text-center">
-            <h3 className="text-xl font-bold text-accent">Set New Password</h3>
-          </div>
+          <AuthBrand title="Set new password" />
 
           {resetMessage && (
             <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-100 text-xs text-emerald-800 text-center font-medium">
@@ -2915,7 +2909,7 @@ export default function App() {
 
           <button
             type="submit"
-            className="w-full py-2.5 bg-gradient-to-r from-[#5ce1ab] to-[#34d399] hover:from-[#4fd69e] hover:to-[#059669] rounded-full text-xs font-bold text-text-primary shadow-card hover:shadow-lg transition-all cursor-pointer text-center"
+            className={authCls.button}
           >
             Update Password
           </button>
@@ -2941,7 +2935,7 @@ export default function App() {
         <button
           type="button"
           onClick={() => setAuthScreen('login')}
-          className="w-full py-2.5 bg-gradient-to-r from-[#5ce1ab] to-[#34d399] hover:from-[#4fd69e] hover:to-[#059669] rounded-full text-xs font-bold text-text-primary shadow-card hover:shadow-lg transition-all cursor-pointer text-center"
+          className={authCls.button}
         >
           Return to Login
         </button>
@@ -2963,7 +2957,7 @@ export default function App() {
         <button
           type="button"
           onClick={() => setAuthScreen('login')}
-          className="w-full py-2.5 bg-gradient-to-r from-[#5ce1ab] to-[#34d399] hover:from-[#4fd69e] hover:to-[#059669] rounded-full text-xs font-bold text-text-primary shadow-card hover:shadow-lg transition-all cursor-pointer text-center"
+          className={authCls.button}
         >
           Return to Login
         </button>
@@ -2981,7 +2975,7 @@ export default function App() {
       >
         <div className="text-center">
           <h3 className="text-xl font-bold text-accent">Welcome to ERP</h3>
-          <p className="text-[10px] text-text-muted mt-0.5 font-medium">REMBA IMPEX GHANA LIMITED</p>
+          <p className="text-[10px] text-text-muted mt-0.5 font-medium">REBMA IMPEX GHANA LIMITED</p>
         </div>
 
         {/* The "Live Global Trade Pipeline" list that was here showed random,
@@ -3084,33 +3078,27 @@ export default function App() {
     );
 
     return (
-      <div className="min-h-screen w-full bg-white flex flex-col lg:grid lg:grid-cols-12 relative overflow-hidden select-none font-sans">
+      <div className="auth-shell min-h-screen w-full bg-white flex flex-col lg:grid lg:grid-cols-12 relative overflow-hidden select-none font-sans">
         
         {/* REBMA Light Motion Effect Canvas Background */}
         <RebmaLightLines />
 
         {/* Left Hero Column: Brand, Welcome Header, Tagline */}
-        <div className="lg:col-span-7 p-6 sm:p-10 md:p-12 lg:p-16 flex flex-col justify-between items-start relative z-10 border-b lg:border-b-0 lg:border-r border-slate-100/90 bg-white/40 backdrop-blur-sm min-h-[220px] lg:min-h-screen">
+        <div className="hidden lg:flex lg:col-span-7 p-6 sm:p-10 md:p-12 lg:p-16 flex-col justify-between items-start relative z-10 border-b lg:border-b-0 lg:border-r border-slate-100/90 bg-white/40 backdrop-blur-sm min-h-[220px] lg:min-h-screen">
           
           {/* Top Brand Logo Header */}
-          <div className="flex items-center gap-3 select-none shrink-0">
+          {/* Same cropped logo and wordmark as the phone app. On smaller screens the form shows it instead. */}
+          <div className="hidden lg:flex items-center gap-3 select-none shrink-0">
             <img 
-              src="/logo.png" 
-              alt="REBMA Logo" 
-              className="h-9 sm:h-11 w-auto object-contain select-none pointer-events-none drop-shadow-sm"
+              src="/logo-mark.png" 
+              alt="REBMA IMPEX" 
+              className="h-11 w-auto select-none pointer-events-none"
             />
-            <div className="flex flex-col select-none">
-              <span className="font-extrabold text-xl sm:text-2xl tracking-wider leading-none text-slate-900">REBMA</span>
-              <span className="font-bold text-[10px] sm:text-[10px] uppercase tracking-widest mt-0.5 text-emerald-600">IMPEX GHANA</span>
-            </div>
+            <span className="font-extrabold text-lg tracking-wide text-[#111827]">REBMA IMPEX</span>
           </div>
 
           {/* Welcome Title & Hero Details (Image 2 style) */}
           <div className="my-4 sm:my-8 lg:my-auto max-w-xl text-left">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200/80 text-emerald-800 text-[11px] sm:text-xs font-semibold mb-3 sm:mb-4">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              Next-Gen Enterprise Logistics Gateway
-            </div>
             
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-slate-900 leading-[1.1]">
               Welcome!
@@ -3125,8 +3113,7 @@ export default function App() {
 
           {/* Footer Copyright */}
           <div className="hidden sm:flex text-xs text-slate-400 font-medium pt-4 border-t border-slate-100/90 w-full items-center justify-between">
-            <span>© {new Date().getFullYear()} REMBA IMPEX GHANA LIMITED.</span>
-            <span className="hidden sm:inline text-emerald-600 font-semibold">ISO 9001 Certified</span>
+            <span>© {new Date().getFullYear()} REBMA IMPEX GHANA LIMITED.</span>
           </div>
         </div>
 
@@ -3156,42 +3143,39 @@ export default function App() {
 
           {/* Bottom links */}
           <div className="mt-6 text-center text-xs text-slate-600 z-10 space-y-2">
-            <div>
-              <a href="#help" className="hover:text-emerald-600 hover:underline font-bold text-slate-700 tracking-wide transition-colors">Need Help?</a>
-            </div>
             <div className="text-slate-500 text-xs">
               {authScreen === 'login' ? (
                 <span>
-                  You are not a member?{' '}
+                  Don't have an account?{' '}
                   <button 
                     onClick={() => {
                       setPassword('');
                       setAuthScreen('register');
                     }} 
-                    className="text-emerald-600 hover:text-emerald-700 hover:underline font-bold transition-colors cursor-pointer"
+                    className="text-[#f2a72e] hover:underline font-bold transition-colors cursor-pointer"
                   >
                     Register
                   </button>
                 </span>
               ) : authScreen === 'register' ? (
                 <span>
-                  Already a member?{' '}
+                  Already have an account?{' '}
                   <button 
                     onClick={() => {
                       setPassword('');
                       setAuthScreen('login');
                     }} 
-                    className="text-emerald-600 hover:text-emerald-700 hover:underline font-bold transition-colors cursor-pointer"
+                    className="text-[#f2a72e] hover:underline font-bold transition-colors cursor-pointer"
                   >
-                    Login
+                    Log in
                   </button>
                 </span>
-              ) : (
+              ) : authScreen === 'forgot' ? null : (
                 <button 
                   onClick={() => setAuthScreen('login')} 
-                  className="text-emerald-600 hover:text-emerald-700 hover:underline font-bold transition-colors cursor-pointer"
+                  className="text-[#f2a72e] hover:underline font-bold transition-colors cursor-pointer"
                 >
-                  Back to Login
+                  Back to sign in
                 </button>
               )}
             </div>
@@ -4157,6 +4141,8 @@ export default function App() {
         messengerTargetUserId={messengerTargetUserId}
         setMessengerTargetChannelId={setMessengerTargetChannelId}
         messengerTargetChannelId={messengerTargetChannelId}
+        messengerJoinCallId={messengerJoinCallId}
+        setMessengerJoinCallId={setMessengerJoinCallId}
         chatUnreadCount={chatUnreadCount}
         setMessengerTargetUserId={setMessengerTargetUserId}
         chatMessages={chatMessages}
@@ -4217,7 +4203,7 @@ function AppInner({
   currentUser, reducedMotion, motionSetting, activeDepartment, setActiveDepartment,
   activeSubTab, setActiveSubTab, theme, notifications, setNotifications,
   addNotification, goToNotificationLink, renderDashboard, renderAlertModal, renderPromptModal,
-  renderConfirmModal, isChatOpen, setIsChatOpen, messengerTargetUserId, setMessengerTargetUserId, messengerTargetChannelId, setMessengerTargetChannelId, chatUnreadCount, chatMessages, sendChatMessage,
+  renderConfirmModal, isChatOpen, setIsChatOpen, messengerTargetUserId, setMessengerTargetUserId, messengerTargetChannelId, setMessengerTargetChannelId, messengerJoinCallId, setMessengerJoinCallId, chatUnreadCount, chatMessages, sendChatMessage,
   boardroomMinutes, setBoardroomMinutes, onLogout, openBoardroom,
   sidebarCollapsed, setSidebarCollapsed, unreadEmailCount,
   setIsAuthenticated, setCurrentUser, setCurrentDriver, isSidebarOpen, setIsSidebarOpen,
@@ -4453,11 +4439,25 @@ function AppInner({
         {/* 8. COLLABORATIVE MESSENGER (chat + calls) */}
         <Messenger
           isOpen={isChatOpen}
-          onClose={() => { setIsChatOpen(false); setMessengerTargetUserId(null); setMessengerTargetChannelId(null); }}
+          onClose={() => { setIsChatOpen(false); setMessengerTargetUserId(null); setMessengerTargetChannelId(null); setMessengerJoinCallId(null); }}
           currentUser={currentUser}
           targetUserId={messengerTargetUserId}
           targetChannelId={messengerTargetChannelId}
+          joinCallMeetingId={messengerJoinCallId}
         />
+
+        {/* Rings like a phone when someone calls you in a chat */}
+        {currentUser?.id && (
+          <IncomingCallAlert
+            myId={currentUser.id}
+            onAccept={(channelId, meetingId) => {
+              setMessengerTargetUserId(null);
+              setMessengerTargetChannelId(channelId);
+              setMessengerJoinCallId(meetingId);
+              setIsChatOpen(true);
+            }}
+          />
+        )}
 
         {/* 9. GLOBAL TOAST NOTIFICATION OVERLAY */}
         <div className="fixed bottom-6 right-6 z-[300] flex flex-col gap-2 max-w-sm pointer-events-none">

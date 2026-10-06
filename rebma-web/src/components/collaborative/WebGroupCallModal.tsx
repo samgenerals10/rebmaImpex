@@ -41,6 +41,7 @@ import {
   type SignalMessage, type RoomChannel, type RoomPresenceEntry,
 } from '../../lib/webrtcSignaling';
 import CountBadge from '../../components/ui/CountBadge';
+import { CallAvatar, useRingback } from './callUi';
 
 interface Props {
   room: string;
@@ -562,6 +563,10 @@ export default function WebGroupCallModal({ room, title, myId, myName, meetingId
   const participantCount = peers.length + 1;
   const pinnedPeer = pinnedUserId ? peers.find((p) => p.userId === pinnedUserId) : undefined;
   const gridPeers = pinnedPeer ? peers.filter((p) => p.userId !== pinnedUserId) : peers;
+  // Phone style: while nobody else is here yet, show who you're calling and
+  // play the ringing tone, for the first 45 seconds only.
+  const stillCalling = peers.length === 0 && elapsed < 45;
+  useRingback(stillCalling);
   const tileCount = gridPeers.length + (selfViewHidden ? 0 : 1);
   const gridCols = tileCount <= 1 ? 'grid-cols-1' : tileCount <= 4 ? 'grid-cols-2' : 'grid-cols-3';
 
@@ -651,6 +656,15 @@ export default function WebGroupCallModal({ room, title, myId, myName, meetingId
 
       {/* Video grid */}
       <div className="flex-1 min-h-0 overflow-y-auto p-2 space-y-2">
+        {peers.length === 0 && (
+          <div className="flex flex-col items-center justify-center gap-4 py-12 text-center text-white">
+            <CallAvatar name={title} size={120} ringing={stillCalling} />
+            <div>
+              <p className="text-xl font-bold">{title}</p>
+              <p className="mt-1 text-sm text-white/65">{stillCalling ? 'Calling…' : 'Waiting for others to join'}</p>
+            </div>
+          </div>
+        )}
         {pinnedPeer && (
           <div className="relative w-full aspect-video max-h-[60vh] rounded-xl overflow-hidden bg-[#1a1a22]">
             {pinnedPeer.remoteStream ? <MediaTile stream={pinnedPeer.remoteStream} /> : <p className="absolute inset-0 flex items-center justify-center text-white/60 text-sm">Connecting…</p>}

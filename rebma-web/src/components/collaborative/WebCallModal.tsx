@@ -9,7 +9,8 @@
 // The offer is sent the moment that person sees the other one arrive in
 // the room, so it works whichever of the two opens the call first.
 import { useEffect, useRef, useState } from 'react';
-import { X, Phone, Video, VideoOff, Mic, MicOff } from 'lucide-react';
+import { Phone, Video, VideoOff, Mic, MicOff } from 'lucide-react';
+import { CallAvatar, useRingback, useCallTimer } from './callUi';
 import { openRoomChannel, ICE_SERVERS, shouldOfferTo, candidateToJson, type SignalMessage, type RoomChannel } from '../../lib/webrtcSignaling';
 
 interface Props {
@@ -19,21 +20,24 @@ interface Props {
   myId: string;
   myName: string;
   otherUserId: string;
+  /** Shown on the calling screen: who you're calling. */
+  otherName?: string;
+  otherPhoto?: string | null;
   onClose: () => void;
 }
 
 type CallStatus = 'connecting' | 'waiting' | 'connected' | 'failed' | 'ended' | 'no-media';
 
 const STATUS_LABEL: Record<CallStatus, string> = {
-  connecting: 'Connecting…',
-  waiting: 'Waiting for the other person to join…',
+  connecting: 'Calling…',
+  waiting: 'Ringing…',
   connected: 'Connected',
   failed: "Couldn't connect. Check the other person's connection.",
   ended: 'Call ended',
   'no-media': 'Allow camera and microphone access in your browser to join this call.',
 };
 
-export default function WebCallModal({ room, title, kind, myId, myName, otherUserId, onClose }: Props) {
+export default function WebCallModal({ room, title, kind, myId, myName, otherUserId, otherName, otherPhoto, onClose }: Props) {
   const [status, setStatus] = useState<CallStatus>('connecting');
   const [micOn, setMicOn] = useState(true);
   const [camOn, setCamOn] = useState(kind === 'video');
@@ -161,49 +165,73 @@ export default function WebCallModal({ room, title, kind, myId, myName, otherUse
     setCamOn((v) => !v);
   };
 
-  const roundBtn = 'w-12 h-12 rounded-full flex items-center justify-center cursor-pointer transition-colors';
+  // When the other person hangs up, close after a moment instead of
+  // leaving a stuck "Call ended" screen (same as the phone app).
+  useEffect(() => {
+    if (status !== 'ended') return;
+    const tm = setTimeout(() => { closedRef.current = true; onClose(); }, 1500);
+    return () => clearTimeout(tm);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
+
+  // Ring until they pick up, then show how long the call has run.
+  const ringing = status === 'connecting' || status === 'waiting';
+  useRingback(ringing);
+  const timer = useCallTimer(status === 'connected');
+  const displayName = otherName || title;
+  const showVideo = kind === 'video' && hasRemote;
+
+  const roundBtn = 'w-14 h-14 rounded-full flex items-center justify-center cursor-pointer transition-all active:scale-95';
 
   return (
-    <div className="fixed inset-0 z-[1700] bg-[#0b0b0f] flex flex-col">
-      <div className="flex items-center justify-between px-5 py-4">
-        <div>
-          <p className="text-sm font-bold text-white">{title}</p>
-          <p className="text-[11px] text-white/70">{STATUS_LABEL[status]}</p>
+    <div className="fixed inset-0 z-[1700] flex flex-col bg-gradient-to-b from-[#0f172a] via-[#111827] to-[#030712] text-white">
+      {kind === 'video' ? (
+        <video ref={remoteVideoRef} autoPlay playsInline className={`absolute inset-0 w-full h-full object-cover ${showVideo ? '' : 'hidden'}`} />
+      ) : (
+        <audio ref={remoteAudioRef} autoPlay />
+      )}
+
+      {/* Who you're talking to, phone style */}
+      <div className={`relative flex-1 min-h-0 flex flex-col items-center ${showVideo ? 'justify-start pt-10' : 'justify-center'} gap-5 px-6 text-center`}>
+        {!showVideo && <CallAvatar name={displayName} photo={otherPhoto} size={136} ringing={ringing} />}
+        <div className={showVideo ? 'px-4 py-2 rounded-2xl bg-black/40 backdrop-blur' : ''}>
+          <p className="text-2xl font-bold">{displayName}</p>
+          <p className="mt-1 text-sm text-white/70">
+            {status === 'connected' ? timer : STATUS_LABEL[status]}
+          </p>
+          <p className="mt-1 text-[11px] uppercase tracking-widest text-white/40">{kind === 'video' ? 'Video call' : 'Voice call'}</p>
         </div>
-        <button onClick={hangUp} className="p-2 rounded-full bg-white/15 text-white cursor-pointer" title="Close"><X size={18} /></button>
       </div>
 
-      <div className="relative flex-1 min-h-0">
-        {kind === 'video' ? (
-          <video ref={remoteVideoRef} autoPlay playsInline className={`w-full h-full object-cover ${hasRemote ? '' : 'hidden'}`} />
-        ) : (
-          <audio ref={remoteAudioRef} autoPlay />
-        )}
-        {(kind === 'voice' || !hasRemote) && (
-          <div className="absolute inset-0 flex items-center justify-center text-white/40">
-            {kind === 'voice' ? <Phone size={48} /> : <Video size={48} />}
+      {kind === 'video' && (
+        <video
+          ref={localVideoRef} autoPlay playsInline muted
+          className={`absolute top-4 right-4 w-28 h-40 sm:w-40 sm:h-56 object-cover rounded-2xl border border-white/25 shadow-2xl -scale-x-100 ${camOn ? '' : 'hidden'}`}
+        />
+      )}
+
+      {/* Controls */}
+      <div className="relative flex items-center justify-center gap-6 pb-12 pt-6">
+        <div className="flex flex-col items-center gap-1.5">
+          <button onClick={toggleMic} title={micOn ? 'Mute' : 'Unmute'} className={`${roundBtn} ${micOn ? 'bg-white/15 hover:bg-white/25' : 'bg-white text-[#0f172a]'}`}>
+            {micOn ? <Mic size={22} /> : <MicOff size={22} />}
+          </button>
+          <span className="text-[11px] text-white/60">{micOn ? 'Mute' : 'Unmute'}</span>
+        </div>
+        {kind === 'video' && (
+          <div className="flex flex-col items-center gap-1.5">
+            <button onClick={toggleCamera} title={camOn ? 'Turn camera off' : 'Turn camera on'} className={`${roundBtn} ${camOn ? 'bg-white/15 hover:bg-white/25' : 'bg-white text-[#0f172a]'}`}>
+              {camOn ? <Video size={22} /> : <VideoOff size={22} />}
+            </button>
+            <span className="text-[11px] text-white/60">Camera</span>
           </div>
         )}
-        {kind === 'video' && (
-          <video
-            ref={localVideoRef} autoPlay playsInline muted
-            className={`absolute top-3 right-4 w-28 h-36 sm:w-40 sm:h-52 object-cover rounded-xl border border-white/30 -scale-x-100 ${camOn ? '' : 'hidden'}`}
-          />
-        )}
-      </div>
-
-      <div className="flex items-center justify-center gap-5 py-6">
-        <button onClick={toggleMic} title={micOn ? 'Mute' : 'Unmute'} className={`${roundBtn} ${micOn ? 'bg-white/15 text-white' : 'bg-white text-[#0b0b0f]'}`}>
-          {micOn ? <Mic size={20} /> : <MicOff size={20} />}
-        </button>
-        {kind === 'video' && (
-          <button onClick={toggleCamera} title={camOn ? 'Turn camera off' : 'Turn camera on'} className={`${roundBtn} ${camOn ? 'bg-white/15 text-white' : 'bg-white text-[#0b0b0f]'}`}>
-            {camOn ? <Video size={20} /> : <VideoOff size={20} />}
+        <div className="flex flex-col items-center gap-1.5">
+          <button onClick={hangUp} title="End call" className="w-16 h-16 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center cursor-pointer active:scale-95 transition-all shadow-lg shadow-red-500/30">
+            <Phone size={26} className="rotate-[135deg]" />
           </button>
-        )}
-        <button onClick={hangUp} title="End call" className="w-14 h-14 rounded-full bg-red-500 text-white flex items-center justify-center cursor-pointer">
-          <Phone size={24} className="rotate-[135deg]" />
-        </button>
+          <span className="text-[11px] text-white/60">End</span>
+        </div>
       </div>
     </div>
   );

@@ -26,7 +26,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Modal, View, Text, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { MediaStream } from 'react-native-webrtc';
-import { X, Phone, Video, Mic, MicOff, SwitchCamera, VideoOff } from 'lucide-react-native';
+import { Phone, Video, Mic, MicOff, SwitchCamera, VideoOff } from 'lucide-react-native';
+import { CallAvatar, useRingback, useCallTimer } from './callUi';
 import { useTheme } from '../../theme/ThemeProvider';
 import { useAuthStore } from '../../store/authStore';
 import { openRoomChannel, ICE_SERVERS, shouldOfferTo, type SignalMessage, type RoomChannel } from '../../lib/webrtcSignaling';
@@ -65,12 +66,15 @@ interface Props {
   title: string;
   kind: 'voice' | 'video';
   otherUserId: string;
+  /** Who you're calling, for the phone-style screen. */
+  otherName?: string;
+  otherPhoto?: string | null;
   onClose: () => void;
 }
 
 type CallStatus = 'connecting' | 'ringing' | 'connected' | 'failed' | 'ended';
 
-export default function NativeCallSheet({ room, title, kind, otherUserId, onClose }: Props) {
+export default function NativeCallSheet({ room, title, kind, otherUserId, otherName, otherPhoto, onClose }: Props) {
   const t = useTheme();
   const me = useAuthStore((s) => s.profile);
   const myId = me?.id || '';
@@ -88,6 +92,7 @@ export default function NativeCallSheet({ room, title, kind, otherUserId, onClos
   const pendingCandidates = useRef<any[]>([]);
   const closedRef = useRef(false);
   const offeredRef = useRef(false);
+  const localStreamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -106,6 +111,7 @@ export default function NativeCallSheet({ room, title, kind, otherUserId, onClos
       }
       if (cancelled) { stream.getTracks().forEach((tr) => tr.stop()); return; }
       setLocalStream(stream);
+      localStreamRef.current = stream;
 
       const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
       pcRef.current = pc;
@@ -167,9 +173,32 @@ export default function NativeCallSheet({ room, title, kind, otherUserId, onClos
 
     return () => {
       cancelled = true;
+      // However this screen closes, the camera, microphone and connection are switched off.
+      if (!closedRef.current) {
+        closedRef.current = true;
+        roomRef.current?.send({ type: 'hangup', from: myId, to: otherUserId });
+      }
+      roomRef.current?.close();
+      localStreamRef.current?.getTracks().forEach((tr) => tr.stop());
+      pcRef.current?.close();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // When the other person hangs up, close after a moment instead of
+  // leaving a stuck "Call ended" screen.
+  useEffect(() => {
+    if (status !== 'ended') return;
+    const tm = setTimeout(() => { closedRef.current = true; onClose(); }, 1500);
+    return () => clearTimeout(tm);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
+
+  const ringing = status === 'connecting' || status === 'ringing';
+  useRingback(ringing);
+  const timer = useCallTimer(status === 'connected');
+  const displayName = otherName || title;
+  const showVideo = kind === 'video' && !!remoteStream;
 
   const hangUp = () => {
     closedRef.current = true;
@@ -197,60 +226,74 @@ export default function NativeCallSheet({ room, title, kind, otherUserId, onClos
   };
 
   const statusLabel: Record<CallStatus, string> = {
-    connecting: 'Connecting…',
-    ringing: 'Calling…',
+    connecting: 'Calling…',
+    ringing: 'Ringing…',
     connected: 'Connected',
     failed: "Couldn't connect. Check the other person's connection.",
     ended: 'Call ended',
   };
 
+  const roundBtn = (bg: string) => ({ width: 60, height: 60, borderRadius: 30, backgroundColor: bg, alignItems: 'center' as const, justifyContent: 'center' as const });
+  const btnLabel = { fontFamily: t.font.medium, fontSize: t.type.meta11.size, color: 'rgba(255,255,255,0.65)', marginTop: 6 };
+
   return (
     <Modal visible animationType="slide" onRequestClose={hangUp}>
-      <View style={{ flex: 1, backgroundColor: '#0b0b0f' }}>
-        {kind === 'video' && remoteStream ? (
-          <RTCView streamURL={(remoteStream as any).toURL()} style={{ flex: 1 }} objectFit="cover" />
-        ) : (
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-            {kind === 'voice' ? <Phone size={48} color="rgba(255,255,255,0.4)" /> : <Video size={48} color="rgba(255,255,255,0.4)" />}
-          </View>
+      <View style={{ flex: 1, backgroundColor: '#0f172a' }}>
+        {showVideo && (
+          <RTCView streamURL={(remoteStream as any).toURL()} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} objectFit="cover" />
         )}
 
         {kind === 'video' && localStream && camOn && (
-          <View style={{ position: 'absolute', top: 60, right: 16, width: 96, height: 128, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' }}>
+          <View style={{ position: 'absolute', top: 70, right: 16, width: 104, height: 144, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)', zIndex: 2 }}>
             <RTCView streamURL={(localStream as any).toURL()} style={{ flex: 1 }} objectFit="cover" mirror={frontCamera} />
           </View>
         )}
 
-        <SafeAreaView style={{ position: 'absolute', top: 0, left: 0, right: 0 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: t.spacing.lg, paddingVertical: t.spacing.md }}>
-            <View>
-              <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: '#fff' }}>{title}</Text>
-              <Text style={{ fontFamily: t.font.medium, fontSize: t.type.meta11.size, color: 'rgba(255,255,255,0.7)' }}>{statusLabel[status]}</Text>
+        <SafeAreaView style={{ flex: 1, justifyContent: 'space-between' }}>
+          {/* Who you're talking to, phone style */}
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: showVideo ? 'flex-start' : 'center', paddingTop: showVideo ? 24 : 0, gap: 22, paddingHorizontal: t.spacing.lg }}>
+            {!showVideo && <CallAvatar name={displayName} photo={otherPhoto} size={136} ringing={ringing} />}
+            <View style={{ alignItems: 'center', paddingHorizontal: 14, paddingVertical: showVideo ? 8 : 0, borderRadius: 16, backgroundColor: showVideo ? 'rgba(0,0,0,0.4)' : 'transparent' }}>
+              <Text style={{ fontFamily: t.font.bold, fontSize: 26, color: '#fff', textAlign: 'center' }} numberOfLines={1}>{displayName}</Text>
+              <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body14.size, color: 'rgba(255,255,255,0.7)', marginTop: 4, textAlign: 'center' }}>
+                {status === 'connected' ? timer : statusLabel[status]}
+              </Text>
+              <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta10.size, letterSpacing: 2, color: 'rgba(255,255,255,0.4)', marginTop: 4 }}>
+                {kind === 'video' ? 'VIDEO CALL' : 'VOICE CALL'}
+              </Text>
             </View>
-            <Pressable onPress={hangUp} hitSlop={10} style={{ padding: t.spacing.xs, borderRadius: t.radius.pill, backgroundColor: 'rgba(255,255,255,0.15)' }}>
-              <X size={18} color="#fff" />
-            </Pressable>
           </View>
-        </SafeAreaView>
 
-        <SafeAreaView style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: t.spacing.lg, paddingVertical: t.spacing.xl }}>
-            <Pressable onPress={toggleMic} style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: micOn ? 'rgba(255,255,255,0.15)' : '#fff', alignItems: 'center', justifyContent: 'center' }}>
-              {micOn ? <Mic size={20} color="#fff" /> : <MicOff size={20} color="#0b0b0f" />}
-            </Pressable>
-            {kind === 'video' && (
-              <Pressable onPress={toggleCamera} style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: camOn ? 'rgba(255,255,255,0.15)' : '#fff', alignItems: 'center', justifyContent: 'center' }}>
-                {camOn ? <Video size={20} color="#fff" /> : <VideoOff size={20} color="#0b0b0f" />}
+          {/* Controls */}
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'center', gap: 22, paddingTop: t.spacing.lg, paddingBottom: 36 }}>
+            <View style={{ alignItems: 'center' }}>
+              <Pressable onPress={toggleMic} accessibilityLabel={micOn ? 'Mute' : 'Unmute'} style={roundBtn(micOn ? 'rgba(255,255,255,0.15)' : '#fff')}>
+                {micOn ? <Mic size={22} color="#fff" /> : <MicOff size={22} color="#0f172a" />}
               </Pressable>
+              <Text style={btnLabel}>{micOn ? 'Mute' : 'Unmute'}</Text>
+            </View>
+            {kind === 'video' && (
+              <View style={{ alignItems: 'center' }}>
+                <Pressable onPress={toggleCamera} accessibilityLabel="Camera" style={roundBtn(camOn ? 'rgba(255,255,255,0.15)' : '#fff')}>
+                  {camOn ? <Video size={22} color="#fff" /> : <VideoOff size={22} color="#0f172a" />}
+                </Pressable>
+                <Text style={btnLabel}>Camera</Text>
+              </View>
             )}
             {kind === 'video' && (
-              <Pressable onPress={flipCamera} style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' }}>
-                <SwitchCamera size={20} color="#fff" />
-              </Pressable>
+              <View style={{ alignItems: 'center' }}>
+                <Pressable onPress={flipCamera} accessibilityLabel="Flip camera" style={roundBtn('rgba(255,255,255,0.15)')}>
+                  <SwitchCamera size={22} color="#fff" />
+                </Pressable>
+                <Text style={btnLabel}>Flip</Text>
+              </View>
             )}
-            <Pressable onPress={hangUp} style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: '#ef4444', alignItems: 'center', justifyContent: 'center' }}>
-              <Phone size={24} color="#fff" style={{ transform: [{ rotate: '135deg' }] }} />
-            </Pressable>
+            <View style={{ alignItems: 'center' }}>
+              <Pressable onPress={hangUp} accessibilityLabel="End call" style={{ ...roundBtn('#ef4444'), width: 68, height: 68, borderRadius: 34 }}>
+                <Phone size={26} color="#fff" style={{ transform: [{ rotate: '135deg' }] }} />
+              </Pressable>
+              <Text style={btnLabel}>End</Text>
+            </View>
           </View>
         </SafeAreaView>
       </View>

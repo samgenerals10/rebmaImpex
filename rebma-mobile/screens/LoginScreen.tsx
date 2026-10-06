@@ -193,7 +193,7 @@ export default function LoginScreen() {
 
         <Pressable onPress={() => navigation.navigate('Register')} style={{ marginTop: t.spacing.lg }}>
           <Text style={styles.switchText}>
-            Already have account ? <Text style={styles.switchLink}>Register</Text>
+            Don't have an account? <Text style={styles.switchLink}>Register</Text>
           </Text>
         </Pressable>
 

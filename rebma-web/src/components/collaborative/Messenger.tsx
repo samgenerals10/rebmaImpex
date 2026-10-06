@@ -8,7 +8,7 @@ import {
   MessageSquare, Search, Users, X, Send, Paperclip, Smile, Reply,
   Phone, Video, Check, CheckCheck, Plus, FileText,
   Pin, Star, Pencil, Trash2, Forward, Copy, MoreVertical, BellOff, Bell, EyeOff,
-  Images, Mic, Square, Download, Clock, Archive, Ban, PauseCircle, UserPlus,
+  Images, Mic, Square, Download, Clock, Archive, Ban, PauseCircle, UserPlus, ChevronDown, ArrowLeft,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../../lib/supabaseClient';
@@ -36,9 +36,11 @@ interface Props {
   // Set by a notification tap (chat_message/chat_mention) to jump straight
   // into the exact channel that notification was about, whatever its type.
   targetChannelId?: string | null;
+  // Set when someone accepts an incoming call: join that call on open.
+  joinCallMeetingId?: string | null;
 }
 
-interface Profile { id: string; fullName: string; department: string; email: string; }
+interface Profile { id: string; fullName: string; department: string; email: string; photo?: string | null; }
 interface Channel { id: string; name: string | null; type: 'group' | 'dm' | 'everyone'; created_by: string | null; created_at: string; photo_url?: string | null; }
 interface Msg {
   id: string; channel_id: string; sender_id: string | null; sender: string; content: string;
@@ -68,6 +70,17 @@ const REACTION_EMOJIS = ['👍', '❤️', '😂', '🎉', '😮', '👏'];
 
 function initials(name: string) {
   return name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
+}
+
+// A person's photo, or their initials when they have none.
+function PersonAvatar({ name, photo, size = 36 }: { name: string; photo?: string | null; size?: number }) {
+  return photo ? (
+    <img src={photo} alt="" className="rounded-full object-cover shrink-0" style={{ width: size, height: size }} />
+  ) : (
+    <div className="rounded-full bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center font-bold shrink-0" style={{ width: size, height: size, fontSize: size * 0.34 }}>
+      {initials(name || '?')}
+    </div>
+  );
 }
 
 function UnreadBadge({ count }: { count?: number }) {
@@ -135,7 +148,7 @@ function SidebarRow({
   );
 }
 
-export default function Messenger({ isOpen, onClose, currentUser, targetUserId, targetChannelId }: Props) {
+export default function Messenger({ isOpen, onClose, currentUser, targetUserId, targetChannelId, joinCallMeetingId }: Props) {
   const { getSetting } = useCeoSettings();
   const globalChatEnabled = getSetting('global_chat_enabled', true);
   const departmentChatEnabled = getSetting('department_chat_enabled', true);
@@ -247,8 +260,8 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
   useEffect(() => {
     if (!isOpen || !myId) return;
     (async () => {
-      const { data } = await supabase.from('profiles_directory').select('id, full_name, department, email').eq('status', 'ACTIVE').order('full_name', { ascending: true });
-      setProfiles((data || []).map((p: any) => ({ id: p.id, fullName: p.full_name || 'Unknown', department: p.department || '', email: p.email || '' })).filter(p => p.id !== myId));
+      const { data } = await supabase.from('profiles_directory').select('id, full_name, department, email, photo').eq('status', 'ACTIVE').order('full_name', { ascending: true });
+      setProfiles((data || []).map((p: any) => ({ id: p.id, fullName: p.full_name || 'Unknown', department: p.department || '', email: p.email || '', photo: p.photo || null })).filter(p => p.id !== myId));
 
       const everyoneId = await messenger.ensureEveryoneChannel();
       if (everyoneId) await messenger.joinChannel(everyoneId, myId);
@@ -478,6 +491,14 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
     const ch = channels.find(c => c.id === targetChannelId);
     if (ch) setActiveChannel(ch);
   }, [isOpen, targetChannelId, channels]);
+
+  const joinedCallRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!isOpen || !joinCallMeetingId || !targetChannelId || joinedCallRef.current === joinCallMeetingId) return;
+    joinedCallRef.current = joinCallMeetingId;
+    joinPostedCall(joinCallMeetingId, targetChannelId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, joinCallMeetingId, targetChannelId]);
 
   const loadPendingInvites = useCallback(() => {
     if (!myId) return;
@@ -1021,11 +1042,11 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
       {isOpen && (
         <motion.div
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[1500] bg-black/40 flex items-center justify-center p-3 sm:p-6"
+          className="fixed inset-0 z-[1500] bg-black/40 flex items-center justify-center p-0 sm:p-6"
         >
           <motion.div
             initial={{ scale: 0.97, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.97, opacity: 0 }}
-            className="bg-[var(--bg-card)] rounded-2xl shadow-2xl w-full max-w-5xl h-[85vh] flex overflow-hidden"
+            className="messenger-shell bg-[var(--bg-card)] rounded-none sm:rounded-2xl shadow-2xl w-full max-w-5xl h-full sm:h-[85vh] flex overflow-hidden"
           >
           {checkingAccess ? (
             <div className="flex-1 flex items-center justify-center">
@@ -1041,7 +1062,7 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
           ) : (
           <>
             {/* Sidebar */}
-            <div className="w-72 shrink-0 border-r border-[var(--border)] flex flex-col">
+            <div className={`w-full md:w-72 shrink-0 border-r border-[var(--border)] flex-col ${activeChannel ? 'hidden md:flex' : 'flex'}`}>
               <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
                 <h3 className="font-bold text-sm text-[var(--text-primary)] flex items-center gap-2">
                   <MessageSquare className="w-4 h-4 text-[var(--accent)]" /> Messenger
@@ -1056,6 +1077,8 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
                   <button onClick={() => setShowNewChannel(true)} className="p-1.5 rounded-lg hover:bg-[var(--accent-light)] text-[var(--accent)] cursor-pointer" title="New group channel">
                     <Plus size={16} />
                   </button>
+                  {/* Close, always reachable on a phone (the conversation's own close is hidden there) */}
+                  <button onClick={onClose} className="md:hidden p-1.5 rounded-lg hover:bg-[var(--bg-input)] text-[var(--text-muted)] cursor-pointer" title="Close"><X size={18} /></button>
                 </div>
               </div>
               <div className="px-3 pt-3 pb-2">
@@ -1144,7 +1167,7 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
                       onClick={() => openDm(c.id)}
                       icon={
                         <div className="relative shrink-0">
-                          <div className="w-9 h-9 rounded-full bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center text-xs font-bold">{initials(c.fullName)}</div>
+                          <PersonAvatar name={c.fullName} photo={c.photo} size={36} />
                           {online && <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-[var(--bg-card)]" />}
                         </div>
                       }
@@ -1167,17 +1190,39 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
             </div>
 
             {/* Main thread */}
-            <div className="flex-1 flex flex-col min-w-0">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)] shrink-0">
+            <div className={`flex-1 flex-col min-w-0 ${activeChannel ? 'flex' : 'hidden md:flex'}`}>
+              <div className="flex items-center justify-between gap-2 px-3 sm:px-4 py-3 border-b border-[var(--border)] shrink-0">
+                {/* Back to the list, on phones */}
+                <button onClick={() => setActiveChannel(null)} className="md:hidden p-2 -ml-1 rounded-lg hover:bg-[var(--bg-input)] text-[var(--text-secondary)] cursor-pointer shrink-0" title="Back">
+                  <ArrowLeft size={18} />
+                </button>
                 <button
                   onClick={activeChannel?.type === 'group' ? openGroupInfo : undefined}
-                  className={activeChannel?.type === 'group' ? 'text-left cursor-pointer' : 'text-left'}
+                  className={`flex-1 min-w-0 text-left ${activeChannel?.type === 'group' ? 'cursor-pointer' : ''}`}
                   disabled={activeChannel?.type !== 'group'}
                 >
-                  <p className="text-sm font-bold text-[var(--text-primary)]">{label.title || 'Select a conversation'}</p>
-                  {label.subtitle && <p className="text-[10px] text-[var(--text-muted)]">{label.subtitle}</p>}
+                  <span className="flex items-center gap-3">
+                    {activeChannel && (
+                      activeChannel.type === 'everyone' ? (
+                        <span className="w-10 h-10 rounded-full bg-[var(--accent)] text-white flex items-center justify-center shrink-0"><Users size={17} /></span>
+                      ) : activeChannel.type === 'group' ? (
+                        activeChannel.photo_url && attachmentUrls[activeChannel.photo_url]
+                          ? <img src={attachmentUrls[activeChannel.photo_url]} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" />
+                          : <PersonAvatar name={activeChannel.name || 'Group'} size={40} />
+                      ) : (
+                        <span className="relative shrink-0">
+                          <PersonAvatar name={label.title} photo={profiles.find(pr => pr.id === activeDmOtherId)?.photo} size={40} />
+                          {onlineIds.has(activeDmOtherId) && <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-[var(--bg-card)]" />}
+                        </span>
+                      )
+                    )}
+                    <span className="min-w-0">
+                      <span className="block text-sm font-bold text-[var(--text-primary)] truncate">{label.title || 'Select a conversation'}</span>
+                      {label.subtitle && <span className="block text-[11px] text-[var(--text-muted)]">{label.subtitle}</span>}
+                    </span>
+                  </span>
                 </button>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 min-w-0 overflow-x-auto shrink">
                   {activeChannel && (
                     <>
                       {activeChannel.type === 'group' && (
@@ -1227,8 +1272,9 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
                       )}
                     </>
                   )}
-                  <button onClick={onClose} className="p-2 rounded-lg hover:bg-[var(--bg-input)] text-[var(--text-muted)] cursor-pointer ml-1"><X size={16} /></button>
                 </div>
+                {/* Close stays outside the scrolling icons so it can never be pushed off screen */}
+                <button onClick={onClose} className="p-2 rounded-lg hover:bg-[var(--bg-input)] text-[var(--text-muted)] cursor-pointer shrink-0" title="Close"><X size={16} /></button>
               </div>
 
               {showThreadSearch && activeChannel && (
@@ -1249,7 +1295,8 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
                 {activeChannel && messages.length > 0 && visibleMessages.length === 0 && (
                   <p className="text-xs text-[var(--text-muted)] text-center py-10">{starredOnly ? 'No starred messages.' : 'No messages match your search.'}</p>
                 )}
-                {visibleMessages.map(msg => {
+                {actionMenuFor && <div className="fixed inset-0 z-10" onClick={() => { setActionMenuFor(null); setReadListFor(null); }} />}
+                {visibleMessages.map((msg, idx) => {
                   const mine = msg.sender_id === myId;
                   const quoted = msg.reply_to_id ? messages.find(m => m.id === msg.reply_to_id) : null;
                   const msgReactions = reactions[msg.id] || [];
@@ -1258,46 +1305,75 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
                   const isDeleted = !!msg.deleted_at;
                   const isStarred = starredIds.has(msg.id);
                   const isPinned = pinnedIds.has(msg.id);
+                  const sender = profiles.find(pr => pr.id === msg.sender_id);
+                  const showSender = !mine && activeChannel?.type !== 'dm';
+                  // Messages near the bottom open their menu upwards so it isn't cut off.
+                  const menuUp = idx >= visibleMessages.length - 3 && visibleMessages.length > 3;
+                  const isVideoCall = isCall && msg.content.toLowerCase().includes('video');
+                  const metaColor = mine ? 'text-white/75' : 'text-[var(--text-muted)]';
                   return (
-                    <div key={msg.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-                      <div className="max-w-[70%]">
-                        {!mine && activeChannel?.type !== 'dm' && <p className="text-[10px] font-bold text-[var(--text-muted)] mb-0.5 ml-1">{msg.sender}</p>}
-                        {msg.forwarded_from_id && (
-                          <p className={`text-[10px] italic mb-0.5 flex items-center gap-1 ${mine ? 'justify-end' : ''} text-[var(--text-muted)]`}><Forward size={9} /> Forwarded</p>
-                        )}
-                        {quoted && !isDeleted && (
-                          <div className="mb-1 px-2.5 py-1.5 rounded-lg bg-[var(--bg-input)] border-l-2 border-[var(--accent)] text-[10px] text-[var(--text-muted)] truncate">
-                            {quoted.sender}: {quoted.deleted_at ? 'This message was deleted' : quoted.content}
-                          </div>
-                        )}
-                        <div className={`group relative px-3 py-2 rounded-2xl ${mine ? 'bg-[var(--accent)] text-white' : 'bg-[var(--bg-input)] text-[var(--text-primary)]'}`}>
-                          {isDeleted ? (
-                            <p className={`text-xs italic ${mine ? 'text-white/70' : 'text-[var(--text-muted)]'}`}>This message was deleted</p>
-                          ) : isCall ? (
-                            <button onClick={() => joinPostedCall(msg.attachment_url, msg.channel_id)} className={`flex items-center gap-2 text-xs font-bold cursor-pointer underline ${mine ? 'text-white' : 'text-[var(--accent)]'}`}>
-                              {msg.content}
+                    <div key={msg.id} className={`flex items-end gap-2 ${mine ? 'justify-end' : 'justify-start'}`}>
+                      {showSender && <PersonAvatar name={msg.sender} photo={sender?.photo} size={30} />}
+                      <div className={`max-w-[68%] flex flex-col ${mine ? 'items-end' : 'items-start'}`}>
+                        {showSender && <p className="text-[11px] font-semibold text-[var(--text-secondary)] mb-1 ml-1">{msg.sender}</p>}
+                        <div className={`group relative px-3.5 py-2.5 shadow-sm ${mine
+                          ? 'bg-[var(--accent)] text-white rounded-2xl rounded-br-md'
+                          : 'bg-[var(--bg-page)] text-[var(--text-primary)] border border-[var(--border)] rounded-2xl rounded-bl-md'}`}>
+                          {/* The one arrow that opens every action for this message */}
+                          {!isDeleted && (
+                            <button
+                              onClick={() => { setActionMenuFor(actionMenuFor === msg.id ? null : msg.id); setReactionPickerFor(null); }}
+                              title="Message options"
+                              className={`absolute top-1.5 right-1.5 w-6 h-6 rounded-full flex items-center justify-center cursor-pointer transition-opacity ${actionMenuFor === msg.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} ${mine ? 'bg-black/15 text-white hover:bg-black/25' : 'bg-[var(--bg-card)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border)]'}`}
+                            >
+                              <ChevronDown size={14} />
                             </button>
+                          )}
+                          {msg.forwarded_from_id && !isDeleted && (
+                            <p className={`text-[11px] italic mb-1 flex items-center gap-1 ${metaColor}`}><Forward size={11} /> Forwarded</p>
+                          )}
+                          {quoted && !isDeleted && (
+                            <div className={`mb-2 px-2.5 py-1.5 rounded-lg border-l-[3px] text-[11px] ${mine ? 'bg-black/10 border-white/70 text-white/90' : 'bg-[var(--bg-card)] border-[var(--accent)] text-[var(--text-secondary)]'}`}>
+                              <span className="font-semibold block">{quoted.sender}</span>
+                              <span className="line-clamp-2">{quoted.deleted_at ? 'This message was deleted' : quoted.content}</span>
+                            </div>
+                          )}
+                          {isDeleted ? (
+                            <p className={`text-[13px] italic ${metaColor}`}>This message was deleted</p>
+                          ) : isCall ? (
+                            <div className="flex items-center gap-3 pr-6 min-w-[220px]">
+                              <span className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${mine ? 'bg-white/20' : 'bg-[var(--accent-light)] text-[var(--accent)]'}`}>
+                                {isVideoCall ? <Video size={18} /> : <Phone size={18} />}
+                              </span>
+                              <span className="flex-1 min-w-0">
+                                <span className="block text-[13px] font-semibold">{isVideoCall ? 'Video call' : 'Voice call'}</span>
+                                <span className={`block text-[11px] ${metaColor}`}>{mine ? 'You started a call' : `${msg.sender} started a call`}</span>
+                              </span>
+                              <button onClick={() => joinPostedCall(msg.attachment_url, msg.channel_id)} className={`px-3 py-1.5 rounded-full text-xs font-bold cursor-pointer ${mine ? 'bg-white text-[var(--accent)]' : 'bg-[var(--accent)] text-white'}`}>
+                                Join
+                              </button>
+                            </div>
                           ) : msg.attachment_type === 'image' && msg.attachment_urls && msg.attachment_urls.length > 1 ? (
-                            <div className="grid grid-cols-2 gap-1 mb-1 max-w-[220px]">
+                            <div className="grid grid-cols-2 gap-1 mb-1.5 w-[240px]">
                               {msg.attachment_urls.map((path, i) => attachmentUrls[path] ? (
                                 <button key={path} onClick={() => setLightbox({ urls: msg.attachment_urls!.map(p => attachmentUrls[p]).filter(Boolean), index: i })} className="cursor-pointer">
-                                  <img src={attachmentUrls[path]} alt="attachment" className="rounded-lg w-full h-20 object-cover" />
+                                  <img src={attachmentUrls[path]} alt="attachment" className="rounded-lg w-full h-24 object-cover" />
                                 </button>
-                              ) : <div key={path} className="rounded-lg w-full h-20 bg-black/10" />)}
+                              ) : <div key={path} className="rounded-lg w-full h-24 bg-black/10" />)}
                             </div>
                           ) : msg.attachment_type === 'image' && msg.attachment_url && attachmentUrls[msg.attachment_url] ? (
-                            <button onClick={() => setLightbox({ urls: [attachmentUrls[msg.attachment_url!]], index: 0 })} className="cursor-pointer">
-                              <img src={attachmentUrls[msg.attachment_url]} alt="attachment" className="rounded-lg max-w-full max-h-52 mb-1" />
+                            <button onClick={() => setLightbox({ urls: [attachmentUrls[msg.attachment_url!]], index: 0 })} className="cursor-pointer block">
+                              <img src={attachmentUrls[msg.attachment_url]} alt="attachment" className="rounded-xl max-w-full max-h-60 mb-1.5" />
                             </button>
                           ) : msg.attachment_type === 'audio' && msg.attachment_url && attachmentUrls[msg.attachment_url] ? (
-                            <audio controls src={attachmentUrls[msg.attachment_url]} className="max-w-full mb-1" style={{ height: 32 }} />
+                            <audio controls src={attachmentUrls[msg.attachment_url]} className="max-w-full mb-1.5 pr-6" style={{ height: 36 }} />
                           ) : msg.attachment_type === 'file' && msg.attachment_url && attachmentUrls[msg.attachment_url] ? (
-                            <div className="mb-1">
-                              <a href={attachmentUrls[msg.attachment_url]} target="_blank" rel="noreferrer" className={`flex items-center gap-1.5 text-xs font-semibold underline ${mine ? 'text-white' : 'text-[var(--accent)]'}`}>
-                                <FileText size={13} /> {msg.attachment_name || 'File'} <Download size={11} />
+                            <div className="mb-1.5 pr-6">
+                              <a href={attachmentUrls[msg.attachment_url]} target="_blank" rel="noreferrer" className={`flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-semibold ${mine ? 'bg-black/10 text-white' : 'bg-[var(--bg-card)] border border-[var(--border)] text-[var(--text-primary)]'}`}>
+                                <FileText size={16} /> <span className="truncate max-w-[180px]">{msg.attachment_name || 'File'}</span> <Download size={14} className="shrink-0" />
                               </a>
                               {msg.attachment_name?.toLowerCase().endsWith('.pdf') && (
-                                <button onClick={() => setPdfPreviewFor(pdfPreviewFor === msg.id ? null : msg.id)} className={`text-[10px] underline mt-0.5 cursor-pointer ${mine ? 'text-white/80' : 'text-[var(--accent)]'}`}>
+                                <button onClick={() => setPdfPreviewFor(pdfPreviewFor === msg.id ? null : msg.id)} className={`text-[11px] underline mt-1 cursor-pointer ${mine ? 'text-white/85' : 'text-[var(--accent)]'}`}>
                                   {pdfPreviewFor === msg.id ? 'Hide preview' : 'Preview'}
                                 </button>
                               )}
@@ -1306,61 +1382,60 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
                               )}
                             </div>
                           ) : null}
-                          {!isCall && !isDeleted && <p className="text-xs leading-relaxed">{msg.content}</p>}
-                          <div className="flex items-center gap-1 justify-end mt-0.5">
-                            {isPinned && <Pin size={9} className={mine ? 'text-white/70' : 'text-[var(--text-muted)]'} />}
-                            {isStarred && <Star size={9} fill="currentColor" className="text-amber-400" />}
-                            {msg.edited_at && !isDeleted && <span className={`text-[10px] ${mine ? 'text-white/70' : 'text-[var(--text-muted)]'}`}>(edited)</span>}
-                            <span className={`text-[10px] ${mine ? 'text-white/70' : 'text-[var(--text-muted)]'}`}>{msg.time}</span>
+                          {!isCall && !isDeleted && msg.content && !((msg.attachment_url || (msg.attachment_urls && msg.attachment_urls.length > 0)) && /^(📷|📎|🎤)/.test(msg.content)) && (
+                            <p className="text-[13px] leading-relaxed whitespace-pre-wrap break-words pr-6">{msg.content}</p>
+                          )}
+                          <div className={`flex items-center gap-1 justify-end mt-1 ${metaColor}`}>
+                            {isPinned && <Pin size={10} />}
+                            {isStarred && <Star size={10} fill="currentColor" className="text-amber-400" />}
+                            {msg.edited_at && !isDeleted && <span className="text-[10px]">edited</span>}
+                            <span className="text-[10px]">{msg.time}</span>
                             {mine && (
                               <button onClick={() => setReadListFor(readListFor === msg.id ? null : msg.id)} className="cursor-pointer" title="Who's read this">
-                                {readByOthers ? <CheckCheck size={11} className="text-white/90" /> : <Check size={11} className="text-white/70" />}
+                                {readByOthers ? <CheckCheck size={13} className="text-sky-200" /> : <Check size={13} />}
                               </button>
                             )}
                           </div>
                           {readListFor === msg.id && (
-                            <div className={`absolute top-full mt-1 ${mine ? 'right-0' : 'left-0'} bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-card z-10 min-w-[160px] p-2`}>
+                            <div className={`absolute ${menuUp ? 'bottom-full mb-1' : 'top-full mt-1'} right-0 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-lg z-20 min-w-[170px] p-2.5`}>
                               <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-1">Read by</p>
                               {(reads[msg.id] || []).filter(uid => uid !== myId).length === 0 ? (
-                                <p className="text-[10px] text-[var(--text-muted)]">No one yet</p>
+                                <p className="text-xs text-[var(--text-muted)]">No one yet</p>
                               ) : (reads[msg.id] || []).filter(uid => uid !== myId).map(uid => (
-                                <p key={uid} className="text-[10px] text-[var(--text-primary)] py-0.5">{profiles.find(pr => pr.id === uid)?.fullName || 'Unknown'}</p>
-                              ))}
-                            </div>
-                          )}
-
-                          {/* Hover actions */}
-                          {!isDeleted && (
-                            <div className={`absolute -top-3 ${mine ? 'left-0' : 'right-0'} hidden group-hover:flex items-center gap-0.5 bg-[var(--bg-card)] border border-[var(--border)] rounded-full px-1 py-0.5 shadow-card`}>
-                              <button onClick={() => setReactionPickerFor(reactionPickerFor === msg.id ? null : msg.id)} className="p-1 hover:bg-[var(--accent-light)] rounded-full cursor-pointer"><Smile size={12} /></button>
-                              <button onClick={() => setReplyTo(msg)} className="p-1 hover:bg-[var(--accent-light)] rounded-full cursor-pointer"><Reply size={12} /></button>
-                              <button onClick={() => setActionMenuFor(actionMenuFor === msg.id ? null : msg.id)} className="p-1 hover:bg-[var(--accent-light)] rounded-full cursor-pointer"><MoreVertical size={12} /></button>
-                            </div>
-                          )}
-                          {reactionPickerFor === msg.id && (
-                            <div className={`absolute -top-10 ${mine ? 'left-0' : 'right-0'} flex gap-1 bg-[var(--bg-card)] border border-[var(--border)] rounded-full px-2 py-1 shadow-card z-10`}>
-                              {REACTION_EMOJIS.map(e => (
-                                <button key={e} onClick={() => { messenger.toggleReaction(msg.id, myId, e); setReactionPickerFor(null); }} className="text-sm hover:scale-125 transition-transform cursor-pointer">{e}</button>
+                                <p key={uid} className="text-xs text-[var(--text-primary)] py-0.5">{profiles.find(pr => pr.id === uid)?.fullName || 'Unknown'}</p>
                               ))}
                             </div>
                           )}
                           {actionMenuFor === msg.id && (
-                            <div className={`absolute top-6 ${mine ? 'left-0' : 'right-0'} flex flex-col bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-card z-10 min-w-[160px] py-1 text-[var(--text-primary)]`}>
-                              <button onClick={() => copyMessage(msg)} className="flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-[var(--accent-light)] cursor-pointer text-left"><Copy size={12} /> Copy</button>
-                              <button onClick={() => toggleStarMessage(msg)} className="flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-[var(--accent-light)] cursor-pointer text-left"><Star size={12} /> {isStarred ? 'Unstar' : 'Star'}</button>
-                              <button onClick={() => togglePinMessage(msg)} className="flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-[var(--accent-light)] cursor-pointer text-left"><Pin size={12} /> {isPinned ? 'Unpin' : 'Pin'}</button>
-                              <button onClick={() => { setForwardTarget(msg); setActionMenuFor(null); }} className="flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-[var(--accent-light)] cursor-pointer text-left"><Forward size={12} /> Forward</button>
-                              {mine && <button onClick={() => startEdit(msg)} className="flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-[var(--accent-light)] cursor-pointer text-left"><Pencil size={12} /> Edit</button>}
-                              <button onClick={() => deleteForMe(msg)} className="flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-[var(--accent-light)] cursor-pointer text-left text-rose-500"><Trash2 size={12} /> Delete for me</button>
-                              {mine && <button onClick={() => deleteForEveryone(msg)} className="flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-[var(--accent-light)] cursor-pointer text-left text-rose-500"><Trash2 size={12} /> Delete for everyone</button>}
+                            <div className={`absolute ${menuUp ? 'bottom-full mb-1' : 'top-full mt-1'} ${mine ? 'right-0' : 'left-0'} bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-xl z-20 w-[220px] py-1.5 text-[var(--text-primary)]`}>
+                              <div className="flex items-center justify-between px-2.5 pb-1.5 mb-1 border-b border-[var(--border)]">
+                                {REACTION_EMOJIS.map(e => (
+                                  <button key={e} onClick={() => { messenger.toggleReaction(msg.id, myId, e); setActionMenuFor(null); }} className="w-8 h-8 rounded-full text-lg hover:bg-[var(--accent-light)] hover:scale-110 transition-transform cursor-pointer">{e}</button>
+                                ))}
+                              </div>
+                              {[
+                                { show: true, icon: <Reply size={14} />, label: 'Reply', run: () => { setReplyTo(msg); setActionMenuFor(null); } },
+                                { show: !!msg.content && !isCall, icon: <Copy size={14} />, label: 'Copy text', run: () => copyMessage(msg) },
+                                { show: true, icon: <Star size={14} />, label: isStarred ? 'Unstar' : 'Star', run: () => toggleStarMessage(msg) },
+                                { show: true, icon: <Pin size={14} />, label: isPinned ? 'Unpin' : 'Pin', run: () => togglePinMessage(msg) },
+                                { show: !isCall, icon: <Forward size={14} />, label: 'Forward', run: () => { setForwardTarget(msg); setActionMenuFor(null); } },
+                                { show: mine && !isCall, icon: <Pencil size={14} />, label: 'Edit', run: () => startEdit(msg) },
+                              ].filter(a => a.show).map(a => (
+                                <button key={a.label} onClick={a.run} className="w-full flex items-center gap-2.5 px-3.5 py-2 text-[13px] hover:bg-[var(--accent-light)] cursor-pointer text-left">
+                                  <span className="text-[var(--text-secondary)]">{a.icon}</span> {a.label}
+                                </button>
+                              ))}
+                              <div className="my-1 border-t border-[var(--border)]" />
+                              <button onClick={() => deleteForMe(msg)} className="w-full flex items-center gap-2.5 px-3.5 py-2 text-[13px] hover:bg-rose-500/10 cursor-pointer text-left text-rose-500"><Trash2 size={14} /> Delete for me</button>
+                              {mine && <button onClick={() => deleteForEveryone(msg)} className="w-full flex items-center gap-2.5 px-3.5 py-2 text-[13px] hover:bg-rose-500/10 cursor-pointer text-left text-rose-500"><Trash2 size={14} /> Delete for everyone</button>}
                             </div>
                           )}
                         </div>
                         {msgReactions.length > 0 && (
-                          <div className="flex gap-1 mt-1 flex-wrap">
-                            {Object.entries(msgReactions.reduce((acc: Record<string, number>, r) => { acc[r.emoji] = (acc[r.emoji] || 0) + 1; return acc; }, {})).map(([emoji, count]) => (
-                              <button key={emoji} onClick={() => messenger.toggleReaction(msg.id, myId, emoji)} className="text-[10px] bg-[var(--bg-input)] border border-[var(--border)] rounded-full px-1.5 py-0.5 cursor-pointer hover:bg-[var(--accent-light)]">
-                                {emoji} {count}
+                          <div className={`flex gap-1 -mt-1.5 flex-wrap relative ${mine ? 'mr-2' : 'ml-2'}`}>
+                            {Object.entries(msgReactions.reduce((acc: Record<string, number>, rx) => { acc[rx.emoji] = (acc[rx.emoji] || 0) + 1; return acc; }, {})).map(([emoji, count]) => (
+                              <button key={emoji} onClick={() => messenger.toggleReaction(msg.id, myId, emoji)} className="text-[11px] bg-[var(--bg-card)] border border-[var(--border)] rounded-full px-1.5 py-0.5 cursor-pointer hover:bg-[var(--accent-light)] shadow-sm">
+                                {emoji} {count > 1 ? count : ''}
                               </button>
                             ))}
                           </div>
@@ -1798,6 +1873,8 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
         <WebCallModal
           room={activeCall.room} title={activeCall.title} kind={activeCall.kind}
           myId={myId} myName={myName} otherUserId={activeCall.otherUserId} onClose={endActiveCall}
+          otherName={profiles.find(pr => pr.id === activeCall.otherUserId)?.fullName}
+          otherPhoto={profiles.find(pr => pr.id === activeCall.otherUserId)?.photo}
         />
       )
     )}

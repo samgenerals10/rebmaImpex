@@ -39,7 +39,9 @@ function initials(name: string) {
 }
 
 export default function MessengerThreadScreen({ route, navigation }: any) {
-  const { channelId, channelType, title, subtitle } = route.params as { channelId: string; channelType: string; title: string; subtitle?: string };
+  const { channelId, channelType, title, subtitle, joinCallMeetingId } = route.params as { channelId: string; channelType: string; title: string; subtitle?: string; joinCallMeetingId?: string };
+  // Set when this screen was opened by accepting an incoming call.
+  const joinedCallRef = useRef<string | null>(null);
   const t = useTheme();
   const p = usePresets();
   const me = useAuthStore((s) => s.profile);
@@ -169,13 +171,20 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
         const otherId = memberIds.current.find((id) => id !== myId);
         if (otherId) {
           setOtherUserId(otherId);
-          supabase.from('profiles').select('photo, department').eq('id', otherId).maybeSingle().then(({ data: p }) => {
+          // The shared staff directory: the private profiles table is only
+          // readable by HR/CEO, so ordinary staff never saw this photo.
+          supabase.from('profiles_directory').select('photo, department').eq('id', otherId).maybeSingle().then(({ data: p }) => {
             if (p) { setContactPhoto(p.photo || undefined); setContactDept(p.department || ''); }
           });
         }
       }
+      // Accepted an incoming call: join it once the members are known.
+      if (joinCallMeetingId && joinedCallRef.current !== joinCallMeetingId) {
+        joinedCallRef.current = joinCallMeetingId;
+        rejoinCall({ attachment_url: joinCallMeetingId } as ChatMessage);
+      }
     });
-  }, [channelId, channelType, myId]);
+  }, [channelId, channelType, myId, joinCallMeetingId]);
 
   // For @mention autocomplete + "read by" names — the full active
   // directory, same source MessengerChannelsScreen uses.
@@ -1292,7 +1301,7 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
 
       {activeCall && (
         channelType === 'dm' && activeCall.otherUserId ? (
-          <NativeCallSheet room={activeCall.room} title={activeCall.title} kind={activeCall.kind} otherUserId={activeCall.otherUserId} onClose={endActiveCall} />
+          <NativeCallSheet room={activeCall.room} title={activeCall.title} kind={activeCall.kind} otherUserId={activeCall.otherUserId} onClose={endActiveCall} otherName={channelType === 'dm' ? title : undefined} otherPhoto={channelType === 'dm' ? contactPhoto : undefined} />
         ) : (
           <GroupCallSheet room={activeCall.room} title={activeCall.title} meetingId={activeCall.meetingId} isHost={activeCall.isHost} onClose={endActiveCall} />
         )

@@ -44,6 +44,7 @@ import SubScreenHeader from '../components/chrome/SubScreenHeader';
 import DepartmentSwitcherSheet from '../components/chrome/DepartmentSwitcherSheet';
 import QuickActionsSheet from '../components/chrome/QuickActionsSheet';
 import ConnectivityBanner from '../components/chrome/ConnectivityBanner';
+import IncomingCallSheet from '../components/shared/IncomingCallSheet';
 import { useUIStore } from '../store/uiStore';
 import { useAuthStore } from '../store/authStore';
 
@@ -173,6 +174,8 @@ export default function AppShell() {
     <HeaderAnimContext.Provider value={headerScrollAnim}>
       <View style={{ flex: 1 }}>
         <ConnectivityBanner />
+        {/* Rings like a phone when someone calls you in a chat */}
+        <IncomingCallSheet />
         <SafeAreaInsetsContext.Provider value={adjustedInsets}>
           {searchOpen ? (
             // Same rule as every other screen: "nothing should go above the
