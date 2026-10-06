@@ -3,6 +3,7 @@ import { MapPin, Truck, Clock, Info, Phone, CreditCard, Package, Navigation } fr
 import { supabase } from '../../lib/supabaseClient';
 import DispatchMap, { type DispatchMapDelivery } from '../../components/dispatch/DispatchMap';
 import { useFleetVehicles, vehiclesToMapDeliveries, type DriverState, type VehicleRecord } from '../../components/dispatch/useFleetVehicles';
+import { FLEET_STATE_STYLE } from '../../utils/fleetState';
 import SidePanel from '../../components/ui/SidePanel';
 
 const fmtAgo = (iso: string) => {
@@ -12,12 +13,11 @@ const fmtAgo = (iso: string) => {
   return `${Math.floor(diff / 60)}h ${diff % 60}m ago`;
 };
 
-const stateConfig: Record<DriverState, { color: string; bg: string; label: string; pulse: boolean }> = {
-  ASSIGNED: { color: '#8b5cf6', bg: '#ede9fe', label: 'Assigned, awaiting start', pulse: false },
-  ON_THE_WAY: { color: '#3b82f6', bg: '#dbeafe', label: 'On the way', pulse: true },
-  RETURNING: { color: '#f59e0b', bg: '#fef3c7', label: 'Returning to company', pulse: true },
-  AT_COMPANY: { color: '#10b981', bg: '#d1fae5', label: 'At the company', pulse: false },
-};
+// Colours and words from the one shared rule (utils/fleetState.ts), so this
+// page, the CEO map and the phone map all agree.
+const stateConfig: Record<DriverState, { color: string; bg: string; label: string }> = Object.fromEntries(
+  (Object.keys(FLEET_STATE_STYLE) as DriverState[]).map(k => [k, { color: FLEET_STATE_STYLE[k].color, bg: `${FLEET_STATE_STYLE[k].color}1f`, label: FLEET_STATE_STYLE[k].label }])
+) as Record<DriverState, { color: string; bg: string; label: string }>;
 
 interface Props { addNotification: (msg: string) => void }
 
@@ -31,10 +31,7 @@ export default function TrackingView({ addNotification: _addNotification }: Prop
 
   const mapDeliveries: DispatchMapDelivery[] = vehiclesToMapDeliveries(vehicles);
 
-  const onTheWay = vehicles.filter(v => v.driverState === 'ON_THE_WAY').length;
-  const assignedWaiting = vehicles.filter(v => v.driverState === 'ASSIGNED').length;
-  const returning = vehicles.filter(v => v.driverState === 'RETURNING').length;
-  const atCompany = vehicles.filter(v => v.driverState === 'AT_COMPANY').length;
+  const countOf = (k: DriverState) => vehicles.filter(v => v.driverState === k).length;
   const lastUpdate = vehicles.filter(v => v.status !== 'OFFLINE').sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime())[0];
 
   return (
@@ -48,10 +45,11 @@ export default function TrackingView({ addNotification: _addNotification }: Prop
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
         {[
-          { label: 'On the Way', value: onTheWay, color: stateConfig.ON_THE_WAY.color, icon: <Truck size={18} /> },
-          { label: 'Assigned, Awaiting Start', value: assignedWaiting, color: stateConfig.ASSIGNED.color, icon: <Clock size={18} /> },
-          { label: 'Returning', value: returning, color: stateConfig.RETURNING.color, icon: <Navigation size={18} /> },
-          { label: 'At the Company', value: atCompany, color: stateConfig.AT_COMPANY.color, icon: <MapPin size={18} /> },
+          { label: FLEET_STATE_STYLE.AT_COMPANY.count, value: countOf('AT_COMPANY'), color: stateConfig.AT_COMPANY.color, icon: <MapPin size={18} /> },
+          { label: FLEET_STATE_STYLE.ASSIGNED.count, value: countOf('ASSIGNED'), color: stateConfig.ASSIGNED.color, icon: <Clock size={18} /> },
+          { label: FLEET_STATE_STYLE.ON_TRIP.count, value: countOf('ON_TRIP'), color: stateConfig.ON_TRIP.color, icon: <Truck size={18} /> },
+          { label: FLEET_STATE_STYLE.NEXT_TRIP.count, value: countOf('NEXT_TRIP'), color: stateConfig.NEXT_TRIP.color, icon: <Package size={18} /> },
+          { label: FLEET_STATE_STYLE.RETURNING.count, value: countOf('RETURNING'), color: stateConfig.RETURNING.color, icon: <Navigation size={18} /> },
           { label: 'Last Update', value: lastUpdate ? fmtAgo(lastUpdate.lastUpdated) : 'N/A', color: 'var(--accent)', icon: <Clock size={18} /> },
         ].map(c => (
           <div key={c.label} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: '20px', boxShadow: 'var(--box-shadow)', display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -104,7 +102,7 @@ export default function TrackingView({ addNotification: _addNotification }: Prop
               <div key={v.id} onClick={() => setSelected(v)} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', boxShadow: 'var(--box-shadow)', cursor: 'pointer' }}>
                 <div style={{ position: 'relative', flexShrink: 0 }}>
                   <div style={{ width: 12, height: 12, borderRadius: '50%', background: cfg.color }}>
-                    {cfg.pulse && (
+                    {['ON_TRIP', 'NEXT_TRIP', 'RETURNING'].includes(v.driverState) && (
                       <div style={{ position: 'absolute', inset: -3, borderRadius: '50%', border: `2px solid ${cfg.color}`, opacity: 0.4, animation: 'ping 1.5s cubic-bezier(0,0,0.2,1) infinite' }} />
                     )}
                   </div>
@@ -114,6 +112,11 @@ export default function TrackingView({ addNotification: _addNotification }: Prop
                     <p style={{ margin: 0, fontWeight: 700, color: 'var(--text-primary)', fontSize: 15 }}>{v.driverName}</p>
                     <span style={{ background: '#f1f5f9', color: 'var(--text-secondary)', borderRadius: 6, padding: '2px 8px', fontSize: 12, fontWeight: 600 }}>{v.truckId}</span>
                     <span style={{ background: cfg.bg, color: cfg.color, borderRadius: 99, padding: '2px 10px', fontSize: 12, fontWeight: 600 }}>{cfg.label}</span>
+                    {v.stopsTotal > 1 && v.driverState !== 'AT_COMPANY' && (
+                      <span style={{ color: 'var(--text-muted)', fontSize: 12, fontWeight: 600 }}>
+                        {v.driverState === 'RETURNING' ? `${v.stopsDone} of ${v.stopsTotal} stops done` : `Stop ${Math.min(v.stopsDone + 1, v.stopsTotal)} of ${v.stopsTotal}`}
+                      </span>
+                    )}
                   </div>
                   <p style={{ margin: '2px 0 0', color: 'var(--text-secondary)', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
                     <MapPin size={12} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />

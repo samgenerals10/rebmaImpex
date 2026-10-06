@@ -269,7 +269,7 @@ export default function TripView({ token }: TripViewProps) {
               everHadStops ? (
                 <div className="text-center py-6">
                   <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
-                  <p className="text-xs text-text-muted mb-4">All stops delivered. Heading back to the company?</p>
+                  <p className="text-xs text-text-muted mb-4">All stops done and sent to Risk for review. Heading back to the company?</p>
                   <button
                     type="button"
                     onClick={handleReturn}
@@ -334,7 +334,7 @@ export default function TripView({ token }: TripViewProps) {
                     </div>
                     {markingId !== stop.id && (
                       <button type="button" onClick={() => skipPhoto(stop)} className="mt-1.5 text-[10px] text-text-muted underline w-full text-center">
-                        Skip photo & mark delivered
+                        Skip photo and mark done
                       </button>
                     )}
                   </div>

@@ -69,6 +69,7 @@ import Avatar from '../ui/Avatar';
 import Input from '../ui/Input';
 import Button from '../ui/Button';
 import { setActiveInterval } from '../../lib/activeInterval';
+import { computeFleetState, metersBetween, FLEET_STATE_STYLE, OFFLINE_COLOR, DEPOT_RADIUS_METERS, type FleetState, type StopRow } from '../../lib/fleetState';
 
 // react-native-webview's <WebView> has no web-platform implementation
 // (confirmed live: it renders "RNCWebView doesn't support this
@@ -126,6 +127,10 @@ interface DriverPoint {
    * actually drives the marker's color (see markerColor()), not the
    * coarser drivers.status field. */
   deliveryStatus: string | null;
+  /** Where the truck is, from the one shared rule (lib/fleetState.ts). */
+  fleetState: FleetState;
+  stopsDone: number;
+  stopsTotal: number;
   /** The driver's current active delivery, if any — real rows from
    * delivery_logs, not invented. Null fields mean "no active delivery on
    * file right now", rendered as an honest empty state, not hidden. */
@@ -144,21 +149,21 @@ const STALE_MINUTES = 10;
 const TRAIL_LOOKBACK_MINUTES = 60;
 const TRAIL_MAX_POINTS = 40;
 
-// Four real, distinguishable states — driven by the driver's actual
-// active delivery_logs.status plus real, live GPS speed, never invented.
-// "Returning to base" has no dedicated database column (no delivery_logs
-// status exists for a post-delivery return trip), so it's an honest
-// inference from state that IS real: no active delivery assigned, a
-// real non-stale location on file, and currently, actually moving. A
-// driver sitting still with no job is "Available"; the exact same driver
-// moving with no job is "Returning" — the distinction is real telemetry,
-// not a guess.
-function markerColor(deliveryStatus: string | null, stale: boolean, movingWithNoJob: boolean): { color: string; label: string } {
-  if (stale) return { color: '#94a3b8', label: 'Offline' };
-  if (deliveryStatus === 'IN_TRANSIT') return { color: '#3b82f6', label: 'En route to delivery' };
-  if (deliveryStatus === 'ASSIGNED') return { color: '#f59e0b', label: 'Assigned, preparing to depart' };
-  if (movingWithNoJob) return { color: '#14b8a6', label: 'Returning to Rebma Impex Limited' };
-  return { color: '#22c55e', label: 'Available' };
+// The truck's colour and words come from the one shared rule
+// (lib/fleetState.ts, identical on web): available, assigned, on a trip,
+// stop done and moving to the next, or every stop done and coming back.
+// A driver whose last live position is older than 10 minutes shows as
+// offline instead.
+function markerColor(d: { fleetState: FleetState }, stale: boolean): { color: string; label: string } {
+  if (stale) return { color: OFFLINE_COLOR, label: 'Offline, last known position' };
+  const st = FLEET_STATE_STYLE[d.fleetState] || FLEET_STATE_STYLE.AT_COMPANY;
+  return { color: st.color, label: st.label };
+}
+
+function stopTag(d: { fleetState: FleetState; stopsDone: number; stopsTotal: number }): string {
+  if (d.stopsTotal < 2 || d.fleetState === 'AT_COMPANY') return '';
+  if (d.fleetState === 'RETURNING') return `${d.stopsDone}/${d.stopsTotal} done`;
+  return `${Math.min(d.stopsDone + 1, d.stopsTotal)}/${d.stopsTotal}`;
 }
 
 function speedKmh(speedMs: number | null): number | null {
@@ -187,10 +192,11 @@ function buildPointsPayload(drivers: DriverPoint[], fleetSpeedLimitKmh: number) 
       ? Date.now() - new Date(d.recordedAt).getTime() > STALE_MINUTES * 60000
       : false;
     const kmh = speedKmh(d.speed);
-    const movingWithNoJob = !d.deliveryStatus && !stale && kmh != null && kmh > 2;
-    const { color } = markerColor(d.deliveryStatus, stale, movingWithNoJob);
+    const { color } = markerColor(d, stale);
     return {
       id: d.id,
+      name: (d.full_name || 'Driver').split(' ')[0],
+      stops: stopTag(d),
       latitude: d.latitude,
       longitude: d.longitude,
       color,
@@ -259,8 +265,15 @@ const MAP_HTML = `<!DOCTYPE html>
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <style>
     html, body, #map { height: 100%; margin: 0; padding: 0; background: #0F172A; }
+    .fleet-name-tag {
+      position: absolute; top: 42px; left: 50%; transform: translateX(-50%); z-index: 3;
+      display: flex; align-items: center; gap: 4px; background: #ffffff; color: #0f172a;
+      font: 700 9px sans-serif; padding: 1px 6px; border-radius: 999px; white-space: nowrap;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+    .fleet-name-tag i { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
     .fleet-dot { border-radius: 50%; border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.5); }
-    .fleet-car-wrap { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; position: relative; z-index: 2; }
+    .fleet-car-wrap { width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; position: relative; z-index: 2; }
     .fleet-car-badge {
       position: absolute; top: -8px; left: 50%; transform: translateX(-50%);
       background: #0f172a; color: #fff; font: 700 9px sans-serif; padding: 1px 4px;
@@ -324,8 +337,8 @@ const MAP_HTML = `<!DOCTYPE html>
       border-radius: 4px;
     }
     .leaflet-tooltip.fleet-info-tooltip {
-      background: #0f172a; color: #fff; font: 700 9px sans-serif; padding: 2px 5px;
-      border-radius: 5px; border: none; box-shadow: 0 1px 4px rgba(0,0,0,0.35); white-space: nowrap;
+      background: #ffffff; color: #0f172a; font: 700 9px sans-serif; padding: 2px 6px;
+      border-radius: 5px; border: none; box-shadow: 0 1px 4px rgba(0,0,0,0.3); white-space: nowrap;
     }
     .leaflet-tooltip.fleet-info-tooltip::before { display: none; }
   </style>
@@ -447,7 +460,7 @@ const MAP_HTML = `<!DOCTYPE html>
     // location card the user pointed to as a reference, a rounded card
     // with an icon-in-circle quick action under the place name, not a
     // plain black tooltip bubble.
-    L.marker(CENTRAL_DEPOT, { icon: teardropPin('#2563EB', '🏭') })
+    var depotMarker = L.marker(CENTRAL_DEPOT, { icon: teardropPin('#2563EB', '🏭') })
       .bindTooltip('Rebma Impex Limited', { direction: 'top' })
       .on('click', function () { sendToParent({ type: 'select-waypoint', label: 'Rebma Impex Limited', lat: CENTRAL_DEPOT[0], lng: CENTRAL_DEPOT[1] }); })
       .addTo(map);
@@ -564,10 +577,12 @@ const MAP_HTML = `<!DOCTYPE html>
     // deliberate, explained alternative: a clean illustration, not a
     // photo, the same choice real navigation apps make for this exact UI
     // spot.
+    // Bigger, with a thick white outline, so the deep state colour reads
+    // on any map style.
     function carSvg(color) {
-      return '<svg width="30" height="30" viewBox="0 0 30 30" xmlns="http://www.w3.org/2000/svg">' +
-        '<ellipse cx="15" cy="16" rx="9" ry="12" fill="rgba(0,0,0,0.15)"/>' +
-        '<rect x="6" y="3" width="18" height="23" rx="7" fill="' + color + '" stroke="#0f172a" stroke-width="1"/>' +
+      return '<svg width="40" height="40" viewBox="0 0 30 30" xmlns="http://www.w3.org/2000/svg">' +
+        '<ellipse cx="15" cy="16" rx="10" ry="13" fill="rgba(0,0,0,0.25)"/>' +
+        '<rect x="6" y="3" width="18" height="23" rx="7" fill="' + color + '" stroke="#ffffff" stroke-width="2.2"/>' +
         '<rect x="8.5" y="6" width="13" height="6.5" rx="2" fill="#dbeafe" opacity="0.9"/>' +
         '<rect x="8.5" y="15" width="13" height="7" rx="2" fill="rgba(255,255,255,0.35)"/>' +
         '<circle cx="9.5" cy="5.5" r="1.3" fill="#fde68a"/>' +
@@ -585,6 +600,10 @@ const MAP_HTML = `<!DOCTYPE html>
         '<path d="M15 0C6.7 0 0 6.7 0 15c0 11.25 15 23 15 23s15-11.75 15-23C30 6.7 23.3 0 15 0z" fill="' + color + '"/>' +
         '<circle cx="15" cy="15" r="6" fill="#fff"/>' +
         '</svg>';
+    }
+
+    function escapeHtml(v) {
+      return String(v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; });
     }
 
     function markerHtml(p, isNew) {
@@ -616,9 +635,11 @@ const MAP_HTML = `<!DOCTYPE html>
         ? '<div class="fleet-car-badge">' + p.speedKmh + '/' + p.fleetLimitKmh + ' km/h</div>'
         : '';
       var overLimitClass = p.overLimit ? ' fleet-over-limit' : '';
+      var tagColor = p.overLimit ? '#b91c1c' : p.color;
+      var tag = '<div class="fleet-name-tag"><i style="background:' + tagColor + '"></i>' + escapeHtml(p.name || 'Driver') + (p.stops ? ' · ' + escapeHtml(p.stops) : '') + '</div>';
       return pulse + '<div class="' + popClass.trim() + '" style="position:relative;">' + badge +
-        '<div class="fleet-car-wrap' + overLimitClass + '" style="transform: rotate(' + heading + 'deg);">' + carSvg(p.color) + '</div>' +
-        '</div>';
+        '<div class="fleet-car-wrap' + overLimitClass + '" style="transform: rotate(' + heading + 'deg);">' + carSvg(p.overLimit ? '#b91c1c' : p.color) + '</div>' +
+        tag + '</div>';
     }
 
     // Direct correction, found while verifying this exact tap-to-select
@@ -660,7 +681,7 @@ const MAP_HTML = `<!DOCTYPE html>
       points.forEach(function (p) {
         seen.add(p.id);
         const isNew = !markers[p.id];
-        const size = p.stale ? [16, 16] : [34, 34];
+        const size = p.stale ? [18, 18] : [42, 42];
         const icon = L.divIcon({ className: '', html: markerHtml(p, isNew), iconSize: size });
         // Real, confirmed bug fix: a marker already inside a
         // MarkerClusterGroup does not reliably keep rendering after its
@@ -803,6 +824,12 @@ const MAP_HTML = `<!DOCTYPE html>
           if (vals.length > 0) map.fitBounds(L.featureGroup(vals).getBounds().pad(0.3), { maxZoom: 16 });
         }
         else if (msg.type === 'focus') map.setView([msg.lat, msg.lng], 16, { animate: true });
+        else if (msg.type === 'set-depot') {
+          // The company location pinned in Document Templates (same as web).
+          CENTRAL_DEPOT = [msg.lat, msg.lng];
+          depotHalo.setLatLng(CENTRAL_DEPOT);
+          depotMarker.setLatLng(CENTRAL_DEPOT);
+        }
         else if (msg.type === 'set-basemap') { userPickedBasemap = true; setBasemap(msg.mode); }
         else if (msg.type === 'set-maptiler-key') {
           if (msg.key) {
@@ -936,7 +963,27 @@ const ARRIVAL_RADIUS_METERS = 150;
 // pinned markers (see MAP_HTML) and rebma-web's DispatchMap.tsx, kept
 // here too since the RN-side quick-jump control needs the coordinates
 // and the WebView's own JS scope isn't reachable from out here.
+// Rebma Impex Limited. Replaced on load by the company location pinned in
+// Document Templates (the Ticket template), the same place the web map
+// uses, so both apps agree on where "back at the depot" is.
 const CENTRAL_DEPOT = { lat: 5.694949, lng: -0.010621, label: 'Rebma Impex Limited' };
+let depotLoaded: Promise<boolean> | null = null;
+function loadPinnedDepot(): Promise<boolean> {
+  if (!depotLoaded) {
+    depotLoaded = (async () => {
+      try {
+        const { data } = await supabase.from('document_templates').select('company_lat, company_lng').eq('doc_type', 'TICKET').maybeSingle();
+        if (data?.company_lat != null && data?.company_lng != null) {
+          CENTRAL_DEPOT.lat = Number(data.company_lat);
+          CENTRAL_DEPOT.lng = Number(data.company_lng);
+          return true;
+        }
+      } catch {}
+      return false;
+    })();
+  }
+  return depotLoaded;
+}
 const TEMA_PORT = { lat: 5.6268, lng: -0.0076, label: 'Tema Port Intake' };
 
 // Free Open-Meteo current-weather lookup — no API key, generous free-tier
@@ -1167,6 +1214,17 @@ export default function FleetMap({ onSelectedChange }: FleetMapProps = {}) {
     return () => { cancelled = true; };
   }, [mapReady, postToChild]);
 
+  // Move the depot pin to the company location pinned in Document
+  // Templates, once the map is ready (and again after a fullscreen remount).
+  useEffect(() => {
+    if (!mapReady) return;
+    let cancelled = false;
+    loadPinnedDepot().then((pinned) => {
+      if (!cancelled && pinned) postToChild({ type: 'set-depot', lat: CENTRAL_DEPOT.lat, lng: CENTRAL_DEPOT.lng });
+    });
+    return () => { cancelled = true; };
+  }, [mapReady, postToChild]);
+
   const load = useCallback(async () => {
     // Direct correction, found while verifying this exact screen live:
     // `driver_locations.driver_id` references `drivers.driver_id` (the
@@ -1177,7 +1235,8 @@ export default function FleetMap({ onSelectedChange }: FleetMapProps = {}) {
     // match, so the live map has never actually shown a real position.
     // Both ids are fetched here and used against the table that actually
     // expects them.
-    const { data: driverRows } = await supabase.from('drivers').select('id, driver_id, full_name, status, vehicle_id, phone, user_id');
+    await loadPinnedDepot();
+    const { data: driverRows } = await supabase.from('drivers').select('id, driver_id, full_name, status, vehicle_id, phone, user_id, returned_at');
     const uuids = (driverRows || []).map((d: any) => d.id);
     const businessIds = (driverRows || []).map((d: any) => d.driver_id).filter(Boolean);
     const userIds = (driverRows || []).map((d: any) => d.user_id).filter(Boolean);
@@ -1192,12 +1251,16 @@ export default function FleetMap({ onSelectedChange }: FleetMapProps = {}) {
             .order('recorded_at', { ascending: false })
             .limit(500)
         : Promise.resolve({ data: [] as any[] }),
+      // Every stop still waiting or under way, plus stops finished today,
+      // so the shared rule can tell "moving to the next stop" and
+      // "coming back" apart.
       supabase
         .from('delivery_logs')
-        .select('driver_id, delivery_address, destination_lat, destination_lng, status, created_at')
+        .select('id, driver_id, delivery_address, customer_name, destination_lat, destination_lng, status, created_at, updated_at, delivered_at, dispatch_sequence')
         .in('driver_id', uuids)
-        .in('status', ['ASSIGNED', 'IN_TRANSIT'])
-        .order('created_at', { ascending: false }),
+        .or(`status.in.(ASSIGNED,IN_TRANSIT,OUT_FOR_DELIVERY),updated_at.gte.${(() => { const d0 = new Date(); d0.setHours(0, 0, 0, 0); return d0.toISOString(); })()}`)
+        .order('created_at', { ascending: false })
+        .limit(1000),
       // Real photo, from the driver's own linked profile — not a new
       // upload flow, just reading what registration already collected.
       userIds.length > 0
@@ -1209,9 +1272,23 @@ export default function FleetMap({ onSelectedChange }: FleetMapProps = {}) {
     for (const l of locRows || []) {
       if (!latestByBusinessId[l.driver_id]) latestByBusinessId[l.driver_id] = l;
     }
+    const stopsByUuid: Record<string, any[]> = {};
+    for (const d of deliveryRows || []) (stopsByUuid[d.driver_id] ||= []).push(d);
     const deliveryByUuid: Record<string, any> = {};
-    for (const d of deliveryRows || []) {
-      if (!deliveryByUuid[d.driver_id]) deliveryByUuid[d.driver_id] = d;
+    const stateByUuid: Record<string, ReturnType<typeof computeFleetState>> = {};
+    for (const d of driverRows || []) {
+      const rows = stopsByUuid[d.id] || [];
+      const loc = d.driver_id ? latestByBusinessId[d.driver_id] : null;
+      const fresh = !!loc && Date.now() - new Date(loc.recorded_at).getTime() <= STALE_MINUTES * 60000;
+      const atDepot = fresh && metersBetween({ lat: Number(loc.latitude), lng: Number(loc.longitude) }, CENTRAL_DEPOT) <= DEPOT_RADIUS_METERS;
+      const stops: StopRow[] = rows.map((r: any) => ({
+        id: r.id, status: r.status, deliveredAt: r.delivered_at, updatedAt: r.updated_at, createdAt: r.created_at, sequence: r.dispatch_sequence,
+      }));
+      const fs = computeFleetState({ stops, returnedAt: d.returned_at, atDepot });
+      stateByUuid[d.id] = fs;
+      // The stop being driven to or waiting next; none once every stop is done.
+      const cur = fs.currentStop ? rows.find((r: any) => r.id === fs.currentStop!.id) : null;
+      if (cur) deliveryByUuid[d.id] = cur;
     }
     const photoByUserId: Record<string, string | null> = {};
     for (const p of profileRows || []) {
@@ -1231,6 +1308,9 @@ export default function FleetMap({ onSelectedChange }: FleetMapProps = {}) {
           phone: d.phone,
           photo: d.user_id ? (photoByUserId[d.user_id] ?? null) : null,
           deliveryStatus: deliveryByUuid[d.id]?.status ?? null,
+          fleetState: stateByUuid[d.id]?.state ?? 'AT_COMPANY',
+          stopsDone: stateByUuid[d.id]?.stopsDone ?? 0,
+          stopsTotal: stateByUuid[d.id]?.stopsTotal ?? 0,
           hasRealLocation: !!loc,
           // A driver with no driver_locations row yet has never started
           // sharing GPS — rather than hiding them from the map (this
@@ -1512,8 +1592,7 @@ export default function FleetMap({ onSelectedChange }: FleetMapProps = {}) {
   // map markers, mirrored here so the panel header agrees with whatever
   // color the driver's own marker is showing.
   const isMovingWithNoJob = (d: DriverPoint) => {
-    const kmh = speedKmh(d.speed);
-    return !d.deliveryStatus && !isDriverStale(d) && kmh != null && kmh > 2;
+    return d.fleetState === 'RETURNING';
   };
 
   // Shared by the selection effect (first paint) and the per-second tick
@@ -1749,13 +1828,18 @@ export default function FleetMap({ onSelectedChange }: FleetMapProps = {}) {
 
       {/* The four fleet counts, using the same states as the markers */}
       {(() => {
-        const moving = (d: DriverPoint) => isMovingWithNoJob(d);
-        const counts = [
-          { key: 'avail', label: 'Available at the depot', color: '#22c55e', Icon: Warehouse, list: drivers.filter((d) => !d.deliveryStatus && !moving(d)) },
-          { key: 'going', label: 'Going out on delivery', color: '#3b82f6', Icon: Truck, list: drivers.filter((d) => d.deliveryStatus === 'IN_TRANSIT') },
-          { key: 'back', label: 'Coming back', color: '#14b8a6', Icon: Navigation, list: drivers.filter((d) => moving(d)) },
-          { key: 'assigned', label: 'Assigned to a delivery', color: '#f59e0b', Icon: Clock, list: drivers.filter((d) => d.deliveryStatus === 'ASSIGNED') },
-        ];
+        const counts = ([
+          { key: 'AT_COMPANY', Icon: Warehouse },
+          { key: 'ASSIGNED', Icon: Clock },
+          { key: 'ON_TRIP', Icon: Truck },
+          { key: 'NEXT_TRIP', Icon: ChevronRight },
+          { key: 'RETURNING', Icon: Navigation },
+        ] as const).map((c) => ({
+          ...c,
+          label: FLEET_STATE_STYLE[c.key].count,
+          color: FLEET_STATE_STYLE[c.key].color,
+          list: drivers.filter((d) => d.fleetState === c.key),
+        }));
         return (
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.sm }}>
             {counts.map((c) => (
@@ -1982,7 +2066,7 @@ export default function FleetMap({ onSelectedChange }: FleetMapProps = {}) {
               <View
                 style={{
                   position: 'absolute', bottom: -1, right: -1, width: 12, height: 12, borderRadius: 6,
-                  backgroundColor: markerColor(selected.deliveryStatus, isDriverStale(selected), isMovingWithNoJob(selected)).color,
+                  backgroundColor: markerColor(selected, isDriverStale(selected)).color,
                   borderWidth: 2, borderColor: t.colors.bgCard,
                 }}
               />
@@ -1990,7 +2074,7 @@ export default function FleetMap({ onSelectedChange }: FleetMapProps = {}) {
             <View style={{ flex: 1 }}>
               <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary }}>{selected.full_name}</Text>
               <Text style={{ fontFamily: t.font.medium, fontSize: t.type.meta10.size, color: t.colors.textMuted }}>
-                {markerColor(selected.deliveryStatus, isDriverStale(selected), isMovingWithNoJob(selected)).label} · {selected.vehicle_id || 'No vehicle'}{selected.phone ? ` · ${selected.phone}` : ''} · {timeAgo(selected.recordedAt)}
+                {markerColor(selected, isDriverStale(selected)).label} · {selected.vehicle_id || 'No vehicle'}{selected.phone ? ` · ${selected.phone}` : ''} · {timeAgo(selected.recordedAt)}
               </Text>
               {!!driverPlace && (
                 <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textSecondary, marginTop: 2 }} numberOfLines={2}>

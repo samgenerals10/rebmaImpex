@@ -8,6 +8,7 @@ import { useRealtimeChannel } from '../../hooks/useRealtimeChannel';
 import { documentTemplates } from '../../services/apiClient';
 import { getFleetSpeedLimitKmh, setFleetSpeedLimitKmh, speedKmh, DEFAULT_FLEET_SPEED_LIMIT_KMH } from '../../utils/fleetSpeedLimit';
 import { setVisibleInterval } from '../../utils/visibleInterval';
+import { FLEET_STATE_STYLE, OVER_LIMIT_COLOR, DEFAULT_DEPOT, type FleetState } from '../../utils/fleetState';
 
 type MapLayer = 'street' | '3d' | 'satellite';
 
@@ -39,7 +40,10 @@ export interface DispatchMapDelivery {
   vehicleId?: string | null;
   status?: string | null;
   active_coordinates?: { lat: number; lng: number } | null;
-  driverState?: 'ON_THE_WAY' | 'AT_COMPANY' | 'RETURNING' | 'ASSIGNED' | null;
+  driverState?: FleetState | null;
+  /** Stops finished this run and stops in total, for drivers with several stops. */
+  stopsDone?: number;
+  stopsTotal?: number;
   destinationCoordinates?: { lat: number; lng: number } | null;
 }
 
@@ -83,27 +87,26 @@ function formatDistance(meters: number): string {
 let companyLocationCache: { lat: number; lng: number } | null | undefined;
 let companyLocationPromise: Promise<{ lat: number; lng: number } | null> | null = null;
 
-function getCompanyLocation(): Promise<{ lat: number; lng: number } | null> {
+// The depot: the company location pinned in Document Templates (the Ticket
+// template), or Rebma Impex Limited's own coordinates when none is pinned.
+// The phone map (FleetMap.tsx loadPinnedDepot) follows the same rule, so
+// both apps agree on where "back at the depot" is. (This used to look up
+// the template's address text instead, and the default address there is
+// "Accra Business District", not the depot.)
+export function getCompanyLocation(): Promise<{ lat: number; lng: number } | null> {
   if (companyLocationCache !== undefined) return Promise.resolve(companyLocationCache);
   if (companyLocationPromise) return companyLocationPromise;
   companyLocationPromise = (async () => {
     try {
       const template = await documentTemplates.get('TICKET');
-      if (template.companyLat != null && template.companyLng != null) {
-        const loc = { lat: template.companyLat, lng: template.companyLng };
-        companyLocationCache = loc;
-        return loc;
-      }
-      const address = template.companyAddress?.trim();
-      if (!address) { companyLocationCache = null; return null; }
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=gh&q=${encodeURIComponent(address)}`);
-      const data = await res.json();
-      const loc = data?.[0] ? { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) } : null;
+      const loc = template.companyLat != null && template.companyLng != null
+        ? { lat: template.companyLat, lng: template.companyLng }
+        : { ...DEFAULT_DEPOT };
       companyLocationCache = loc;
       return loc;
     } catch {
-      companyLocationCache = null;
-      return null;
+      companyLocationCache = { ...DEFAULT_DEPOT };
+      return companyLocationCache;
     }
   })();
   return companyLocationPromise;
@@ -141,23 +144,52 @@ function teardropPinIcon(color: string, glyph: 'hub' | 'port' | 'truck' | 'dest'
   });
 }
 
-// A driver's pin with their live speed against Risk's company limit, the
-// same reading the phone map shows. Over the limit, the pin pulses red.
-function truckIcon(color: string, kmh: number | null, limitKmh: number, overLimit: boolean) {
-  const base = teardropPinIcon(overLimit ? '#ef4444' : color, 'truck');
-  const html = String((base.options as any).html || '');
-  const badge = kmh != null && kmh > 2
-    ? `<div style="position:absolute;top:-18px;left:50%;transform:translateX(-50%);white-space:nowrap;padding:1px 6px;border-radius:999px;font:700 10px/16px system-ui,sans-serif;color:#fff;background:${overLimit ? '#ef4444' : 'rgba(15,23,42,0.85)'};">${kmh}/${limitKmh} km/h</div>`
+// Each truck state has its own symbol inside the pin, so the five states
+// read apart even before the colour does.
+const STATE_GLYPH: Record<string, string> = {
+  // truck: driving to a stop
+  ON_TRIP: '<path d="M10 17h4V5H2v12h3M10 17a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM10 17H2M14 8h4l4 4v5h-2M14 17a2 2 0 1 1-4 0 2 2 0 0 1 4 0z"/>',
+  // check then arrow: stop done, heading to the next one
+  NEXT_TRIP: '<polyline points="3 12 7 16 12 9"/><path d="M14 12h7M18 8l3 4-3 4"/>',
+  // arrow back to a house: coming back to the depot
+  RETURNING: '<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
+  // clock: assigned, waiting to leave
+  ASSIGNED: '<circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/>',
+  // parking P: available at the depot
+  AT_COMPANY: '<path d="M8 20V4h5a4 4 0 0 1 0 8H8"/>',
+};
+
+// A driver's pin: bigger and outlined thickly so it stands out on any map
+// style, with their live speed against Risk's company limit and, for a
+// driver with several stops, which stop they're on. Over the limit, the
+// pin turns deep red and pulses.
+function truckIcon(color: string, kmh: number | null, limitKmh: number, overLimit: boolean, state?: string | null, stops?: string) {
+  const fill = overLimit ? OVER_LIMIT_COLOR : color;
+  const glyph = STATE_GLYPH[state || 'ON_TRIP'] || STATE_GLYPH.ON_TRIP;
+  const speedBadge = kmh != null && kmh > 2
+    ? `<div style="position:absolute;top:-20px;left:50%;transform:translateX(-50%);white-space:nowrap;padding:1px 7px;border-radius:999px;font:800 10px/16px system-ui,sans-serif;color:#fff;background:${overLimit ? OVER_LIMIT_COLOR : 'rgba(15,23,42,0.9)'};">${kmh}/${limitKmh} km/h</div>`
+    : '';
+  const stopBadge = stops
+    ? `<div style="position:absolute;bottom:2px;right:-12px;min-width:18px;height:18px;padding:0 4px;border-radius:999px;border:2px solid #fff;font:800 9px/14px system-ui,sans-serif;color:#fff;background:${fill};text-align:center;">${stops}</div>`
     : '';
   const pulse = overLimit
-    ? '<div style="position:absolute;inset:-6px;border-radius:50%;border:3px solid #ef4444;opacity:.7;animation:fleetOverLimitPulse 1.1s ease-out infinite;"></div>'
+    ? `<div style="position:absolute;left:-4px;top:-4px;width:44px;height:44px;border-radius:50%;border:4px solid ${OVER_LIMIT_COLOR};opacity:.75;animation:fleetOverLimitPulse 1.1s ease-out infinite;"></div>`
     : '';
   return L.divIcon({
     className: 'dispatch-teardrop-marker',
-    html: `<div style="position:relative;">${pulse}${badge}${html}</div>`,
-    iconSize: [28, 38],
-    iconAnchor: [14, 38],
-    popupAnchor: [0, -34],
+    html: `
+      <div style="position:relative;width:36px;height:48px;filter:drop-shadow(0 5px 10px rgba(0,0,0,0.45));cursor:pointer;">
+        ${pulse}${speedBadge}
+        <svg width="36" height="48" viewBox="0 0 24 32" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 1C5.9 1 1 5.9 1 12C1 20.5 12 31 12 31C12 31 23 20.5 23 12C23 5.9 18.1 1 12 1Z" fill="${fill}" stroke="#ffffff" stroke-width="2.2"/>
+          <circle cx="12" cy="12" r="7" fill="#ffffff"/>
+        </svg>
+        <svg style="position:absolute;top:9px;left:9px;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${fill}" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">${glyph}</svg>
+        ${stopBadge}
+      </div>`,
+    iconSize: [36, 48],
+    iconAnchor: [18, 48],
+    popupAnchor: [0, -44],
   });
 }
 
@@ -190,27 +222,23 @@ interface Props {
   showStatusSummary?: boolean;
 }
 
+// Pages that pass a delivery status but no truck state colour by status.
 const STATUS_COLOR: Record<string, string> = {
-  ASSIGNED: '#f59e0b',
-  IN_TRANSIT: '#3b82f6',
-  OUT_FOR_DELIVERY: '#3b82f6',
-  DELIVERED: '#10b981',
-  FAILED: '#ef4444',
+  ASSIGNED: FLEET_STATE_STYLE.ASSIGNED.color,
+  IN_TRANSIT: FLEET_STATE_STYLE.ON_TRIP.color,
+  OUT_FOR_DELIVERY: FLEET_STATE_STYLE.ON_TRIP.color,
+  DELIVERED: FLEET_STATE_STYLE.AT_COMPANY.color,
+  FAILED: OVER_LIMIT_COLOR,
 };
+const STATUS_GLYPH: Record<string, FleetState> = { ASSIGNED: 'ASSIGNED', IN_TRANSIT: 'ON_TRIP', OUT_FOR_DELIVERY: 'ON_TRIP', DELIVERED: 'AT_COMPANY' };
 
-const DRIVER_STATE_COLOR: Record<string, string> = {
-  ASSIGNED: '#8b5cf6',     // violet
-  ON_THE_WAY: '#3b82f6',   // blue
-  RETURNING: '#f59e0b',    // amber
-  AT_COMPANY: '#10b981',   // green
-};
+const DRIVER_STATE_COLOR: Record<string, string> = Object.fromEntries(
+  Object.entries(FLEET_STATE_STYLE).map(([k, v]) => [k, v.color])
+);
 
-const DRIVER_STATE_LABEL: Record<string, string> = {
-  ASSIGNED: 'Assigned, awaiting start',
-  ON_THE_WAY: 'On the way',
-  RETURNING: 'Returning to company',
-  AT_COMPANY: 'At the company',
-};
+const DRIVER_STATE_LABEL: Record<string, string> = Object.fromEntries(
+  Object.entries(FLEET_STATE_STYLE).map(([k, v]) => [k, v.label])
+);
 
 // How much the tilted 3D map must be enlarged so its shrunken top edge
 // still reaches both sides and the top of a box of this height.
@@ -235,12 +263,7 @@ function InvalidateOnResize({ signature }: { signature: string }) {
   return null;
 }
 
-const SUMMARY_STATES: { key: 'AT_COMPANY' | 'ON_THE_WAY' | 'RETURNING' | 'ASSIGNED'; label: string }[] = [
-  { key: 'AT_COMPANY', label: 'Available at the depot' },
-  { key: 'ON_THE_WAY', label: 'Going out on delivery' },
-  { key: 'RETURNING', label: 'Coming back' },
-  { key: 'ASSIGNED', label: 'Assigned to a delivery' },
-];
+const SUMMARY_STATES: FleetState[] = ['AT_COMPANY', 'ASSIGNED', 'ON_TRIP', 'NEXT_TRIP', 'RETURNING'];
 
 function Recenter({ center }: { center: [number, number] }) {
   const map = useMap();
@@ -489,14 +512,18 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 540,
     })
     .filter((x): x is { delivery: DispatchMapDelivery; point: LivePoint; isLive: boolean; atCompany: boolean } => !!x);
 
-  const routeEligible = markers.filter(
-    m => m.delivery.destinationCoordinates && (m.delivery.driverState === 'ASSIGNED' || m.delivery.driverState === 'ON_THE_WAY')
-  );
+  // Where each truck is heading: its stop, or the depot when coming back.
+  const depotPoint = companyLocation || DEFAULT_DEPOT;
+  const routeTarget = (d: DispatchMapDelivery) =>
+    d.driverState === 'RETURNING' ? depotPoint
+      : (d.driverState === 'ASSIGNED' || d.driverState === 'ON_TRIP' || d.driverState === 'NEXT_TRIP') ? d.destinationCoordinates || null
+        : null;
+  const routeEligible = markers.filter(m => !!routeTarget(m.delivery));
 
   useEffect(() => {
     let cancelled = false;
     for (const { delivery, point } of routeEligible) {
-      const dest = delivery.destinationCoordinates!;
+      const dest = routeTarget(delivery)!;
       const lastOrigin = routeOriginRef.current[delivery.id];
       const movedEnough = !lastOrigin || Math.hypot(lastOrigin.lat - point.lat, lastOrigin.lng - point.lng) > 0.0015;
       if (!movedEnough) continue;
@@ -530,7 +557,7 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 540,
 
   const isPingFresh = (p: LivePoint) => !!p.recordedAt && Date.now() - new Date(p.recordedAt).getTime() <= STALE_MINUTES * 60000;
   const enRoute = markers.filter(m =>
-    m.delivery.driverState ? m.delivery.driverState === 'ON_THE_WAY' || m.delivery.driverState === 'RETURNING'
+    m.delivery.driverState ? m.delivery.driverState === 'ON_TRIP' || m.delivery.driverState === 'NEXT_TRIP' || m.delivery.driverState === 'RETURNING'
       : m.delivery.status === 'OUT_FOR_DELIVERY' || m.delivery.status === 'IN_TRANSIT'
   );
 
@@ -548,10 +575,11 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 540,
     .filter((x): x is { m: typeof markers[number]; kmh: number; over: boolean } => !!x)
     .sort((a, b) => b.kmh - a.kmh);
 
-  const stateCounts = SUMMARY_STATES.map(st => ({
-    ...st,
-    count: deliveries.filter(d => d.driverState === st.key).length,
-    first: markers.find(m => m.delivery.driverState === st.key),
+  const stateCounts = SUMMARY_STATES.map(key => ({
+    key,
+    label: FLEET_STATE_STYLE[key].count,
+    count: deliveries.filter(d => d.driverState === key).length,
+    first: markers.find(m => m.delivery.driverState === key),
   }));
 
   const mapHeight = expanded ? Math.max(320, viewportH - (showStatusSummary ? 190 : 140)) : height;
@@ -614,10 +642,10 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 540,
 
       {/* The four fleet counts */}
       {showStatusSummary && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8 }}>
           {stateCounts.map(st => {
             const color = DRIVER_STATE_COLOR[st.key];
-            const Icon = st.key === 'AT_COMPANY' ? Warehouse : st.key === 'ON_THE_WAY' ? Truck : st.key === 'RETURNING' ? Navigation : Clock;
+            const Icon = st.key === 'AT_COMPANY' ? Warehouse : st.key === 'ON_TRIP' ? Truck : st.key === 'NEXT_TRIP' ? ArrowRight : st.key === 'RETURNING' ? Navigation : Clock;
             return (
               <button key={st.key} onClick={() => st.first && setPanTarget([st.first.point.lat, st.first.point.lng])}
                 style={{ display: 'flex', alignItems: 'center', gap: 10, border: 'none', textAlign: 'left', cursor: st.first ? 'pointer' : 'default', borderRadius: 14, padding: '8px 12px', background: 'var(--bg)' }}>
@@ -632,11 +660,11 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 540,
         </div>
       )}
 
-    <div style={{ height: mapHeight, flex: expanded ? 1 : undefined, borderRadius: compact ? 16 : 20, overflow: 'hidden', position: 'relative', zIndex: 0, background: '#0F172A' }}>
+    <div style={{ height: mapHeight, flex: expanded ? 1 : undefined, borderRadius: 8, overflow: 'hidden', position: 'relative', zIndex: 0, background: '#0F172A' }}>
 
       {/* One arrow opens the map tools, so they don't cover the map */}
       <button onClick={() => setToolsOpen(o => !o)} title={toolsOpen ? 'Hide map tools' : 'Show map tools'}
-        style={{ position: 'absolute', top: compact ? 8 : 12, left: compact ? 8 : 12, zIndex: 1001, width: compact ? 26 : 32, height: compact ? 26 : 32, borderRadius: 999, border: 'none', cursor: 'pointer',
+        style={{ position: 'absolute', top: 10, left: compact ? 52 : 56, zIndex: 1001, width: compact ? 26 : 32, height: compact ? 26 : 32, borderRadius: 999, border: 'none', cursor: 'pointer',
           background: toolsOpen ? 'var(--accent)' : 'rgba(255,255,255,0.95)', color: toolsOpen ? '#fff' : '#0F172A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         {toolsOpen ? <ChevronLeft size={compact ? 14 : 17} /> : <ChevronRight size={compact ? 14 : 17} />}
       </button>
@@ -670,7 +698,7 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 540,
 
       {/* Place chips */}
       {toolsOpen && !compact && (
-        <div style={{ position: 'absolute', top: 12, left: 52, zIndex: 999, display: 'flex', gap: 8, flexWrap: 'wrap', maxWidth: 'calc(100% - 320px)' }}>
+        <div style={{ position: 'absolute', top: 10, left: 98, zIndex: 999, display: 'flex', gap: 8, flexWrap: 'wrap', maxWidth: 'calc(100% - 360px)' }}>
           <button onClick={() => setPanTarget(companyLocation ? [companyLocation.lat, companyLocation.lng] : ACCRA)} style={chipBtn}>
             <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
               <Truck size={11} />
@@ -699,7 +727,7 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 540,
       {toolsOpen && !compact && (
         <div
           style={{
-            position: 'absolute', top: 56, left: 12, zIndex: 999, width: 240,
+            position: 'absolute', top: 56, left: 56, zIndex: 999, width: 240,
             background: 'rgba(255, 255, 255, 0.96)', backdropFilter: 'blur(16px)',
             borderRadius: 18, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8,
           }}
@@ -909,12 +937,18 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 540,
             <AnimatedTruckMarker
               key={delivery.id}
               position={[point.lat, point.lng]}
-              icon={truckIcon(color, kmh, fleetSpeedLimit, overLimit)}
+              icon={truckIcon(color, kmh, fleetSpeedLimit, overLimit,
+                delivery.driverState || STATUS_GLYPH[delivery.status || ''] || 'ON_TRIP',
+                delivery.stopsTotal && delivery.stopsTotal > 1 && delivery.driverState !== 'AT_COMPANY'
+                  ? `${Math.min((delivery.stopsDone || 0) + (delivery.driverState === 'RETURNING' ? 0 : 1), delivery.stopsTotal)}/${delivery.stopsTotal}` : undefined)}
               eventHandlers={onMarkerClick ? { click: () => onMarkerClick(delivery) } : undefined}
             >
               {delivery.driverName && (
-                <Tooltip permanent direction="right" offset={[14, 0]} className="dispatch-driver-label" opacity={1}>
-                  {delivery.driverName}
+                <Tooltip permanent direction="right" offset={[18, -20]} className="dispatch-driver-label" opacity={1}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: overLimit ? OVER_LIMIT_COLOR : color }} />
+                    {delivery.driverName}
+                  </span>
                 </Tooltip>
               )}
               <Popup>
@@ -923,6 +957,13 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 540,
                   <p style={{ margin: '0 0 4px', color: '#64748b' }}>{delivery.vehicleId || 'Unassigned vehicle'}</p>
                   {delivery.driverState && (
                     <p style={{ margin: '0 0 4px', fontWeight: 600, color }}>{DRIVER_STATE_LABEL[delivery.driverState]}</p>
+                  )}
+                  {!!delivery.stopsTotal && delivery.driverState !== 'AT_COMPANY' && (
+                    <p style={{ margin: '0 0 4px', fontWeight: 600, color: '#0f172a' }}>
+                      {delivery.driverState === 'RETURNING'
+                        ? `${delivery.stopsDone || 0} of ${delivery.stopsTotal} stops done`
+                        : `Stop ${Math.min((delivery.stopsDone || 0) + 1, delivery.stopsTotal)} of ${delivery.stopsTotal}`}
+                    </p>
                   )}
                   {kmh != null && (
                     <p style={{ margin: '0 0 4px', fontWeight: 700, color: overLimit ? '#ef4444' : '#0f172a' }}>

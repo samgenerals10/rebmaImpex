@@ -13,6 +13,7 @@ import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import SpeedGauge from '../../components/shared/SpeedGauge';
 import { setActiveInterval } from '../../lib/activeInterval';
+import { stopFinishedMessage } from '../../lib/fleetState';
 
 function mapsLink(address: string): string {
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`;
@@ -254,6 +255,19 @@ export default function DispatchHomeScreen() {
     Linking.openURL(mapsLink(activeDeliveryDestination));
   };
 
+  // "I'm back at the company": marks this signed-in driver as returned
+  // (database function driver_mark_returned), so the fleet maps show the
+  // truck as available and Risk is told. Same as the web driver screen.
+  const [markingBack, setMarkingBack] = useState(false);
+  const [backAt, setBackAt] = useState<string | null>(null);
+  const markBack = async () => {
+    setMarkingBack(true);
+    const { error } = await supabase.rpc('driver_mark_returned');
+    setMarkingBack(false);
+    if (error) { Alert.alert('Could not mark you back', error.message); return; }
+    setBackAt(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+  };
+
   const handleDeliver = async () => {
     if (!activeOrderId) return;
     const now = new Date().toISOString();
@@ -273,6 +287,19 @@ export default function DispatchHomeScreen() {
     }
     try {
       await supabase.from('supplier_order_notifications').insert([{ message: `Proof of delivery submitted for Risk review: Delivery ${activeOrderId}`, notified_department: 'RISK', read: false }]);
+    } catch {}
+    // Tell Risk this stop is done and where the driver goes next (or that
+    // it was the last stop and they're coming back).
+    try {
+      const { data: left } = driver?.id
+        ? await supabase.from('delivery_logs').select('customer_name, dispatch_sequence, created_at')
+            .eq('driver_id', driver.id).in('status', ['ASSIGNED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY'])
+            .order('dispatch_sequence', { ascending: true, nullsFirst: false }).order('created_at', { ascending: true })
+        : { data: [] as any[] };
+      await supabase.from('supplier_order_notifications').insert([{
+        message: stopFinishedMessage(driver?.full_name || profile?.fullName || 'A driver', activeDeliveryClient, (left || []).map((r: any) => r.customer_name || 'Client')),
+        notified_department: 'RISK', read: false,
+      }]);
     } catch {}
     markOrderDelivered(activeOrderId);
     setActiveDeliveryClient('');
@@ -348,6 +375,13 @@ export default function DispatchHomeScreen() {
                 No routes currently active. Dispatch will assign your next delivery.
               </Text>
               <Button label="Check for New Assignment" onPress={() => driver && loadActiveDelivery(driver)} />
+              <View style={{ marginTop: t.spacing.md, alignItems: 'center' }}>
+                {backAt ? (
+                  <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.status.success.text }}>{`Marked back at the company at ${backAt}.`}</Text>
+                ) : (
+                  <Button label={markingBack ? 'Saving...' : "I'm Back at the Company"} variant="ghost" onPress={markBack} loading={markingBack} disabled={markingBack} />
+                )}
+              </View>
             </View>
           ) : (
             <View style={{ gap: t.spacing.lg }}>

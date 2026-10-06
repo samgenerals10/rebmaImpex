@@ -5,6 +5,7 @@ import { uploadFile } from '../../utils/uploadFile';
 import { getFleetSpeedLimitKmh, speedKmh, DEFAULT_FLEET_SPEED_LIMIT_KMH } from '../../utils/fleetSpeedLimit';
 import { setVisibleInterval } from '../../utils/visibleInterval';
 import CountBadge from '../../components/ui/CountBadge';
+import { stopFinishedMessage } from '../../utils/fleetState';
 
 interface DriverTrackingViewProps {
   driver: { id: string; driverId: string; fullName: string; vehicleId: string | null };
@@ -34,6 +35,19 @@ function mapsLink(address: string): string {
 }
 
 export default function DriverTrackingView({ driver, onLogout }: DriverTrackingViewProps) {
+  // "I'm back at the company": marks this signed-in driver as returned
+  // (database function driver_mark_returned), so the fleet maps show the
+  // truck as available and Risk is told.
+  const [markingBack, setMarkingBack] = useState(false);
+  const [backAt, setBackAt] = useState<string | null>(null);
+  const markBack = async () => {
+    setMarkingBack(true);
+    setProofError(null);
+    const { error } = await supabase.rpc('driver_mark_returned');
+    setMarkingBack(false);
+    if (error) { setProofError(`Could not mark you back: ${error.message}`); return; }
+    setBackAt(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+  };
   const [stops, setStops] = useState<Stop[]>([]);
   const [loading, setLoading] = useState(true);
   const [gpsActive, setGpsActive] = useState(false);
@@ -231,6 +245,12 @@ export default function DriverTrackingView({ driver, onLogout }: DriverTrackingV
     try {
       await supabase.from('supplier_order_notifications').insert([{ message: `Proof of delivery submitted for Risk review: Delivery ${stop.id}`, notified_department: 'RISK', read: false }]);
     } catch {}
+    // Tell Risk this stop is done and where the driver goes next (or that
+    // it was the last stop and they're coming back).
+    const remaining = stops.filter(s => s.id !== stop.id).map(s => s.customerName);
+    try {
+      await supabase.from('supplier_order_notifications').insert([{ message: stopFinishedMessage(driver.fullName, stop.customerName, remaining), notified_department: 'RISK', read: false }]);
+    } catch {}
     setStops(prev => prev.filter(s => s.id !== stop.id));
   };
 
@@ -325,6 +345,20 @@ export default function DriverTrackingView({ driver, onLogout }: DriverTrackingV
             ) : stops.length === 0 ? (
               <div className="text-center py-6">
                 <p className="text-xs text-text-muted mb-4">No route currently assigned. Dispatch will assign your next delivery.</p>
+                <div className="mb-3">
+                  {backAt ? (
+                    <p className="text-xs font-bold text-emerald-600">Marked back at the company at {backAt}.</p>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={markBack}
+                      disabled={markingBack}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[var(--accent)] hover:opacity-90 text-white text-xs font-bold disabled:opacity-60"
+                    >
+                      <Navigation className="w-3.5 h-3.5" /> {markingBack ? 'Saving...' : "I'm Back at the Company"}
+                    </button>
+                  )}
+                </div>
                 <button
                   type="button"
                   onClick={loadStops}

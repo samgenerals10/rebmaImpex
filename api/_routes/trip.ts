@@ -150,10 +150,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (podSetting?.setting_value === true && !delivery.proof_photo) {
         return res.status(403).json({ error: 'A proof-of-delivery photo is required by the CEO before this can be marked delivered.' });
       }
-      await supabaseAdmin.from('delivery_logs').update({ status: 'DELIVERED', delivered_at: now, updated_at: now }).eq('id', delivery.id);
-      if (delivery.order_id) {
-        await supabaseAdmin.from('orders').update({ status: 'DELIVERED', updated_at: now }).eq('id', delivery.order_id);
-      }
+      // Same as the app's driver screens: a finished stop goes to Risk's
+      // proof-of-delivery review. Only Risk's review (risk_review_pod)
+      // can mark a delivery and its order DELIVERED; the database refuses
+      // any other path, which is why this used to fail.
+      const { error: finishErr } = await supabaseAdmin.from('delivery_logs')
+        .update({ status: 'PENDING_RISK_REVIEW', updated_at: now })
+        .eq('id', delivery.id);
+      if (finishErr) return res.status(500).json({ error: finishErr.message });
+      await supabaseAdmin.from('supplier_order_notifications')
+        .insert([{ message: `Proof of delivery submitted for Risk review: Delivery ${delivery.id}`, notified_department: 'RISK', read: false }])
+        .then(() => {}, () => {});
+      // Tell Risk this stop is done and where the driver goes next (or
+      // that it was the last stop and they're coming back). Same wording
+      // as the app's driver screens (utils/fleetState.ts stopFinishedMessage).
+      const remaining = await loadStops(driver.id);
+      const { data: done } = await supabaseAdmin.from('delivery_logs').select('customer_name').eq('id', delivery.id).maybeSingle();
+      const where = done?.customer_name || 'a client';
+      const message = remaining.length === 0
+        ? `${driver.full_name} finished the last stop at ${where}. All stops done, coming back to the company.`
+        : `${driver.full_name} finished the stop at ${where}. ${remaining.length === 1 ? '1 stop left' : `${remaining.length} stops left`}, moving to the next one: ${remaining[0].customerName}.`;
+      await supabaseAdmin.from('supplier_order_notifications').insert([{ message, notified_department: 'RISK', read: false }]).then(() => {}, () => {});
     }
     return res.status(200).json({ ok: true });
   }
@@ -206,6 +223,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (action === 'return') {
     await supabaseAdmin.from('drivers').update({ returned_at: now }).eq('id', driver.id);
+    await supabaseAdmin.from('supplier_order_notifications')
+      .insert([{ message: `${driver.full_name} is back at the company and available.`, notified_department: 'RISK', read: false }])
+      .then(() => {}, () => {});
     return res.status(200).json({ ok: true });
   }
 
