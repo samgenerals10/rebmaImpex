@@ -177,7 +177,7 @@ export default function MaintenanceScreen() {
         <SearchablePicker value={typeFilter} onChange={setTypeFilter} options={[{ value: 'All', label: 'All Types' }, { value: 'Service', label: 'Service' }, { value: 'Repair', label: 'Repair' }, { value: 'Inspection', label: 'Inspection' }]} />
       </View>
 
-      <DataList
+      <DataList exportTitle="Maintenance Schedule"
         collapsible
         columns={columns}
         data={filteredRecords}

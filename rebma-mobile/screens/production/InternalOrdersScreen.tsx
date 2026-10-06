@@ -348,7 +348,7 @@ export default function InternalOrdersScreen() {
           ]}
         />
 
-        <DataList
+        <DataList exportTitle="Internal Orders"
           columns={columns}
           data={filtered}
           rowKey={(o) => o.id}

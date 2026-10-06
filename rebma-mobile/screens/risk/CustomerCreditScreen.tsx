@@ -201,7 +201,7 @@ export default function CustomerCreditScreen() {
 
         <Input value={search} onChangeText={setSearch} placeholder="Search customers..." />
 
-        <DataList
+        <DataList exportTitle="Customer Credit"
           collapsible
           columns={columns}
           data={filtered}

@@ -221,7 +221,7 @@ export default function ApprovedGoodsScreen() {
         <Input value={search} onChangeText={setSearch} placeholder="Search client, ticket, or product…" />
         <SearchablePicker value={statusFilter} onChange={setStatusFilter} options={STATUS_OPTIONS} label="Filter by Status" />
 
-        <DataList
+        <DataList exportTitle="Approved Goods"
           columns={columns}
           data={filtered}
           rowKey={(o) => o.id}

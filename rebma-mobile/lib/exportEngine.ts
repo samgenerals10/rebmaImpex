@@ -49,8 +49,12 @@ export interface DocTemplate {
   footerNote: string;
 }
 
+// When no logo is saved in Document Templates, use the REBMA logo the web
+// app serves, so every export still carries it (needs the web address set).
+const FALLBACK_LOGO = process.env.EXPO_PUBLIC_API_BASE_URL ? `${process.env.EXPO_PUBLIC_API_BASE_URL.replace(/\/$/, '')}/logo-mark.png` : '';
+
 const FALLBACK_TEMPLATE: DocTemplate = {
-  logoUrl: '',
+  logoUrl: FALLBACK_LOGO,
   companyName: 'REBMA IMPEX',
   subtitle: 'Enterprise Resource Planning',
   companyAddress: 'Accra Business District, Accra, Ghana',
@@ -97,11 +101,27 @@ function escapeHtml(s: string): string {
 }
 
 // ── CSV — byte-for-byte port of exportToCSV's quoting/escaping ──────────
-export function buildCsvString(columns: ExportColumn[], data: any[]): string {
+// CSV is plain text, so it can't hold the logo; it carries the company
+// name, report title, date and footer note as its first and last lines,
+// the same as the web app's CSV.
+export function buildCsvString(columns: ExportColumn[], data: any[], brand?: { title: string; template: DocTemplate }): string {
+  const q = (v: string) => `"${v.replace(/"/g, '""')}"`;
   const rows: string[] = [];
-  rows.push(columns.map((c) => `"${c.label.toUpperCase()}"`).join(','));
+  if (brand) {
+    const now = new Date();
+    const name = brand.template.companyName;
+    rows.push(q(/ghana/i.test(name) ? name : `${name} GHANA LIMITED`));
+    rows.push(q(brand.title));
+    rows.push(q(`Generated ${now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`));
+    rows.push('');
+  }
+  rows.push(columns.map((c) => q(c.label)).join(','));
   for (const row of data) {
-    rows.push(columns.map((c) => `"${cellText(c, row).replace(/"/g, '""')}"`).join(','));
+    rows.push(columns.map((c) => q(cellText(c, row))).join(','));
+  }
+  if (brand?.template.footerNote) {
+    rows.push('');
+    rows.push(q(brand.template.footerNote));
   }
   return rows.join('\n');
 }
@@ -202,16 +222,19 @@ function fieldValueBodyHtml(fields: Record<string, any>): string {
   return `<table style="width:100%;border-collapse:collapse;"><thead><tr style="background:#f8fafc;"><th style="padding:7px 10px;font-size:8px;font-weight:800;color:#334155;text-align:left;">Field</th><th style="padding:7px 10px;font-size:8px;font-weight:800;color:#334155;text-align:left;">Value</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
-function renderDocumentHtml(title: string, letterhead: Letterhead, template: DocTemplate | undefined, bodyHtml: string, recordCount: number): string {
-  const head = letterhead === 'branded' && template ? brandedLetterheadHtml(title, template, recordCount) : legacyLetterheadHtml(title);
-  const foot = letterhead === 'branded' && template ? brandedFooterHtml(template) : legacyFooterHtml();
+// Every export now carries the full REBMA letterhead and footer, whatever
+// the screen asked for (the plain letterhead is kept only as a last resort).
+function renderDocumentHtml(title: string, _letterhead: Letterhead, template: DocTemplate | undefined, bodyHtml: string, recordCount: number): string {
+  const t = template || FALLBACK_TEMPLATE;
+  const head = t ? brandedLetterheadHtml(title, t, recordCount) : legacyLetterheadHtml(title);
+  const foot = t ? brandedFooterHtml(t) : legacyFooterHtml();
   return `<!DOCTYPE html><html><head><meta charset="utf-8" /><style>body{font-family:Helvetica,Arial,sans-serif;margin:0;padding:0;}</style></head><body>${head}<div style="padding:0 28px;">${bodyHtml}</div>${foot}</body></html>`;
 }
 
 // ── Terminal steps ────────────────────────────────────────────────────
 
-export async function exportCsv(columns: ExportColumn[], data: any[], title: string): Promise<void> {
-  const csv = buildCsvString(columns, data);
+export async function exportCsv(columns: ExportColumn[], data: any[], title: string, template?: DocTemplate): Promise<void> {
+  const csv = '\ufeff' + buildCsvString(columns, data, { title, template: template || (await fetchBrandedTemplate()) });
   const file = new File(Paths.cache, `${slugFileName(title)}.csv`);
   file.create({ overwrite: true });
   file.write(csv);
@@ -253,4 +276,10 @@ export async function exportFieldValueDocument(
   const html = renderDocumentHtml(title, letterhead, template, fieldValueBodyHtml(fields), 1);
   if (format === 'pdf') await exportPdf(title, html);
   else await exportDoc(title, html);
+}
+
+/** One record as a two-column Field / Value CSV. */
+export async function exportFieldValueCsv(title: string, fields: Record<string, any>, template?: DocTemplate): Promise<void> {
+  const rows = Object.entries(fields).map(([k, v]) => ({ field: k, value: v == null ? '' : String(v) }));
+  await exportCsv([{ key: 'field', label: 'Field' }, { key: 'value', label: 'Value' }], rows, title, template);
 }

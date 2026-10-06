@@ -370,7 +370,7 @@ export default function SalesHistoryView({ ordersList, addNotification }: Props)
               </div>
             </div>
             <div className="p-3">
-              <ResponsiveDataView<Order>
+              <ResponsiveDataView<Order> exportTitle="Sales History"
                 columns={[
                   { key: 'clientName', label: 'Customer', primary: true, render: o => o.clientName || 'Not set' },
                   { key: 'ticketNumber', label: 'Invoice #', render: o => <span className="font-mono text-[10px]">{o.ticketNumber || o.id}</span> },

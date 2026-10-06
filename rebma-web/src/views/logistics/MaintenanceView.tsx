@@ -275,7 +275,7 @@ export default function MaintenanceView({ addNotification }: Props) {
       <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 24, border: '1px solid var(--border)', boxShadow: 'var(--box-shadow)' }}>
         {loading && Array.from({ length: 5 }).map((_, i) => <div key={i} className="animate-pulse h-10 bg-slate-200 dark:bg-slate-700 rounded mb-2" />)}
         {!loading && <div>
-          <ResponsiveDataView<MaintenanceRecord>
+          <ResponsiveDataView<MaintenanceRecord> exportTitle="Maintenance Schedule"
             columns={[
               { key: 'vehicleId', label: 'Vehicle', primary: true },
               { key: 'date', label: 'Date' },

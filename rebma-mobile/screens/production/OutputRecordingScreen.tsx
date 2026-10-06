@@ -204,7 +204,7 @@ export default function OutputRecordingScreen() {
 
         <View>
           <SectionHeader title="Output History" />
-          <DataList
+          <DataList exportTitle="Output History"
             collapsible
             columns={columns}
             data={records}

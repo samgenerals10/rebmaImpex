@@ -174,7 +174,7 @@ export default function LeaveManagementScreen() {
     >
       <View style={{ gap: t.spacing.lg }}>
         <Input value={search} onChangeText={setSearch} placeholder="Search by employee or department..." />
-        <DataList columns={columns} data={filtered} rowKey={(l) => l.id} loading={loading} emptyTitle="No leave requests" onRowPress={setSelected} />
+        <DataList exportTitle="Leave Requests" columns={columns} data={filtered} rowKey={(l) => l.id} loading={loading} emptyTitle="No leave requests" onRowPress={setSelected} />
       </View>
 
       <Sheet open={!!selected && !showReject} onClose={() => setSelected(null)} title={selected?.employeeName} subtitle={selected?.leaveType} side="bottom" maxHeight={480}>

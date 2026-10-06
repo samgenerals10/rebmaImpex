@@ -145,7 +145,7 @@ export default function FuelManagementScreen() {
         <Input value={driverFilter} onChangeText={setDriverFilter} placeholder="Filter by driver…" />
       </View>
 
-      <DataList
+      <DataList exportTitle="Fuel Logs"
         collapsible
         columns={columns}
         data={filteredLogs}

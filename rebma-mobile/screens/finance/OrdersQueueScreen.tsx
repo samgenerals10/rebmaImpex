@@ -221,7 +221,7 @@ export default function OrdersQueueScreen() {
         <Input value={search} onChangeText={setSearch} placeholder="Search orders…" />
         <SearchablePicker label="Payment Mode" value={modeFilter} onChange={setModeFilter} options={['All', 'CASH', 'CHEQUE', 'MOBILE_MONEY', 'CREDIT'].map((m) => ({ value: m, label: m }))} />
         <SearchablePicker label="Status" value={statusFilter} onChange={setStatusFilter} options={STATUS_OPTIONS.map((s) => ({ value: s, label: s === 'ALL' ? 'All Status' : s.replace(/_/g, ' ') }))} />
-        <DataList
+        <DataList exportTitle="Orders Queue"
           columns={columns}
           data={filtered}
           rowKey={(o) => o.id}

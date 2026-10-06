@@ -125,7 +125,7 @@ export default function RecurringPaymentsScreen() {
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}
       footer={<View style={{ padding: t.spacing.lg }}><Button label="Add Recurring Bill" onPress={() => setShowAdd(true)} fullWidth /></View>}
     >
-      <DataList
+      <DataList exportTitle="Recurring Payments"
         collapsible
         columns={columns}
         data={rows}

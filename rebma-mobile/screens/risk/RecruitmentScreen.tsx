@@ -94,7 +94,7 @@ export default function RiskRecruitmentScreen() {
         <EmptyState title="No candidate records yet" description="Candidates HR adds will appear here with their full record." />
       ) : (
         <View style={{ paddingHorizontal: t.spacing.lg }}>
-          <DataList columns={columns} data={invites} rowKey={i => i.id} onRowPress={setSelected} loading={loading} />
+          <DataList exportTitle="Candidates" columns={columns} data={invites} rowKey={i => i.id} onRowPress={setSelected} loading={loading} />
         </View>
       )}
 

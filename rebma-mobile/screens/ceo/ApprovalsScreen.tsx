@@ -217,7 +217,7 @@ export default function ApprovalsScreen() {
         <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted }}>
           {rows.length} pending approval{rows.length !== 1 ? 's' : ''}. Each one must be approved within 12 hours of registering.
         </Text>
-        <DataList
+        <DataList exportTitle="Pending Registrations"
           columns={columns}
           data={rows}
           rowKey={(r) => r.id}

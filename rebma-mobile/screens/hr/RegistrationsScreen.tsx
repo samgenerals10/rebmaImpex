@@ -160,7 +160,7 @@ export default function RegistrationsScreen() {
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}>
       <View style={{ gap: t.spacing.lg }}>
         <Input value={search} onChangeText={setSearch} placeholder="Search by name, email, or Ghana Card..." />
-        <DataList columns={columns} data={filtered} rowKey={(r) => r.id} loading={loading} emptyTitle="No pending registrations" onRowPress={setSelected} />
+        <DataList exportTitle="Registrations" columns={columns} data={filtered} rowKey={(r) => r.id} loading={loading} emptyTitle="No pending registrations" onRowPress={setSelected} />
       </View>
 
       <Sheet open={!!selected && !showDeny} onClose={() => setSelected(null)} title={selected?.fullName} subtitle={selected?.department} side="bottom" maxHeight={520}>

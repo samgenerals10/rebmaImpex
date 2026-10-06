@@ -130,7 +130,7 @@ export default function DepartmentManagerScreen() {
         ) : depts.length === 0 ? (
           <EmptyState icon={<Building2 size={20} color={t.colors.textMuted} />} title="No departments yet" description='Tap "New Department" to create the first one.' />
         ) : (
-          <DataList columns={columns} data={depts} rowKey={(d) => d.id} onRowPress={setSelected} />
+          <DataList exportTitle="Departments" columns={columns} data={depts} rowKey={(d) => d.id} onRowPress={setSelected} />
         )}
 
         <Card tone="inset">

@@ -140,7 +140,7 @@ export default function DriversScreen() {
           New drivers join through HR's recruitment invite (Department: Risk, Role: Driver). Their roster entry here is created automatically once they register.
         </Text>
       </View>
-      <DataList
+      <DataList exportTitle="Drivers"
         collapsible
         columns={columns}
         data={drivers}

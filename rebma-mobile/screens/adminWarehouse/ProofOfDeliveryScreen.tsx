@@ -133,7 +133,7 @@ export default function ProofOfDeliveryScreen() {
 
   return (
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}>
-      <DataList columns={columns} data={rows} rowKey={(r) => r.id} loading={loading} emptyTitle="No deliveries found" onRowPress={setDetail} />
+      <DataList exportTitle="Proof of Delivery" columns={columns} data={rows} rowKey={(r) => r.id} loading={loading} emptyTitle="No deliveries found" onRowPress={setDetail} />
 
       <Sheet
         open={!!detail}

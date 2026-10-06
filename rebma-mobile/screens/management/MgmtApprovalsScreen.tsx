@@ -345,7 +345,7 @@ export default function MgmtApprovalsScreen() {
           }))}
         />
 
-        <DataList columns={columns} data={filtered} rowKey={(i) => i.id} loading={loading} emptyTitle="No pending items. You're all caught up." onRowPress={(i) => setSelected(i)} />
+        <DataList exportTitle="Pending Approvals" columns={columns} data={filtered} rowKey={(i) => i.id} loading={loading} emptyTitle="No pending items. You're all caught up." onRowPress={(i) => setSelected(i)} />
       </View>
 
       <Sheet

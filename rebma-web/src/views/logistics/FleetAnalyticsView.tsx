@@ -232,7 +232,7 @@ export default function FleetAnalyticsView({ addNotification: _addNotification }
         {efficiencyTable.length === 0 ? (
           <p style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>Not enough fuel log data yet.</p>
         ) : (
-        <ResponsiveDataView<typeof efficiencyTable[number]>
+        <ResponsiveDataView<typeof efficiencyTable[number]> exportTitle="Fleet Analytics"
           columns={[
             { key: 'vehicleId', label: 'Vehicle ID', primary: true },
             { key: 'distance', label: 'Total Distance (km)', render: row => row.distance.toLocaleString() },

@@ -497,7 +497,7 @@ export default function AttendanceScreen() {
           </View>
         </Card>
 
-        <DataList
+        <DataList exportTitle="Attendance Records"
           collapsible
           columns={columns}
           data={filtered}
@@ -526,7 +526,7 @@ export default function AttendanceScreen() {
           <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted, marginBottom: t.spacing.sm }}>
             Fingerprint, face and card terminals that check staff in by themselves. Add any device by typing its details, whether it connects by API or through its SDK.
           </Text>
-          <DataList
+          <DataList exportTitle="Attendance Devices"
             collapsible
             columns={[
               { key: 'deviceName', label: 'Device', primary: true },

@@ -232,7 +232,7 @@ export default function FuelManagementView({ addNotification }: Props) {
         <h2 style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 16, marginBottom: 16 }}>Fuel Logs</h2>
         {loading && Array.from({ length: 5 }).map((_, i) => <div key={i} className="animate-pulse h-10 bg-slate-200 dark:bg-slate-700 rounded mb-2" />)}
         {!loading && <div>
-          <ResponsiveDataView<FuelLog>
+          <ResponsiveDataView<FuelLog> exportTitle="Fuel Logs"
             columns={[
               { key: 'vehicleId', label: 'Vehicle ID', primary: true },
               { key: 'date', label: 'Date' },

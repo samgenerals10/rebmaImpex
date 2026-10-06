@@ -354,7 +354,7 @@ export default function RiskApprovalsScreen() {
           }))}
         />
 
-        <DataList
+        <DataList exportTitle="Pending Approvals"
           columns={columns}
           data={filtered}
           rowKey={(i) => i.id}

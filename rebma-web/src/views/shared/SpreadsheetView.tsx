@@ -26,6 +26,7 @@
  * );
  */
 
+import { openExportPreview, prettyLabel } from '../../utils/exportPreview';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { HyperFormula } from 'hyperformula';
 import { supabase } from '../../lib/supabaseClient';
@@ -441,17 +442,9 @@ function DataSheetEditor({ tableName, tableLabel, onBack, addNotification }: {
 
   const cancelEdit = () => { setEditCell(null); };
 
+  // Opens the branded preview (PDF, Word or CSV), exported only on confirm.
   const exportCSV = () => {
-    const header = columns.join(',');
-    const dataRows = rows.map(r => columns.map(c => JSON.stringify(r[c] ?? '')).join(','));
-    const csv = [header, ...dataRows].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${tableName}_data.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    openExportPreview({ title: tableLabel, data: rows, columns: columns.map(c => ({ key: c, label: prettyLabel(c) })) });
   };
 
   return (

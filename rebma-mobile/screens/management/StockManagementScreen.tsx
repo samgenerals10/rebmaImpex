@@ -255,7 +255,7 @@ export default function StockManagementScreen() {
             onSortChange={setCargoSort}
           />
         </View>
-        <DataList
+        <DataList exportTitle="Stock"
           columns={cargoColumns}
           data={filteredCargo}
           rowKey={(c) => c.id}

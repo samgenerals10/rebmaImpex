@@ -363,7 +363,7 @@ export default function SetPricesScreen() {
           onFilterChange={setCategoryFilter}
           filterLabel="Category"
         />
-        <DataList
+        <DataList exportTitle="Price List"
           collapsible
           columns={priceColumns}
           data={filteredPrices}
@@ -391,7 +391,7 @@ export default function SetPricesScreen() {
             onSortChange={setCustomerSort}
           />
         </View>
-        <DataList
+        <DataList exportTitle="Customer Discounts"
           collapsible
           columns={customerColumns}
           data={filteredCustomers}

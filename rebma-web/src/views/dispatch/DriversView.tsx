@@ -426,7 +426,7 @@ export default function DriversView({ addNotification }: Props) {
           ) : history.length === 0 ? (
             <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '24px 0' }}>No delivery history available.</p>
           ) : (
-            <ResponsiveDataView<DeliveryRecord>
+            <ResponsiveDataView<DeliveryRecord> exportTitle="Driver Delivery History"
               columns={[
                 { key: 'orderId', label: 'Order ID', primary: true },
                 { key: 'clientName', label: 'Client' },

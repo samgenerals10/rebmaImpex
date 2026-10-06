@@ -188,7 +188,7 @@ export default function VisitorsScreen() {
           options={[{ value: 'ALL', label: 'All' }, { value: 'IN', label: 'Currently In' }, { value: 'OUT', label: 'Checked Out' }]}
           label="Status"
         />
-        <DataList
+        <DataList exportTitle="Visitors"
           columns={columns}
           data={filtered}
           rowKey={(v) => v.id}

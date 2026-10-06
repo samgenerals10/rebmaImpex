@@ -285,7 +285,7 @@ export default function CustomersScreen() {
           />
         )}
 
-        <DataList columns={columns} data={filtered} rowKey={(c) => c.id} loading={loading} emptyTitle="No customers found" onRowPress={openDetail} />
+        <DataList exportTitle="Customers" columns={columns} data={filtered} rowKey={(c) => c.id} loading={loading} emptyTitle="No customers found" onRowPress={openDetail} />
       </View>
 
       {/* Add / Edit form */}
@@ -403,12 +403,12 @@ export default function CustomersScreen() {
             )}
 
             <SheetSection label="Order History">
-              <DataList collapsible columns={orderColumns} data={detailOrders} rowKey={(o) => o.id || Math.random().toString()} emptyTitle="No orders yet" />
+              <DataList exportTitle="Customer Order History" collapsible columns={orderColumns} data={detailOrders} rowKey={(o) => o.id || Math.random().toString()} emptyTitle="No orders yet" />
             </SheetSection>
 
             {detailCreditOrders.length > 0 && (
               <SheetSection label="Credit / Payment History">
-                <DataList collapsible columns={creditColumns} data={detailCreditOrders} rowKey={(o) => o.id || Math.random().toString()} emptyTitle="No credit orders" />
+                <DataList exportTitle="Customer Credit History" collapsible columns={creditColumns} data={detailCreditOrders} rowKey={(o) => o.id || Math.random().toString()} emptyTitle="No credit orders" />
               </SheetSection>
             )}
           </>

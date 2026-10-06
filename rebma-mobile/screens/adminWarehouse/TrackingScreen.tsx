@@ -186,7 +186,7 @@ export default function TrackingScreen() {
       {view === 'map' ? (
         <FleetMap onSelectedChange={handleSelectedChange} />
       ) : (
-        <DataList
+        <DataList exportTitle="Driver Locations"
           collapsible
           columns={columns}
           data={drivers}

@@ -558,7 +558,7 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
           {custOrders.length === 0 ? (
             <p className="text-sm text-[var(--text-muted)]">No orders found.</p>
           ) : (
-            <ResponsiveDataView<typeof custOrders[number]>
+            <ResponsiveDataView<typeof custOrders[number]> exportTitle="Customer Order History"
               columns={[
                 { key: 'productName', label: 'Product', primary: true, render: o => o.productName || 'Not set' },
                 { key: 'ticketNumber', label: 'Order #', render: o => <span className="font-mono text-xs">{o.ticketNumber || o.id}</span> },
@@ -585,7 +585,7 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
         {creditOrderRows.length > 0 && (
           <div className="rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] p-5 shadow-[var(--box-shadow)]">
             <h4 className="font-semibold text-sm text-[var(--text-primary)] mb-3">Credit / Payment History</h4>
-            <ResponsiveDataView<typeof creditOrderRows[number]>
+            <ResponsiveDataView<typeof creditOrderRows[number]> exportTitle="Customer Credit History"
               columns={[
                 { key: 'orderId', label: 'Order ID', primary: true, render: h => <span className="font-mono text-xs">{h.orderId}</span> },
                 { key: 'amount', label: 'Amount Due (GHS)', render: h => <span className="text-emerald-600 font-semibold">GHS {h.amount.toLocaleString()}</span> },

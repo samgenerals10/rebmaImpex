@@ -187,7 +187,7 @@ export default function CustomerCreditView({ addNotification, currentUser }: Pro
           </div>
         </div>
         <div className="p-3">
-          <ResponsiveDataView<typeof filtered[number]>
+          <ResponsiveDataView<typeof filtered[number]> exportTitle="Customer Credit"
             columns={[
               { key: 'name', label: 'Customer', primary: true },
               {

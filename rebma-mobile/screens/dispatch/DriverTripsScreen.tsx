@@ -102,7 +102,7 @@ export default function DriverTripsScreen() {
       <View style={{ gap: t.spacing.lg }}>
         <PageTitle title="My Trips" subtitle="Your own delivery history" />
         <Card padded={false}>
-          <DataList
+          <DataList exportTitle="My Deliveries"
             collapsible
             columns={columns}
             data={trips}

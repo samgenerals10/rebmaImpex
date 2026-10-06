@@ -1,4 +1,5 @@
 // rebma-web/src/views/ceo/CeoControlCenter.tsx
+import { openExportPreview } from '../../utils/exportPreview';
 import { useState, useEffect } from 'react';
 import {
   Shield, ChevronDown, ChevronUp, Users, DollarSign, Activity, Truck,
@@ -1244,12 +1245,11 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
             <h3 className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
               <Clock className="w-4 h-4 text-[var(--accent)]" /> Recent Setting Changes
             </h3>
-            <button onClick={() => {
-              const rows = settingChangesLog.map(r => `${r.setting_key},${r.updated_at}`).join('\n');
-              const blob = new Blob([`Setting,Updated At\n${rows}`], { type: 'text/csv' });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a'); a.href = url; a.download = 'setting_changes_log.csv'; a.click();
-            }} className="flex items-center gap-1 text-xs text-[var(--accent)] hover:underline cursor-pointer">
+            <button onClick={() => openExportPreview({
+              title: 'Recent Setting Changes',
+              data: settingChangesLog.map(r => ({ setting: r.setting_key, updated: r.updated_at ? new Date(r.updated_at).toLocaleString() : 'Not set' })),
+              columns: [{ key: 'setting', label: 'Setting' }, { key: 'updated', label: 'Updated At' }],
+            })} className="flex items-center gap-1 text-xs text-[var(--accent)] hover:underline cursor-pointer">
               <FileSpreadsheet className="w-3.5 h-3.5" /> Export
             </button>
           </div>

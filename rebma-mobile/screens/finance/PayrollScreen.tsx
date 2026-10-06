@@ -74,7 +74,7 @@ export default function PayrollScreen() {
             </View>
           ))}
         </View>
-        <DataList collapsible columns={columns} data={batches} rowKey={(b) => b.id} loading={loading} emptyTitle="No payroll batches yet" />
+        <DataList exportTitle="Payroll Batches" collapsible columns={columns} data={batches} rowKey={(b) => b.id} loading={loading} emptyTitle="No payroll batches yet" />
       </View>
     </Screen>
   );

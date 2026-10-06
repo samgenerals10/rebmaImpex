@@ -199,10 +199,10 @@ export default function StockScreen() {
         )}
       </View>
 
-      {tab === 'CARGO' && <DataList columns={cargoCols} data={filteredCargo} rowKey={(r) => r.id} loading={loading} emptyTitle="No approved port cargo" collapsible rowThumbnail={(r) => <ProductImage uri={r.product_image} label={r.product_name || 'Cargo'} size={40} />} />}
-      {tab === 'PRODUCTS' && <DataList columns={productCols} data={filteredProducts} rowKey={(r) => r.id} loading={loading} emptyTitle="No finished goods on file" collapsible rowThumbnail={(r) => <ProductImage uri={productImages[r.product_name]} label={r.product_name} size={40} />} />}
+      {tab === 'CARGO' && <DataList exportTitle="Approved Port Cargo" columns={cargoCols} data={filteredCargo} rowKey={(r) => r.id} loading={loading} emptyTitle="No approved port cargo" collapsible rowThumbnail={(r) => <ProductImage uri={r.product_image} label={r.product_name || 'Cargo'} size={40} />} />}
+      {tab === 'PRODUCTS' && <DataList exportTitle="Finished Goods" columns={productCols} data={filteredProducts} rowKey={(r) => r.id} loading={loading} emptyTitle="No finished goods on file" collapsible rowThumbnail={(r) => <ProductImage uri={productImages[r.product_name]} label={r.product_name} size={40} />} />}
       {tab === 'GP' && (
-        <DataList
+        <DataList exportTitle="General Purchases"
           columns={gpCols}
           data={filteredPurchases}
           rowKey={(r) => r.id}
@@ -217,7 +217,7 @@ export default function StockScreen() {
       {recentMovements.length > 0 && (
         <Card style={{ marginTop: t.spacing.xl }}>
           <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginBottom: t.spacing.md }}>Recent Stock Movements</Text>
-          <DataList
+          <DataList exportTitle="Recent Stock Movements"
             collapsible
             columns={movementCols}
             data={recentMovements}

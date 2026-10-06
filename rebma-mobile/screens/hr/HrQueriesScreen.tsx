@@ -108,7 +108,7 @@ export default function HrQueriesScreen() {
             </Pressable>
           ))}
         </View>
-        <DataList columns={columns} data={visible} rowKey={(i) => i.id} loading={loading}
+        <DataList exportTitle="HR Queries" columns={columns} data={visible} rowKey={(i) => i.id} loading={loading}
           emptyTitle={isHrOrAdmin ? 'No employee queries yet' : "You haven't asked HR anything yet"}
           emptyIcon={<MessageCircleQuestion size={20} color={t.colors.textMuted} />}
           onRowPress={(i) => { setSelected(i); setRespondDraft(''); }}

@@ -185,7 +185,7 @@ export default function FleetOverviewView({ addNotification }: Props) {
         </div>
         <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 24, border: '1px solid var(--border)', boxShadow: 'var(--box-shadow)' }}>
           <h3 style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 15, marginBottom: 16 }}>Recent Delivery History</h3>
-          <ResponsiveDataView<{ date: string; destination: string; status: string; amount: string }>
+          <ResponsiveDataView<{ date: string; destination: string; status: string; amount: string }> exportTitle="Fleet Delivery History"
             columns={[
               { key: 'destination', label: 'Destination', primary: true },
               { key: 'date', label: 'Date' },

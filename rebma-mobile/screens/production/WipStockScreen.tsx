@@ -222,7 +222,7 @@ export default function WipStockScreen() {
           options={[{ value: 'All', label: 'All Stages' }, ...STAGES.map((s) => ({ value: s, label: s }))]}
         />
 
-        <DataList
+        <DataList exportTitle="Work in Progress"
           columns={columns}
           data={filtered}
           rowKey={(i) => i.id}

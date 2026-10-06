@@ -14,6 +14,7 @@ import { applyAccentOverride } from './utils/accentOverride';
 import Messenger from './components/collaborative/Messenger';
 import IncomingCallAlert from './components/collaborative/IncomingCallAlert';
 import AuthBrand, { authCls } from './components/auth/AuthBrand';
+import ExportPreviewHost from './components/common/ExportPreviewHost';
 
 import CeoDashboard from './views/CeoDashboard';
 import ManagementDashboard from './views/ManagementDashboard';
@@ -4445,6 +4446,9 @@ function AppInner({
           targetChannelId={messengerTargetChannelId}
           joinCallMeetingId={messengerJoinCallId}
         />
+
+        {/* Every export opens here first: preview, pick a format, confirm */}
+        <ExportPreviewHost />
 
         {/* Rings like a phone when someone calls you in a chat */}
         {currentUser?.id && (

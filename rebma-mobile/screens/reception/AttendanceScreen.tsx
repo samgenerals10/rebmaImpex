@@ -239,7 +239,7 @@ export default function AttendanceScreen() {
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}
       footer={<View style={{ padding: t.spacing.lg }}><Button label="Check In Staff" onPress={() => setShowCheckIn(true)} fullWidth /></View>}
     >
-      <DataList
+      <DataList exportTitle="Attendance"
         collapsible
         columns={columns}
         data={rows}

@@ -259,7 +259,7 @@ export default function RegistrationsView({ pendingRegistrations, addNotificatio
           <div className="flex justify-end mb-3"><FullscreenButton expanded onClick={tableFullscreen.toggle} /></div>
         )}
         <div className="p-3">
-          <ResponsiveDataView<PendingRegistration>
+          <ResponsiveDataView<PendingRegistration> exportTitle="Registrations"
             columns={[
               {
                 key: 'fullName', label: 'Name', primary: true, render: reg => (

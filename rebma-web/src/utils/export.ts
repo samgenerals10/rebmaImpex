@@ -6,7 +6,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { DocumentTemplate } from '../services/apiClient';
-import type { ExportColumn } from '../components/common/UniversalExportModal';
+import { openExportPreview, prettyLabel, prettyTitle, type ExportColumn } from './exportPreview';
 
 const BRAND = { green: [26, 92, 50] as [number, number, number], blue: [41, 169, 220] as [number, number, number], lime: [127, 194, 65] as [number, number, number] };
 
@@ -19,20 +19,55 @@ export function safeDisplayName(name: string | null | undefined, fallback: strin
   return name.includes('@') ? fallback : name;
 }
 
-// ── CSV export (unchanged — all call-sites work) ──────────────
+// ── Export entry points used by every screen ──────────────────
+// None of these download anything themselves any more. Each opens the
+// branded preview (utils/exportPreview.ts + UniversalExportModal), where
+// the person picks PDF, Word or CSV, checks it, and confirms.
 export const exportToCSV = (data: any[], headers: string[], fileName: string) => {
+  openExportPreview({ title: prettyTitle(fileName), data, columns: headers.map(h => ({ key: h, label: prettyLabel(h) })) });
+};
+
+export const exportToPDF = (title: string, data: any[], headers: string[]) => {
+  openExportPreview({ title, data, columns: headers.map(h => ({ key: h, label: prettyLabel(h) })) });
+};
+
+// One record as a two-column Field / Value document.
+export const downloadRowPDF = (title: string, fields: Record<string, any>) => {
+  openExportPreview({
+    title,
+    data: Object.entries(fields).map(([k, v]) => ({ field: prettyLabel(k), value: cellText(v) })),
+    columns: [{ key: 'field', label: 'Field' }, { key: 'value', label: 'Value' }],
+  });
+};
+
+// ── The actual CSV file, written only after the person confirms ──
+// CSV is plain text, so it can't hold the logo; it carries the company
+// name, report title, date and footer note as its first and last lines.
+export const downloadCSV = (
+  data: any[],
+  headers: string[],
+  fileName: string,
+  brand?: { companyName: string; title: string; footerNote?: string },
+) => {
+  const q = (v: string) => `"${v.replace(/"/g, '""')}"`;
   const csvRows: string[] = [];
-  csvRows.push(headers.map(h => `"${h.toUpperCase()}"`).join(','));
-  for (const row of data) {
-    const values = headers.map(header => {
-      const val = row[header] !== undefined && row[header] !== null ? row[header] : '';
-      const strVal = typeof val === 'object' ? JSON.stringify(val) : String(val);
-      return `"${strVal.replace(/"/g, '""')}"`;
-    });
-    csvRows.push(values.join(','));
+  if (brand) {
+    const now = new Date();
+    csvRows.push(q(brand.companyName));
+    csvRows.push(q(brand.title));
+    csvRows.push(q(`Generated ${now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`));
+    csvRows.push('');
   }
-  const csvContent = csvRows.join('\n');
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  csvRows.push(headers.map(h => q(h)).join(','));
+  for (const row of data) {
+    csvRows.push(headers.map(header => q(cellText(row[header]))).join(','));
+  }
+  if (brand?.footerNote) {
+    csvRows.push('');
+    csvRows.push(q(brand.footerNote));
+  }
+  // The byte-order mark makes Excel read the file as UTF-8 (names with accents, the cedi sign).
+  const blob = new Blob(['\ufeff' + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.setAttribute('href', url);
@@ -41,6 +76,7 @@ export const exportToCSV = (data: any[], headers: string[], fileName: string) =>
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
 
 // ── Internal helpers ───────────────────────────────────────────
@@ -57,71 +93,6 @@ function colCellText(col: ExportColumn, row: any): string {
   if (col.render) return col.render(row);
   return cellText(row[col.key]);
 }
-
-// ── Branded letterhead (legacy, used by exportToPDF / downloadRowPDF) ──
-function drawLetterhead(doc: jsPDF, title: string) {
-  doc.setFillColor(2, 152, 208);
-  doc.rect(0, 0, doc.internal.pageSize.getWidth(), 3, 'F');
-  doc.setFontSize(16);
-  doc.setTextColor(6, 78, 41);
-  doc.setFont('helvetica', 'bold');
-  doc.text('REBMA IMPEX GHANA LIMITED', 14, 18);
-  doc.setFontSize(10);
-  doc.setTextColor(100, 116, 139);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`${title} Report, Confidential Internal Document`, 14, 25);
-  const now = new Date();
-  doc.text(`Generated: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`, doc.internal.pageSize.getWidth() - 14, 18, { align: 'right' });
-  doc.setDrawColor(2, 152, 208);
-  doc.setLineWidth(0.5);
-  doc.line(14, 30, doc.internal.pageSize.getWidth() - 14, 30);
-}
-
-function drawFooter(doc: jsPDF) {
-  const pageCount = doc.getNumberOfPages();
-  for (let i = 1; i <= pageCount; i++) {
-    doc.setPage(i);
-    const pageHeight = doc.internal.pageSize.getHeight();
-    doc.setFontSize(8);
-    doc.setTextColor(148, 163, 184);
-    doc.text(
-      'REBMA IMPEX GHANA LIMITED Enterprise Resource Planning. This document is system-generated and confidential.',
-      doc.internal.pageSize.getWidth() / 2, pageHeight - 10, { align: 'center' }
-    );
-  }
-}
-
-// ── Legacy PDF export (preserved — call-sites still work) ─────
-export const exportToPDF = (title: string, data: any[], headers: string[]) => {
-  const doc = new jsPDF({ orientation: headers.length > 6 ? 'landscape' : 'portrait' });
-  drawLetterhead(doc, title);
-  autoTable(doc, {
-    startY: 36,
-    head: [headers.map(h => h.replace(/([A-Z])/g, ' $1').trim())],
-    body: data.map(row => headers.map(h => cellText(row[h]))),
-    headStyles: { fillColor: [248, 250, 252], textColor: [51, 65, 85], fontStyle: 'bold' },
-    styles: { fontSize: 8, cellPadding: 3 },
-    alternateRowStyles: { fillColor: [248, 250, 252] },
-  });
-  drawFooter(doc);
-  doc.save(`${slugFileName(title)}.pdf`);
-};
-
-// ── Legacy single-record PDF ───────────────────────────────────
-export const downloadRowPDF = (title: string, fields: Record<string, any>) => {
-  const doc = new jsPDF();
-  drawLetterhead(doc, title);
-  autoTable(doc, {
-    startY: 36,
-    head: [['Field', 'Value']],
-    body: Object.entries(fields).map(([k, v]) => [k.replace(/([A-Z])/g, ' $1').trim(), cellText(v)]),
-    headStyles: { fillColor: [248, 250, 252], textColor: [51, 65, 85], fontStyle: 'bold' },
-    styles: { fontSize: 9, cellPadding: 4 },
-    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 50 } },
-  });
-  drawFooter(doc);
-  doc.save(`${slugFileName(title)}.pdf`);
-};
 
 // ── NEW: Branded PDF with dynamic template + diagonal watermark ─
 // Used by UniversalExportModal when the user picks "PDF".

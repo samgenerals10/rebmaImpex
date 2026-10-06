@@ -1,4 +1,7 @@
-import type { ReactNode } from 'react';
+import { isValidElement, type ReactNode } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { Download } from 'lucide-react';
+import { openExportPreview } from '../../utils/exportPreview';
 import { MobileSkeletonList } from './MobileSkeleton';
 import MobileEmptyState from './MobileEmptyState';
 
@@ -29,6 +32,24 @@ interface ResponsiveDataViewProps<T> {
   emptyTitle?: string;
   emptyDescription?: string;
   emptyIcon?: ReactNode;
+  /** Shows an Export button above the list. Opens the branded preview
+   *  (PDF, Word or CSV) with exactly what the table shows; nothing
+   *  downloads until the person confirms. The title heads the document. */
+  exportTitle?: string;
+}
+
+// The text a cell shows on screen, for the export: formatted amounts,
+// dates and status names, not the raw database values.
+function cellToText(node: ReactNode): string {
+  if (node === null || node === undefined || typeof node === 'boolean') return '';
+  if (typeof node === 'string' || typeof node === 'number') return String(node);
+  try {
+    const html = renderToStaticMarkup(isValidElement(node) ? node : <>{node}</>);
+    const doc = new DOMParser().parseFromString(html.replace(/<br\s*\/?>/gi, ' '), 'text/html');
+    return (doc.body.textContent || '').replace(/\s+/g, ' ').trim();
+  } catch {
+    return '';
+  }
 }
 
 // Desktop keeps the existing .erp-table; mobile gets a genuinely
@@ -48,6 +69,7 @@ export default function ResponsiveDataView<T>({
   emptyTitle = 'Nothing here yet',
   emptyDescription,
   emptyIcon,
+  exportTitle,
 }: ResponsiveDataViewProps<T>) {
   const primaryCol = columns.find(c => c.primary) ?? columns[0];
   const cardCols = columns.filter(c => c !== primaryCol && !c.mobileHidden);
@@ -55,8 +77,29 @@ export default function ResponsiveDataView<T>({
   const cellValue = (col: DataColumn<T>, row: T): ReactNode =>
     col.render ? col.render(row) : String((row as Record<string, unknown>)[col.key] ?? 'Not set');
 
+  const openExport = () => {
+    const cols = columns.filter(c => c.label && c.label.trim());
+    openExportPreview({
+      title: exportTitle || 'Report',
+      data: data.map(row => Object.fromEntries(cols.map(c => [c.key, cellToText(cellValue(c, row))]))),
+      columns: cols.map(c => ({ key: c.key, label: c.label })),
+    });
+  };
+
   return (
     <>
+      {exportTitle && !loading && data.length > 0 && (
+        <div className="flex justify-end mb-2">
+          <button
+            type="button"
+            onClick={openExport}
+            title={`Export ${exportTitle}`}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-primary)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors cursor-pointer"
+          >
+            <Download className="w-3.5 h-3.5" /> Export
+          </button>
+        </div>
+      )}
       {/* ── Mobile: card list ── */}
       <div className="lg:hidden">
         {loading ? (
@@ -85,8 +128,8 @@ export default function ResponsiveDataView<T>({
                     <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5">
                       {cardCols.filter(c => !c.status).map(col => (
                         <div key={col.key} className="min-w-0">
-                          <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">{col.label}</p>
-                          <p className="text-xs text-[var(--text-secondary)] truncate">{cellValue(col, row)}</p>
+                          <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--text-secondary)]">{col.label}</p>
+                          <p className="text-xs font-medium text-[var(--text-primary)] truncate">{cellValue(col, row)}</p>
                         </div>
                       ))}
                     </div>

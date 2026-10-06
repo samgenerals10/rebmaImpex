@@ -268,7 +268,7 @@ export default function ActiveDeliveriesScreen() {
 
   return (
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}>
-      <DataList columns={columns} data={deliveries} rowKey={(d) => d.id} loading={loading} emptyTitle="No deliveries found" onRowPress={openDetail} />
+      <DataList exportTitle="Active Deliveries" columns={columns} data={deliveries} rowKey={(d) => d.id} loading={loading} emptyTitle="No deliveries found" onRowPress={openDetail} />
 
       <Sheet
         open={!!detail}

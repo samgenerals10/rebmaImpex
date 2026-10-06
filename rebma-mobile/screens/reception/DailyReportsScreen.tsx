@@ -118,7 +118,7 @@ export default function DailyReportsScreen() {
 
         <Card>
           <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginBottom: t.spacing.md }}>Visitors on {selectedDate}</Text>
-          <DataList collapsible columns={visitorColumns} data={visitorsToday} rowKey={(v) => v.id} loading={loading} emptyTitle="No visitors on this date" />
+          <DataList exportTitle="Visitors" collapsible columns={visitorColumns} data={visitorsToday} rowKey={(v) => v.id} loading={loading} emptyTitle="No visitors on this date" />
         </Card>
 
         <Card>
@@ -141,7 +141,7 @@ export default function DailyReportsScreen() {
 
         <Card>
           <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginBottom: t.spacing.md }}>Past 7 Days</Text>
-          <DataList collapsible columns={pastColumns} data={pastReports} rowKey={(r) => r.date} loading={loading} emptyTitle="No data" />
+          <DataList exportTitle="Department Attendance" collapsible columns={pastColumns} data={pastReports} rowKey={(r) => r.date} loading={loading} emptyTitle="No data" />
         </Card>
       </View>
     </Screen>

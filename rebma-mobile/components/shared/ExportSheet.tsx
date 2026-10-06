@@ -26,7 +26,7 @@
 // bespoke cell editor per screen. Flagged as a scoping choice, not
 // silently assumed to be the only possible reading of "edit."
 import { useEffect, useState } from 'react';
-import { View, Text, Pressable } from 'react-native';
+import { View, Text, Pressable, Image } from 'react-native';
 import { Alert } from '../../lib/appAlert';
 import { Download, FileText, FileSpreadsheet, FileType, Check, Square, CheckSquare } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -36,6 +36,7 @@ import {
   exportCsv,
   exportTableDocument,
   exportFieldValueDocument,
+  exportFieldValueCsv,
   fetchBrandedTemplate,
   type ExportColumn,
   type ExportFormat,
@@ -74,7 +75,12 @@ function cellText(col: ExportColumn, row: any): string {
 export default function ExportSheet({ open, onClose, title, subtitle, data, columns, pdfColumns, fields, formats, letterhead = 'legacy' }: Props) {
   const t = useTheme();
   const isFieldValue = !!fields;
-  const availableFormats: ExportFormat[] = formats || (isFieldValue ? ['pdf'] : ['csv', 'pdf']);
+  // Every export offers PDF, Word and CSV, all carrying the REBMA
+  // letterhead, title and footer (per direct instruction, both apps). The
+  // older per-screen `formats` / `letterhead` props are accepted but no
+  // longer narrow this.
+  void formats;
+  const availableFormats: ExportFormat[] = ['pdf', 'doc', 'csv'];
   const [format, setFormat] = useState<ExportFormat>(availableFormats[0]);
   const [template, setTemplate] = useState<DocTemplate | undefined>(undefined);
   const [busy, setBusy] = useState(false);
@@ -88,9 +94,7 @@ export default function ExportSheet({ open, onClose, title, subtitle, data, colu
     setStep('format');
     setExcludedRows(new Set());
     setExcludedFields(new Set());
-    if (letterhead === 'branded') {
-      fetchBrandedTemplate().then(setTemplate);
-    }
+    fetchBrandedTemplate().then(setTemplate);
   }, [open]);
 
   const previewColumns = format === 'pdf' && pdfColumns ? pdfColumns : columns;
@@ -120,13 +124,13 @@ export default function ExportSheet({ open, onClose, title, subtitle, data, colu
     setBusy(true);
     try {
       if (isFieldValue && includedFields) {
-        if (format === 'csv') throw new Error('CSV is not available for this export.');
-        await exportFieldValueDocument(format as 'pdf' | 'doc', title, includedFields, letterhead, template);
+        if (format === 'csv') await exportFieldValueCsv(title, includedFields, template);
+        else await exportFieldValueDocument(format as 'pdf' | 'doc', title, includedFields, 'branded', template);
       } else if (columns) {
         if (format === 'csv') {
-          await exportCsv(columns, includedData, title);
+          await exportCsv(columns, includedData, title, template);
         } else {
-          await exportTableDocument(format, title, pdfColumns || columns, includedData, letterhead, template);
+          await exportTableDocument(format, title, pdfColumns || columns, includedData, 'branded', template);
         }
       }
       onClose();
@@ -175,7 +179,7 @@ export default function ExportSheet({ open, onClose, title, subtitle, data, colu
           <View style={{ flex: 1 }}><Button label="Back" variant="ghost" onPress={() => setStep('format')} fullWidth /></View>
           <View style={{ flex: 2 }}>
             <Button
-              label={busy ? 'Exporting…' : `Approve & Export ${FORMAT_META[format].label}`}
+              label={busy ? 'Exporting…' : `Confirm export (${FORMAT_META[format].label})`}
               icon={<Download size={14} color="#fff" />}
               onPress={handleExport}
               loading={busy}
@@ -187,6 +191,21 @@ export default function ExportSheet({ open, onClose, title, subtitle, data, colu
       }
     >
       <View style={{ gap: t.spacing.sm }}>
+        {/* How the top of the document will look: logo, company, title, date */}
+        <View style={{ borderRadius: t.radius.md, overflow: 'hidden', borderWidth: 1, borderColor: t.colors.border, backgroundColor: '#ffffff' }}>
+          <View style={{ height: 5, backgroundColor: '#1a5c32' }} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: t.spacing.md }}>
+            {template?.logoUrl ? <Image source={{ uri: template.logoUrl }} style={{ width: 40, height: 40 }} resizeMode="contain" /> : null}
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontFamily: t.font.extrabold, fontSize: t.type.body14.size, color: '#1a5c32' }}>{template?.companyName || 'REBMA IMPEX'}</Text>
+              <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta10.size, color: '#29a9dc', letterSpacing: 1 }}>{(template?.subtitle || 'Official Report').toUpperCase()}</Text>
+            </View>
+            <View style={{ alignItems: 'flex-end', maxWidth: '45%' }}>
+              <Text style={{ fontFamily: t.font.extrabold, fontSize: t.type.body12.size, color: '#1a5c32' }} numberOfLines={2}>{title}</Text>
+              <Text style={{ fontFamily: t.font.medium, fontSize: t.type.meta10.size, color: '#64748b' }}>{new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</Text>
+            </View>
+          </View>
+        </View>
         {isFieldValue
           ? Object.entries(fields || {}).map(([k, v]) => {
               const excluded = excludedFields.has(k);
@@ -234,6 +253,11 @@ export default function ExportSheet({ open, onClose, title, subtitle, data, colu
                 </Pressable>
               );
             })}
+        {template?.footerNote ? (
+          <Text style={{ fontFamily: t.font.medium, fontSize: t.type.meta10.size, color: t.colors.textMuted, textAlign: 'center', paddingHorizontal: t.spacing.md }}>
+            {template.footerNote}
+          </Text>
+        ) : null}
         {!isFieldValue && (data?.length ?? 0) === 0 && (
           <Text style={{ textAlign: 'center', fontFamily: t.font.regular, fontSize: t.type.body14.size, color: t.colors.textMuted, paddingVertical: t.spacing.xl }}>
             Nothing to export.

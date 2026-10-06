@@ -254,7 +254,7 @@ export default function OverviewScreen() {
         {activeTab === 'orders' && (
           <View style={{ gap: t.spacing.sm }}>
             <SectionHeader title="Orders" subtitle={`${orders.length} total`} />
-            <DataList
+            <DataList exportTitle="Recent Orders"
               collapsible
               columns={ordersColumns}
               data={[...orders].sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))}
@@ -279,7 +279,7 @@ export default function OverviewScreen() {
                 <ArrowRight size={14} color={t.colors.accent} />
               </Pressable>
             </View>
-            <DataList
+            <DataList exportTitle="Clients"
               collapsible
               columns={clientsColumns}
               data={customers}

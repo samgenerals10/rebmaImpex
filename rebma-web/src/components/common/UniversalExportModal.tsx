@@ -19,7 +19,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { X, Download, FileText, Sheet, FileType } from 'lucide-react';
 import {
-  exportToCSV,
+  downloadCSV,
   exportToPDFWithWatermark,
   exportToDOC,
 } from '../../utils/export';
@@ -51,7 +51,7 @@ type Format = 'pdf' | 'csv' | 'doc';
 const FORMAT_META: Record<Format, { label: string; icon: typeof FileText; ext: string; color: string }> = {
   pdf: { label: 'PDF', icon: FileText, ext: '.pdf', color: '#ef4444' },
   csv: { label: 'CSV / Excel', icon: Sheet, ext: '.csv', color: '#16a34a' },
-  doc: { label: 'Word DOC', icon: FileType, ext: '.docx', color: '#2563eb' },
+  doc: { label: 'Word DOC', icon: FileType, ext: '.doc', color: '#2563eb' },
 };
 
 function cellText(col: ExportColumn, row: any): string {
@@ -109,7 +109,7 @@ export default function UniversalExportModal({ open, onClose, title, data, colum
       });
 
       if (format === 'csv') {
-        exportToCSV(rows, headers, fileName);
+        downloadCSV(rows, headers, fileName, { companyName: `${t.companyName}${/ghana/i.test(t.companyName) ? '' : ' GHANA LIMITED'}`, title, footerNote: t.footerNote });
       } else if (format === 'pdf') {
         await exportToPDFWithWatermark(title, data, columns, t);
       } else {
@@ -173,7 +173,7 @@ export default function UniversalExportModal({ open, onClose, title, data, colum
             );
           })}
           <span className="ml-auto text-[10px] text-gray-400">
-            Preview shows first 12 rows · Download exports all {data.length}
+            Preview shows the first 12 rows. The export includes all {data.length}.
           </span>
         </div>
 
@@ -293,7 +293,7 @@ export default function UniversalExportModal({ open, onClose, title, data, colum
         {/* ── Action Bar ──────────────────────────────────── */}
         <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between gap-3 shrink-0 bg-white">
           <p className="text-xs text-gray-400">
-            Will download as <span className="font-semibold text-gray-600">{title}{FORMAT_META[format].ext}</span>
+            Saves as <span className="font-semibold text-gray-600">{title}{FORMAT_META[format].ext}</span>
           </p>
           <div className="flex items-center gap-2">
             <button
@@ -309,7 +309,7 @@ export default function UniversalExportModal({ open, onClose, title, data, colum
               style={{ background: `linear-gradient(135deg, ${BRAND.green}, #2d7a50)` }}
             >
               <Download className="w-4 h-4" />
-              {downloading ? 'Preparing…' : `Download ${FORMAT_META[format].label}`}
+              {downloading ? 'Preparing…' : `Confirm export (${FORMAT_META[format].label})`}
             </button>
           </div>
         </div>

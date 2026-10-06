@@ -157,7 +157,7 @@ export default function FleetOverviewScreen() {
         <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Vehicles" value={loading ? 'Not set' : counts.total} icon={<TruckIcon size={14} color={t.colors.accent} />} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Operational" value={loading ? 'Not set' : counts.operational} icon={<Package size={14} color={t.colors.status.success.text} />} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Maintenance" value={loading ? 'Not set' : counts.maintenance} icon={<Wrench size={14} color={t.colors.status.warning.text} />} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Deliveries" value={loading ? 'Not set' : counts.deliveries} icon={<Settings size={14} color={t.colors.action.violet} />} /></View></View>
       </View>
 
-      <DataList
+      <DataList exportTitle="Fleet Delivery History"
         columns={columns}
         data={vehicles}
         rowKey={(v) => v.id}

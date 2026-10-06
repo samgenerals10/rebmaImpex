@@ -14,9 +14,10 @@
 // same renderActions, nothing about a caller's existing DataColumn[]
 // definition has to change. Every screen NOT opted into `collapsible`
 // keeps its exact current always-expanded behavior; this is additive.
-import { useState, type ComponentType, type ReactNode } from 'react';
+import { isValidElement, useState, type ComponentType, type ReactNode } from 'react';
 import { View, Text, Pressable } from 'react-native';
-import { ChevronRight, ChevronDown } from 'lucide-react-native';
+import { ChevronRight, ChevronDown, Download } from 'lucide-react-native';
+import ExportSheet from '../shared/ExportSheet';
 import { useTheme } from '../../theme/ThemeProvider';
 import { SkeletonList } from './Skeleton';
 import EmptyState from './EmptyState';
@@ -67,6 +68,28 @@ interface Props<T> {
   emptyTitle?: string;
   emptyDescription?: string;
   emptyIcon?: ReactNode;
+  /** Shows an Export button above the list (same as the web app's tables):
+   *  opens the branded preview with PDF, Word and CSV, exported only on
+   *  confirm. The title heads the document. */
+  exportTitle?: string;
+}
+
+// The words a cell shows, for the export: walks the cell's contents for
+// text (and a badge's `label`), so formatted amounts and status names come
+// out as displayed. Falls back to the raw value when there's nothing to read.
+function nodeText(node: ReactNode): string {
+  if (node === null || node === undefined || typeof node === 'boolean') return '';
+  if (typeof node === 'string' || typeof node === 'number') return String(node);
+  if (Array.isArray(node)) return node.map(nodeText).filter(Boolean).join(' ');
+  if (isValidElement(node)) {
+    const props: any = node.props || {};
+    const fromChildren = nodeText(props.children);
+    if (fromChildren) return fromChildren;
+    for (const k of ['label', 'text', 'title', 'value']) {
+      if (typeof props[k] === 'string' || typeof props[k] === 'number') return String(props[k]);
+    }
+  }
+  return '';
 }
 
 function cellValue<T>(col: DataColumn<T>, row: T): ReactNode {
@@ -78,10 +101,11 @@ function cellValue<T>(col: DataColumn<T>, row: T): ReactNode {
 export default function DataList<T>({
   columns, data, rowKey, onRowPress, renderCard, renderActions, rowIcon, rowThumbnail,
   collapsible = false, defaultExpandedKeys,
-  loading, skeletonRows = 5, emptyTitle = 'Nothing here yet', emptyDescription, emptyIcon,
+  loading, skeletonRows = 5, emptyTitle = 'Nothing here yet', emptyDescription, emptyIcon, exportTitle,
 }: Props<T>) {
   const t = useTheme();
   const [expanded, setExpanded] = useState<Set<string>>(new Set(defaultExpandedKeys));
+  const [exportOpen, setExportOpen] = useState(false);
 
   if (loading) return <SkeletonList rows={skeletonRows} />;
   if (data.length === 0) return <EmptyState title={emptyTitle} description={emptyDescription} icon={emptyIcon} />;
@@ -102,8 +126,39 @@ export default function DataList<T>({
   // embedded inside Screen's own vertical ScrollView, so scrollEnabled was
   // already false here and virtualization was never doing anything — using
   // FlatList only tripped RN's nested-VirtualizedList warning for free.
+  const exportColumns = columns
+    .filter((c) => c.label && c.label.trim())
+    .map((c) => ({
+      key: c.key,
+      label: c.label,
+      render: (row: any) => {
+        const text = nodeText(cellValue(c, row));
+        if (text) return text;
+        const raw = row?.[c.key];
+        return raw == null ? '' : typeof raw === 'object' ? JSON.stringify(raw) : String(raw);
+      },
+    }));
+
   return (
     <View>
+      {exportTitle ? (
+        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: t.spacing.sm }}>
+          <Pressable
+            onPress={() => setExportOpen(true)}
+            accessibilityLabel={`Export ${exportTitle}`}
+            style={({ pressed }) => ({
+              flexDirection: 'row', alignItems: 'center', gap: 6,
+              paddingHorizontal: 14, paddingVertical: 7, borderRadius: 999,
+              borderWidth: 1, borderColor: t.colors.border,
+              backgroundColor: pressed ? t.colors.accentSoft : t.colors.bgCard,
+            })}
+          >
+            <Download size={14} color={t.colors.accent} />
+            <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>Export</Text>
+          </Pressable>
+          <ExportSheet open={exportOpen} onClose={() => setExportOpen(false)} title={exportTitle} data={data as any[]} columns={exportColumns} />
+        </View>
+      ) : null}
       {data.map((item, index) => {
         const key = rowKey(item);
         const isOpen = !collapsible || expanded.has(key);
@@ -156,10 +211,10 @@ export default function DataList<T>({
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.sm, paddingTop: (primaryCol || statusCol || icon || thumb) ? t.spacing.xs : 0 }}>
                   {gridCols.map(col => (
                     <View key={col.key} style={{ width: '47%', paddingVertical: 2 }}>
-                      <Text style={{ fontFamily: t.font.bold, fontSize: t.type.label9.size, letterSpacing: 0.5, textTransform: 'uppercase', color: t.colors.textMuted }}>
+                      <Text style={{ fontFamily: t.font.extrabold, fontSize: t.type.label9.size, letterSpacing: 0.5, textTransform: 'uppercase', color: t.colors.textSecondary }}>
                         {col.label}
                       </Text>
-                      <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body12.size, color: t.colors.textSecondary, marginTop: 3 }} numberOfLines={1}>
+                      <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.textPrimary, marginTop: 3 }} numberOfLines={1}>
                         {cellValue(col, item)}
                       </Text>
                     </View>

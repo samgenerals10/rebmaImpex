@@ -294,7 +294,7 @@ export default function MgmtStockManagementView({ addNotification, currentUser }
           </div>
         </div>
         <div className="max-h-80 overflow-y-auto">
-          <ResponsiveDataView<any>
+          <ResponsiveDataView<any> exportTitle="Approved Cargo Entries"
             columns={[
               { key: 'product_name', label: 'Product', primary: true },
               { key: 'goods_code', label: 'Goods Code', render: c => <span className="font-mono text-[10px]">{c.goods_code || c.id.slice(0, 8)}</span> },
@@ -362,7 +362,7 @@ export default function MgmtStockManagementView({ addNotification, currentUser }
           </div>
         </div>
         <div className="max-h-80 overflow-y-auto">
-          <ResponsiveDataView<any>
+          <ResponsiveDataView<any> exportTitle="Stock Levels"
             columns={[
               {
                 key: 'select', label: '', mobileHidden: true, render: s => (

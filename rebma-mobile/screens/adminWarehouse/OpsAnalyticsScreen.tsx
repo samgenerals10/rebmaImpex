@@ -162,7 +162,7 @@ export default function OpsAnalyticsScreen() {
           <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginBottom: t.spacing.md }}>Top Products by Volume</Text>
           {topProducts.length === 0 ? (
             <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textMuted, textAlign: 'center', paddingVertical: t.spacing.lg }}>No cargo intake data yet.</Text>
-          ) : <DataList collapsible columns={topProductCols} data={topProducts} rowKey={(r) => r.name} />}
+          ) : <DataList exportTitle="Top Products by Volume" collapsible columns={topProductCols} data={topProducts} rowKey={(r) => r.name} />}
         </Card>
       </View>
     </Screen>

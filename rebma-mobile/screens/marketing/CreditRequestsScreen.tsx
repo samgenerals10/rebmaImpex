@@ -83,7 +83,7 @@ export default function CreditRequestsScreen() {
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}>
       <View style={{ gap: t.spacing.lg }}>
         <Input value={search} onChangeText={setSearch} placeholder="Search customers…" />
-        <DataList columns={columns} data={filtered} rowKey={(o) => o.id} loading={loading} emptyTitle="No credit requests found" onRowPress={setDetail} />
+        <DataList exportTitle="Credit Requests" columns={columns} data={filtered} rowKey={(o) => o.id} loading={loading} emptyTitle="No credit requests found" onRowPress={setDetail} />
       </View>
 
       <Sheet open={!!detail} onClose={() => setDetail(null)} title={detail?.client_name} subtitle={detail ? creditStatusLabel(detail.status) : undefined} side="bottom" maxHeight={600}>

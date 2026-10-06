@@ -190,7 +190,7 @@ export default function PayrollScreen() {
         ) : batches.length === 0 ? (
           <EmptyState icon={<Banknote size={20} color={t.colors.textMuted} />} title="No payroll batches yet" description="Create a new batch to get started." />
         ) : (
-          <DataList
+          <DataList exportTitle="Payroll Batches"
             columns={batchColumns}
             data={batches}
             rowKey={(b) => b.id}
@@ -221,7 +221,7 @@ export default function PayrollScreen() {
               <Button label="Add Staff" size="sm" variant="ghost" icon={<Plus size={12} color={t.colors.textSecondary} />} onPress={() => { setItemForm({ ...blankItem, batch_id: expanded.id }); setShowItemForm(true); }} />
             </View>
 
-            <DataList
+            <DataList exportTitle="Payroll Items"
               collapsible
               columns={[
                 { key: 'employee_name', label: 'Name', primary: true },
