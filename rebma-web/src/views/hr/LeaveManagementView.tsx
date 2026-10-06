@@ -58,17 +58,22 @@ const LEAVE_BALANCES = [
 ];
 
 function CalendarView({ leaves }: { leaves: LeaveRequest[] }) {
-  const today = new Date('2026-06-14');
+  // The current month (this used to be fixed on 14 June 2026).
+  const today = new Date();
   const year = today.getFullYear();
   const month = today.getMonth();
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const monthName = today.toLocaleString('default', { month: 'long', year: 'numeric' });
 
+  // Approved leave that overlaps this month of this year (the old check
+  // compared the month only, so last year's leave showed up too).
+  const monthStart = new Date(year, month, 1);
+  const monthEnd = new Date(year, month + 1, 0, 23, 59, 59);
   const leavesThisMonth = leaves.filter(l => {
     const start = new Date(l.startDate);
     const end = new Date(l.endDate);
-    return l.status === 'APPROVED' && (start.getMonth() === month || end.getMonth() === month);
+    return l.status === 'APPROVED' && start <= monthEnd && end >= monthStart;
   });
 
   const getLeaveForDay = (day: number) => {

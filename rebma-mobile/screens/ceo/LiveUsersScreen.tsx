@@ -17,7 +17,8 @@
 import { useEffect, useState } from 'react';
 import { View, Text, Image, Pressable } from 'react-native';
 import { Alert } from '../../lib/appAlert';
-import { Radio, MessageSquare, LogOut, Ban, ShieldOff, ShieldCheck, UserCheck } from 'lucide-react-native';
+import { Radio, MessageSquare, LogOut, Ban, ShieldOff, ShieldCheck, UserCheck, Download } from 'lucide-react-native';
+import ExportSheet from '../../components/shared/ExportSheet';
 import { subscribeToLiveUsers, kickUserOffline, type PresencePayload } from '../../lib/presence';
 import { supabase } from '../../lib/supabaseClient';
 import { messenger } from '../../lib/messenger';
@@ -72,6 +73,7 @@ export default function LiveUsersScreen() {
   const [busyUserId, setBusyUserId] = useState<string | null>(null);
   const [openingMessageFor, setOpeningMessageFor] = useState<string | null>(null);
   const [photoPreview, setPhotoPreview] = useState<{ uri: string; name: string } | null>(null);
+  const [exportOpen, setExportOpen] = useState(false);
 
   useEffect(() => {
     return subscribeToLiveUsers(setUsers);
@@ -160,8 +162,33 @@ export default function LiveUsersScreen() {
       <View style={{ paddingHorizontal: t.spacing.lg, paddingTop: t.spacing.lg }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, marginBottom: 4 }}>
           <Radio size={20} color={t.colors.textPrimary} />
-          <Text style={{ ...p.pageTitle }}>Live Users</Text>
+          <Text style={{ ...p.pageTitle, flex: 1 }}>Live Users</Text>
+          {users.length > 0 && (
+            <Pressable
+              onPress={() => setExportOpen(true)}
+              accessibilityLabel="Export Live Users"
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 7, borderRadius: 999, borderWidth: 1, borderColor: t.colors.border, backgroundColor: t.colors.bgCard }}
+            >
+              <Download size={14} color={t.colors.accent} />
+              <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>Export</Text>
+            </Pressable>
+          )}
         </View>
+        <ExportSheet
+          open={exportOpen}
+          onClose={() => setExportOpen(false)}
+          title="Live Users"
+          data={sorted.map((u) => ({
+            name: u.fullName, role: u.role || 'Not set', department: u.department,
+            timeSpent: formatDuration(now - new Date(u.loggedInAt).getTime()),
+            since: new Date(u.loggedInAt).toLocaleString(),
+            status: (statusByUser[u.userId] || 'ACTIVE').replace(/_/g, ' '),
+          }))}
+          columns={[
+            { key: 'name', label: 'User' }, { key: 'role', label: 'Role' }, { key: 'department', label: 'Department' },
+            { key: 'timeSpent', label: 'Time Spent' }, { key: 'since', label: 'Since' }, { key: 'status', label: 'Status' },
+          ]}
+        />
         <Text style={{ fontSize: t.type.body12.size, color: t.colors.textMuted, marginBottom: t.spacing.lg }}>
           {users.length} {users.length === 1 ? 'person' : 'people'} online right now, across web and mobile.
         </Text>

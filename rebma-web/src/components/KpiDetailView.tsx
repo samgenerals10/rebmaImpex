@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { ArrowLeft, Download, Filter } from 'lucide-react';
 import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { exportToCSV, exportToPDF } from '../utils/export';
+import { openExportPreview } from '../utils/exportPreview';
 import DateRangeField from './ui/DateRangeField';
 import type { CalendarValue } from './ui/CalendarPicker';
 import { inRange } from '../utils/dateRange';
@@ -63,13 +63,12 @@ export default function KpiDetailView({
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const paginated = sorted.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
-  const handleExportCSV = () => {
-    exportToCSV(filtered, columns.map(c => c.key), `${title.replace(/\s/g,'_').toLowerCase()}_detail`);
-  };
-
-  const handleExportPDF = () => {
-    exportToPDF(title, filtered, columns.map(c => c.label));
-  };
+  // Both buttons open the branded preview (PDF, Word or CSV) with this
+  // view's own column headings. The PDF used to look cells up by heading
+  // text, which left every cell empty.
+  const openExport = () => openExportPreview({ title, data: filtered, columns: columns.map(c => ({ key: c.key, label: c.label })) });
+  const handleExportCSV = openExport;
+  const handleExportPDF = openExport;
 
   return (
     <div className="space-y-5">

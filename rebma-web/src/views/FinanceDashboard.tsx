@@ -1161,7 +1161,7 @@ export default function FinanceDashboard({
                     </div>
                     {/* Export */}
                     <button onClick={() => exportToCSV(filteredPayments, ['id', 'clientName', 'amount', 'paymentMode', 'paymentType', 'orderId', 'createdAt'], 'receipts_database')} className="flex items-center justify-center gap-1 text-xs text-[var(--text-primary)] bg-[var(--bg)] hover:bg-[var(--accent-light)] px-3 py-1.5 rounded-lg transition-colors border border-[var(--border)] w-full sm:w-auto font-semibold">
-                      <span>⬇</span> Export
+                      <FileSpreadsheet className="w-3.5 h-3.5" /> Export
                     </button>
                   </div>
                 </div>

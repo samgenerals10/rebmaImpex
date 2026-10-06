@@ -17,7 +17,8 @@
 //  - Send Message: opens the existing Messenger straight into a DM with
 //    that person.
 import { useEffect, useState } from 'react';
-import { Radio, MessageSquare, LogOut, Ban, ShieldOff, ShieldCheck, UserCheck } from 'lucide-react';
+import { Radio, MessageSquare, LogOut, Ban, ShieldOff, ShieldCheck, UserCheck, Download } from 'lucide-react';
+import { openExportPreview } from '../../utils/exportPreview';
 import { subscribeToLiveUsers, kickUserOffline, type PresencePayload } from '../../lib/presence';
 import { supabase } from '../../lib/supabaseClient';
 import type { CurrentUser } from '../../types/erp';
@@ -134,9 +135,31 @@ export default function LiveUsersView({ currentUser, addNotification, onMessageU
 
   return (
     <div style={{ padding: '1.5rem' }}>
-      <h2 style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
-        <Radio size={20} /> Live Users
-      </h2>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: '0.25rem' }}>
+        <h2 style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-primary)', margin: 0 }}>
+          <Radio size={20} /> Live Users
+        </h2>
+        {users.length > 0 && (
+          <button
+            onClick={() => openExportPreview({
+              title: 'Live Users',
+              data: sorted.map((u) => ({
+                name: u.fullName, role: u.role || 'Not set', department: u.department,
+                timeSpent: formatDuration(now - new Date(u.loggedInAt).getTime()),
+                since: new Date(u.loggedInAt).toLocaleString(),
+                status: (statusByUser[u.userId] || 'ACTIVE').replace(/_/g, ' '),
+              })),
+              columns: [
+                { key: 'name', label: 'User' }, { key: 'role', label: 'Role' }, { key: 'department', label: 'Department' },
+                { key: 'timeSpent', label: 'Time Spent' }, { key: 'since', label: 'Since' }, { key: 'status', label: 'Status' },
+              ],
+            })}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-primary)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors cursor-pointer"
+          >
+            <Download className="w-3.5 h-3.5" /> Export
+          </button>
+        )}
+      </div>
       <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: '1.25rem' }}>
         {users.length} {users.length === 1 ? 'person' : 'people'} online right now, across web and mobile.
       </p>
