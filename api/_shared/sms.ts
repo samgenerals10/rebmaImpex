@@ -1,26 +1,26 @@
 // api/_shared/sms.ts
-// Sends text messages through "SMS Gateway for Android"
-// (https://sms-gate.app): a free, open-source app that turns a spare
-// Android phone with a SIM into the sender. Texts come out of that SIM's
-// own SMS bundle, so there's no SMS company and no per-text fee to us.
-// The app's public cloud server, which relays our request to the phone,
-// is free (https://docs.sms-gate.app/pricing/).
+// Sends text messages through Arkesel (https://arkesel.com), a Ghana SMS
+// company. Nothing else is needed: no spare phone. Sign-up and the API are
+// free; each text costs a little from your Arkesel top-up (about GHS 0.02).
 //
-// Set up once in Control Center → API Keys: the username and password the
-// app shows under "Cloud server". The phone must stay on, charged and
-// connected for texts to go out.
+// Set up once in Control Center → API Keys: the Arkesel API key and the
+// sender name people see (up to 11 letters, approved by Arkesel, e.g.
+// REBMA).
 //
-// Request shape from the official docs:
-//   POST https://api.sms-gate.app/3rdparty/v1/messages  (Basic auth)
-//   { "textMessage": { "text": "..." }, "phoneNumbers": ["+233..."] }
+// Request shape from Arkesel's own API spec (v2.4.0):
+//   POST https://sms.arkesel.com/api/v2/sms/send   header  api-key: <key>
+//   { "sender": "REBMA", "message": "...", "recipients": ["233244123456"] }
+//   reply { "status": "success", "data": [...] } or
+//         { "status": "error", "message": "Insufficient balance or invalid coverage!" }
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSettings } from './settings';
 
-const DEFAULT_GATEWAY_URL = 'https://api.sms-gate.app/3rdparty/v1';
+const ARKESEL_SEND_URL = 'https://sms.arkesel.com/api/v2/sms/send';
+const DEFAULT_SENDER = 'REBMA';
 
 export interface SendResult { sent: boolean; reason?: string }
 
-// Ghanaian numbers are usually typed as 0244123456. The gateway needs the
+// Ghanaian numbers are usually typed as 0244123456. Arkesel needs the
 // international form, +233244123456. A number already starting with + or
 // 00 is kept as international.
 export function toInternational(raw: string, countryCode = '233'): string | null {
@@ -35,34 +35,33 @@ export function toInternational(raw: string, countryCode = '233'): string | null
 }
 
 export async function isSmsConfigured(supabaseAdmin: SupabaseClient): Promise<boolean> {
-  const s = await getSettings(supabaseAdmin, ['sms_gateway_username', 'sms_gateway_password']);
-  return !!(s.sms_gateway_username && s.sms_gateway_password);
+  return !!(await getSettings(supabaseAdmin, ['api_key_arkesel'])).api_key_arkesel;
 }
 
 export async function sendSms(supabaseAdmin: SupabaseClient, phone: string | null | undefined, text: string): Promise<SendResult> {
-  const s = await getSettings(supabaseAdmin, ['sms_gateway_username', 'sms_gateway_password', 'sms_gateway_url', 'sms_default_country_code']);
-  if (!s.sms_gateway_username || !s.sms_gateway_password) {
-    return { sent: false, reason: 'SMS is not set up yet (Control Center, then API Keys, then SMS Gateway).' };
+  const s = await getSettings(supabaseAdmin, ['api_key_arkesel', 'sms_sender_id', 'sms_default_country_code']);
+  if (!s.api_key_arkesel) {
+    return { sent: false, reason: 'SMS is not set up yet (Control Center, then API Keys, then SMS (Arkesel)).' };
   }
   const number = toInternational(phone || '', (s.sms_default_country_code || '233').replace(/\D/g, '') || '233');
   if (!number) return { sent: false, reason: 'No usable phone number on file.' };
+  // Arkesel wants the number without the plus sign: 233244123456.
+  const recipient = number.replace(/^\+/, '');
+  const sender = (s.sms_sender_id || DEFAULT_SENDER).replace(/[^A-Za-z0-9 ]/g, '').trim().slice(0, 11) || DEFAULT_SENDER;
 
-  const base = (s.sms_gateway_url || DEFAULT_GATEWAY_URL).replace(/\/+$/, '');
   try {
-    const res = await fetch(`${base}/messages`, {
+    const res = await fetch(ARKESEL_SEND_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Basic ${Buffer.from(`${s.sms_gateway_username}:${s.sms_gateway_password}`).toString('base64')}`,
-      },
-      body: JSON.stringify({ textMessage: { text }, phoneNumbers: [number] }),
+      headers: { 'Content-Type': 'application/json', 'api-key': s.api_key_arkesel },
+      body: JSON.stringify({ sender, message: text, recipients: [recipient] }),
     });
-    if (!res.ok) {
-      const body = await res.text().catch(() => '');
-      return { sent: false, reason: `The SMS phone refused the message (HTTP ${res.status}${body ? `: ${body.slice(0, 160)}` : ''}).` };
-    }
-    return { sent: true };
+    const body: any = await res.json().catch(() => ({}));
+    if (res.ok && body?.status === 'success') return { sent: true };
+    const why = body?.message || `HTTP ${res.status}`;
+    if (res.status === 402 || /balance/i.test(why)) return { sent: false, reason: 'Arkesel says the SMS balance is too low. Top up your Arkesel account.' };
+    if (res.status === 401 || /api.?key|unauthori/i.test(why)) return { sent: false, reason: 'Arkesel did not accept the API key. Check it in Control Center, then API Keys.' };
+    return { sent: false, reason: `Arkesel refused the text: ${why}` };
   } catch (e: any) {
-    return { sent: false, reason: `Could not reach the SMS phone (${e?.message || 'network error'}).` };
+    return { sent: false, reason: `Could not reach Arkesel (${e?.message || 'network error'}).` };
   }
 }

@@ -1,6 +1,6 @@
 // api/send-staff-invite-email.ts
 // Vercel Serverless Function — sends the invite for a staff_invites row HR
-// already created and saved, by email (Resend) and SMS (the Android SMS
+// already created and saved, by email (Gmail or Resend) and SMS (the Android SMS
 // phone). Both are set up in Control Center → API Keys. Body:
 //   { inviteId, channels?: ('email' | 'sms')[] }   default: both
 // Each channel reports whether it went out and, if not, why, so HR is

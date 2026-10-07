@@ -23,6 +23,8 @@ immutable
 as $$
   select k in (
     'api_key_resend',
+    'gmail_app_password',
+    'api_key_arkesel',
     'sms_gateway_username',
     'sms_gateway_password',
     'api_key_connector',

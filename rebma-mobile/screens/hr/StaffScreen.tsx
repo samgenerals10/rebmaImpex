@@ -932,7 +932,7 @@ export default function StaffScreen() {
             ? `1. Download the Rebma app: ${appDownloadUrl}\n2. Open the app, tap Register on the sign-in page, and paste this link: ${link}`
             : `Open the Rebma app, tap Register on the sign-in page, and paste this link: ${link}`;
           const message = `Hi ${createdInvite.fullName}, you have been invited to join Rebma Impex.\n\n${steps}\n\nWhen you register you choose your own password. Your registration then waits for approval, and you will get an email as soon as you can sign in. The link expires in 7 days, and once you register it must be approved within 12 hours.`;
-          // One tap sends both: email (Resend) and SMS (the Android SMS
+          // One tap sends both: email (Gmail or Resend) and SMS (the Android SMS
           // phone). Each line below then says whether it actually went out.
           const sendEmailAndSms = async () => {
             setSendingEmail(true);

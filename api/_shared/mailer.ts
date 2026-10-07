@@ -3,13 +3,15 @@
 // resend), the "you're approved" notice, and birthday wishes. Each goes out
 // by email AND by SMS, per direct instruction.
 //
-// Email goes through Resend (https://resend.com), which has a free plan
-// (3,000 emails a month, 100 a day). Its key and the "send from" address
-// are entered in Control Center → API Keys, never in Vercel. Until a domain
-// is verified in Resend, it only delivers to the Resend account's own
-// address; that's Resend's rule, not ours.
+// Email goes out one of two free ways, both set in Control Center → API
+// Keys (never in Vercel):
+//   Gmail   a Gmail address plus a Google "app password". Used whenever
+//           both are filled in. No domain needed; about 500 emails a day.
+//   Resend  (https://resend.com) an API key and a "send from" address.
+//           Needs a domain you own, verified in Resend; until then Resend
+//           only delivers to the Resend account's own address.
 //
-// SMS goes through _shared/sms.ts (a spare Android phone, free).
+// SMS goes through _shared/sms.ts (Arkesel, a Ghana SMS company).
 //
 // Nothing here throws for a missing setup. Each channel reports
 // { sent: false, reason } so the real work (an approval, a reopened invite)
@@ -18,6 +20,7 @@
 // Copy rule: nothing sent to a person being registered says who approves
 // them. They only ever hear "waiting for approval".
 import type { SupabaseClient } from '@supabase/supabase-js';
+import nodemailer from 'nodemailer';
 import { getSettings } from './settings';
 import { sendSms, type SendResult } from './sms';
 
@@ -27,14 +30,43 @@ const DEFAULT_FROM = 'Rebma Impex <onboarding@resend.dev>';
 
 export const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
+const MAIL_KEYS = ['gmail_address', 'gmail_app_password', 'api_key_resend', 'email_from_address'];
+
+// Google shows app passwords as four groups of four letters; spaces are
+// fine to paste but aren't part of the password.
+const gmailPassword = (p: string) => p.replace(/\s+/g, '');
+const hasGmail = (s: Record<string, string>) => !!(s.gmail_address && gmailPassword(s.gmail_app_password));
+
 export async function isMailConfigured(supabaseAdmin: SupabaseClient): Promise<boolean> {
-  return !!(await getSettings(supabaseAdmin, ['api_key_resend'])).api_key_resend;
+  const s = await getSettings(supabaseAdmin, MAIL_KEYS);
+  return hasGmail(s) || !!s.api_key_resend;
+}
+
+async function sendViaGmail(s: Record<string, string>, to: string, subject: string, text: string, html: string): Promise<SendResult> {
+  try {
+    const transport = nodemailer.createTransport({
+      service: 'gmail',
+      auth: { user: s.gmail_address, pass: gmailPassword(s.gmail_app_password) },
+    });
+    await transport.sendMail({ from: `"Rebma Impex" <${s.gmail_address}>`, to, subject, text, html });
+    return { sent: true };
+  } catch (e: any) {
+    const msg = String(e?.message || '');
+    if (e?.code === 'EAUTH' || /535|Username and Password not accepted|Invalid login/i.test(msg)) {
+      return { sent: false, reason: 'Gmail refused the sign-in. Check the Gmail address and app password in Control Center, then API Keys (the Google account needs 2-Step Verification turned on to make an app password).' };
+    }
+    if (/limit|quota|550 5\.4\.5|421/i.test(msg)) {
+      return { sent: false, reason: 'Gmail daily sending limit reached. Try again tomorrow.' };
+    }
+    return { sent: false, reason: `Gmail could not send the email (${msg || 'network error'}).` };
+  }
 }
 
 export async function sendMail(supabaseAdmin: SupabaseClient, to: string | null | undefined, subject: string, text: string, html: string): Promise<SendResult> {
   if (!to) return { sent: false, reason: 'No email address on file.' };
-  const s = await getSettings(supabaseAdmin, ['api_key_resend', 'email_from_address']);
-  if (!s.api_key_resend) return { sent: false, reason: 'Email is not set up yet (Control Center, then API Keys, then Resend).' };
+  const s = await getSettings(supabaseAdmin, MAIL_KEYS);
+  if (hasGmail(s)) return sendViaGmail(s, to, subject, text, html);
+  if (!s.api_key_resend) return { sent: false, reason: 'Email is not set up yet (Control Center, then API Keys, then Gmail or Resend).' };
   try {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',

@@ -43,7 +43,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // The confirmation step is mandatory, so without email there is no change.
   if (!(await isMailConfigured(supabaseAdmin))) {
-    return res.status(503).json({ error: 'Email is not set up yet (Control Center, then API Keys, then Resend), so the confirmation link cannot be sent. Nothing was changed.' });
+    return res.status(503).json({ error: 'Email is not set up yet (Control Center, then API Keys, then Gmail or Resend), so the confirmation link cannot be sent. Nothing was changed.' });
   }
   if (await findUserByEmail(supabaseAdmin, target)) {
     return res.status(409).json({ error: 'That email already belongs to another account.' });
