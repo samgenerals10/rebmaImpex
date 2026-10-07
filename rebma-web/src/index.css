@@ -432,7 +432,7 @@ textarea {
 }
 
 input::placeholder,
-textarea::placeholder { color: var(--text-muted); }
+textarea::placeholder { color: var(--text-muted); opacity: 0.8; }
 
 table { color: var(--text-primary); }
 th    { color: var(--text-muted); border-bottom-color: var(--border); }
@@ -884,9 +884,11 @@ textarea {
   background-color: #f8fafc;
   border-color: #cbd5e1;
 }
+/* Hint text in boxes stays soft so it never reads like typed text. */
 input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not(.erp-input)::placeholder,
 textarea::placeholder {
-  color: #475569;
+  color: var(--text-muted);
+  opacity: 0.8;
 }
 select:not(.erp-select) option {
   color: #0f172a;

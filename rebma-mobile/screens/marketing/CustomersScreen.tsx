@@ -28,6 +28,7 @@ import Input, { Field } from '../../components/ui/Input';
 import SearchablePicker from '../../components/ui/SearchablePicker';
 import LocationPicker, { type LocationValue } from '../../components/shared/LocationPicker';
 import { useAuthStore } from '../../store/authStore';
+import AddressInput from '../../components/shared/AddressInput';
 
 interface CustomerRow {
   id: string;
@@ -313,8 +314,8 @@ export default function CustomersScreen() {
         </SheetSection>
 
         <SheetSection label="Address & Location">
-          <Field label="House / Residential Address" hint="Optional"><Input value={form.houseAddress} onChangeText={(v) => setForm((f) => ({ ...f, houseAddress: v }))} placeholder="Residential address" /></Field>
-          <Field label="Company Address" hint="Optional"><Input value={form.companyAddress} onChangeText={(v) => setForm((f) => ({ ...f, companyAddress: v }))} placeholder="Company address" /></Field>
+          <Field label="House / Residential Address" hint="Optional"><AddressInput value={form.houseAddress} onChangeText={(v) => setForm((f) => ({ ...f, houseAddress: v }))} placeholder="Residential address" /></Field>
+          <Field label="Company Address" hint="Optional"><AddressInput value={form.companyAddress} onChangeText={(v) => setForm((f) => ({ ...f, companyAddress: v }))} placeholder="Company address" /></Field>
           <Field label="GPS Location" hint="Optional"><LocationPicker value={gps} onChange={setGps} /></Field>
         </SheetSection>
 

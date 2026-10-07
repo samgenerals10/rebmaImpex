@@ -19,6 +19,7 @@ import SidePanel from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
 import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 import DateRangeField from '../../components/ui/DateRangeField';
+import AddressInput from '../../components/common/AddressInput';
 
 
 // ── types ─────────────────────────────────────────────────────────────────────
@@ -808,7 +809,7 @@ export default function DeliveriesView({ addNotification, currentUser, setActive
               </div>
               <div className="erp-form-group">
                 <label className="erp-label">Destination / Delivery Address</label>
-                <input placeholder="Enter destination / delivery address" value={editingDelivery.destination} onChange={e => setEditingDelivery((prev: any) => ({ ...prev, destination: e.target.value }))} className="erp-input" />
+                <AddressInput placeholder="Enter destination / delivery address" value={editingDelivery.destination} onChange={v => setEditingDelivery((prev: any) => ({ ...prev, destination: v }))} className="erp-input" style={{ width: '100%' }} />
               </div>
               <div className="erp-form-group">
                 <label className="erp-label">Driver ID / Name</label>

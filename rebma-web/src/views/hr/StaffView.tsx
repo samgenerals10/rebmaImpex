@@ -15,6 +15,7 @@ import { newSecureToken } from '../../utils/secureToken';
 import DeletionRequestsPanel from '../../components/hr/DeletionRequestsPanel';
 import EnrollmentSection from '../../components/hr/EnrollmentSection';
 import SidePanel from '../../components/ui/SidePanel';
+import AddressInput from '../../components/common/AddressInput';
 import PasswordConfirmModal from '../../components/ui/PasswordConfirmModal';
 import { callPrivilegedApi } from '../../utils/privilegedApi';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
@@ -145,6 +146,11 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [totalOnLeave, setTotalOnLeave] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  // Why Save didn't go through, shown right above the Save button. These
+  // messages used to go only to a pop-up hidden behind the open form, so
+  // Save looked like it did nothing.
+  const [formError, setFormError] = useState('');
+  const fail = (msg: string) => { setFormError(msg); addNotification(msg); };
 
   // Registration is invite-only now (Phase 8) — Add Staff no longer
   // creates a live account. It writes a staff_invites row, notifies Risk,
@@ -283,6 +289,7 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
   const totalSuspended = staff.filter(s => s.status === 'SUSPENDED').length;
 
   const openEdit = (s: StaffMember) => {
+    setFormError('');
     setEditTarget(s);
     setForm({
       fullName: s.fullName, email: s.email, department: s.department, role: s.role, phone: s.phone, ghanaCard: s.ghanaCard,
@@ -303,7 +310,8 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
   // type any of it themselves.
   const handleSaveNonAppStaff = async () => {
     if (submitting) return;
-    if (!form.fullName.trim()) { addNotification('Full name is required.'); return; }
+    setFormError('');
+    if (!form.fullName.trim()) { fail('Full name is required.'); return; }
     setSubmitting(true);
     try {
       const dbDept = DEPT_TO_ROLE[form.department] || form.department;
@@ -322,7 +330,7 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
       setResumeUrl(null);
       reloadDirectory();
     } catch (err: any) {
-      addNotification(`Error saving employee: ${err.message}`);
+      fail(`Could not save the employee: ${err.message}`);
     } finally {
       setSubmitting(false);
     }
@@ -331,26 +339,28 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
   const handleSaveAdd = async () => {
     if (appAccessMode === 'none') return handleSaveNonAppStaff();
     if (submitting) return;
-    if (!form.email.trim()) { addNotification('Email is required.'); return; }
+    setFormError('');
+    if (!form.fullName.trim()) { fail('Full name is required.'); return; }
+    if (!form.email.trim()) { fail('Email is required.'); return; }
     // The live staff_invites.role column is required (found in live
     // testing on the phone), so ask for it clearly instead of failing on a
     // raw database error.
-    if (!form.role.trim()) { addNotification('Role is required.'); return; }
+    if (!form.role.trim()) { fail('Role is required. Choose one, or add a role for this department.'); return; }
     // Someone joining HR is invited by the CEO, by email (the database
     // enforces this too, supabase_staff_lifecycle.sql).
     if (form.department === 'HR' && !currentUser?.isAdmin) {
-      addNotification('Someone joining HR is invited by the CEO. The CEO adds them here and sends the link to their email.');
+      fail('Someone joining HR is invited by the CEO. The CEO adds them here and sends the link to their email.');
       return;
     }
     if (previousHolders.length > 0 && !workChoice) {
-      addNotification('Someone was in this department and role before. Choose Continue previous work or Start new.');
+      fail('Someone was in this department and role before. Choose Continue previous work or Start new.');
       return;
     }
     setSubmitting(true);
     try {
       const { data: gate } = await supabase.from('ceo_settings').select('setting_value').eq('setting_key', 'hr_can_invite_staff').maybeSingle();
       if (gate?.setting_value === false) {
-        addNotification('Inviting new staff is currently disabled by the CEO.');
+        fail('Inviting new staff is currently turned off by the CEO in Control Center.');
         setSubmitting(false);
         return;
       }
@@ -405,7 +415,7 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
       setPhotoDataUrl(null);
       reloadDirectory();
     } catch (err: any) {
-      addNotification(`Error saving candidate: ${err.message}`);
+      fail(`Could not save the candidate: ${err.message}`);
     } finally {
       setSubmitting(false);
     }
@@ -413,6 +423,8 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
 
   const handleSaveEdit = async () => {
     if (!editTarget || submitting) return;
+    setFormError('');
+    if (!form.fullName.trim()) { fail('Full name is required.'); return; }
     setSubmitting(true);
     try {
       const { error } = await supabase
@@ -445,7 +457,7 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
       addNotification(`${form.fullName} updated`);
       setEditTarget(null);
     } catch (err: any) {
-      addNotification(`Error updating staff member: ${err.message}`);
+      fail(`Could not update the staff member: ${err.message}`);
     } finally {
       setSubmitting(false);
     }
@@ -580,10 +592,15 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
       onClose={onClose}
       title={title}
       footer={
-        <>
-          <button onClick={onClose} disabled={submitting} style={{ padding: '0.5rem 1.25rem', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', opacity: submitting ? 0.5 : 1 }}>Cancel</button>
-          <button onClick={onSave} disabled={submitting} style={{ padding: '0.5rem 1.25rem', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', cursor: 'pointer', fontWeight: 600, opacity: submitting ? 0.5 : 1 }}>{submitting ? 'Saving...' : 'Save'}</button>
-        </>
+        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {formError && (
+            <p role="alert" style={{ margin: 0, padding: '8px 12px', borderRadius: 8, background: 'rgba(239,68,68,0.1)', color: '#dc2626', fontSize: 13, fontWeight: 600 }}>{formError}</p>
+          )}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+            <button onClick={() => { setFormError(''); onClose(); }} disabled={submitting} style={{ padding: '0.5rem 1.25rem', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', opacity: submitting ? 0.5 : 1 }}>Cancel</button>
+            <button onClick={onSave} disabled={submitting} style={{ padding: '0.5rem 1.25rem', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', cursor: 'pointer', fontWeight: 600, opacity: submitting ? 0.5 : 1 }}>{submitting ? 'Saving...' : 'Save'}</button>
+          </div>
+        </div>
       }
     >
         <div style={{ display: 'grid', gap: '0.75rem' }}>
@@ -699,11 +716,11 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
           </div>
           <div>
             <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Address</label>
-            <input
+            <AddressInput
               value={form.address}
               disabled={submitting}
               placeholder="E.g., House No. 12, East Legon, Accra"
-              onChange={e => setForm(p => ({ ...p, address: e.target.value }))}
+              onChange={v => setForm(p => ({ ...p, address: v }))}
               style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box', opacity: submitting ? 0.5 : 1 }}
             />
           </div>
@@ -792,13 +809,23 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
               ] as const).map(([field, label]) => (
                 <div key={field}>
                   <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>{label}</label>
+                  {field === 'guarantorAddress' ? (
+                    <AddressInput
+                      value={form.guarantorAddress}
+                      disabled={submitting}
+                      placeholder="e.g. Plot 4, Tema Community 9"
+                      onChange={v => setForm(p => ({ ...p, guarantorAddress: v }))}
+                      style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box', opacity: submitting ? 0.5 : 1 }}
+                    />
+                  ) : (
                   <input
                     value={form[field]}
                     disabled={submitting}
-                    placeholder={({ guarantorName: 'e.g. Ama Owusu', guarantorPhone: 'e.g. 0201234567', guarantorRelationship: 'e.g. Aunt', guarantorIdNumber: 'e.g. GHA-987654321-0', guarantorAddress: 'e.g. Plot 4, Tema Community 9' } as Record<string, string>)[field]}
+                    placeholder={({ guarantorName: 'e.g. Ama Owusu', guarantorPhone: 'e.g. 0201234567', guarantorRelationship: 'e.g. Aunt', guarantorIdNumber: 'e.g. GHA-987654321-0' } as Record<string, string>)[field]}
                     onChange={e => setForm(p => ({ ...p, [field]: e.target.value }))}
                     style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box', opacity: submitting ? 0.5 : 1 }}
                   />
+                  )}
                 </div>
               ))}
             </div>
@@ -1385,7 +1412,7 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
           <h1 style={{ margin: 0, color: 'var(--text-primary)', fontWeight: 700, fontSize: 22 }}>Staff Directory</h1>
           <p style={{ margin: '4px 0 0', color: 'var(--text-muted)', fontSize: 13 }}>Everyone in one list: app users, staff without the app, invites and former staff.</p>
         </div>
-        <button onClick={() => { setForm(blankForm); setResumeUrl(null); setPhotoDataUrl(null); setAppAccessMode('full'); setShowAdd(true); }}
+        <button onClick={() => { setForm(blankForm); setResumeUrl(null); setPhotoDataUrl(null); setAppAccessMode('full'); setFormError(''); setShowAdd(true); }}
           style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0.5rem 1.25rem', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>
           <Plus size={16} /> Add Staff
         </button>

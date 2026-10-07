@@ -13,6 +13,7 @@ import SearchableDropdown from '../../components/ui/SearchableDropdown';
 import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 import DestinationLocator, { type Coords } from '../../components/dispatch/DestinationLocator';
 import RequestTimelinePanel from '../../components/global/RequestTimelinePanel';
+import AddressInput from '../../components/common/AddressInput';
 
 const VERIFICATION_STYLES: Record<string, string> = {
   PENDING: 'bg-amber-100 text-amber-700',
@@ -729,9 +730,14 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
           ].map(f => (
             <div key={f.key} className="erp-form-group">
               <label className="erp-label">{f.label}</label>
+              {f.key === 'houseAddress' || f.key === 'companyAddress' ? (
+                <AddressInput value={(form as any)[f.key]} onChange={v => setForm(prev => ({ ...prev, [f.key]: v }))}
+                  placeholder={f.placeholder} className="erp-input" style={{ width: '100%' }} />
+              ) : (
               <input value={(form as any)[f.key]} onChange={e => setForm(prev => ({ ...prev, [f.key]: e.target.value }))}
                 placeholder={f.placeholder}
                 className="erp-input" />
+              )}
             </div>
           ))}
 

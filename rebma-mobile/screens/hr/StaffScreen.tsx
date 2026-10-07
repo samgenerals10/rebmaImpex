@@ -44,6 +44,7 @@ import DeletionRequestsPanel from '../../components/shared/DeletionRequestsPanel
 import EnrollmentSection from '../../components/shared/EnrollmentSection';
 import ExportSheet from '../../components/shared/ExportSheet';
 import { useAuthStore } from '../../store/authStore';
+import AddressInput from '../../components/shared/AddressInput';
 
 const DEPARTMENTS = ['Admin & Warehouse', 'Account Department', 'HR', 'Marketing', 'Reception', 'Production', 'Management', 'Risk'];
 const DEPT_TO_ROLE: Record<string, string> = {
@@ -906,14 +907,14 @@ export default function StaffScreen() {
         <Field label="Phone"><Input value={form.phone} onChangeText={(v) => setForm((f) => ({ ...f, phone: v }))} keyboardType="phone-pad" placeholder="0244000000" /></Field>
         <Field label="Ghana Card"><Input value={form.ghanaCard} onChangeText={(v) => setForm((f) => ({ ...f, ghanaCard: v }))} placeholder="GHA-000000000-0" /></Field>
         <Field label="Date of Birth" hint="YYYY-MM-DD"><Input value={form.dateOfBirth} onChangeText={(v) => setForm((f) => ({ ...f, dateOfBirth: v }))} placeholder="1990-05-21" /></Field>
-        <Field label="Address"><Input value={form.address} onChangeText={(v) => setForm((f) => ({ ...f, address: v }))} placeholder="House number, street, town" /></Field>
+        <Field label="Address"><AddressInput value={form.address} onChangeText={(v) => setForm((f) => ({ ...f, address: v }))} placeholder="House number, street, town" /></Field>
         <Field label="Staff Category"><SearchablePicker value={form.staffCategory} onChange={(v) => setForm((f) => ({ ...f, staffCategory: v }))} options={STAFF_CATEGORIES.map((c) => ({ value: c, label: c }))} placeholder="Select category" /></Field>
         <SheetSection label="Guarantee Information">
           <Field label="Guarantor Name"><Input value={form.guarantorName} onChangeText={(v) => setForm((f) => ({ ...f, guarantorName: v }))} placeholder="e.g. Ama Owusu" /></Field>
           <Field label="Guarantor Phone"><Input value={form.guarantorPhone} onChangeText={(v) => setForm((f) => ({ ...f, guarantorPhone: v }))} keyboardType="phone-pad" placeholder="0244000000" /></Field>
           <Field label="Relationship"><Input value={form.guarantorRelationship} onChangeText={(v) => setForm((f) => ({ ...f, guarantorRelationship: v }))} placeholder="e.g. Sibling, Spouse" /></Field>
           <Field label="Guarantor ID Number"><Input value={form.guarantorIdNumber} onChangeText={(v) => setForm((f) => ({ ...f, guarantorIdNumber: v }))} placeholder="GHA-000000000-0" /></Field>
-          <Field label="Guarantor Address"><Input value={form.guarantorAddress} onChangeText={(v) => setForm((f) => ({ ...f, guarantorAddress: v }))} placeholder="House number, street, town" /></Field>
+          <Field label="Guarantor Address"><AddressInput value={form.guarantorAddress} onChangeText={(v) => setForm((f) => ({ ...f, guarantorAddress: v }))} placeholder="House number, street, town" /></Field>
         </SheetSection>
         <Field label="Résumé / CV (optional)">
           <Button label={resumeUri ? resumeUri.uri.split('/').pop() || 'Selected' : resumeUrl ? 'Replace File' : 'Attach File'} variant="ghost" onPress={captureResume} />

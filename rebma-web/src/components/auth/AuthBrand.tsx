@@ -19,7 +19,7 @@ export const AUTH_COLORS = {
 export const authCls = {
   label: 'block text-sm font-bold text-[#111827] mb-1',
   field: 'flex items-center gap-2.5 h-[52px] px-4 bg-[#f3f4f6] rounded-xl transition-shadow focus-within:ring-2 focus-within:ring-[#02afd9]/40',
-  input: 'w-full !bg-transparent !border-0 !shadow-none !rounded-none p-0 text-sm font-semibold text-[#111827] placeholder:text-[#6b7280] placeholder:font-medium focus:ring-0 focus:outline-none',
+  input: 'w-full !bg-transparent !border-0 !shadow-none !rounded-none p-0 text-sm font-semibold text-[#111827] placeholder:text-[#9ca3af] placeholder:font-medium focus:ring-0 focus:outline-none',
   icon: 'w-[18px] h-[18px] text-[#f2a72e] shrink-0',
   button: 'w-full h-[52px] rounded-full bg-[#02afd9] hover:opacity-90 active:scale-[0.99] disabled:opacity-70 disabled:cursor-not-allowed text-white text-sm font-bold transition-all cursor-pointer flex items-center justify-center gap-2',
   outlineButton: 'w-full h-[52px] rounded-full border-[1.5px] border-[#02afd9] text-[#02afd9] hover:bg-[#02afd9]/5 text-sm font-bold transition-all cursor-pointer',
