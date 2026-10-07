@@ -12,7 +12,7 @@ import {
 import PasswordConfirmModal from '../../components/ui/PasswordConfirmModal';
 import { callPrivilegedApi } from '../../utils/privilegedApi';
 import { kickUserOffline } from '../../lib/presence';
-import { API_KEY_DEFS } from '../../utils/apiKeyDefs';
+import { API_KEY_DEFS, apiKeyLogoSrc } from '../../utils/apiKeyDefs';
 import { verifyMyPassword } from '../../utils/verifyPassword';
 import { supabase } from '../../lib/supabaseClient';
 import { newSecureToken } from '../../utils/secureToken';
@@ -389,7 +389,12 @@ function ApiKeysSection({ addNotification }: { addNotification: (msg: string) =>
         const dirty = draft !== undefined && draft !== current;
         return (
           <div key={def.key} className="py-3 border-b border-[var(--border)] last:border-0">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              {apiKeyLogoSrc(def.logo) && (
+                <span className="w-9 h-9 rounded-xl bg-white border border-[var(--border)] flex items-center justify-center shrink-0 overflow-hidden">
+                  <img src={apiKeyLogoSrc(def.logo)!} alt={def.provider || def.label} className="w-6 h-6 object-contain" loading="lazy" />
+                </span>
+              )}
               <p className="text-sm font-semibold text-[var(--text-primary)] flex-1">{def.label}</p>
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${current ? 'bg-emerald-500/10 text-emerald-600' : 'bg-[var(--bg-input)] text-[var(--text-muted)]'}`}>
                 {current ? 'SET' : 'NOT SET'}

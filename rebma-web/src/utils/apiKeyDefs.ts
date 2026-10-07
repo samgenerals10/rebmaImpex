@@ -13,6 +13,8 @@ export interface ApiKeyDef {
   description: string;
   placeholder: string;
   plain?: boolean;
+  /** The company's real logo, from public/brand-logos (rebma = our own logo-mark). */
+  logo?: string;
   /** Who the key comes from, and the page where you get it. */
   provider?: string;
   providerUrl?: string;
@@ -21,6 +23,7 @@ export interface ApiKeyDef {
 export const API_KEY_DEFS: ApiKeyDef[] = [
   {
     key: 'app_web_address',
+    logo: 'rebma',
     label: 'App Web Address',
     description: 'The address people open the web app at. Links in invite emails and texts point here.',
     placeholder: 'https://rebma-impex.vercel.app',
@@ -28,6 +31,7 @@ export const API_KEY_DEFS: ApiKeyDef[] = [
   },
   {
     key: 'app_download_url',
+    logo: 'googleplay',
     provider: 'Google Play Console',
     providerUrl: 'https://play.google.com/console',
     label: 'Mobile App Download Link',
@@ -37,6 +41,7 @@ export const API_KEY_DEFS: ApiKeyDef[] = [
   },
   {
     key: 'gmail_address',
+    logo: 'gmail',
     provider: 'Google, create a Gmail account',
     providerUrl: 'https://accounts.google.com/signup',
     label: 'Email (Gmail): Address',
@@ -46,6 +51,7 @@ export const API_KEY_DEFS: ApiKeyDef[] = [
   },
   {
     key: 'gmail_app_password',
+    logo: 'gmail',
     provider: 'Google, app passwords',
     providerUrl: 'https://myaccount.google.com/apppasswords',
     label: 'Email (Gmail): App Password',
@@ -54,6 +60,7 @@ export const API_KEY_DEFS: ApiKeyDef[] = [
   },
   {
     key: 'api_key_resend',
+    logo: 'resend',
     provider: 'Resend',
     providerUrl: 'https://resend.com/api-keys',
     label: 'Email (Resend)',
@@ -62,6 +69,7 @@ export const API_KEY_DEFS: ApiKeyDef[] = [
   },
   {
     key: 'email_from_address',
+    logo: 'resend',
     provider: 'Resend, domains',
     providerUrl: 'https://resend.com/domains',
     label: 'Email "From" Address',
@@ -71,6 +79,7 @@ export const API_KEY_DEFS: ApiKeyDef[] = [
   },
   {
     key: 'api_key_arkesel',
+    logo: 'arkesel',
     provider: 'Arkesel',
     providerUrl: 'https://arkesel.com',
     label: 'SMS (Arkesel): API Key',
@@ -79,6 +88,7 @@ export const API_KEY_DEFS: ApiKeyDef[] = [
   },
   {
     key: 'sms_sender_id',
+    logo: 'arkesel',
     provider: 'Arkesel, sender names',
     providerUrl: 'https://arkesel.com',
     label: 'SMS Sender Name',
@@ -88,12 +98,14 @@ export const API_KEY_DEFS: ApiKeyDef[] = [
   },
   {
     key: 'api_key_push_webhook_secret',
+    logo: 'supabase',
     label: 'Push Notifications: Webhook Secret',
     description: 'A password you make up (long and random). Supabase sends it each time it asks the app to buzz a phone. Put the same value in your Supabase webhook (Database, then Webhooks) as the header x-webhook-secret. Leave empty to keep using the one set in Vercel.',
     placeholder: 'Make up a long random value and paste it here',
   },
   {
     key: 'api_key_expo_access_token',
+    logo: 'expo',
     provider: 'Expo, access tokens',
     providerUrl: 'https://expo.dev/settings/access-tokens',
     label: 'Push Notifications (Expo): Access Token (optional)',
@@ -102,6 +114,7 @@ export const API_KEY_DEFS: ApiKeyDef[] = [
   },
   {
     key: 'api_key_maptiler',
+    logo: 'maptiler',
     provider: 'MapTiler',
     providerUrl: 'https://cloud.maptiler.com/account/keys/',
     label: 'Map Tiles (MapTiler)',
@@ -110,18 +123,21 @@ export const API_KEY_DEFS: ApiKeyDef[] = [
   },
   {
     key: 'api_key_connector',
+    logo: 'rebma',
     label: 'Attendance Connector Key',
     description: 'A password you make up for the connector program on the office PC next to SDK and pull-mode attendance devices. Put the same value in its config.json as connectorKey.',
     placeholder: 'Make up a long random value and paste it here',
   },
   {
     key: 'api_key_attendance_webhook_secret',
+    logo: 'rebma',
     label: 'Attendance Webhook Secret (fallback)',
     description: 'Only for a device that was never added under HR, then Attendance, then Add Device. Every added device gets its own secret there, which always takes priority. Most setups can leave this empty.',
     placeholder: 'Paste the webhook secret',
   },
   {
     key: 'api_key_scanner_lookup',
+    logo: 'barcodelookup',
     provider: 'Barcode Lookup',
     providerUrl: 'https://www.barcodelookup.com/api',
     label: 'Barcode / Product Lookup (optional)',
@@ -129,3 +145,7 @@ export const API_KEY_DEFS: ApiKeyDef[] = [
     placeholder: 'Paste your Barcode Lookup API key',
   },
 ];
+
+/** Where a key's logo image lives on the web app. */
+export const apiKeyLogoSrc = (logo?: string) =>
+  !logo ? null : logo === 'rebma' ? '/logo-mark.png' : `/brand-logos/${logo}.png`;

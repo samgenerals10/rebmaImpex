@@ -34,7 +34,7 @@
 // messaging_access_allowed) are managed here too, via FeatureExceptions,
 // same table and rules as web's SettingToggleWithException.
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, ScrollView, Linking } from 'react-native';
+import { View, Text, ScrollView, Linking, Image } from 'react-native';
 import { Alert } from '../../lib/appAlert';
 import { ShieldAlert, Copy, Check, X, Key, Plus, Pause, Play, KeyRound, UserX, Eye, EyeOff, Crown, Mail, Ban, ShieldCheck, LogOut, Lock } from 'lucide-react-native';
 import { verifyMyPassword } from '../../lib/verifyPassword';
@@ -275,9 +275,24 @@ const PERMISSION_SECTIONS: { key: string; label: string }[] = [
 // here takes effect on that consumer's very next read, no separate
 // "wire it up" step.
 // `plain: true` = not a secret (shown unmasked, no reveal toggle).
-const API_KEY_DEFS: { key: string; label: string; description: string; placeholder: string; plain?: boolean; provider?: string; providerUrl?: string }[] = [
+// Each company's real logo (copied from its own website), shown beside its
+// key. rebma = our own logo-mark, for keys that belong to the app itself.
+const API_KEY_LOGOS: Record<string, any> = {
+  rebma: require('../../assets/logo-mark.png'),
+  gmail: require('../../assets/brand-logos/gmail.png'),
+  googleplay: require('../../assets/brand-logos/googleplay.png'),
+  resend: require('../../assets/brand-logos/resend.png'),
+  arkesel: require('../../assets/brand-logos/arkesel.png'),
+  expo: require('../../assets/brand-logos/expo.png'),
+  maptiler: require('../../assets/brand-logos/maptiler.png'),
+  barcodelookup: require('../../assets/brand-logos/barcodelookup.png'),
+  supabase: require('../../assets/brand-logos/supabase.png'),
+};
+
+const API_KEY_DEFS: { key: string; label: string; description: string; placeholder: string; plain?: boolean; provider?: string; providerUrl?: string; logo?: string }[] = [
   {
     key: 'app_web_address',
+    logo: 'rebma',
     label: 'App Web Address',
     description: 'The address people open the web app at. Links in invite emails and texts point here.',
     placeholder: 'https://rebma-impex.vercel.app',
@@ -285,6 +300,7 @@ const API_KEY_DEFS: { key: string; label: string; description: string; placehold
   },
   {
     key: 'gmail_address',
+    logo: 'gmail',
     provider: 'Google, create a Gmail account',
     providerUrl: 'https://accounts.google.com/signup',
     label: 'Email (Gmail): Address',
@@ -294,6 +310,7 @@ const API_KEY_DEFS: { key: string; label: string; description: string; placehold
   },
   {
     key: 'gmail_app_password',
+    logo: 'gmail',
     provider: 'Google, app passwords',
     providerUrl: 'https://myaccount.google.com/apppasswords',
     label: 'Email (Gmail): App Password',
@@ -302,6 +319,7 @@ const API_KEY_DEFS: { key: string; label: string; description: string; placehold
   },
   {
     key: 'api_key_resend',
+    logo: 'resend',
     provider: 'Resend',
     providerUrl: 'https://resend.com/api-keys',
     label: 'Email (Resend)',
@@ -310,6 +328,7 @@ const API_KEY_DEFS: { key: string; label: string; description: string; placehold
   },
   {
     key: 'email_from_address',
+    logo: 'resend',
     provider: 'Resend, domains',
     providerUrl: 'https://resend.com/domains',
     label: 'Email "From" Address',
@@ -319,6 +338,7 @@ const API_KEY_DEFS: { key: string; label: string; description: string; placehold
   },
   {
     key: 'api_key_arkesel',
+    logo: 'arkesel',
     provider: 'Arkesel',
     providerUrl: 'https://arkesel.com',
     label: 'SMS (Arkesel): API Key',
@@ -327,6 +347,7 @@ const API_KEY_DEFS: { key: string; label: string; description: string; placehold
   },
   {
     key: 'sms_sender_id',
+    logo: 'arkesel',
     provider: 'Arkesel, sender names',
     providerUrl: 'https://arkesel.com',
     label: 'SMS Sender Name',
@@ -336,6 +357,7 @@ const API_KEY_DEFS: { key: string; label: string; description: string; placehold
   },
   {
     key: 'app_download_url',
+    logo: 'googleplay',
     provider: 'Google Play Console',
     providerUrl: 'https://play.google.com/console',
     label: 'Mobile App Download Link',
@@ -345,12 +367,14 @@ const API_KEY_DEFS: { key: string; label: string; description: string; placehold
   },
   {
     key: 'api_key_push_webhook_secret',
+    logo: 'supabase',
     label: 'Push Notifications: Webhook Secret',
     description: 'A password you make up (long and random). Supabase sends it each time it asks the app to buzz a phone. Put the same value in your Supabase webhook (Database, then Webhooks) as the header x-webhook-secret. Leave empty to keep using the one set in Vercel.',
     placeholder: 'Make up a long random value and paste it here',
   },
   {
     key: 'api_key_expo_access_token',
+    logo: 'expo',
     provider: 'Expo, access tokens',
     providerUrl: 'https://expo.dev/settings/access-tokens',
     label: 'Push Notifications (Expo): Access Token (optional)',
@@ -359,6 +383,7 @@ const API_KEY_DEFS: { key: string; label: string; description: string; placehold
   },
   {
     key: 'api_key_maptiler',
+    logo: 'maptiler',
     provider: 'MapTiler',
     providerUrl: 'https://cloud.maptiler.com/account/keys/',
     label: 'Map Tiles (MapTiler)',
@@ -367,18 +392,21 @@ const API_KEY_DEFS: { key: string; label: string; description: string; placehold
   },
   {
     key: 'api_key_connector',
+    logo: 'rebma',
     label: 'Attendance Connector Key',
     description: 'A password you make up for the connector program that runs on the office PC next to SDK and pull-mode attendance devices. Put the same value in its config.json as connectorKey. It lets the connector fetch the device list from the app, so devices you add under HR, then Attendance are picked up automatically.',
     placeholder: 'Make up a long random value and paste it here',
   },
   {
     key: 'api_key_attendance_webhook_secret',
+    logo: 'rebma',
     label: 'Attendance Webhook Secret (fallback)',
     description: 'Only for a device that was never added under HR, then Attendance, then Add Device. Every added device gets its own secret there, which always takes priority. Most setups can leave this empty.',
     placeholder: 'Paste the webhook secret',
   },
   {
     key: 'api_key_scanner_lookup',
+    logo: 'barcodelookup',
     provider: 'Barcode Lookup',
     providerUrl: 'https://www.barcodelookup.com/api',
     label: 'Barcode / Product Lookup (optional)',
@@ -1382,6 +1410,11 @@ export default function ControlCenterScreen() {
             return (
               <Card key={def.key}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, marginBottom: 4 }}>
+                  {!!def.logo && API_KEY_LOGOS[def.logo] && (
+                    <View style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: '#ffffff', borderWidth: 1, borderColor: t.colors.border, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                      <Image source={API_KEY_LOGOS[def.logo]} style={{ width: 22, height: 22 }} resizeMode="contain" />
+                    </View>
+                  )}
                   <Text style={{ flex: 1, fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>{def.label}</Text>
                   <Badge tone={saved ? 'success' : 'muted'} label={saved ? 'Configured' : 'Not Configured'} size="xs" />
                 </View>
