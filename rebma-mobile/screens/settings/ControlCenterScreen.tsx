@@ -344,6 +344,20 @@ const API_KEY_DEFS: { key: string; label: string; description: string; placehold
     plain: true,
   },
   {
+    key: 'api_key_push_webhook_secret',
+    label: 'Push Notifications: Webhook Secret',
+    description: 'A password you make up (long and random). Supabase sends it each time it asks the app to buzz a phone. Put the same value in your Supabase webhook (Database, then Webhooks) as the header x-webhook-secret. Leave empty to keep using the one set in Vercel.',
+    placeholder: 'Make up a long random value and paste it here',
+  },
+  {
+    key: 'api_key_expo_access_token',
+    provider: 'Expo, access tokens',
+    providerUrl: 'https://expo.dev/settings/access-tokens',
+    label: 'Push Notifications (Expo): Access Token (optional)',
+    description: 'Phone push notifications go through Expo for free and work without this. Only needed if you turn on Enhanced Security for Push Notifications in your Expo project. Create a token in your Expo account and paste it here.',
+    placeholder: 'Paste your Expo access token',
+  },
+  {
     key: 'api_key_maptiler',
     provider: 'MapTiler',
     providerUrl: 'https://cloud.maptiler.com/account/keys/',

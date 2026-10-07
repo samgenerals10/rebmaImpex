@@ -25,6 +25,8 @@ as $$
     'api_key_resend',
     'gmail_app_password',
     'api_key_arkesel',
+    'api_key_expo_access_token',
+    'api_key_push_webhook_secret',
     'sms_gateway_username',
     'sms_gateway_password',
     'api_key_connector',

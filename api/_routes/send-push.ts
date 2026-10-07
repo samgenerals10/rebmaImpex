@@ -11,19 +11,25 @@
 //
 // One-time setup:
 //   1. Run supabase_push_tokens.sql and supabase_notification_delivery.sql.
-//   2. In Vercel, set SUPABASE_WEBHOOK_SECRET to a long random value.
+//   2. In Control Center → API Keys → Push Notifications: Webhook Secret,
+//      enter a long random value you make up. (SUPABASE_WEBHOOK_SECRET in
+//      Vercel still works as a backup when that field is empty.)
 //   3. Supabase > Database > Webhooks > Create:
 //        Table: public.notifications, Events: Insert,
 //        Type: HTTP Request, Method: POST,
 //        URL: https://<your-web-domain>/api/send-push
 //        Header: x-webhook-secret = the same value as step 2.
+//   4. Optional: if "Enhanced Security for Push Notifications" is turned on
+//      in your Expo project, paste an Expo access token in Control Center →
+//      API Keys → Push Notifications (Expo): Access Token.
 import { createClient } from '@supabase/supabase-js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { timingSafeEqual } from 'crypto';
+import { getSettings } from '../_shared/settings';
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const webhookSecret = process.env.SUPABASE_WEBHOOK_SECRET || '';
+const envWebhookSecret = process.env.SUPABASE_WEBHOOK_SECRET || '';
 
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -51,7 +57,7 @@ function normalizeDept(raw: string | null | undefined): string {
   return up;
 }
 
-function secretMatches(header: string | string[] | undefined): boolean {
+function secretMatches(header: string | string[] | undefined, webhookSecret: string): boolean {
   if (!webhookSecret || typeof header !== 'string') return false;
   const a = Buffer.from(header);
   const b = Buffer.from(webhookSecret);
@@ -77,9 +83,10 @@ async function resolveUserIds(row: NotificationRow): Promise<string[]> {
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  // Only Supabase knows this secret. Checked before any database work, so
-  // a stranger hitting this URL costs nothing.
-  if (!secretMatches(req.headers['x-webhook-secret'])) {
+  // Only Supabase knows this secret. Checked before any other database work,
+  // so a stranger hitting this URL costs one small settings read.
+  const keys = await getSettings(supabaseAdmin, ['api_key_push_webhook_secret', 'api_key_expo_access_token']);
+  if (!secretMatches(req.headers['x-webhook-secret'], keys.api_key_push_webhook_secret || envWebhookSecret)) {
     return res.status(401).json({ error: 'Invalid webhook secret.' });
   }
 
@@ -124,7 +131,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const batch = messages.slice(i, i + 100);
       const expoRes = await fetch('https://exp.host/--/api/v2/push/send', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          // Only needed when Expo's enhanced push security is turned on.
+          ...(keys.api_key_expo_access_token ? { Authorization: `Bearer ${keys.api_key_expo_access_token}` } : {}),
+        },
         body: JSON.stringify(batch),
       });
       const result: any = await expoRes.json().catch(() => null);
