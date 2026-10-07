@@ -13,6 +13,7 @@ import PasswordConfirmModal from '../../components/ui/PasswordConfirmModal';
 import { callPrivilegedApi } from '../../utils/privilegedApi';
 import { kickUserOffline } from '../../lib/presence';
 import { API_KEY_DEFS } from '../../utils/apiKeyDefs';
+import { verifyMyPassword } from '../../utils/verifyPassword';
 import { supabase } from '../../lib/supabaseClient';
 import { newSecureToken } from '../../utils/secureToken';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
@@ -294,7 +295,30 @@ function ApiKeysSection({ addNotification }: { addNotification: (msg: string) =>
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
   const [saving, setSaving] = useState<string | null>(null);
 
+  // Locked until the CEO types their password again. Nothing is read from
+  // the database until then, and it locks itself after 10 minutes.
+  const [unlocked, setUnlocked] = useState(false);
+  const [pw, setPw] = useState('');
+  const [pwError, setPwError] = useState('');
+  const [checking, setChecking] = useState(false);
+  const unlock = async () => {
+    setChecking(true);
+    setPwError('');
+    const r = await verifyMyPassword(pw);
+    setChecking(false);
+    setPw('');
+    if (!r.ok) { setPwError(r.error || 'That password is not right.'); return; }
+    setUnlocked(true);
+  };
+  const lock = () => { setUnlocked(false); setValues({}); setDrafts({}); setRevealed({}); };
   useEffect(() => {
+    if (!unlocked) return;
+    const t = setTimeout(lock, 10 * 60 * 1000);
+    return () => clearTimeout(t);
+  }, [unlocked]);
+
+  useEffect(() => {
+    if (!unlocked) return;
     supabase.from('ceo_settings').select('setting_key, setting_value').in('setting_key', API_KEY_DEFS.map(d => d.key))
       .then(({ data }) => {
         const map: Record<string, string> = {};
@@ -304,7 +328,7 @@ function ApiKeysSection({ addNotification }: { addNotification: (msg: string) =>
         }
         setValues(map);
       });
-  }, []);
+  }, [unlocked]);
 
   const save = async (key: string, value: string) => {
     setSaving(key);
@@ -319,11 +343,45 @@ function ApiKeysSection({ addNotification }: { addNotification: (msg: string) =>
     addNotification(value ? 'Saved.' : 'Removed.');
   };
 
+  if (!unlocked) {
+    return (
+      <div className="max-w-sm space-y-3">
+        <div className="flex items-center gap-2">
+          <Lock className="w-4 h-4 text-[var(--accent)]" />
+          <p className="text-sm font-semibold text-[var(--text-primary)]">API keys are locked</p>
+        </div>
+        <p className="text-xs text-[var(--text-muted)] leading-relaxed">Type your password to see and change the keys. They lock again after 10 minutes.</p>
+        <div className="flex items-center gap-2">
+          <input
+            type="password"
+            value={pw}
+            autoComplete="current-password"
+            onChange={e => { setPw(e.target.value); setPwError(''); }}
+            onKeyDown={e => { if (e.key === 'Enter') unlock(); }}
+            placeholder="Your password"
+            className="flex-1 min-w-0 px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
+          />
+          <button type="button" onClick={unlock} disabled={checking || !pw}
+            className="px-4 py-2 rounded-xl text-xs font-bold text-white disabled:opacity-40 cursor-pointer" style={{ background: 'var(--accent)' }}>
+            {checking ? 'Checking...' : 'Unlock'}
+          </button>
+        </div>
+        {pwError && <p className="text-xs font-semibold text-rose-600">{pwError}</p>}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
-      <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-        Every key the app uses lives here. Only the database connection stays in Vercel. Changes take effect on the next message or request, with no redeploy.
-      </p>
+      <div className="flex items-start gap-3">
+        <p className="text-xs text-[var(--text-muted)] leading-relaxed flex-1">
+          Every key the app uses lives here. Only the database connection stays in Vercel. Changes take effect on the next message or request, with no redeploy.
+        </p>
+        <button type="button" onClick={lock}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-[var(--text-secondary)] border border-[var(--border)] hover:bg-[var(--bg-input)] cursor-pointer shrink-0">
+          <Lock className="w-3.5 h-3.5" /> Lock
+        </button>
+      </div>
       {API_KEY_DEFS.map(def => {
         const current = values[def.key] || '';
         const draft = drafts[def.key];
@@ -337,6 +395,14 @@ function ApiKeysSection({ addNotification }: { addNotification: (msg: string) =>
                 {current ? 'SET' : 'NOT SET'}
               </span>
             </div>
+            {def.provider && (
+              <p className="text-xs mt-0.5">
+                <span className="font-semibold text-[var(--text-secondary)]">{def.provider}</span>
+                {def.providerUrl && (
+                  <> <a href={def.providerUrl} target="_blank" rel="noopener noreferrer" className="text-[var(--accent)] underline break-all">{def.providerUrl.replace(/^https?:\/\//, '').replace(/\/$/, '')}</a></>
+                )}
+              </p>
+            )}
             <p className="text-xs text-[var(--text-muted)] mt-0.5 leading-relaxed">{def.description}</p>
             <div className="mt-2 flex items-center gap-2">
               <input

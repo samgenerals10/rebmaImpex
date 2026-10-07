@@ -34,9 +34,10 @@
 // messaging_access_allowed) are managed here too, via FeatureExceptions,
 // same table and rules as web's SettingToggleWithException.
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, ScrollView } from 'react-native';
+import { View, Text, ScrollView, Linking } from 'react-native';
 import { Alert } from '../../lib/appAlert';
-import { ShieldAlert, Copy, Check, X, Key, Plus, Pause, Play, KeyRound, UserX, Eye, EyeOff, Crown, Mail, Ban, ShieldCheck, LogOut } from 'lucide-react-native';
+import { ShieldAlert, Copy, Check, X, Key, Plus, Pause, Play, KeyRound, UserX, Eye, EyeOff, Crown, Mail, Ban, ShieldCheck, LogOut, Lock } from 'lucide-react-native';
+import { verifyMyPassword } from '../../lib/verifyPassword';
 import * as Clipboard from 'expo-clipboard';
 import { supabase } from '../../lib/supabaseClient';
 import { newSecureToken } from '../../lib/secureToken';
@@ -274,7 +275,7 @@ const PERMISSION_SECTIONS: { key: string; label: string }[] = [
 // here takes effect on that consumer's very next read, no separate
 // "wire it up" step.
 // `plain: true` = not a secret (shown unmasked, no reveal toggle).
-const API_KEY_DEFS: { key: string; label: string; description: string; placeholder: string; plain?: boolean }[] = [
+const API_KEY_DEFS: { key: string; label: string; description: string; placeholder: string; plain?: boolean; provider?: string; providerUrl?: string }[] = [
   {
     key: 'app_web_address',
     label: 'App Web Address',
@@ -284,6 +285,8 @@ const API_KEY_DEFS: { key: string; label: string; description: string; placehold
   },
   {
     key: 'gmail_address',
+    provider: 'Google, create a Gmail account',
+    providerUrl: 'https://accounts.google.com/signup',
     label: 'Email (Gmail): Address',
     description: 'The free way to send email with no domain to buy. The Gmail address emails come from, for example rebmaimpex@gmail.com. When this and the app password below are both filled in, all email goes through Gmail (about 500 a day) and the Resend fields are not used.',
     placeholder: 'yourcompany@gmail.com',
@@ -291,18 +294,24 @@ const API_KEY_DEFS: { key: string; label: string; description: string; placehold
   },
   {
     key: 'gmail_app_password',
+    provider: 'Google, app passwords',
+    providerUrl: 'https://myaccount.google.com/apppasswords',
     label: 'Email (Gmail): App Password',
     description: 'Not your normal Gmail password. In that Google account, turn on 2-Step Verification, then open myaccount.google.com/apppasswords, create one named Rebma, and paste the 16 letters here.',
     placeholder: 'Paste the 16-letter app password',
   },
   {
     key: 'api_key_resend',
+    provider: 'Resend',
+    providerUrl: 'https://resend.com/api-keys',
     label: 'Email (Resend)',
     description: 'Only needed if you are not using Gmail above. Your Resend API key, from resend.com (free plan: 3,000 emails a month). Resend only delivers to other people once a company domain you own is verified in your Resend account.',
     placeholder: 'Paste your Resend API key (starts with re_)',
   },
   {
     key: 'email_from_address',
+    provider: 'Resend, domains',
+    providerUrl: 'https://resend.com/domains',
     label: 'Email "From" Address',
     description: 'Who emails come from. Resend only (Gmail always sends from the Gmail address). Must be on the domain you verified in Resend. Leave empty to use Resend\'s test sender, which only reaches your own address.',
     placeholder: 'Rebma Impex <hr@yourcompany.com>',
@@ -310,12 +319,16 @@ const API_KEY_DEFS: { key: string; label: string; description: string; placehold
   },
   {
     key: 'api_key_arkesel',
+    provider: 'Arkesel',
+    providerUrl: 'https://arkesel.com',
     label: 'SMS (Arkesel): API Key',
     description: 'Sends every text message: invites, approval notices and birthday wishes. No phone needed. Sign up free at arkesel.com, top up a little (about GHS 0.02 per text, so GHS 10 sends around 500), then copy the API key from your Arkesel dashboard and paste it here.',
     placeholder: 'Paste your Arkesel API key',
   },
   {
     key: 'sms_sender_id',
+    provider: 'Arkesel, sender names',
+    providerUrl: 'https://arkesel.com',
     label: 'SMS Sender Name',
     description: 'The name people see the text come from, up to 11 letters. Request it in your Arkesel account first (they approve it, usually within a day or two). Leave empty to use REBMA.',
     placeholder: 'REBMA',
@@ -323,6 +336,8 @@ const API_KEY_DEFS: { key: string; label: string; description: string; placehold
   },
   {
     key: 'app_download_url',
+    provider: 'Google Play Console',
+    providerUrl: 'https://play.google.com/console',
     label: 'Mobile App Download Link',
     description: 'Your private Google Play link for the Rebma app. Every staff invite email and WhatsApp message includes it as step 1, before the registration link. Leave empty and invites only carry the registration link.',
     placeholder: 'https://play.google.com/store/apps/details?id=...',
@@ -330,6 +345,8 @@ const API_KEY_DEFS: { key: string; label: string; description: string; placehold
   },
   {
     key: 'api_key_maptiler',
+    provider: 'MapTiler',
+    providerUrl: 'https://cloud.maptiler.com/account/keys/',
     label: 'Map Tiles (MapTiler)',
     description: 'Gives every live map (Fleet Tracking, driver screens) a modern, styled basemap instead of the plain default OpenStreetMap look. Leave empty and the map keeps working on free OpenStreetMap tiles.',
     placeholder: 'Paste your MapTiler API key',
@@ -348,6 +365,8 @@ const API_KEY_DEFS: { key: string; label: string; description: string; placehold
   },
   {
     key: 'api_key_scanner_lookup',
+    provider: 'Barcode Lookup',
+    providerUrl: 'https://www.barcodelookup.com/api',
     label: 'Barcode / Product Lookup (optional)',
     description: 'A Barcode Lookup (barcodelookup.com) API key. When set, scanning a real product barcode that is not a REBMA waybill shows its name, brand, and image. The built-in QR/waybill scanner already works fully without this.',
     placeholder: 'Paste your Barcode Lookup API key',
@@ -492,6 +511,12 @@ export default function ControlCenterScreen() {
   const [apiKeys, setApiKeys] = useState<Record<string, string>>({});
   const [apiKeyDrafts, setApiKeyDrafts] = useState<Record<string, string>>({});
   const [revealedKeys, setRevealedKeys] = useState<Record<string, boolean>>({});
+  // API keys stay locked until the CEO types their password again. Nothing
+  // is read from the database until then, and they lock after 10 minutes.
+  const [keysUnlocked, setKeysUnlocked] = useState(false);
+  const [keysPw, setKeysPw] = useState('');
+  const [keysPwError, setKeysPwError] = useState('');
+  const [checkingKeysPw, setCheckingKeysPw] = useState(false);
   const [savingApiKey, setSavingApiKey] = useState<string | null>(null);
   // Phase 11.6 — message export + audit trail (mirrors web's
   // MessageExportSection exactly, reusing the Gap-Closure Backlog's
@@ -582,6 +607,23 @@ export default function ControlCenterScreen() {
     setApiKeys(map);
   }, []);
 
+  const unlockKeys = async () => {
+    setCheckingKeysPw(true);
+    setKeysPwError('');
+    const r = await verifyMyPassword(keysPw);
+    setCheckingKeysPw(false);
+    setKeysPw('');
+    if (!r.ok) { setKeysPwError(r.error || 'That password is not right.'); return; }
+    setKeysUnlocked(true);
+    loadApiKeys();
+  };
+  const lockKeys = () => { setKeysUnlocked(false); setApiKeys({}); setApiKeyDrafts({}); setRevealedKeys({}); };
+  useEffect(() => {
+    if (!keysUnlocked) return;
+    const timer = setTimeout(lockKeys, 10 * 60 * 1000);
+    return () => clearTimeout(timer);
+  }, [keysUnlocked]);
+
   const loadStaffAndDepts = useCallback(async () => {
     const [{ data: staffRows }, { data: deptRows }] = await Promise.all([
       supabase.from('profiles').select('id, full_name, email, role, status, is_admin').neq('status', 'TERMINATED').order('created_at', { ascending: false }),
@@ -603,12 +645,11 @@ export default function ControlCenterScreen() {
   useEffect(() => {
     if (!isAdmin) return;
     loadSettings();
-    loadApiKeys();
     loadStaffAndDepts();
     loadInvitesAndDelegates();
     loadCeoInvites();
     loadRemovalRequests();
-  }, [isAdmin, loadSettings, loadApiKeys, loadStaffAndDepts, loadInvitesAndDelegates, loadCeoInvites, loadRemovalRequests]);
+  }, [isAdmin, loadSettings, loadStaffAndDepts, loadInvitesAndDelegates, loadCeoInvites, loadRemovalRequests]);
 
   useEffect(() => {
     if (!isAdmin || activeSection !== 'messages' || exportChannels.length > 0) return;
@@ -1050,7 +1091,7 @@ export default function ControlCenterScreen() {
             { id: 'departments', title: 'Departments' },
             { id: 'invites', title: 'Invite Links' },
             { id: 'delegates', title: 'Delegated Access' },
-            { id: 'keys', title: `API Keys${API_KEY_DEFS.filter((d) => !apiKeys[d.key]).length ? ` (${API_KEY_DEFS.filter((d) => !apiKeys[d.key]).length} empty)` : ''}` },
+            { id: 'keys', title: 'API Keys' },
             { id: 'templates', title: 'Document Templates' },
             { id: 'messages', title: 'Message Export' },
             { id: 'reset', title: 'Data Reset Center' },
@@ -1297,8 +1338,24 @@ export default function ControlCenterScreen() {
             ))
           )}
         </View>
+      ) : activeSection === 'keys' && !keysUnlocked ? (
+        <Card>
+          <View style={{ gap: t.spacing.sm }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm }}>
+              <Lock size={16} color={t.colors.accent} />
+              <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary }}>API keys are locked</Text>
+            </View>
+            <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textMuted }}>Type your password to see and change the keys. They lock again after 10 minutes.</Text>
+            <Input value={keysPw} onChangeText={(v) => { setKeysPw(v); setKeysPwError(''); }} placeholder="Your password" secureTextEntry autoCapitalize="none" autoCorrect={false} onSubmitEditing={unlockKeys} />
+            {!!keysPwError && <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta11.size, color: t.colors.status.danger.text }}>{keysPwError}</Text>}
+            <Button label={checkingKeysPw ? 'Checking...' : 'Unlock'} onPress={unlockKeys} loading={checkingKeysPw} disabled={checkingKeysPw || !keysPw} fullWidth />
+          </View>
+        </Card>
       ) : activeSection === 'keys' ? (
         <View style={{ gap: t.spacing.md }}>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Button label="Lock" size="sm" variant="ghost" icon={<Lock size={13} color={t.colors.textSecondary} />} onPress={lockKeys} />
+          </View>
           <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted, lineHeight: 16 }}>
             Every external key or secret the app can use, in one place, the same kind of "enter your API key" screen you'd see on any other platform. Empty rows fall back to their existing free or manual behavior; a saved key takes effect immediately, the next time that feature is used.
           </Text>
@@ -1314,6 +1371,16 @@ export default function ControlCenterScreen() {
                   <Text style={{ flex: 1, fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>{def.label}</Text>
                   <Badge tone={saved ? 'success' : 'muted'} label={saved ? 'Configured' : 'Not Configured'} size="xs" />
                 </View>
+                {!!def.provider && (
+                  <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, marginBottom: 2 }}>
+                    <Text style={{ fontFamily: t.font.semibold, color: t.colors.textSecondary }}>{`${def.provider} `}</Text>
+                    {!!def.providerUrl && (
+                      <Text style={{ color: t.colors.accent, textDecorationLine: 'underline' }} onPress={() => Linking.openURL(def.providerUrl!).catch(() => {})}>
+                        {def.providerUrl.replace(/^https?:\/\//, '').replace(/\/$/, '')}
+                      </Text>
+                    )}
+                  </Text>
+                )}
                 <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted, marginBottom: t.spacing.sm }}>{def.description}</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.xs }}>
                   <View style={{ flex: 1 }}>

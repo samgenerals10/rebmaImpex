@@ -13,6 +13,9 @@ export interface ApiKeyDef {
   description: string;
   placeholder: string;
   plain?: boolean;
+  /** Who the key comes from, and the page where you get it. */
+  provider?: string;
+  providerUrl?: string;
 }
 
 export const API_KEY_DEFS: ApiKeyDef[] = [
@@ -25,6 +28,8 @@ export const API_KEY_DEFS: ApiKeyDef[] = [
   },
   {
     key: 'app_download_url',
+    provider: 'Google Play Console',
+    providerUrl: 'https://play.google.com/console',
     label: 'Mobile App Download Link',
     description: 'Your private Google Play link for the Rebma app. Every staff invite includes it as step 1, before the registration link. Leave empty and invites only carry the registration link.',
     placeholder: 'https://play.google.com/store/apps/details?id=...',
@@ -32,6 +37,8 @@ export const API_KEY_DEFS: ApiKeyDef[] = [
   },
   {
     key: 'gmail_address',
+    provider: 'Google, create a Gmail account',
+    providerUrl: 'https://accounts.google.com/signup',
     label: 'Email (Gmail): Address',
     description: 'The free way to send email with no domain to buy. The Gmail address emails come from, for example rebmaimpex@gmail.com. When this and the app password below are both filled in, all email goes through Gmail (about 500 a day) and the Resend fields are not used.',
     placeholder: 'yourcompany@gmail.com',
@@ -39,18 +46,24 @@ export const API_KEY_DEFS: ApiKeyDef[] = [
   },
   {
     key: 'gmail_app_password',
+    provider: 'Google, app passwords',
+    providerUrl: 'https://myaccount.google.com/apppasswords',
     label: 'Email (Gmail): App Password',
     description: 'Not your normal Gmail password. In that Google account, turn on 2-Step Verification, then open myaccount.google.com/apppasswords, create one named Rebma, and paste the 16 letters here.',
     placeholder: 'Paste the 16-letter app password',
   },
   {
     key: 'api_key_resend',
+    provider: 'Resend',
+    providerUrl: 'https://resend.com/api-keys',
     label: 'Email (Resend)',
     description: 'Only needed if you are not using Gmail above. Your Resend API key, from resend.com (free plan: 3,000 emails a month). Resend only delivers to other people once a company domain you own is verified in your Resend account. Resend is email only; texts go through Arkesel below.',
     placeholder: 'Paste your Resend API key (starts with re_)',
   },
   {
     key: 'email_from_address',
+    provider: 'Resend, domains',
+    providerUrl: 'https://resend.com/domains',
     label: 'Email "From" Address',
     description: "Who emails come from. Resend only (Gmail always sends from the Gmail address). Must be on the domain you verified in Resend. Leave empty to use Resend's test sender, which only reaches your own address.",
     placeholder: 'Rebma Impex <hr@yourcompany.com>',
@@ -58,12 +71,16 @@ export const API_KEY_DEFS: ApiKeyDef[] = [
   },
   {
     key: 'api_key_arkesel',
+    provider: 'Arkesel',
+    providerUrl: 'https://arkesel.com',
     label: 'SMS (Arkesel): API Key',
     description: 'Sends every text message: invites, approval notices and birthday wishes. No phone needed. Sign up free at arkesel.com, top up a little (about GHS 0.02 per text, so GHS 10 sends around 500), then copy the API key from your Arkesel dashboard and paste it here.',
     placeholder: 'Paste your Arkesel API key',
   },
   {
     key: 'sms_sender_id',
+    provider: 'Arkesel, sender names',
+    providerUrl: 'https://arkesel.com',
     label: 'SMS Sender Name',
     description: 'The name people see the text come from, up to 11 letters. Request it in your Arkesel account first (they approve it, usually within a day or two). Leave empty to use REBMA.',
     placeholder: 'REBMA',
@@ -71,6 +88,8 @@ export const API_KEY_DEFS: ApiKeyDef[] = [
   },
   {
     key: 'api_key_maptiler',
+    provider: 'MapTiler',
+    providerUrl: 'https://cloud.maptiler.com/account/keys/',
     label: 'Map Tiles (MapTiler)',
     description: 'Gives every live map a modern, styled basemap instead of the plain OpenStreetMap look. Leave empty and maps keep working on free OpenStreetMap tiles.',
     placeholder: 'Paste your MapTiler API key',
@@ -89,6 +108,8 @@ export const API_KEY_DEFS: ApiKeyDef[] = [
   },
   {
     key: 'api_key_scanner_lookup',
+    provider: 'Barcode Lookup',
+    providerUrl: 'https://www.barcodelookup.com/api',
     label: 'Barcode / Product Lookup (optional)',
     description: 'A Barcode Lookup (barcodelookup.com) API key. When set, scanning a real product barcode that is not a REBMA waybill shows its name, brand and image.',
     placeholder: 'Paste your Barcode Lookup API key',
