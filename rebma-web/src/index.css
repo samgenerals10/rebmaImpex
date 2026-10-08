@@ -1935,13 +1935,8 @@ body.theme-foodie .foodie-date-chip {
 /* Flat buttons: no shadow at rest, on hover or when pressed. */
 .flat, .flat:hover, .flat:active { box-shadow: none !important; }
 
-/* Premium Inset button shadow styling (not on the top bar, sidebar, chat or sign-in screens) */
-button:not(.nav-item):not(.lf-nav-item):not(.header-shell *):not(.sidebar-shell *):not(.messenger-shell *):not(.auth-shell *) {
-  box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 0.15), 0 1px 2px rgba(0, 0, 0, 0.05);
-}
-button:active:not(.nav-item):not(.lf-nav-item):not(.header-shell *):not(.sidebar-shell *):not(.messenger-shell *):not(.auth-shell *) {
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15) !important;
-}
+/* Buttons used to get a global inset shadow here. Removed for the clean,
+   flat look; the small press-down movement below is kept. */
 
 /* Red Pilot Pulse Notification Dot */
 .red-pilot {
@@ -1967,7 +1962,6 @@ button:active:not(.nav-item):not(.lf-nav-item):not(.header-shell *):not(.sidebar
 /* Premium tactile global button shadow styling */
 button:not(.nav-item):not(.lf-nav-item):not(.tab-item):active {
   transform: translateY(1px);
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 /* Special-customer avatar ring — a slowly rotating neon gradient border plus
@@ -2124,4 +2118,31 @@ button:not(.nav-item):not(.lf-nav-item):not(.tab-item):active {
   box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.07), 0 0 20px -5px rgba(5, 150, 105, 0.08);
 }
 
-
+/* ─── CLEAN LOOK: no decorative shadows anywhere ───
+   Surfaces are separated by thin borders instead, as on Vercel and
+   Supabase. Focus rings, selection outlines (Tailwind ring-* and inset
+   outlines) and the pulsing status dots are not shadows and are kept. */
+:root, body {
+  --shadow-card: none !important;
+  --shadow-sidebar: none !important;
+  --shadow-header: none !important;
+  --shadow-dropdown: none !important;
+  --box-shadow: none !important;
+}
+/* Every Tailwind shadow class (shadow-sm ... shadow-2xl, shadow-[...],
+   hover:shadow-*). Rings use their own variables and stay. */
+[class*="shadow"] {
+  --tw-shadow: 0 0 #0000 !important;
+  --tw-inset-shadow: 0 0 #0000 !important;
+}
+.erp-card, .erp-card:hover, .kpi-card, .kpi-card:hover, .erp-btn-primary:hover,
+.sidebar-shell, .header-shell, .app-card, .glassmorphic-card,
+.mobile-list-card, .mobile-physical-card, .mobile-card-chip, .mobile-stat-card,
+.mobile-pill-item.active, .mobile-data-row, .mobile-card,
+.lg\:hidden .bg-white.rounded-3xl,
+.ff-card, .liam-card, .aczone-kpi-card, .aczone-kpi-card:hover, .aczone-card,
+.finova-balance-card, .finova-account-card, .finova-account-card:hover, .finova-card,
+.finova-virtual-card, .finova-promo-card,
+.foodie-kpi-card, .foodie-kpi-card:hover, .foodie-chart-card, .foodie-promo-card {
+  box-shadow: none !important;
+}

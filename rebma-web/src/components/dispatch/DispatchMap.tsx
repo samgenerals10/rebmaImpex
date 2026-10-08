@@ -592,7 +592,7 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 540,
   return (
     <div
       style={expanded
-        ? { position: 'fixed', inset: 12, zIndex: 3000, background: 'var(--bg-card)', borderRadius: 20, padding: 14, display: 'flex', flexDirection: 'column', gap: 10, boxShadow: '0 20px 60px rgba(15,23,42,0.35)' }
+        ? { position: 'fixed', inset: 12, zIndex: 3000, background: 'var(--bg-card)', borderRadius: 20, padding: 14, display: 'flex', flexDirection: 'column', gap: 10, border: '1px solid var(--border)' }
         : { display: 'flex', flexDirection: 'column', gap: compact ? 6 : 10 }}
     >
       <style>{'@keyframes fleetOverLimitPulse { 0% { transform: scale(.8); opacity: .8 } 100% { transform: scale(1.8); opacity: 0 } }'}</style>

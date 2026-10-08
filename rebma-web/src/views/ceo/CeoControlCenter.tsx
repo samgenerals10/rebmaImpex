@@ -4,12 +4,13 @@ import { useState, useEffect } from 'react';
 import {
   Shield, ChevronDown, ChevronUp, Users, DollarSign, Activity, Truck,
   Database, MessageCircle, Settings, CheckSquare, AlertTriangle, Bell,
-  UserPlus, Copy, Check, Trash2, ToggleLeft, ToggleRight, Eye, EyeOff,
+  UserPlus, Copy, Check, Trash2, Eye, EyeOff,
   Clock, Lock, Globe, Mail, Phone, Building2, RefreshCw, X, Plus, Search,
   FileSpreadsheet, Package, ShoppingCart, Camera, Ban, UserX, Key, FileEdit, Cake, Crown,
   LogOut, ShieldCheck
 } from 'lucide-react';
 import PasswordConfirmModal from '../../components/ui/PasswordConfirmModal';
+import Switch from '../../components/ui/Switch';
 import { callPrivilegedApi } from '../../utils/privilegedApi';
 import { kickUserOffline } from '../../lib/presence';
 import { API_KEY_DEFS, apiKeyLogoSrc } from '../../utils/apiKeyDefs';
@@ -51,15 +52,9 @@ function SettingToggle({
           <p className="text-sm font-semibold text-[var(--text-primary)]">{label}</p>
           <p className="text-xs text-[var(--text-muted)] mt-0.5 leading-relaxed">{description}</p>
         </div>
-        <button
-          onClick={() => toggle(!value)}
-          className="shrink-0 mt-0.5 cursor-pointer"
-          title={value ? 'Turn OFF' : 'Turn ON'}
-        >
-          {value
-            ? <ToggleRight className="w-8 h-8 text-[var(--accent)]" />
-            : <ToggleLeft className="w-8 h-8 text-[var(--text-muted)]" />}
-        </button>
+        <div className="mt-0.5">
+          <Switch checked={value} onChange={toggle} label={label} title={value ? 'Turn OFF' : 'Turn ON'} />
+        </div>
       </div>
       <SidePanel
         open={showWarn}
@@ -129,9 +124,9 @@ function SettingToggleWithException({
           <p className="text-sm font-semibold text-[var(--text-primary)]">{label}</p>
           <p className="text-xs text-[var(--text-muted)] mt-0.5 leading-relaxed">{description}</p>
         </div>
-        <button onClick={() => updateSetting(settingKey, !value)} className="shrink-0 mt-0.5 cursor-pointer" title={value ? 'Turn OFF' : 'Turn ON'}>
-          {value ? <ToggleRight className="w-8 h-8 text-[var(--accent)]" /> : <ToggleLeft className="w-8 h-8 text-[var(--text-muted)]" />}
-        </button>
+        <div className="mt-0.5">
+          <Switch checked={value} onChange={next => updateSetting(settingKey, next)} label={label} title={value ? 'Turn OFF' : 'Turn ON'} />
+        </div>
       </div>
       <div className="pb-3">
         <button
@@ -1629,11 +1624,7 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
                   </div>
                   <div className="flex items-center gap-3 pt-4">
                     <span className="text-xs font-semibold text-[var(--text-primary)]">Auto-approve on register</span>
-                    <button onClick={() => setInviteForm(p => ({ ...p, autoApprove: !p.autoApprove }))} className="cursor-pointer">
-                      {inviteForm.autoApprove
-                        ? <ToggleRight className="w-7 h-7 text-[var(--accent)]" />
-                        : <ToggleLeft className="w-7 h-7 text-[var(--text-muted)]" />}
-                    </button>
+                    <Switch checked={inviteForm.autoApprove} onChange={next => setInviteForm(p => ({ ...p, autoApprove: next }))} label="Auto-approve on register" />
                   </div>
                 </div>
                 <p className="text-xs text-[var(--text-muted)]">
