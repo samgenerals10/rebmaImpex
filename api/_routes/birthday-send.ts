@@ -55,7 +55,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
   if (!person) return res.status(404).json({ error: 'That person could not be found.' });
 
-  const result = await sendBirthdayWish(supabaseAdmin, person, String(subject || 'Happy birthday from Rebma Impex').slice(0, 200), text, chosen);
+  const result = await sendBirthdayWish(supabaseAdmin, person, String(subject || 'Happy birthday from Rebma Impex Ghana Limited').slice(0, 200), text, chosen);
 
   const wishYear = Number.isInteger(year) ? year : new Date().getUTCFullYear();
   const { data: existing } = await supabaseAdmin

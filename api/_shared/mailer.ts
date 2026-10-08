@@ -24,12 +24,12 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import nodemailer from 'nodemailer';
 import { getSettings, getAppOrigin } from './settings';
 import { esc as escapeHtml } from './htmlEscape';
-import { brandedEmail, paragraphsFromText, emailButton, emailNote } from './emailTemplate';
+import { brandedEmail, paragraphsFromText, emailButton, emailNote, emailStep, emailCallout, COMPANY_NAME } from './emailTemplate';
 import { sendSms, type SendResult } from './sms';
 
 export type { SendResult };
 
-const DEFAULT_FROM = 'Rebma Impex <onboarding@resend.dev>';
+const DEFAULT_FROM = 'Rebma Impex Ghana Limited <onboarding@resend.dev>';
 
 export const esc = escapeHtml;
 
@@ -51,7 +51,7 @@ async function sendViaGmail(s: Record<string, string>, to: string, subject: stri
       service: 'gmail',
       auth: { user: s.gmail_address, pass: gmailPassword(s.gmail_app_password) },
     });
-    await transport.sendMail({ from: `"Rebma Impex" <${s.gmail_address}>`, to, subject, text, html });
+    await transport.sendMail({ from: `"${COMPANY_NAME}" <${s.gmail_address}>`, to, subject, text, html });
     return { sent: true };
   } catch (e: any) {
     const msg = String(e?.message || '');
@@ -87,12 +87,12 @@ async function sendViaResend(s: Record<string, string>, to: string, subject: str
 // over when it is set up, so a Resend problem never stops an invite.
 // Without a company From address, Resend can only reach its own owner, so
 // Gmail goes first when it is set up.
-export async function sendMail(supabaseAdmin: SupabaseClient, to: string | null | undefined, subject: string, text: string, bodyHtml: string, opts: { raw?: boolean; preheader?: string } = {}): Promise<SendResult> {
+export async function sendMail(supabaseAdmin: SupabaseClient, to: string | null | undefined, subject: string, text: string, bodyHtml: string, opts: { raw?: boolean; preheader?: string; title?: string; subtitle?: string } = {}): Promise<SendResult> {
   if (!to) return { sent: false, reason: 'No email address on file.' };
   const s = await getSettings(supabaseAdmin, MAIL_KEYS);
   // Every email gets the same branded look (logo, card, footer) unless a
   // caller already built a full page.
-  const html = opts.raw ? bodyHtml : brandedEmail({ origin: await getAppOrigin(supabaseAdmin), bodyHtml, preheader: opts.preheader });
+  const html = opts.raw ? bodyHtml : brandedEmail({ origin: await getAppOrigin(supabaseAdmin), bodyHtml, preheader: opts.preheader, title: opts.title ?? subject, subtitle: opts.subtitle });
   const resendReady = !!(s.api_key_resend && s.email_from_address);
 
   if (resendReady) {
@@ -137,34 +137,36 @@ export async function sendInvite(
   const result: { link: string; email?: SendResult; sms?: SendResult } = { link };
 
   if (channels.includes('email')) {
-    const subject = 'Your Rebma Impex invite: download the app and register';
+    const subject = `You are invited to join ${COMPANY_NAME}`;
+    const heroOpts = { title: 'You are invited', subtitle: `Join the team at ${COMPANY_NAME}`, preheader: `Your invitation to join ${COMPANY_NAME}` };
+    const linkFallback = `${emailNote('If the button does not work, copy this link into the Rebma app or your browser:')}${emailNote(link)}`;
     if (custom) {
       result.email = await sendMail(
         supabaseAdmin, invite.email, subject,
-        `${custom}${custom.includes(link) ? '' : `\n\nRegister here:\n${link}`}\n\nRebma Impex`,
-        `${paragraphsFromText(custom)}${emailButton('Register now', link)}${emailNote('If the button does not work, copy this link into the Rebma app or your browser:')}${emailNote(link)}`,
-        { preheader: 'Your invitation to join Rebma Impex' },
+        `${custom}${custom.includes(link) ? '' : `\n\nRegister here:\n${link}`}\n\n${COMPANY_NAME}`,
+        `${paragraphsFromText(custom)}${emailButton('Register now', link)}${linkFallback}`,
+        heroOpts,
       );
     } else {
       const textSteps = downloadUrl
         ? `1. Download the Rebma app:\n${downloadUrl}\n\n2. Open the app, tap Register on the sign-in page, and paste this link:\n${link}`
         : `Open the Rebma app, tap Register on the sign-in page, and paste this link:\n${link}`;
-      const stepsHtml = downloadUrl
-        ? `<p style="margin:0 0 12px;font-size:15px;line-height:1.65"><strong>1. Get the Rebma app</strong><br><a href="${esc(downloadUrl)}" style="color:#068d5c;word-break:break-all">${esc(downloadUrl)}</a></p><p style="margin:0 0 16px;font-size:15px;line-height:1.65"><strong>2. Open it, tap Register, and paste your invite link</strong></p>`
-        : `<p style="margin:0 0 16px;font-size:15px;line-height:1.65">Open the Rebma app, tap <strong>Register</strong> on the sign-in page, and paste your invite link.</p>`;
+      const steps = downloadUrl
+        ? `${emailStep(1, 'Get the Rebma app', `<a href="${esc(downloadUrl)}" style="color:#16a34a;font-weight:600;word-break:break-all">${esc(downloadUrl)}</a>`)}${emailStep(2, 'Open it and tap Register', 'Paste your invite link when it asks, then choose your own password.')}`
+        : `${emailStep(1, 'Open the Rebma app and tap Register', 'Paste your invite link when it asks, then choose your own password.')}`;
       result.email = await sendMail(
         supabaseAdmin, invite.email, subject,
-        `Hi ${name},\n\nYou have been invited to join Rebma Impex.\n\n${textSteps}\n\n${after}\n\n${expiry} If you weren't expecting this, you can safely ignore it.\n\nRebma Impex`,
-        `${paragraphsFromText(`Hi ${name},\n\nYou have been invited to join Rebma Impex.`)}${stepsHtml}${emailButton('Register now', link)}${emailNote('If the button does not work, copy this link into the Rebma app or your browser:')}${emailNote(link)}${paragraphsFromText(after)}${emailNote(`${expiry} If you weren't expecting this, you can safely ignore it.`)}`,
-        { preheader: 'Your invitation to join Rebma Impex' },
+        `Hi ${name},\n\nYou have been invited to join ${COMPANY_NAME}.\n\n${textSteps}\n\n${after}\n\n${expiry} If you weren't expecting this, you can safely ignore it.\n\n${COMPANY_NAME}`,
+        `${paragraphsFromText(`Hi ${name},\n\nYou have been invited to join ${COMPANY_NAME}. Here is how to get started:`)}${steps}${emailButton('Register now', link)}${linkFallback}${emailCallout(`${after} ${expiry}`)}${emailNote("If you weren't expecting this, you can safely ignore it.")}`,
+        heroOpts,
       );
     }
   }
 
   if (channels.includes('sms')) {
     const defaultSms = downloadUrl
-      ? `Hi ${name}, you're invited to join Rebma Impex.\n1. Download the app: ${downloadUrl}\n2. Open it, tap Register and paste: ${link}\nYou'll choose your password when you register. Link expires in 7 days.`
-      : `Hi ${name}, you're invited to join Rebma Impex.\nOpen the Rebma app, tap Register and paste: ${link}\nYou'll choose your password when you register. Link expires in 7 days.`;
+      ? `Hi ${name}, you're invited to join ${COMPANY_NAME}.\n1. Download the app: ${downloadUrl}\n2. Open it, tap Register and paste: ${link}\nYou'll choose your password when you register. Link expires in 7 days.`
+      : `Hi ${name}, you're invited to join ${COMPANY_NAME}.\nOpen the Rebma app, tap Register and paste: ${link}\nYou'll choose your password when you register. Link expires in 7 days.`;
     const sms = custom ? (custom.includes(link) ? custom : `${custom}\n${link}`) : defaultSms;
     result.sms = await sendSms(supabaseAdmin, invite.phone, sms);
   }
@@ -184,23 +186,23 @@ export async function sendApproved(
   const textWays = downloadUrl
     ? `On your phone, get the Rebma app here:\n${downloadUrl}\n\nOn a computer, open:\n${origin}`
     : `Open the Rebma app on your phone, or on a computer go to:\n${origin}`;
-  const phoneHtml = downloadUrl
-    ? `<p style="margin:0 0 12px;font-size:15px;line-height:1.65"><strong>On your phone</strong><br><a href="${esc(downloadUrl)}" style="color:#068d5c;word-break:break-all">${esc(downloadUrl)}</a></p>`
+  const ways = downloadUrl
+    ? `${emailStep(1, 'On your phone', `Get the Rebma app: <a href="${esc(downloadUrl)}" style="color:#16a34a;font-weight:600;word-break:break-all">${esc(downloadUrl)}</a>`)}${emailStep(2, 'On a computer', `Open <a href="${esc(origin)}" style="color:#16a34a;font-weight:600;word-break:break-all">${esc(origin)}</a>`)}`
     : '';
   const email = await sendMail(
     supabaseAdmin,
     person.email,
-    'Your Rebma Impex account is approved',
-    `Hi ${person.fullName},\n\nYour registration has been approved. ${signIn}\n\n${textWays}\n\nRebma Impex`,
-    `${paragraphsFromText(`Hi ${person.fullName},\n\nYour registration has been approved. ${signIn}`)}${phoneHtml}${emailButton('Sign in on the web', origin)}`,
-    { preheader: 'Your Rebma Impex account is approved' },
+    `Your ${COMPANY_NAME} account is approved`,
+    `Hi ${person.fullName},\n\nYour registration has been approved. ${signIn}\n\n${textWays}\n\n${COMPANY_NAME}`,
+    `${paragraphsFromText(`Hi ${person.fullName},\n\nYour registration has been approved. ${signIn}`)}${ways}${emailButton('Sign in on the web', origin)}`,
+    { title: 'You are approved', subtitle: 'Your account is ready to use', preheader: `Your ${COMPANY_NAME} account is approved` },
   );
   const sms = await sendSms(
     supabaseAdmin,
     person.phone,
     downloadUrl
-      ? `Hi ${person.fullName}, your Rebma Impex account is approved. Get the app: ${downloadUrl} or use ${origin}. Sign in with your email and the password you chose.`
-      : `Hi ${person.fullName}, your Rebma Impex account is approved. Sign in at ${origin} with your email and the password you chose.`,
+      ? `Hi ${person.fullName}, your ${COMPANY_NAME} account is approved. Get the app: ${downloadUrl} or use ${origin}. Sign in with your email and the password you chose.`
+      : `Hi ${person.fullName}, your ${COMPANY_NAME} account is approved. Sign in at ${origin} with your email and the password you chose.`,
   );
   return { email, sms };
 }

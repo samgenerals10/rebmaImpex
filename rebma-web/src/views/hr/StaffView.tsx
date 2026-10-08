@@ -544,7 +544,7 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
     const steps = appDownloadUrl
       ? `1. Download the Rebma app: ${appDownloadUrl}\n2. Open the app, tap Register on the sign-in page, and paste this link: ${link}`
       : `Open the Rebma app, tap Register on the sign-in page, and paste this link: ${link}`;
-    const defaultMessage = `Hi ${createdInvite.fullName}, you have been invited to join Rebma Impex.\n\n${steps}\n\nWhen you register you choose your own password. Your registration then waits for approval, and you will get an email as soon as you can sign in. The link expires in 7 days, and once you register it must be approved within 12 hours.`;
+    const defaultMessage = `Hi ${createdInvite.fullName}, you have been invited to join Rebma Impex Ghana Limited.\n\n${steps}\n\nWhen you register you choose your own password. Your registration then waits for approval, and you will get an email as soon as you can sign in. The link expires in 7 days, and once you register it must be approved within 12 hours.`;
     const message = editedInviteMessage ?? defaultMessage;
 
     const sendEmailAndSms = async () => {

@@ -70,9 +70,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   await sendMail(
     supabaseAdmin,
     request.old_email,
-    'Your Rebma Impex sign-in email was changed',
-    `Hi ${name},\n\nYour Rebma Impex sign-in email is now ${request.new_email}. If this wasn't you, contact the other CEO or your administrator immediately.\n\nRebma Impex`,
-    `<p>Hi ${esc(name)},</p><p>Your Rebma Impex sign-in email is now <strong>${esc(request.new_email)}</strong>.</p><p>If this wasn't you, contact the other CEO or your administrator immediately.</p><p>Rebma Impex</p>`,
+    'Your Rebma Impex Ghana Limited sign-in email was changed',
+    `Hi ${name},\n\nYour Rebma Impex Ghana Limited sign-in email is now ${request.new_email}. If this wasn't you, contact the other CEO or your administrator immediately.\n\nRebma Impex`,
+    `<p>Hi ${esc(name)},</p><p>Your Rebma Impex Ghana Limited sign-in email is now <strong>${esc(request.new_email)}</strong>.</p><p>If this wasn't you, contact the other CEO or your administrator immediately.</p><p>Rebma Impex</p>`,
   ).catch(() => ({ sent: false }));
 
   await supabaseAdmin.from('global_audit_history').insert({

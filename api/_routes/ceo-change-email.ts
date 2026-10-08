@@ -67,9 +67,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const sent = await sendMail(
     supabaseAdmin,
     target,
-    'Confirm your new Rebma Impex sign-in email',
-    `Hi ${name},\n\nA request was made to change your Rebma Impex sign-in email to this address. To confirm, open this link within ${LINK_MINUTES} minutes:\n${link}\n\nIf you didn't ask for this, ignore this email and nothing will change.\n\nRebma Impex`,
-    `<p>Hi ${esc(name)},</p><p>A request was made to change your Rebma Impex sign-in email to this address. To confirm, open this link within ${LINK_MINUTES} minutes:</p><p><a href="${esc(link)}">Confirm my new email</a></p><p>If you didn't ask for this, ignore this email and nothing will change.</p><p>Rebma Impex</p>`,
+    'Confirm your new Rebma Impex Ghana Limited sign-in email',
+    `Hi ${name},\n\nA request was made to change your Rebma Impex Ghana Limited sign-in email to this address. To confirm, open this link within ${LINK_MINUTES} minutes:\n${link}\n\nIf you didn't ask for this, ignore this email and nothing will change.\n\nRebma Impex`,
+    `<p>Hi ${esc(name)},</p><p>A request was made to change your Rebma Impex Ghana Limited sign-in email to this address. To confirm, open this link within ${LINK_MINUTES} minutes:</p><p><a href="${esc(link)}">Confirm my new email</a></p><p>If you didn't ask for this, ignore this email and nothing will change.</p><p>Rebma Impex</p>`,
   );
   if (!sent.sent) {
     await supabaseAdmin.from('ceo_email_change_requests').update({ used_at: new Date().toISOString() }).eq('token_hash', tokenHash);
@@ -80,9 +80,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   await sendMail(
     supabaseAdmin,
     current,
-    'Your Rebma Impex sign-in email is being changed',
-    `Hi ${name},\n\nA change of your sign-in email to ${target} was requested from Control Center. It only takes effect once confirmed from that address. If this wasn't you, change your password straight away.\n\nRebma Impex`,
-    `<p>Hi ${esc(name)},</p><p>A change of your sign-in email to <strong>${esc(target)}</strong> was requested from Control Center. It only takes effect once confirmed from that address.</p><p>If this wasn't you, change your password straight away.</p><p>Rebma Impex</p>`,
+    'Your Rebma Impex Ghana Limited sign-in email is being changed',
+    `Hi ${name},\n\nA change of your sign-in email to ${target} was requested from Control Center. It only takes effect once confirmed from that address. If this wasn't you, change your password straight away.\n\nRebma Impex Ghana Limited`,
+    `<p>Hi ${esc(name)},</p><p>A change of your sign-in email to <strong>${esc(target)}</strong> was requested from Control Center. It only takes effect once confirmed from that address.</p><p>If this wasn't you, change your password straight away.</p>`,
   ).catch(() => ({ sent: false }));
 
   await supabaseAdmin.from('global_audit_history').insert({

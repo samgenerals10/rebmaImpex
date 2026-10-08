@@ -64,7 +64,7 @@ export async function sendBirthdayWish(
 ): Promise<{ email?: SendResult; sms?: SendResult }> {
   const out: { email?: SendResult; sms?: SendResult } = {};
   if (channels.includes('email')) {
-    out.email = await sendMail(supabaseAdmin, person.email, subject, `${message}\n\nRebma Impex`, paragraphsFromText(message), { preheader: subject });
+    out.email = await sendMail(supabaseAdmin, person.email, subject, `${message}\n\nRebma Impex Ghana Limited`, paragraphsFromText(message), { preheader: subject, title: subject });
   }
   if (channels.includes('sms')) {
     out.sms = await sendSms(supabaseAdmin, person.phone, message);
