@@ -81,7 +81,7 @@ export const API_KEY_DEFS: ApiKeyDef[] = [
     provider: 'Resend, domains',
     providerUrl: 'https://resend.com/domains',
     label: 'Email "From" Address',
-    description: "Who emails come from. Who emails come from, on the domain verified in Resend, for example Rebma Impex <hr@rebmaimpex.com>. Until this is filled in, Resend is not used and Gmail sends everything.",
+    description: "Who emails come from, on the domain verified in Resend, for example Rebma Impex <hr@rebmaimpex.com>. Until this is filled in, Resend is not used and Gmail sends everything.",
     placeholder: 'Rebma Impex <hr@yourcompany.com>',
     plain: true,
   },
