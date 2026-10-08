@@ -121,13 +121,15 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
   const [resendingInvite, setResendingInvite] = useState(false);
   // "Send sign-in notice again": re-sends the approved email and text.
   const [sendingNotice, setSendingNotice] = useState(false);
+  // The phone app is not for everyone, so the notice only mentions it when ticked.
+  const [noticeIncludeApp, setNoticeIncludeApp] = useState(false);
   const [noticeResult, setNoticeResult] = useState<{ ok: boolean; text: string } | null>(null);
   const sendSignInNotice = async (userId: string) => {
     if (sendingNotice) return;
     setSendingNotice(true);
     setNoticeResult(null);
     try {
-      const res: any = await callPrivilegedApi('/api/send-approval-notice', { userId });
+      const res: any = await callPrivilegedApi('/api/send-approval-notice', { userId, includeApp: noticeIncludeApp });
       setNoticeResult({ ok: !!res?.success, text: res?.message || 'Done.' });
     } catch (err: any) {
       setNoticeResult({ ok: false, text: `Could not send: ${err.message}` });
@@ -525,10 +527,14 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
   // The invite message HR has changed in the Send panel. null = nobody has
   // edited it yet, so the standard message (and designed email) is used.
   const [editedInviteMessage, setEditedInviteMessage] = useState<string | null>(null);
+  // "Add mobile app": off by default. Only when HR ticks it does the message
+  // (and the email) include the app download steps.
+  const [includeApp, setIncludeApp] = useState(false);
   useEffect(() => {
     if (!createdInvite) return;
     setSendResult(null);
     setEditedInviteMessage(null);
+    setIncludeApp(false);
     (supabase as any).from('ceo_settings').select('setting_value').eq('setting_key', 'app_download_url').maybeSingle()
       .then(({ data }: any) => {
         let v = data?.setting_value;
@@ -541,9 +547,11 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
     if (!createdInvite) return null;
     const link = `${window.location.origin}/register?token=${createdInvite.token}`;
     // Same two-step wording as the email (api/_shared/mailer.ts).
-    const steps = appDownloadUrl
-      ? `1. Download the Rebma app: ${appDownloadUrl}\n2. Open the app, tap Register on the sign-in page, and paste this link: ${link}`
-      : `Open the Rebma app, tap Register on the sign-in page, and paste this link: ${link}`;
+    const steps = !includeApp
+      ? `Open this link to register and choose your own password: ${link}`
+      : appDownloadUrl
+        ? `1. Download the Rebma app: ${appDownloadUrl}\n2. Open the app, tap Register on the sign-in page, and paste this link: ${link}`
+        : `Open the Rebma app, tap Register on the sign-in page, and paste this link: ${link}`;
     const defaultMessage = `Hi ${createdInvite.fullName}, you have been invited to join Rebma Impex Ghana Limited.\n\n${steps}\n\nWhen you register you choose your own password. Your registration then waits for approval, and you will get an email as soon as you can sign in. The link expires in 7 days, and once you register it must be approved within 12 hours.`;
     const message = editedInviteMessage ?? defaultMessage;
 
@@ -552,7 +560,7 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
       setSendError('');
       setSendResult(null);
       try {
-        const res: any = await callPrivilegedApi('/api/send-staff-invite-email', { inviteId: createdInvite.id, channels: ['email', 'sms'], ...(editedInviteMessage !== null ? { message: editedInviteMessage } : {}) });
+        const res: any = await callPrivilegedApi('/api/send-staff-invite-email', { inviteId: createdInvite.id, channels: ['email', 'sms'], includeApp, ...(editedInviteMessage !== null ? { message: editedInviteMessage } : {}) });
         setSendResult({ email: res?.email, sms: res?.sms });
         reloadDirectory();
       } catch (err: any) {
@@ -588,6 +596,10 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
           <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '0.75rem' }}>
             <p style={{ margin: 0, fontWeight: 600, fontSize: 13 }}>Email: {createdInvite.email || 'none on file'}</p>
             <p style={{ margin: '0 0 8px', fontWeight: 600, fontSize: 13 }}>SMS: {createdInvite.phone || 'no phone on file'}</p>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 10px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+              <input type="checkbox" checked={includeApp} onChange={e => { setIncludeApp(e.target.checked); setEditedInviteMessage(null); }} />
+              Add mobile app (include the app download steps)
+            </label>
             <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Message (you can edit it)</label>
             <textarea
               value={message}
@@ -1131,6 +1143,11 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
                   <button onClick={() => openEdit(m)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0.45rem 1rem', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
                     <Edit2 size={13} /> Edit
                   </button>
+                )}
+                {isHrOrAdmin && String(m.status).toUpperCase() === 'ACTIVE' && (
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                    <input type="checkbox" checked={noticeIncludeApp} onChange={e => setNoticeIncludeApp(e.target.checked)} /> Add mobile app
+                  </label>
                 )}
                 {isHrOrAdmin && String(m.status).toUpperCase() === 'ACTIVE' && (
                   <button onClick={() => sendSignInNotice(m.id)} disabled={sendingNotice} title="Email and text them the sign-in details and app download link again"

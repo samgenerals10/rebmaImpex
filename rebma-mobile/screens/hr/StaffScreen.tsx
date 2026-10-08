@@ -34,6 +34,7 @@ import Avatar from '../../components/ui/Avatar';
 import Badge from '../../components/ui/Badge';
 import Input, { Field } from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
+import Toggle from '../../components/ui/Toggle';
 import SearchablePicker from '../../components/ui/SearchablePicker';
 import DataList, { type DataColumn } from '../../components/ui/DataList';
 import Sheet, { SheetSection } from '../../components/ui/Sheet';
@@ -163,7 +164,9 @@ export default function StaffScreen() {
   // The invite message HR has changed in the Send panel. null = not edited,
   // so the standard message (and designed email) is used. Same as web.
   const [editedInviteMessage, setEditedInviteMessage] = useState<string | null>(null);
-  useEffect(() => { setEditedInviteMessage(null); }, [createdInvite?.id]);
+  // "Add mobile app": off by default, so the app steps only appear when HR ticks it.
+  const [includeApp, setIncludeApp] = useState(false);
+  useEffect(() => { setEditedInviteMessage(null); setIncludeApp(false); }, [createdInvite?.id]);
   // CEO's private Google Play link (Control Center → API Keys). Reloaded
   // each time an invite is created so a link saved mid-session shows up.
   const [appDownloadUrl, setAppDownloadUrl] = useState('');
@@ -588,11 +591,12 @@ export default function StaffScreen() {
   // "Send sign-in notice again": re-sends the approved email and text,
   // with the app download link (api/send-approval-notice.ts), same as web.
   const [sendingNotice, setSendingNotice] = useState(false);
+  const [noticeIncludeApp, setNoticeIncludeApp] = useState(false);
   const sendSignInNotice = async (userId: string, name: string) => {
     if (sendingNotice) return;
     setSendingNotice(true);
     try {
-      const res: any = await callPrivilegedApi('/api/send-approval-notice', { userId });
+      const res: any = await callPrivilegedApi('/api/send-approval-notice', { userId, includeApp: noticeIncludeApp });
       Alert.alert(res?.success ? 'Sign-in notice sent' : 'Nothing was sent', `${name}: ${res?.message || 'Done.'}`);
     } catch (e: any) {
       Alert.alert('Could not send', e instanceof ApiNotConfiguredError ? e.message : (e.message || 'Could not send the sign-in notice.'));
@@ -844,6 +848,12 @@ export default function StaffScreen() {
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.sm }}>
               <Button label="Edit" size="sm" variant="ghost" onPress={() => openEdit(selected)} />
               {selected.status === 'ACTIVE' && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.xs }}>
+                  <Toggle value={noticeIncludeApp} onChange={setNoticeIncludeApp} />
+                  <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta11.size, color: t.colors.textPrimary }}>Add mobile app</Text>
+                </View>
+              )}
+              {selected.status === 'ACTIVE' && (
                 <Button label={sendingNotice ? 'Sending...' : 'Send sign-in notice again'} size="sm" icon={<Send size={13} color="#fff" />}
                   onPress={() => sendSignInNotice(selected.id, selected.fullName)} loading={sendingNotice} disabled={sendingNotice} />
               )}
@@ -953,9 +963,11 @@ export default function StaffScreen() {
         {createdInvite && (() => {
           const link = `${process.env.EXPO_PUBLIC_APP_URL || 'https://app.rebmaimpex.com'}/register?token=${createdInvite.token}`;
           // Same two-step wording as the email (api/send-staff-invite-email.ts).
-          const steps = appDownloadUrl
-            ? `1. Download the Rebma app: ${appDownloadUrl}\n2. Open the app, tap Register on the sign-in page, and paste this link: ${link}`
-            : `Open the Rebma app, tap Register on the sign-in page, and paste this link: ${link}`;
+          const steps = !includeApp
+            ? `Open this link to register and choose your own password: ${link}`
+            : appDownloadUrl
+              ? `1. Download the Rebma app: ${appDownloadUrl}\n2. Open the app, tap Register on the sign-in page, and paste this link: ${link}`
+              : `Open the Rebma app, tap Register on the sign-in page, and paste this link: ${link}`;
           const defaultMessage = `Hi ${createdInvite.fullName}, you have been invited to join Rebma Impex Ghana Limited.\n\n${steps}\n\nWhen you register you choose your own password. Your registration then waits for approval, and you will get an email as soon as you can sign in. The link expires in 7 days, and once you register it must be approved within 12 hours.`;
           const message = editedInviteMessage ?? defaultMessage;
           // One tap sends both: email (Gmail or Resend) and SMS (the Android SMS
@@ -963,7 +975,7 @@ export default function StaffScreen() {
           const sendEmailAndSms = async () => {
             setSendingEmail(true);
             try {
-              const res: any = await callPrivilegedApi('/api/send-staff-invite-email', { inviteId: createdInvite.id, channels: ['email', 'sms'], ...(editedInviteMessage !== null ? { message: editedInviteMessage } : {}) });
+              const res: any = await callPrivilegedApi('/api/send-staff-invite-email', { inviteId: createdInvite.id, channels: ['email', 'sms'], includeApp, ...(editedInviteMessage !== null ? { message: editedInviteMessage } : {}) });
               setSendResult({ email: res?.email, sms: res?.sms });
             } catch (e: any) {
               Alert.alert('Send Failed', e instanceof ApiNotConfiguredError ? e.message : (e.message || 'Failed to send the invite.'));
@@ -988,6 +1000,10 @@ export default function StaffScreen() {
               <Card tone="inset">
                 <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>Email: {createdInvite.email || 'none on file'}</Text>
                 <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.textPrimary, marginBottom: t.spacing.xs }}>SMS: {createdInvite.phone || 'no phone on file'}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: t.spacing.sm }}>
+                  <Text style={{ flex: 1, fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>Add mobile app (include the app download steps)</Text>
+                  <Toggle value={includeApp} onChange={(v) => { setIncludeApp(v); setEditedInviteMessage(null); }} />
+                </View>
                 <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta10.size, color: t.colors.textMuted, marginBottom: 4, textTransform: 'uppercase' }}>Message (you can edit it)</Text>
                 <Input value={message} onChangeText={setEditedInviteMessage} multiline numberOfLines={9} style={{ minHeight: 170, textAlignVertical: 'top', marginBottom: 4 }} />
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: t.spacing.sm }}>

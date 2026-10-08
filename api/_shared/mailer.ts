@@ -139,9 +139,12 @@ export async function sendInvite(
   origin: string,
   channels: Channel[] = ['email', 'sms'],
   customMessage?: string | null,
+  // The phone app is not for everyone, so the invite only mentions it when
+  // HR ticks "Add mobile app" in the Send panel (and a download link is set).
+  includeApp = false,
 ): Promise<{ link: string; email?: SendResult; sms?: SendResult }> {
   const link = `${origin}/register?token=${invite.token}`;
-  const downloadUrl = await getDownloadUrl(supabaseAdmin);
+  const downloadUrl = includeApp ? await getDownloadUrl(supabaseAdmin) : '';
   const name = invite.full_name || '';
   const after = 'When you register you choose your own password. Your registration then waits for approval, and we will let you know as soon as you can sign in.';
   const expiry = 'This link expires in 7 days. Once you register, it must be approved within 12 hours or you will need a new link.';
@@ -151,7 +154,7 @@ export async function sendInvite(
   if (channels.includes('email')) {
     const subject = `You are invited to join ${COMPANY_NAME}`;
     const heroOpts = { title: 'You are invited', subtitle: `Join the team at ${COMPANY_NAME}`, preheader: `Your invitation to join ${COMPANY_NAME}` };
-    const linkFallback = `${emailNote('If the button does not work, copy this link into the Rebma app or your browser:')}${emailNote(link)}`;
+    const linkFallback = `${emailNote(includeApp ? 'If the button does not work, copy this link into the Rebma app or your browser:' : 'If the button does not work, copy this link into your browser:')}${emailNote(link)}`;
     if (custom) {
       result.email = await sendMail(
         supabaseAdmin, invite.email, subject,
@@ -160,12 +163,17 @@ export async function sendInvite(
         heroOpts,
       );
     } else {
-      const textSteps = downloadUrl
-        ? `1. Download the Rebma app:\n${downloadUrl}\n\n2. Open the app, tap Register on the sign-in page, and paste this link:\n${link}`
-        : `Open the Rebma app, tap Register on the sign-in page, and paste this link:\n${link}`;
-      const steps = downloadUrl
-        ? `${emailStep(1, 'Get the Rebma app', `<a href="${esc(downloadUrl)}" style="color:#0c5c34;font-weight:700;word-break:break-all">${esc(downloadUrl)}</a>`)}${emailStep(2, 'Open it and tap Register', 'Paste your invite link when it asks, then choose your own password.')}`
-        : `${emailStep(1, 'Open the Rebma app and tap Register', 'Paste your invite link when it asks, then choose your own password.')}`;
+      const textSteps = includeApp
+        ? (downloadUrl
+          ? `1. Download the Rebma app:\n${downloadUrl}\n\n2. Open the app, tap Register on the sign-in page, and paste this link:\n${link}`
+          : `Open the Rebma app, tap Register on the sign-in page, and paste this link:\n${link}`)
+        : `Open this link to register and choose your own password:\n${link}`;
+      const steps = includeApp
+        ? (downloadUrl
+          ? `${emailStep(1, 'Get the Rebma app', `<a href="${esc(downloadUrl)}" style="color:#0c5c34;font-weight:700;word-break:break-all">${esc(downloadUrl)}</a>`)}${emailStep(2, 'Open it and tap Register', 'Paste your invite link when it asks, then choose your own password.')}`
+          : `${emailStep(1, 'Open the Rebma app and tap Register', 'Paste your invite link when it asks, then choose your own password.')}`)
+        : '';
+      const intro = includeApp ? 'Here is how to get started:' : 'Tap the button below to register and choose your own password.';
       result.email = await sendMail(
         supabaseAdmin, invite.email, subject,
         `Hi ${name},\n\nYou have been invited to join ${COMPANY_NAME}.\n\n${textSteps}\n\n${after}\n\n${expiry} If you weren't expecting this, you can safely ignore it.\n\n${COMPANY_NAME}`,
@@ -175,16 +183,18 @@ export async function sendInvite(
           rows: [['Name', name], ['Role', (invite.role || '').replace(/^./, (c) => c.toUpperCase())], ['Department', departmentLabel(invite.department)], ['Link valid until', prettyDate(invite.expires_at)]],
           linkLabel: 'Open registration',
           linkUrl: link,
-        })}${paragraphsFromText('Here is how to get started:')}${steps}${emailButton('Register now', link)}${linkFallback}${emailCallout(`${after} ${expiry}`)}${emailNote("If you weren't expecting this, you can safely ignore it.")}`,
+        })}${paragraphsFromText(intro)}${steps}${emailButton('Register now', link)}${linkFallback}${emailCallout(`${after} ${expiry}`)}${emailNote("If you weren't expecting this, you can safely ignore it.")}`,
         heroOpts,
       );
     }
   }
 
   if (channels.includes('sms')) {
-    const defaultSms = downloadUrl
-      ? `Hi ${name}, you're invited to join ${COMPANY_NAME}.\n1. Download the app: ${downloadUrl}\n2. Open it, tap Register and paste: ${link}\nYou'll choose your password when you register. Link expires in 7 days.`
-      : `Hi ${name}, you're invited to join ${COMPANY_NAME}.\nOpen the Rebma app, tap Register and paste: ${link}\nYou'll choose your password when you register. Link expires in 7 days.`;
+    const defaultSms = includeApp
+      ? (downloadUrl
+        ? `Hi ${name}, you're invited to join ${COMPANY_NAME}.\n1. Download the app: ${downloadUrl}\n2. Open it, tap Register and paste: ${link}\nYou'll choose your password when you register. Link expires in 7 days.`
+        : `Hi ${name}, you're invited to join ${COMPANY_NAME}.\nOpen the Rebma app, tap Register and paste: ${link}\nYou'll choose your password when you register. Link expires in 7 days.`)
+      : `Hi ${name}, you're invited to join ${COMPANY_NAME}.\nRegister here: ${link}\nYou'll choose your password when you register. Link expires in 7 days.`;
     const sms = custom ? (custom.includes(link) ? custom : `${custom}\n${link}`) : defaultSms;
     result.sms = await sendSms(supabaseAdmin, invite.phone, sms);
   }
@@ -198,8 +208,10 @@ export async function sendApproved(
   supabaseAdmin: SupabaseClient,
   person: { email?: string | null; phone?: string | null; fullName: string },
   origin: string,
+  // Only mention the phone app when asked (it is not for everyone).
+  includeApp = false,
 ): Promise<{ email: SendResult; sms: SendResult }> {
-  const downloadUrl = await getDownloadUrl(supabaseAdmin);
+  const downloadUrl = includeApp ? await getDownloadUrl(supabaseAdmin) : '';
   const signIn = 'Sign in with your email and the password you chose when you registered.';
   const textWays = downloadUrl
     ? `On your phone, get the Rebma app here:\n${downloadUrl}\n\nOn a computer, open:\n${origin}`

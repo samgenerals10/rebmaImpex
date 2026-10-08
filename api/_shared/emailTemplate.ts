@@ -2,8 +2,7 @@
 // The one look every email from the app shares, in the colours of the
 // sign-in and sign-up pages (rebma-web/src/components/auth/AuthBrand.tsx,
 // sampled from the logo): turquoise main button, forest green links, amber
-// accents, near-black text, light grey panels, on a deep amber to sky blue
-// page. The
+// accents, near-black text, light grey panels, on a deep forest green page. The
 // header is plain white with the cropped logo mark and no tile behind it.
 // Modern product-email layout: large headline, flat white card, grey details
 // panel, and a sign-off row with the logo on the right. No shadows.
@@ -21,11 +20,11 @@ export const COMPANY_NAME = 'Rebma Impex Ghana Limited';
 const TURQUOISE = '#02afd9';
 const AMBER = '#f2a72e';
 const FOREST = '#0c5c34';
-// The page behind the card: deep amber into sky blue (the sign-up page's
-// amber, darkened, and a sky blue). The solid colour is for email apps that
-// ignore gradients.
-const PAGE_FALLBACK = '#b8620a';
-const PAGE_GRADIENT = 'linear-gradient(135deg,#a8540a 0%,#c9780f 35%,#2aa8d8 100%)';
+// The page behind the card: a calm deep forest green with a gentle shade,
+// from the sign-up page's forest green. The solid colour is for email apps
+// that ignore gradients.
+const PAGE_FALLBACK = '#0c5c34';
+const PAGE_GRADIENT = 'linear-gradient(160deg,#0f6b3c 0%,#0c5c34 55%,#083d24 100%)';
 const INK = '#111827';
 const BODY = '#374151';
 const MUTED = '#6b7280';
@@ -116,8 +115,8 @@ export function brandedEmail(opts: {
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:580px;background:#ffffff;border-radius:8px">
     <tr><td style="background:#ffffff;border-radius:8px 8px 0 0;padding:34px 36px 26px;font-family:${FONT}">
       <table role="presentation" cellpadding="0" cellspacing="0"><tr>
-        <td><img src="${esc(logo)}" width="57" height="34" alt="${esc(COMPANY_NAME)}" style="display:block;border:0;width:57px;height:34px"></td>
-        <td style="padding-left:12px;font-family:${FONT};font-size:13px;font-weight:800;letter-spacing:0.04em;color:${INK}">REBMA IMPEX GHANA LIMITED</td>
+        <td valign="bottom"><img src="${esc(logo)}" width="57" height="34" alt="${esc(COMPANY_NAME)}" style="display:block;border:0;width:57px;height:34px"></td>
+        <td valign="bottom" style="padding-left:12px;padding-bottom:2px;font-family:${FONT};font-size:13px;line-height:1;font-weight:800;letter-spacing:0.04em;color:${INK}">REBMA IMPEX GHANA LIMITED</td>
       </tr></table>
       ${hero}
     </td></tr>
@@ -127,8 +126,8 @@ export function brandedEmail(opts: {
     </td></tr>
     <tr><td style="padding:10px 36px 34px;font-family:${FONT}">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-        <td valign="middle"><div style="font-size:13.5px;font-weight:700;color:${INK}">${esc(opts.signOff || COMPANY_NAME)}</div>${opts.contact ? `<div style="margin-top:2px;font-size:12px;color:${MUTED}">${esc(opts.contact)}</div>` : ''}</td>
-        <td valign="middle" align="right" width="64"><img src="${esc(logo)}" width="50" height="30" alt="" style="display:block;border:0;width:50px;height:30px"></td>
+        <td valign="bottom"><div style="font-size:13.5px;font-weight:700;color:${INK}">${esc(opts.signOff || COMPANY_NAME)}</div>${opts.contact ? `<div style="margin-top:2px;font-size:12px;color:${MUTED}">${esc(opts.contact)}</div>` : ''}</td>
+        <td valign="bottom" align="right" width="64"><img src="${esc(logo)}" width="50" height="30" alt="" style="display:block;border:0;width:50px;height:30px"></td>
       </tr></table>
       <div style="margin-top:22px;font-size:11.5px;line-height:1.7;color:${MUTED}">This message was sent to you by ${esc(COMPANY_NAME)}. Please do not share the links in it with anyone else.</div>
     </td></tr>

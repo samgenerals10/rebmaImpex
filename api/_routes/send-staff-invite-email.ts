@@ -66,7 +66,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const origin = await getAppOrigin(supabaseAdmin, req.headers.origin as string);
     // The text HR edited in the Send panel, if they changed it.
     const message = typeof req.body?.message === 'string' ? req.body.message : null;
-    const result = await sendInvite(supabaseAdmin, invite, origin, channels, message);
+    const result = await sendInvite(supabaseAdmin, invite, origin, channels, message, req.body?.includeApp === true);
     const nowSent = (['email', 'sms'] as const).filter((c) => result[c]?.sent);
     if (nowSent.length) {
       await supabaseAdmin.from('staff_invites').update({ sent_via: Array.from(new Set([...(invite.sent_via || []), ...nowSent])) }).eq('id', inviteId);

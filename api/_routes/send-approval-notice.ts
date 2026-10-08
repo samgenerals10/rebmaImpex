@@ -41,7 +41,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const origin = await getAppOrigin(supabaseAdmin, req.headers.origin as string);
-  const result = await sendApproved(supabaseAdmin, { email: target.email, phone: target.phone, fullName: target.full_name || '' }, origin);
+  const result = await sendApproved(supabaseAdmin, { email: target.email, phone: target.phone, fullName: target.full_name || '' }, origin, req.body?.includeApp === true);
   return res.status(200).json({
     success: result.email.sent || result.sms.sent,
     email: result.email,
