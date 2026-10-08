@@ -788,7 +788,60 @@ function DataResetSection({ addNotification }: { addNotification: (m: string) =>
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+// The page is split into tabs so a long list of sections is never one long
+// scroll. Panes are only hidden, never unmounted, so nothing a section has
+// loaded or typed is lost when you switch tabs. No setting, permission or
+// saved value is touched by this layout.
+const CC_TABS: { id: string; label: string; icon: any }[] = [
+  { id: 'access', label: 'Access', icon: Shield },
+  { id: 'money', label: 'Money & Approvals', icon: DollarSign },
+  { id: 'ops', label: 'Operations', icon: Package },
+  { id: 'comm', label: 'Communication', icon: MessageCircle },
+  { id: 'system', label: 'System', icon: Settings },
+  { id: 'api', label: 'API Keys', icon: Key },
+  { id: 'templates', label: 'Templates & Data', icon: FileEdit },
+];
+const CC_TAB_IDS = CC_TABS.map(t => t.id);
+
+function Pane({ id, active, children }: { id: string; active: string; children: React.ReactNode }) {
+  const on = id === active;
+  return <div hidden={!on} className={on ? 'ccx-pane space-y-6' : 'space-y-6'} role="tabpanel" aria-labelledby={`ccx-tab-${id}`}>{children}</div>;
+}
+
+function TabBar({ tabs, active, onChange }: { tabs: { id: string; label: string; icon: any }[]; active: string; onChange: (id: string) => void }) {
+  const move = (e: React.KeyboardEvent, i: number) => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    e.preventDefault();
+    const next = (i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length;
+    onChange(tabs[next].id);
+    document.getElementById(`ccx-tab-${tabs[next].id}`)?.focus();
+  };
+  return (
+    <div role="tablist" aria-label="Control Center sections" className="ccx-tabs flex gap-1 overflow-x-auto border-b border-[var(--border)]">
+      {tabs.map((t, i) => {
+        const on = t.id === active;
+        const Icon = t.icon;
+        return (
+          <button key={t.id} id={`ccx-tab-${t.id}`} role="tab" aria-selected={on} tabIndex={on ? 0 : -1}
+            onClick={() => onChange(t.id)} onKeyDown={e => move(e, i)}
+            className={`ccx-tab relative shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold cursor-pointer whitespace-nowrap ${on ? 'text-[var(--accent)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
+            <Icon className="w-4 h-4" />
+            {t.label}
+            <span className={`ccx-underline absolute left-3 right-3 -bottom-px h-0.5 rounded-full bg-[var(--accent)] ${on ? 'ccx-underline-on' : ''}`} />
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function CeoControlCenter({ currentUser, addNotification }: Props) {
+  // Which settings tab is open. Remembered per browser so a reload comes back to it.
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    try { const v = localStorage.getItem('ccx-tab'); return v && CC_TAB_IDS.includes(v) ? v : 'access'; } catch { return 'access'; }
+  });
+  useEffect(() => { try { localStorage.setItem('ccx-tab', activeTab); } catch { /* storage unavailable */ } }, [activeTab]);
   const { getSetting, updateSetting } = useCeoSettings();
 
   // Pending approvals
@@ -1243,6 +1296,17 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
           display: inline-block;
           font-weight: 800;
         }
+        .ccx-tabs { scrollbar-width: none; }
+        .ccx-tabs::-webkit-scrollbar { display: none; }
+        .ccx-tab { transition: color 200ms ease-in-out; }
+        .ccx-underline { transform: scaleX(0); opacity: 0; transition: transform 240ms ease-in-out, opacity 240ms ease-in-out; }
+        .ccx-underline-on { transform: scaleX(1); opacity: 1; }
+        .ccx-pane { animation: ccx-pane-in 240ms ease-out both; }
+        @keyframes ccx-pane-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        @media (prefers-reduced-motion: reduce) {
+          .ccx-pane { animation: none; }
+          .ccx-tab, .ccx-underline { transition: none; }
+        }
       `}</style>
       {/* Breadcrumb */}
       <div className="text-xs text-[var(--text-muted)] flex items-center gap-1">
@@ -1306,6 +1370,9 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
           type, not here, Control Center is settings/configuration, not an
           approvals inbox. */}
 
+      <TabBar tabs={CC_TABS} active={activeTab} onChange={setActiveTab} />
+
+      <Pane id="system" active={activeTab}>
       {/* Recent Setting Changes — this is exactly what it shows: the last 10
           ceo_settings rows by updated_at. Not a security/auth event log
           (no login attempts, no session/IP data), so it isn't labeled as
@@ -1334,7 +1401,9 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
           </div>
         </div>
       )}
+      </Pane>
 
+      <Pane id="templates" active={activeTab}>
       {/* ── DOCUMENT TEMPLATES ──────────────────────────────────────────── */}
       {/* Company-wide branding on every receipt, dispatch ticket, and
           proforma invoice, a CEO-level setting, so it lives here rather
@@ -1344,7 +1413,9 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
       <Section title="Document Templates" icon={FileEdit} defaultOpen={false}>
         <DocumentTemplatesView addNotification={addNotification} currentUser={currentUser} hideHeader />
       </Section>
+      </Pane>
 
+      <Pane id="access" active={activeTab}>
       {/* ── SECTION 1: ACCESS CONTROL ──────────────────────────────────── */}
       <Section title="CEO Account" icon={Crown}>
         <div className="space-y-4 py-2">
@@ -1426,6 +1497,7 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
           </div>
         </div>
       </Section>
+      </Pane>
 
       <SidePanel open={!!removeTarget} onClose={() => setRemoveTarget(null)} title="Request CEO Removal"
         footer={<button onClick={() => {
@@ -1494,6 +1566,7 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
       </SidePanel>
 
 
+      <Pane id="access" active={activeTab}>
       <Section title="Section 1, Access Control" icon={Shield}>
         {getSchemaSection('access')!.fields.slice(0, 5).map(f => <SettingField key={f.key} field={f} />)}
 
@@ -1690,34 +1763,46 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
           )}
         </div>
       </Section>
+      </Pane>
 
+      <Pane id="money" active={activeTab}>
       {/* ── SECTION 2: FINANCIAL CONTROLS ─────────────────────────────── */}
       <Section title="Section 2, Financial Controls" icon={DollarSign}>
         {getSchemaSection('financial')!.fields.map(f => <SettingField key={f.key} field={f} />)}
       </Section>
+      </Pane>
 
+      <Pane id="ops" active={activeTab}>
       {/* ── SECTION 3: OPERATIONS CONTROLS ───────────────────────────── */}
       <Section title="Section 3, Operations Controls" icon={Package}>
         {getSchemaSection('operations')!.fields.map(f => <SettingField key={f.key} field={f} />)}
       </Section>
+      </Pane>
 
+      <Pane id="ops" active={activeTab}>
       {/* ── SECTION 4: DISPATCH CONTROLS ──────────────────────────────── */}
       <Section title="Section 4, Dispatch Controls" icon={Truck}>
         {getSchemaSection('dispatch')!.fields.map(f => <SettingField key={f.key} field={f} />)}
       </Section>
+      </Pane>
 
+      <Pane id="ops" active={activeTab}>
       {/* ── SECTION 5: DATA CONTROLS ──────────────────────────────────── */}
       <Section title="Section 5, Data Controls" icon={Database}>
         {getSchemaSection('data')!.fields.map(f => <SettingField key={f.key} field={f} />)}
       </Section>
+      </Pane>
 
+      <Pane id="comm" active={activeTab}>
       {/* ── SECTION 6: COMMUNICATION CONTROLS ────────────────────────── */}
       <Section title="Section 6, Communication Controls" icon={MessageCircle}>
         {getSchemaSection('communication')!.fields.slice(0, 7).map(f => <SettingField key={f.key} field={f} />)}
         <MessageExportSection currentUser={currentUser} addNotification={addNotification} />
         {getSchemaSection('communication')!.fields.slice(7).map(f => <SettingField key={f.key} field={f} />)}
       </Section>
+      </Pane>
 
+      <Pane id="system" active={activeTab}>
       {/* ── SECTION 7: SYSTEM CONTROLS ───────────────────────────────── */}
       <Section title="Section 7, System Controls" icon={Settings}>
         {getSchemaSection('system')!.fields.map(f => <SettingField key={f.key} field={f} />)}
@@ -1797,17 +1882,23 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
           </div>
         </div>
       </Section>
+      </Pane>
 
+      <Pane id="money" active={activeTab}>
       {/* ── SECTION 8: APPROVAL CONTROLS ─────────────────────────────── */}
       <Section title="Section 8, Approval Controls" icon={CheckSquare}>
         {getSchemaSection('approval')!.fields.map(f => <SettingField key={f.key} field={f} />)}
       </Section>
+      </Pane>
 
+      <Pane id="access" active={activeTab}>
       {/* ── SECTION 9: SPREADSHEETS CONTROL ──────────────────────────── */}
       <Section title="Section 9, Spreadsheets Control" icon={FileSpreadsheet}>
         {getSchemaSection('spreadsheets')!.fields.map(f => <SettingField key={f.key} field={f} />)}
       </Section>
+      </Pane>
 
+      <Pane id="money" active={activeTab}>
       {/* ── SECTION 10: RISK CONTROLS ────────────────────────────────────
           Risk had no toggles of its own at all before this, every other
           department does. What's genuinely safe to offer here, and what
@@ -1822,19 +1913,26 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
       <Section title="Section 10, Risk Controls" icon={AlertTriangle}>
         {getSchemaSection('risk')!.fields.map(f => <SettingField key={f.key} field={f} />)}
       </Section>
+      </Pane>
 
+      <Pane id="comm" active={activeTab}>
       <Section title="Section 11, Birthday Wishes" icon={Cake} defaultOpen={false}>
         {getSchemaSection('birthdays')!.fields.map(f => <SettingField key={f.key} field={f} />)}
       </Section>
+      </Pane>
 
+      <Pane id="api" active={activeTab}>
       <Section title="API Keys" icon={Key} defaultOpen={false}>
         <ApiKeysSection addNotification={addNotification} />
       </Section>
+      </Pane>
 
+      <Pane id="templates" active={activeTab}>
       {/* ── SECTION 11: DATA RESET CENTER ────────────────────────────── */}
       <Section title="Section 10, Data Reset Center" icon={Trash2} defaultOpen={false}>
         <DataResetSection addNotification={addNotification} />
       </Section>
+      </Pane>
 
       {/* ── USER MANAGEMENT MODAL ───────────────────────────────────────── */}
       <SidePanel
