@@ -463,16 +463,6 @@ export default function Sidebar({
             </div>
           </div>
 
-          {/* Super Admin indicator */}
-          {isSuperAdmin && (
-            <div className={`mb-3 shrink-0 transition-all duration-300 ${isActualCollapsed ? 'opacity-0 h-0 overflow-hidden' : 'opacity-100'}`}>
-              <div className="mx-2 px-3 py-1 bg-amber-50 border border-amber-300 rounded-xl flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
-                <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wide">Full Access Mode</span>
-              </div>
-            </div>
-          )}
-
           {/* Department Switcher */}
           <div className="mb-3 px-1 relative shrink-0">
             <label className={`block text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-1 transition-all duration-300 ${isActualCollapsed ? 'opacity-0 h-0 overflow-hidden' : ''}`}>Switch Department</label>

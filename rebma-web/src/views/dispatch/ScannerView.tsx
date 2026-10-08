@@ -208,7 +208,10 @@ export default function ScannerView({ addNotification }: Props) {
               <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
               <canvas ref={canvasRef} className="hidden" />
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="w-56 h-56 border-2 border-white/70 rounded-2xl" />
+                <div className="relative w-56 h-56 border-2 border-white/70 rounded-2xl overflow-hidden">
+                  {/* Laser line sweeping up and down while the camera scans */}
+                  <div className="scanner-laser" />
+                </div>
               </div>
               <button onClick={stopCamera} className="absolute bottom-3 right-3 px-3 py-1.5 bg-black/60 text-white text-xs font-semibold rounded-lg cursor-pointer">Stop</button>
             </div>

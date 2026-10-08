@@ -24,6 +24,7 @@ import ExportSheet from '../shared/ExportSheet';
 import { useTheme } from '../../theme/ThemeProvider';
 import { SkeletonList } from './Skeleton';
 import EmptyState from './EmptyState';
+import { RevealView } from './ScrollReveal';
 
 export interface RowIcon {
   Icon: ComponentType<any>;
@@ -304,10 +305,10 @@ export default function DataList<T>({
         })();
 
         return (
-          <View key={key}>
+          <RevealView key={key}>
             {index > 0 ? <View style={{ height: t.spacing.sm }} /> : null}
             {row}
-          </View>
+          </RevealView>
         );
       })}
     </View>

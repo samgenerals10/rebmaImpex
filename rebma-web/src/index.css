@@ -2129,7 +2129,7 @@ button:not(.nav-item):not(.lf-nav-item):not(.tab-item):active {
    mode is unchanged. */
 html.dark .brand-row {
   background: #171717;
-  border: 1px solid #262626;
+  border: none;
   border-radius: 9999px;
   padding: 5px 14px 5px 5px;
 }
@@ -2226,6 +2226,49 @@ html.dark .nav-item--active * { color: #ffffff !important; }
 }
 body.motion-off .fixed.inset-0 > *,
 .reduce-motion .fixed.inset-0 > * { animation: none !important; }
+
+/* Reveal on scroll (components/layout/SmoothScrollArea.tsx): a card below
+   the visible area waits lowered and faded, then rises in when scrolled to. */
+.sr-hidden { opacity: 0; transform: translateY(16px); }
+.sr-in {
+  opacity: 1;
+  transform: none;
+  transition: opacity 520ms var(--ease-out), transform 620ms var(--ease-out);
+}
+@media print { .sr-hidden { opacity: 1 !important; transform: none !important; } }
+
+/* Lenis smooth scrolling */
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
+.lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }
+.lenis.lenis-stopped { overflow: clip; }
+
+/* Scanner laser (views/dispatch/ScannerView.tsx): a red line with a soft
+   glow band that sweeps up and down the target frame while scanning. */
+.scanner-laser {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  height: 2px;
+  border-radius: 2px;
+  background: #ff3b3b;
+  animation: scanner-sweep 1.8s ease-in-out infinite alternate;
+}
+.scanner-laser::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -14px;
+  height: 30px;
+  background: linear-gradient(to bottom, rgba(255, 59, 59, 0), rgba(255, 59, 59, 0.28), rgba(255, 59, 59, 0));
+}
+@keyframes scanner-sweep {
+  from { top: 6%; }
+  to   { top: 94%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scanner-laser { animation: none; top: 50%; }
+}
 
 /* ─── CLEAN LOOK: no decorative shadows anywhere ───
    Surfaces are separated by thin borders instead, as on Vercel and

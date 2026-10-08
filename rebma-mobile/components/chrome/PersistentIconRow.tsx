@@ -151,7 +151,7 @@ export default function PersistentIconRow({ topInset }: Props) {
               // it in a subtle pill, as on the web sidebar. (The logo file has
               // a white background, which looks like a stray square on black.)
               <Pressable onPress={openDepartmentSwitcher} hitSlop={8}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#171717', borderWidth: 1, borderColor: '#262626', borderRadius: t.radius.pill, paddingVertical: 4, paddingLeft: 4, paddingRight: 10 }}>
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#171717', borderRadius: t.radius.pill, paddingVertical: 4, paddingLeft: 4, paddingRight: 10 }}>
                 <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                   <Image source={require('../../assets/logo-mark.png')} style={{ height: 15, width: 15 * 398 / 237 }} resizeMode="contain" />
                 </View>

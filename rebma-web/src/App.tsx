@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import type { FormEvent } from 'react';
 import { motion, AnimatePresence, MotionConfig, type Transition } from 'framer-motion';
+import SmoothScrollArea from './components/layout/SmoothScrollArea';
 import { Eye, EyeOff, Check, X, ArrowRight, Lock, Mail, User, CreditCard, Phone, AlertCircle, Info, CheckCircle, Camera, Send, Globe, ChevronRight, Settings, LogOut, Users, MessagesSquare, Home, Search, Plus, Bell, UserPlus, ClipboardList, Calendar, Megaphone, UserCheck, BarChart3, Video, Building2, Ship, Ticket, Flag, Truck, DollarSign, BookOpen, ShoppingCart, TrendingUp, Download, Boxes, Hammer, PackagePlus, MapPin, LogIn, Map, GitMerge, Tag, ShieldAlert, FileText, CheckSquare, Link2 } from 'lucide-react';
 import type { Order, IncomingGoods, ProductionRequest, Visitor, Attendance, ChatMessage, BoardroomMeeting, FinancePayment, Customer, GoodsPrice, AuditEntry, PendingRegistration, StaffMember, CurrentUser } from './types/erp';
 
@@ -4371,7 +4372,7 @@ function AppInner({
           </div>
 
           {/* 3. DYNAMIC PAGES VIEW SELECTOR CONTAINER — fills remaining height, scrollable */}
-          <div className="flex-1 overflow-y-auto px-4 lg:px-6 pb-32 lg:pb-6 pt-2">
+          <SmoothScrollArea className="flex-1 overflow-y-auto px-4 lg:px-6 pb-32 lg:pb-6 pt-2" disabled={reducedMotion || motionSetting === 'Off'}>
             <AnimatePresence>
               <motion.div
                 key={activeMobileView === 'dashboard' ? `${activeDepartment}-${activeSubTab}` : activeMobileView}
@@ -4397,7 +4398,7 @@ function AppInner({
                 </div>
               </motion.div>
             </AnimatePresence>
-          </div>
+          </SmoothScrollArea>
 
         </main>
 

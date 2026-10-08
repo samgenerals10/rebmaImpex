@@ -6,8 +6,8 @@
 // this is simpler than a straight port, not a gap. The QR payload is
 // `{ waybillNumber, orderId, containerNumber }` JSON (Phase 4,
 // ApprovedGoodsView.tsx's printWaybill()) — parsed here the same way.
-import { useCallback, useRef, useState } from 'react';
-import { View, Text, Image } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { View, Text, Image, Animated, Easing, AccessibilityInfo } from 'react-native';
 import { Alert } from '../../lib/appAlert';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { QrCode, CircleCheckBig, CircleX, ShieldCheck, PackageSearch } from 'lucide-react-native';
@@ -217,6 +217,8 @@ export default function ScannerScreen() {
               <Button label="Enable Camera" onPress={requestCamera} size="sm" />
             </View>
           )}
+          {/* Laser line sweeping up and down while the camera scans */}
+          {permission?.granted && scanning ? <ScannerLaser /> : null}
         </View>
 
         <Card>
@@ -335,6 +337,38 @@ function DetailRow({ label, value }: { label: string; value: string }) {
     <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}>
       <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body12.size, color: t.colors.textMuted }}>{label}</Text>
       <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>{value}</Text>
+    </View>
+  );
+}
+
+// A target frame with a red laser line that sweeps up and down while the
+// camera is scanning, like a real scanner. Same as the web scanner. It
+// holds still in the middle when the phone's "Reduce motion" is on.
+const LASER_FRAME = 220;
+function ScannerLaser() {
+  const sweep = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    let loop: Animated.CompositeAnimation | null = null;
+    AccessibilityInfo.isReduceMotionEnabled().then((reduce) => {
+      if (reduce) { sweep.setValue(0.5); return; }
+      loop = Animated.loop(Animated.sequence([
+        Animated.timing(sweep, { toValue: 1, duration: 1800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(sweep, { toValue: 0, duration: 1800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      ]));
+      loop.start();
+    }).catch(() => sweep.setValue(0.5));
+    return () => { loop?.stop(); };
+  }, [sweep]);
+  const translateY = sweep.interpolate({ inputRange: [0, 1], outputRange: [LASER_FRAME * 0.06, LASER_FRAME * 0.94] });
+  return (
+    <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ width: LASER_FRAME, height: LASER_FRAME, borderWidth: 2, borderColor: 'rgba(255,255,255,0.7)', borderRadius: 16, overflow: 'hidden' }}>
+        <Animated.View style={{ position: 'absolute', left: LASER_FRAME * 0.06, right: LASER_FRAME * 0.06, top: -15, height: 32, transform: [{ translateY }] }}>
+          <View style={{ height: 15, backgroundColor: 'rgba(255,59,59,0.12)' }} />
+          <View style={{ height: 2, borderRadius: 2, backgroundColor: '#ff3b3b' }} />
+          <View style={{ height: 15, backgroundColor: 'rgba(255,59,59,0.12)' }} />
+        </Animated.View>
+      </View>
     </View>
   );
 }

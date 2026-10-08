@@ -1,6 +1,7 @@
 // rebma-mobile/components/ui/Card.tsx
 import type { ReactNode } from 'react';
-import { View, type ViewStyle, type StyleProp } from 'react-native';
+import { type ViewStyle, type StyleProp } from 'react-native';
+import { RevealView } from './ScrollReveal';
 import { useTheme } from '../../theme/ThemeProvider';
 
 interface Props {
@@ -18,8 +19,9 @@ export default function Card({ children, padded = true, tone = 'default', style 
     tone === 'soft' ? t.colors.accentSoft :
     t.colors.bgCard;
 
+  // RevealView: the card fades and rises in as it scrolls into view.
   return (
-    <View
+    <RevealView
       style={[
         {
           backgroundColor: bg,
@@ -35,6 +37,6 @@ export default function Card({ children, padded = true, tone = 'default', style 
       ]}
     >
       {children}
-    </View>
+    </RevealView>
   );
 }

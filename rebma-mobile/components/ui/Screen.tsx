@@ -1,6 +1,6 @@
 // rebma-mobile/components/ui/Screen.tsx
 // Ports: rebma-web/src/index.css .erp-page (24px padding, 12px <768px)
-import { useRef, type ReactNode } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { View, Animated, RefreshControl, StyleSheet, Dimensions, Platform, KeyboardAvoidingView, type NativeSyntheticEvent, type NativeScrollEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -8,6 +8,7 @@ import DashboardHeader, { usePinnedHeaderHeight, CONTENT_SHEET_RADIUS } from '..
 import { useScrollSections } from '../../hooks/useScrollSections';
 import { ScrollSectionsContext } from '../../context/ScrollSectionsContext';
 import SectionQuickNavRail from '../chrome/SectionQuickNavRail';
+import { RevealContext } from './ScrollReveal';
 
 interface Props {
   children: ReactNode;
@@ -53,6 +54,20 @@ export default function Screen({ children, scroll = true, refreshing, onRefresh,
   // rendered above/outside it), so content starts at just the padding.
   const contentTopOffset = (isDashboard ? pinnedHeaderH : 0) + (padded ? t.spacing.lg : 0);
   const sections = useScrollSections(contentTopOffset);
+  // Reveal on scroll (components/ui/ScrollReveal.tsx)
+  const revealScrollY = useRef(new Animated.Value(0)).current;
+  const revealScrollNow = useRef(0);
+  const [revealViewport, setRevealViewport] = useState({ h: 0, top: 0 });
+  const revealInfo = useMemo(() => ({
+    scrollY: revealScrollY, viewportH: revealViewport.h, viewportTop: revealViewport.top,
+    currentScroll: () => revealScrollNow.current,
+  }), [revealScrollY, revealViewport]);
+  const trackReveal = (y: number) => { revealScrollNow.current = y; revealScrollY.setValue(y); };
+  const measureViewport = () => {
+    scrollRef.current?.measureInWindow?.((_x: number, y: number, _w: number, h: number) => {
+      if (h > 0) setRevealViewport({ h, top: y });
+    });
+  };
 
   const styles = StyleSheet.create({
     root: { flex: 1, backgroundColor: t.colors.bgPage },
@@ -63,6 +78,7 @@ export default function Screen({ children, scroll = true, refreshing, onRefresh,
     const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       onScroll?.(e);
       sections.onScroll(e.nativeEvent.contentOffset.y);
+      trackReveal(e.nativeEvent.contentOffset.y);
     };
 
     const jumpTo = (id: string) => {
@@ -91,6 +107,7 @@ export default function Screen({ children, scroll = true, refreshing, onRefresh,
           keyboardShouldPersistTaps="handled"
           onScroll={handleScroll}
           scrollEventThrottle={scrollEventThrottle || 16}
+          onLayout={measureViewport}
         >
           <View style={{ height: pinnedHeaderH }} />
           <View
@@ -108,7 +125,7 @@ export default function Screen({ children, scroll = true, refreshing, onRefresh,
             }}
           >
             <ScrollSectionsContext.Provider value={{ registerSection: sections.registerSection, unregisterSection: sections.unregisterSection, scheduleRemeasure: sections.scheduleRemeasure }}>
-              {children}
+              <RevealContext.Provider value={revealInfo}>{children}</RevealContext.Provider>
             </ScrollSectionsContext.Provider>
           </View>
         </Animated.ScrollView>
@@ -124,6 +141,7 @@ export default function Screen({ children, scroll = true, refreshing, onRefresh,
   const handlePlainScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     if (onScrollProp) onScrollProp(e);
     sections.onScroll(e.nativeEvent.contentOffset.y);
+    trackReveal(e.nativeEvent.contentOffset.y);
   };
 
   const jumpToPlain = (id: string) => {
@@ -148,9 +166,10 @@ export default function Screen({ children, scroll = true, refreshing, onRefresh,
             keyboardShouldPersistTaps="handled"
             onScroll={handlePlainScroll}
             scrollEventThrottle={scrollEventThrottle || 16}
+            onLayout={measureViewport}
           >
             <ScrollSectionsContext.Provider value={{ registerSection: sections.registerSection, unregisterSection: sections.unregisterSection, scheduleRemeasure: sections.scheduleRemeasure }}>
-              {children}
+              <RevealContext.Provider value={revealInfo}>{children}</RevealContext.Provider>
             </ScrollSectionsContext.Provider>
           </Animated.ScrollView>
           </KeyboardAvoidingView>
