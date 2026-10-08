@@ -1,8 +1,9 @@
 // api/_shared/emailTemplate.ts
 // The one look every email from the app shares, in the colours of the
 // sign-in and sign-up pages (rebma-web/src/components/auth/AuthBrand.tsx,
-// sampled from the logo): turquoise main button, forest green links and
-// outer background, amber accents, near-black text, light grey panels. The
+// sampled from the logo): turquoise main button, forest green links, amber
+// accents, near-black text, light grey panels, on a deep amber to sky blue
+// page. The
 // header is plain white with the cropped logo mark and no tile behind it.
 // Modern product-email layout: large headline, flat white card, grey details
 // panel, and a sign-off row with the logo on the right. No shadows.
@@ -20,6 +21,11 @@ export const COMPANY_NAME = 'Rebma Impex Ghana Limited';
 const TURQUOISE = '#02afd9';
 const AMBER = '#f2a72e';
 const FOREST = '#0c5c34';
+// The page behind the card: deep amber into sky blue (the sign-up page's
+// amber, darkened, and a sky blue). The solid colour is for email apps that
+// ignore gradients.
+const PAGE_FALLBACK = '#b8620a';
+const PAGE_GRADIENT = 'linear-gradient(135deg,#a8540a 0%,#c9780f 35%,#2aa8d8 100%)';
 const INK = '#111827';
 const BODY = '#374151';
 const MUTED = '#6b7280';
@@ -105,8 +111,8 @@ export function brandedEmail(opts: {
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light only"><title>${esc(COMPANY_NAME)}</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
-<body style="margin:0;padding:0;background:${FOREST};-webkit-text-size-adjust:100%;font-family:${FONT}">${pre}
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${FOREST}"><tr><td align="center" style="padding:40px 14px">
+<body style="margin:0;padding:0;background:${PAGE_FALLBACK};-webkit-text-size-adjust:100%;font-family:${FONT}">${pre}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="${PAGE_FALLBACK}" style="background:${PAGE_FALLBACK};background-image:${PAGE_GRADIENT}"><tr><td align="center" style="padding:40px 14px">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:580px;background:#ffffff;border-radius:8px">
     <tr><td style="background:#ffffff;border-radius:8px 8px 0 0;padding:34px 36px 26px;font-family:${FONT}">
       <table role="presentation" cellpadding="0" cellspacing="0"><tr>
