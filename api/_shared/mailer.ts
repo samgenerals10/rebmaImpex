@@ -5,11 +5,12 @@
 //
 // Email goes out one of two free ways, both set in Control Center → API
 // Keys (never in Vercel):
-//   Gmail   a Gmail address plus a Google "app password". Used whenever
-//           both are filled in. No domain needed; about 500 emails a day.
-//   Resend  (https://resend.com) an API key and a "send from" address.
-//           Needs a domain you own, verified in Resend; until then Resend
-//           only delivers to the Resend account's own address.
+//   Resend  (https://resend.com) an API key and a "send from" address on
+//           the verified company domain (hr@rebmaimpex.com). Goes first
+//           when both are filled in.
+//   Gmail   a Gmail address plus a Google "app password". The backup when
+//           Resend fails, and the main route if Resend isn't set up.
+//           About 500 emails a day.
 //
 // SMS goes through _shared/sms.ts (Arkesel, a Ghana SMS company).
 //
@@ -62,11 +63,7 @@ async function sendViaGmail(s: Record<string, string>, to: string, subject: stri
   }
 }
 
-export async function sendMail(supabaseAdmin: SupabaseClient, to: string | null | undefined, subject: string, text: string, html: string): Promise<SendResult> {
-  if (!to) return { sent: false, reason: 'No email address on file.' };
-  const s = await getSettings(supabaseAdmin, MAIL_KEYS);
-  if (hasGmail(s)) return sendViaGmail(s, to, subject, text, html);
-  if (!s.api_key_resend) return { sent: false, reason: 'Email is not set up yet (Control Center, then API Keys, then Gmail or Resend).' };
+async function sendViaResend(s: Record<string, string>, to: string, subject: string, text: string, html: string): Promise<SendResult> {
   try {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -81,6 +78,27 @@ export async function sendMail(supabaseAdmin: SupabaseClient, to: string | null 
   } catch (e: any) {
     return { sent: false, reason: `Could not reach Resend (${e?.message || 'network error'}).` };
   }
+}
+
+// Order: Resend first when it has a key AND a company "From" address
+// (the verified domain, e.g. hr@rebmaimpex.com); if that fails, Gmail takes
+// over when it is set up, so a Resend problem never stops an invite.
+// Without a company From address, Resend can only reach its own owner, so
+// Gmail goes first when it is set up.
+export async function sendMail(supabaseAdmin: SupabaseClient, to: string | null | undefined, subject: string, text: string, html: string): Promise<SendResult> {
+  if (!to) return { sent: false, reason: 'No email address on file.' };
+  const s = await getSettings(supabaseAdmin, MAIL_KEYS);
+  const resendReady = !!(s.api_key_resend && s.email_from_address);
+
+  if (resendReady) {
+    const first = await sendViaResend(s, to, subject, text, html);
+    if (first.sent || !hasGmail(s)) return first;
+    const backup = await sendViaGmail(s, to, subject, text, html);
+    return backup.sent ? backup : { sent: false, reason: `${first.reason} Then Gmail also failed: ${backup.reason}` };
+  }
+  if (hasGmail(s)) return sendViaGmail(s, to, subject, text, html);
+  if (!s.api_key_resend) return { sent: false, reason: 'Email is not set up yet (Control Center, then API Keys, then Resend or Gmail).' };
+  return sendViaResend(s, to, subject, text, html);
 }
 
 async function getDownloadUrl(supabaseAdmin: SupabaseClient): Promise<string> {
