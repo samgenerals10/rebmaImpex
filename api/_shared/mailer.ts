@@ -135,8 +135,8 @@ export async function sendInvite(
       supabaseAdmin,
       invite.email,
       'Your Rebma Impex invite: download the app and register',
-      `Hi ${name},\n\nYou have been invited to join Rebma Impex.\n\n${textSteps}\n\n${after}\n\n${expiry} If you weren't expecting this, you can safely ignore it.\n\nRebma Impex HR`,
-      `<p>Hi ${esc(name)},</p><p>You have been invited to join Rebma Impex.</p>${htmlSteps}<p>${after}</p><p>${expiry} If you weren't expecting this, you can safely ignore it.</p><p>Rebma Impex HR</p>`,
+      `Hi ${name},\n\nYou have been invited to join Rebma Impex.\n\n${textSteps}\n\n${after}\n\n${expiry} If you weren't expecting this, you can safely ignore it.\n\nRebma Impex`,
+      `<p>Hi ${esc(name)},</p><p>You have been invited to join Rebma Impex.</p>${htmlSteps}<p>${after}</p><p>${expiry} If you weren't expecting this, you can safely ignore it.</p><p>Rebma Impex</p>`,
     );
   }
 
@@ -173,8 +173,8 @@ export async function sendApproved(
     supabaseAdmin,
     person.email,
     'Your Rebma Impex account is approved',
-    `Hi ${person.fullName},\n\nYour registration has been approved. ${signIn}\n\n${textWays}\n\nRebma Impex HR`,
-    `<p>Hi ${esc(person.fullName)},</p><p>Your registration has been approved. ${signIn}</p>${htmlWays}<p>Rebma Impex HR</p>`,
+    `Hi ${person.fullName},\n\nYour registration has been approved. ${signIn}\n\n${textWays}\n\nRebma Impex`,
+    `<p>Hi ${esc(person.fullName)},</p><p>Your registration has been approved. ${signIn}</p>${htmlWays}<p>Rebma Impex</p>`,
   );
   const sms = await sendSms(
     supabaseAdmin,
