@@ -9,6 +9,12 @@
 // message, buttons, options)` signature so no call site's logic changes,
 // but renders through AppAlertHost.tsx's own themed modal instead of the
 // OS dialog.
+import { reportClientError, looksLikeFailure } from './errorReporter';
+import { navigationRef } from '../navigation/navigationRef';
+
+const currentScreen = () => {
+  try { return navigationRef.isReady() ? (navigationRef.getCurrentRoute() as { name?: string } | undefined)?.name || 'app' : 'app'; } catch { return 'app'; }
+};
 export interface AppAlertButton {
   text?: string;
   onPress?: (value?: string) => void;
@@ -36,6 +42,10 @@ export function registerAppAlertListener(l: Listener | null) {
 }
 
 function alert(title: string, message?: string, buttons?: AppAlertButton[], options?: AppAlertOptions) {
+  // Every failure pop-up a person sees is also logged and emailed to the
+  // company address (lib/errorReporter.ts).
+  const shown = `${title}${message ? `: ${message}` : ''}`;
+  if (looksLikeFailure(shown)) reportClientError(`Phone, ${currentScreen()}`, shown);
   const finalButtons = buttons && buttons.length ? buttons : [{ text: 'OK', style: 'default' as const }];
   const state: AppAlertState = {
     title,

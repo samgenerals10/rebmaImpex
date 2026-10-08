@@ -14,6 +14,10 @@ import { supabase } from './lib/supabaseClient';
 import RootNavigator from './navigation/RootNavigator';
 import AnimatedSplashScreen from './components/splash/AnimatedSplashScreen';
 import AppAlertHost from './components/ui/AppAlertHost';
+import { installGlobalErrorReporting } from './lib/errorReporter';
+
+// Crashes anywhere in the app are logged and emailed to the company address.
+installGlobalErrorReporting();
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 

@@ -118,6 +118,7 @@ import RiskApprovalsView from './views/risk/RiskApprovalsView';
 import RiskCustomerCreditView from './views/risk/CustomerCreditView';
 import RiskRecruitmentView from './views/risk/RecruitmentView';
 import LiveUsersView from './views/ceo/LiveUsersView';
+import { reportClientError, looksLikeFailure } from './utils/errorReporter';
 import HelpAssistantView from './views/ceo/HelpAssistantView';
 import FloatingHelpButton from './components/global/FloatingHelpButton';
 
@@ -1755,6 +1756,9 @@ export default function App() {
   // "new order" toast takes the viewer to the Orders Queue instead of just
   // being an inert message they have to go find the right tab for themselves.
   const addNotification = (msg: string, link?: { dept?: string; tab: string }) => {
+    // Every failure message a person sees is also logged and emailed to the
+    // company address, with the screen it happened on.
+    if (looksLikeFailure(msg)) reportClientError(`${activeDepartment} / ${activeSubTab}`, msg);
     const id = Date.now().toString();
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     setNotifications(prev => [{ id, msg, time, linkDept: link?.dept, linkTab: link?.tab }, ...prev.slice(0, 49)]); // keep max 50 in bell

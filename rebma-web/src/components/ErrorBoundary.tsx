@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { reportClientError } from '../utils/errorReporter';
 
 interface Props {
   children: ReactNode;
@@ -20,6 +21,7 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error('Unhandled render error:', error, info.componentStack);
+    reportClientError('Screen crash', error?.message || 'A screen failed to load', `${error?.stack || ''}\n${info.componentStack || ''}`);
   }
 
   render() {

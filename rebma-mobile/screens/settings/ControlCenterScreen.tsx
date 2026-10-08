@@ -318,6 +318,14 @@ const API_KEY_DEFS: { key: string; label: string; description: string; placehold
     placeholder: 'Paste the 16-letter app password',
   },
   {
+    key: 'error_report_email',
+    logo: 'gmail',
+    label: 'Error Reports Email',
+    description: 'Where every app error is emailed: server errors, app crashes, and failure messages people see. Leave empty to send them to the company Gmail above. The same error is emailed at most once an hour, and at most 40 a day; every one is still kept in the error log.',
+    placeholder: 'Leave empty to use the company Gmail',
+    plain: true,
+  },
+  {
     key: 'api_key_resend',
     logo: 'resend',
     provider: 'Resend',

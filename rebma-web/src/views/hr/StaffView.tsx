@@ -501,6 +501,8 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
   // opens with the same message, including the app download link.
   const [appDownloadUrl, setAppDownloadUrl] = useState('');
   const [sendResult, setSendResult] = useState<{ email?: { sent: boolean; reason?: string }; sms?: { sent: boolean; reason?: string } } | null>(null);
+  // Shown under the Send button; a pop-up would be hidden behind this panel.
+  const [sendError, setSendError] = useState('');
   useEffect(() => {
     if (!createdInvite) return;
     setSendResult(null);
@@ -523,11 +525,14 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
 
     const sendEmailAndSms = async () => {
       setSendingEmail(true);
+      setSendError('');
+      setSendResult(null);
       try {
         const res: any = await callPrivilegedApi('/api/send-staff-invite-email', { inviteId: createdInvite.id, channels: ['email', 'sms'] });
         setSendResult({ email: res?.email, sms: res?.sms });
         reloadDirectory();
       } catch (err: any) {
+        setSendError(`Could not send: ${err.message}`);
         addNotification(`Send failed: ${err.message}`);
       } finally {
         setSendingEmail(false);
@@ -561,6 +566,9 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
             <p style={{ margin: '0 0 8px', fontWeight: 600, fontSize: 13 }}>SMS: {createdInvite.phone || 'no phone on file'}</p>
             <pre style={{ whiteSpace: 'pre-wrap', background: 'var(--bg)', borderRadius: 8, padding: '0.5rem 0.75rem', fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 0.5rem' }}>{message}</pre>
             <button type="button" onClick={sendEmailAndSms} disabled={sendingEmail} className="erp-btn erp-btn-primary" style={{ width: '100%' }}>{sendingEmail ? 'Sending…' : 'Send by Email and SMS'}</button>
+            {sendError && (
+              <p role="alert" style={{ margin: '8px 0 0', padding: '8px 12px', borderRadius: 8, background: 'rgba(239,68,68,0.1)', color: '#dc2626', fontSize: 12, fontWeight: 600 }}>{sendError}</p>
+            )}
             {sendResult && (
               <div style={{ marginTop: 6 }}>
                 {resultLine('Email', sendResult.email)}

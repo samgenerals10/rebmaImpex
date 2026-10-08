@@ -3,11 +3,11 @@
   "outputDirectory": "rebma-web/dist",
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/$1"
+      "source": "/api/:fn",
+      "destination": "/api/[fn]?fn=:fn"
     },
     {
-      "source": "/(.*)",
+      "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
   ],

@@ -7,6 +7,8 @@
 // Addresses are unchanged: /api/approve-user still runs
 // api/_routes/approve-user.ts, exactly as before.
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { createClient } from '@supabase/supabase-js';
+import { reportError } from './_shared/errorReport';
 import h_account_deletion from './_routes/account-deletion';
 import h_approve_user from './_routes/approve-user';
 import h_attendance_device_webhook from './_routes/attendance-device-webhook';
@@ -23,6 +25,7 @@ import h_department_change from './_routes/department-change';
 import h_kick_user from './_routes/kick-user';
 import h_lookup_invite from './_routes/lookup-invite';
 import h_register_privileged_user from './_routes/register-privileged-user';
+import h_report_error from './_routes/report-error';
 import h_register_staff_user from './_routes/register-staff-user';
 import h_register_standard_user from './_routes/register-standard-user';
 import h_resend_invite from './_routes/resend-invite';
@@ -50,6 +53,7 @@ const ROUTES: Record<string, (req: VercelRequest, res: VercelResponse) => unknow
   'kick-user': h_kick_user,
   'lookup-invite': h_lookup_invite,
   'register-privileged-user': h_register_privileged_user,
+  'report-error': h_report_error,
   'register-staff-user': h_register_staff_user,
   'register-standard-user': h_register_standard_user,
   'resend-invite': h_resend_invite,
@@ -61,11 +65,40 @@ const ROUTES: Record<string, (req: VercelRequest, res: VercelResponse) => unknow
   'trip': h_trip,
 };
 
+// Any route that crashes, or answers with a server error (500 and up), is
+// logged and emailed to the company address (_shared/errorReport.ts).
+// report-error itself is left out so a reporting problem can't loop.
+const supabaseAdmin = createClient(
+  process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '',
+  process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+);
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const name = String(req.query.fn || '');
   const route = Object.prototype.hasOwnProperty.call(ROUTES, name) ? ROUTES[name] : undefined;
   if (!route) return res.status(404).json({ error: 'Not found.' });
   // The route name is not one of the endpoint's own inputs.
   delete (req.query as Record<string, unknown>).fn;
-  return route(req, res);
+  if (name === 'report-error') return route(req, res);
+
+  let serverError: string | null = null;
+  const json = res.json.bind(res);
+  res.json = ((body: any) => {
+    if (res.statusCode >= 500) serverError = String(body?.error || body?.message || `HTTP ${res.statusCode}`);
+    return json(body);
+  }) as typeof res.json;
+
+  try {
+    await route(req, res);
+  } catch (e: any) {
+    const crash = String(e?.message || 'The server crashed.');
+    await reportError(supabaseAdmin, { source: 'server', location: `/api/${name}`, message: crash, detail: e?.stack || null });
+    if (!res.headersSent) res.status(500).json({ error: 'Something went wrong on the server. The team has been told.' });
+    return;
+  }
+  // Set inside res.json above, which TypeScript can't see from here.
+  const failed = serverError as string | null;
+  if (failed) {
+    await reportError(supabaseAdmin, { source: 'server', location: `/api/${name}`, message: failed });
+  }
 }
