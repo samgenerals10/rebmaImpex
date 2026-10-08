@@ -20,6 +20,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { findUserByEmail } from '../_shared/findUserByEmail';
 import { isRateLimited } from '../_shared/rateLimit';
 import { APPROVAL_WINDOW_HOURS } from '../_shared/registration';
+import { reportError } from '../_shared/errorReport';
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -108,7 +109,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // different personal details than the ones HR entered.
     const { data: invites } = await supabaseAdmin
       .from('staff_invites')
-      .select('id, email, department, role, phone, photo, resume_url, address, staff_category, guarantor_name, guarantor_phone, guarantor_relationship, guarantor_id_number, guarantor_address, auto_approve, status, expires_at, created_by')
+      .select('*')
       .eq('token', inviteToken)
       .limit(1);
     const invite = invites?.[0];
@@ -188,7 +189,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const nowIso = new Date().toISOString();
     // An invite with auto_approve skips the approval queue entirely.
     const initialStatus = autoApprove ? 'ACTIVE' : 'PENDING_APPROVAL';
-    await supabaseAdmin.from('profiles').upsert({
+    const profileRow: Record<string, any> = {
       id: userId,
       email: emailLower,
       created_at: nowIso,
@@ -205,6 +206,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       guarantor_relationship: invite.guarantor_relationship || null,
       guarantor_id_number: invite.guarantor_id_number || null,
       guarantor_address: invite.guarantor_address || null,
+      date_of_birth: invite.date_of_birth || null,
       status: initialStatus,
       // CEO powers are only given when a CEO approves (approve-user.ts).
       is_admin: false,
@@ -212,8 +214,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       requires_password_reset: false,
       registered_at: nowIso,
       updated_at: nowIso,
-      metadata: { fullName, department, ghanaCardId: ghanaCardId || null, phone: phone || null, inviteRole: invite.role || null },
-    }, { onConflict: 'id' });
+      // choseOwnPassword lets approval know not to make a temporary password
+      // even if the registered_at column isn't there yet.
+      metadata: { fullName, department, ghanaCardId: ghanaCardId || null, phone: phone || null, inviteRole: invite.role || null, choseOwnPassword: true },
+    };
+    // This save used to be unchecked: if the database refused it (a column
+    // from a newer SQL file not added yet), the photo, address and everything
+    // else HR entered was silently lost. Now a refused column is dropped and
+    // the save retried, so the rest still lands, and the problem is reported.
+    const optionalCols = ['registered_at', 'date_of_birth', 'staff_category', 'resume_url', 'guarantor_name', 'guarantor_phone', 'guarantor_relationship', 'guarantor_id_number', 'guarantor_address', 'address', 'photo'];
+    let profileError: any = null;
+    for (let attempt = 0; attempt <= optionalCols.length; attempt++) {
+      const { error } = await supabaseAdmin.from('profiles').upsert(profileRow, { onConflict: 'id' });
+      profileError = error;
+      if (!error) break;
+      const missing = optionalCols.find(c => c in profileRow && new RegExp(`\\b${c}\\b`).test(String(error.message || '')));
+      if (!missing) break;
+      await reportError(supabaseAdmin, { source: 'server', location: '/api/register-standard-user', message: `Profile column ${missing} is missing, so it was not saved for ${fullName}. Run the SQL that adds it.`, detail: error.message });
+      delete profileRow[missing];
+    }
+    if (profileError) {
+      await reportError(supabaseAdmin, { source: 'server', location: '/api/register-standard-user', message: `Could not save the profile for ${fullName}: ${profileError.message}` });
+      return res.status(500).json({ error: 'Your registration could not be saved. The team has been told; please try again shortly.' });
+    }
 
     // What the CEO reviews before approving. Never fatal: if this write
     // fails (e.g. the SQL hasn't been run yet) the registration still goes
@@ -228,7 +251,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         latitude: Number(header(req, 'x-vercel-ip-latitude')) || undefined,
         longitude: Number(header(req, 'x-vercel-ip-longitude')) || undefined,
       }, ['city', 'region', 'country', 'latitude', 'longitude']);
-      await supabaseAdmin.from('staff_registration_details').upsert({
+      const { error: detailsError } = await supabaseAdmin.from('staff_registration_details').upsert({
         user_id: userId,
         invite_id: invite.id,
         registered_at: nowIso,
@@ -237,6 +260,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         network_location: networkLocation,
         ip_address: ip,
       }, { onConflict: 'user_id' });
+      if (detailsError) {
+        await reportError(supabaseAdmin, { source: 'server', location: '/api/register-standard-user', message: `The device and location for ${fullName} could not be saved (run supabase_registration_details.sql).`, detail: detailsError.message });
+      }
     } catch (e) {
       console.error('Could not save registration details:', e);
     }

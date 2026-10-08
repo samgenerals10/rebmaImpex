@@ -261,7 +261,7 @@ export default function ApprovalsView({ currentUser, addNotification }: Props) {
       ) : (
         <div className="space-y-3">
           {visible.map(item => (
-            <div key={item.id} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 flex items-center gap-4 shadow-[var(--box-shadow)]">
+            <div key={item.id} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 flex items-center gap-4">
               <button type="button" onClick={() => openReview(item)} className="flex-1 min-w-0 text-left cursor-pointer" title="Review full details">
                 <div className="flex items-center gap-2 flex-wrap mb-1">
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${TYPE_STYLES[item.type] || 'bg-slate-100 text-slate-700'}`}>{item.type}</span>
@@ -279,16 +279,16 @@ export default function ApprovalsView({ currentUser, addNotification }: Props) {
               ) : null}
               <div className="flex items-center gap-2 shrink-0">
                 <button onClick={() => setTimelineId(item.id)} title="View Timeline"
-                  className="flex items-center gap-1 px-2.5 py-1.5 border border-[var(--border)] text-[var(--text-secondary)] text-xs font-semibold rounded-xl cursor-pointer hover:bg-[var(--bg-input)]">
+                  className="flat flex items-center gap-1 px-2.5 py-1.5 border border-[var(--border)] text-[var(--text-secondary)] text-xs font-semibold rounded-xl cursor-pointer hover:bg-[var(--bg-input)]">
                   <History className="w-3.5 h-3.5" />
                 </button>
                 <button onClick={() => { setRemark(''); setDecisionModal({ id: item.id, action: 'approve' }); }}
                   disabled={item.expired} title={item.expired ? 'Expired. HR can resend the link.' : undefined}
-                  className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500 text-white text-xs font-semibold rounded-xl cursor-pointer hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed">
+                  className="erp-btn erp-btn-primary flat !px-3 !py-1.5 !text-xs !font-semibold disabled:opacity-40 disabled:cursor-not-allowed">
                   <CheckCircle className="w-3.5 h-3.5" /> Approve
                 </button>
                 <button onClick={() => { setRemark(''); setDecisionModal({ id: item.id, action: 'reject' }); }}
-                  className="flex items-center gap-1 px-3 py-1.5 bg-rose-500 text-white text-xs font-semibold rounded-xl cursor-pointer hover:bg-rose-600">
+                  className="erp-btn erp-btn-danger flat !px-3 !py-1.5 !text-xs !font-semibold">
                   <XCircle className="w-3.5 h-3.5" /> Reject
                 </button>
               </div>
@@ -303,7 +303,7 @@ export default function ApprovalsView({ currentUser, addNotification }: Props) {
           No approval history logged in audit logs.
         </div>
       ) : (
-        <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden shadow-[var(--box-shadow)]">
+        <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden">
           <div className="px-4 py-3 border-b border-[var(--border)]">
             <h3 className="text-sm font-bold text-[var(--text-secondary)]">Recent History</h3>
           </div>
@@ -340,7 +340,7 @@ export default function ApprovalsView({ currentUser, addNotification }: Props) {
               if (action === 'approve') handleApprove(id, remark.trim() || undefined);
               else handleReject(id, remark.trim() || undefined);
             }}
-            className="erp-btn erp-btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
+            className={`erp-btn ${decisionModal?.action === 'reject' ? 'erp-btn-danger' : 'erp-btn-primary'} flat w-full justify-center disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             {decisionModal?.action === 'approve' ? 'Confirm Approve' : 'Confirm Reject'}
           </button>
@@ -366,11 +366,11 @@ export default function ApprovalsView({ currentUser, addNotification }: Props) {
         width="lg"
         footer={reviewing ? (
           <div className="flex gap-2">
-            <button onClick={() => setTimelineId(reviewing.id)} className="erp-btn erp-btn-ghost flex items-center gap-1"><History className="w-3.5 h-3.5" /> Timeline</button>
+            <button onClick={() => setTimelineId(reviewing.id)} className="erp-btn erp-btn-ghost flat flex items-center gap-1"><History className="w-3.5 h-3.5" /> Timeline</button>
             <button onClick={() => { setRemark(''); setDecisionModal({ id: reviewing.id, action: 'approve' }); setReviewing(null); }} disabled={reviewing.expired}
-              className="erp-btn erp-btn-primary flex-1 disabled:opacity-40 disabled:cursor-not-allowed">Approve</button>
+              className="erp-btn erp-btn-primary flat flex-1 justify-center disabled:opacity-40 disabled:cursor-not-allowed">Approve</button>
             <button onClick={() => { setRemark(''); setDecisionModal({ id: reviewing.id, action: 'reject' }); setReviewing(null); }}
-              className="flex-1 px-3 py-2 bg-rose-500 hover:bg-rose-600 text-white text-xs font-semibold rounded-xl cursor-pointer">Reject</button>
+              className="erp-btn erp-btn-danger flat flex-1 justify-center">Reject</button>
           </div>
         ) : undefined}
       >

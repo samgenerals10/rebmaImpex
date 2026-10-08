@@ -134,7 +134,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // password (registered_at is only set by that version of
   // register-standard-user.ts). Their password is never touched here and
   // no temporary one is created.
-  const choseOwnPassword = !!targetProfile.registered_at;
+  // metadata.choseOwnPassword is also set at registration, so this holds
+  // even when the registered_at column hasn't been added yet.
+  const choseOwnPassword = !!targetProfile.registered_at || targetProfile.metadata?.choseOwnPassword === true;
 
   const status = approve ? 'ACTIVE' : 'REJECTED';
   let temporaryPassword: string | null = null;
