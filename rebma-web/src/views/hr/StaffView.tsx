@@ -119,12 +119,31 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
   const [continueFromId, setContinueFromId] = useState('');
   const [workChoice, setWorkChoice] = useState<'continue' | 'start_new' | null>(null);
   const [resendingInvite, setResendingInvite] = useState(false);
+  // "Send sign-in notice again": re-sends the approved email and text.
+  const [sendingNotice, setSendingNotice] = useState(false);
+  const [noticeResult, setNoticeResult] = useState<{ ok: boolean; text: string } | null>(null);
+  const sendSignInNotice = async (userId: string) => {
+    if (sendingNotice) return;
+    setSendingNotice(true);
+    setNoticeResult(null);
+    try {
+      const res: any = await callPrivilegedApi('/api/send-approval-notice', { userId });
+      setNoticeResult({ ok: !!res?.success, text: res?.message || 'Done.' });
+    } catch (err: any) {
+      setNoticeResult({ ok: false, text: `Could not send: ${err.message}` });
+      addNotification(`Sign-in notice failed: ${err.message}`);
+    } finally {
+      setSendingNotice(false);
+    }
+  };
   const [resent, setResent] = useState<{ name: string; message: string; link: string; phone: string } | null>(null);
   const [search, setSearch] = useState('');
   const [deptFilter, setDeptFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('Current');
   const [roleFilter, setRoleFilter] = useState('');
   const [selected, setSelected] = useState<StaffMember | null>(null);
+  // The sign-in notice result belongs to one person; clear it on switching.
+  useEffect(() => { setNoticeResult(null); }, [selected?.id]);
   const [profileTab, setProfileTab] = useState<'attendance' | 'leave' | 'performance'>('attendance');
   const [showAdd, setShowAdd] = useState(false);
   const [editTarget, setEditTarget] = useState<StaffMember | null>(null);
@@ -1096,6 +1115,12 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
                     <Edit2 size={13} /> Edit
                   </button>
                 )}
+                {isHrOrAdmin && String(m.status).toUpperCase() === 'ACTIVE' && (
+                  <button onClick={() => sendSignInNotice(m.id)} disabled={sendingNotice} title="Email and text them the sign-in details and app download link again"
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0.45rem 1rem', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer', opacity: sendingNotice ? 0.6 : 1 }}>
+                    <Send size={13} /> {sendingNotice ? 'Sending...' : 'Send sign-in notice again'}
+                  </button>
+                )}
                 {canChangeStatus(m) && (
                   <button onClick={() => handleSuspend(m)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0.45rem 1rem', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: '#ef4444', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
                     <UserX size={13} /> {m.status === 'SUSPENDED' ? 'Reactivate' : 'Suspend'}
@@ -1107,6 +1132,9 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
                   </button>
                 )}
               </div>
+              {noticeResult && (
+                <p role="status" style={{ margin: '-0.5rem 0 1rem', padding: '8px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, background: noticeResult.ok ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', color: noticeResult.ok ? '#059669' : '#dc2626' }}>{noticeResult.text}</p>
+              )}
               {selected.role !== 'CEO' && (
                 <div style={{ marginBottom: '1rem' }}>
                   <EnrollmentSection personKind="app" personId={selected.id} employeeNumber={selected.employeeNumber} canEdit={canManagePeople} enrolledBy={currentUser?.fullName || 'HR'} addNotification={addNotification} onChanged={reloadDirectory} />

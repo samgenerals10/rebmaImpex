@@ -581,6 +581,22 @@ export default function StaffScreen() {
     }
   };
 
+  // "Send sign-in notice again": re-sends the approved email and text,
+  // with the app download link (api/send-approval-notice.ts), same as web.
+  const [sendingNotice, setSendingNotice] = useState(false);
+  const sendSignInNotice = async (userId: string, name: string) => {
+    if (sendingNotice) return;
+    setSendingNotice(true);
+    try {
+      const res: any = await callPrivilegedApi('/api/send-approval-notice', { userId });
+      Alert.alert(res?.success ? 'Sign-in notice sent' : 'Nothing was sent', `${name}: ${res?.message || 'Done.'}`);
+    } catch (e: any) {
+      Alert.alert('Could not send', e instanceof ApiNotConfiguredError ? e.message : (e.message || 'Could not send the sign-in notice.'));
+    } finally {
+      setSendingNotice(false);
+    }
+  };
+
   const resendInvite = async (r: DirectoryRow) => {
     if (resendingInvite) return;
     setResendingInvite(true);
@@ -821,8 +837,12 @@ export default function StaffScreen() {
               </View>
             )}
 
-            <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.sm }}>
               <Button label="Edit" size="sm" variant="ghost" onPress={() => openEdit(selected)} />
+              {selected.status === 'ACTIVE' && (
+                <Button label={sendingNotice ? 'Sending...' : 'Send sign-in notice again'} size="sm" icon={<Send size={13} color="#fff" />}
+                  onPress={() => sendSignInNotice(selected.id, selected.fullName)} loading={sendingNotice} disabled={sendingNotice} />
+              )}
               {canChangeStatus(selected) && (selected.status === 'ACTIVE' || selected.status === 'SUSPENDED') && (
                 <Button label={selected.status === 'SUSPENDED' ? 'Reactivate' : 'Suspend'} size="sm" variant={selected.status === 'SUSPENDED' ? 'primary' : 'danger'}
                   icon={selected.status === 'SUSPENDED' ? <UserCheckIcon size={13} color="#fff" /> : <UserX size={13} color="#fff" />}

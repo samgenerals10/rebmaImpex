@@ -135,22 +135,35 @@ export async function sendInvite(
   return result;
 }
 
+// The "you're approved" notice, sent on approval and by HR's "Send sign-in
+// notice again". Gives both ways in: the web address, and the phone app
+// download link when one is set in Control Center → API Keys.
 export async function sendApproved(
   supabaseAdmin: SupabaseClient,
   person: { email?: string | null; phone?: string | null; fullName: string },
   origin: string,
 ): Promise<{ email: SendResult; sms: SendResult }> {
+  const downloadUrl = await getDownloadUrl(supabaseAdmin);
+  const signIn = 'Sign in with your email and the password you chose when you registered.';
+  const textWays = downloadUrl
+    ? `On your phone, get the Rebma app here:\n${downloadUrl}\n\nOn a computer, open:\n${origin}`
+    : `Open the Rebma app on your phone, or on a computer go to:\n${origin}`;
+  const htmlWays = downloadUrl
+    ? `<p><strong>On your phone</strong>, get the Rebma app here:<br><a href="${esc(downloadUrl)}">${esc(downloadUrl)}</a></p><p><strong>On a computer</strong>, open:<br><a href="${esc(origin)}">${esc(origin)}</a></p>`
+    : `<p>Open the Rebma app on your phone, or on a computer go to:<br><a href="${esc(origin)}">${esc(origin)}</a></p>`;
   const email = await sendMail(
     supabaseAdmin,
     person.email,
     'Your Rebma Impex account is approved',
-    `Hi ${person.fullName},\n\nYour registration has been approved. You can now sign in to the Rebma app with your email and the password you chose when you registered.\n\nOn the web: ${origin}\n\nRebma Impex HR`,
-    `<p>Hi ${esc(person.fullName)},</p><p>Your registration has been approved. You can now sign in to the Rebma app with your email and the password you chose when you registered.</p><p>On the web: <a href="${esc(origin)}">${esc(origin)}</a></p><p>Rebma Impex HR</p>`,
+    `Hi ${person.fullName},\n\nYour registration has been approved. ${signIn}\n\n${textWays}\n\nRebma Impex HR`,
+    `<p>Hi ${esc(person.fullName)},</p><p>Your registration has been approved. ${signIn}</p>${htmlWays}<p>Rebma Impex HR</p>`,
   );
   const sms = await sendSms(
     supabaseAdmin,
     person.phone,
-    `Hi ${person.fullName}, your Rebma Impex account is approved. Sign in with your email and the password you chose.`,
+    downloadUrl
+      ? `Hi ${person.fullName}, your Rebma Impex account is approved. Get the app: ${downloadUrl} or use ${origin}. Sign in with your email and the password you chose.`
+      : `Hi ${person.fullName}, your Rebma Impex account is approved. Sign in at ${origin} with your email and the password you chose.`,
   );
   return { email, sms };
 }

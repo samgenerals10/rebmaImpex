@@ -30,6 +30,7 @@ import h_register_staff_user from './_routes/register-staff-user';
 import h_register_standard_user from './_routes/register-standard-user';
 import h_resend_invite from './_routes/resend-invite';
 import h_reset_user_password from './_routes/reset-user-password';
+import h_send_approval_notice from './_routes/send-approval-notice';
 import h_send_push from './_routes/send-push';
 import h_send_staff_invite_email from './_routes/send-staff-invite-email';
 import h_set_user_status from './_routes/set-user-status';
@@ -58,6 +59,7 @@ const ROUTES: Record<string, (req: VercelRequest, res: VercelResponse) => unknow
   'register-standard-user': h_register_standard_user,
   'resend-invite': h_resend_invite,
   'reset-user-password': h_reset_user_password,
+  'send-approval-notice': h_send_approval_notice,
   'send-push': h_send_push,
   'send-staff-invite-email': h_send_staff_invite_email,
   'set-user-status': h_set_user_status,
