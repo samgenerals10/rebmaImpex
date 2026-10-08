@@ -24,7 +24,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import nodemailer from 'nodemailer';
 import { getSettings, getAppOrigin } from './settings';
 import { esc as escapeHtml } from './htmlEscape';
-import { brandedEmail, paragraphsFromText, emailButton, emailNote, emailStep, emailCallout, COMPANY_NAME } from './emailTemplate';
+import { brandedEmail, paragraphsFromText, emailButton, emailNote, emailStep, emailCallout, emailPanel, COMPANY_NAME } from './emailTemplate';
 import { sendSms, type SendResult } from './sms';
 
 export type { SendResult };
@@ -92,7 +92,7 @@ export async function sendMail(supabaseAdmin: SupabaseClient, to: string | null 
   const s = await getSettings(supabaseAdmin, MAIL_KEYS);
   // Every email gets the same branded look (logo, card, footer) unless a
   // caller already built a full page.
-  const html = opts.raw ? bodyHtml : brandedEmail({ origin: await getAppOrigin(supabaseAdmin), bodyHtml, preheader: opts.preheader, title: opts.title ?? subject, subtitle: opts.subtitle });
+  const html = opts.raw ? bodyHtml : brandedEmail({ origin: await getAppOrigin(supabaseAdmin), bodyHtml, preheader: opts.preheader, title: opts.title ?? subject, subtitle: opts.subtitle, contact: (/<([^>]+)>/.exec(s.email_from_address || '')?.[1] || s.email_from_address || s.gmail_address || '').trim() });
   const resendReady = !!(s.api_key_resend && s.email_from_address);
 
   if (resendReady) {
@@ -112,6 +112,18 @@ async function getDownloadUrl(supabaseAdmin: SupabaseClient): Promise<string> {
 
 export type Channel = 'email' | 'sms';
 
+const DEPARTMENT_LABELS: Record<string, string> = {
+  admin_warehouse: 'Admin & Warehouse', operations: 'Admin & Warehouse', dispatch: 'Admin & Warehouse', logistics: 'Admin & Warehouse',
+  finance: 'Account Department', hr: 'HR', marketing: 'Marketing', receptionist: 'Reception', reception: 'Reception',
+  production: 'Production', management: 'Management', risk: 'Risk', ceo: 'CEO',
+};
+const departmentLabel = (code?: string | null) => (code ? DEPARTMENT_LABELS[String(code).toLowerCase()] || String(code) : '');
+const prettyDate = (iso?: string | null) => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Accra' });
+};
+
 // Two links: the app download (Control Center → API Keys → Mobile App
 // Download Link) and the registration link they paste into the app's
 // Register page. With no download link set, only the registration step is
@@ -123,7 +135,7 @@ export type Channel = 'email' | 'sms';
 // appended if HR's version left it out.
 export async function sendInvite(
   supabaseAdmin: SupabaseClient,
-  invite: { email?: string | null; phone?: string | null; full_name?: string | null; token: string },
+  invite: { email?: string | null; phone?: string | null; full_name?: string | null; token: string; department?: string | null; role?: string | null; expires_at?: string | null },
   origin: string,
   channels: Channel[] = ['email', 'sms'],
   customMessage?: string | null,
@@ -157,7 +169,13 @@ export async function sendInvite(
       result.email = await sendMail(
         supabaseAdmin, invite.email, subject,
         `Hi ${name},\n\nYou have been invited to join ${COMPANY_NAME}.\n\n${textSteps}\n\n${after}\n\n${expiry} If you weren't expecting this, you can safely ignore it.\n\n${COMPANY_NAME}`,
-        `${paragraphsFromText(`Hi ${name},\n\nYou have been invited to join ${COMPANY_NAME}. Here is how to get started:`)}${steps}${emailButton('Register now', link)}${linkFallback}${emailCallout(`${after} ${expiry}`)}${emailNote("If you weren't expecting this, you can safely ignore it.")}`,
+        `${paragraphsFromText(`Hi ${name},\n\nYou have been invited to join ${COMPANY_NAME}. Here are the details of your invitation:`)}${emailPanel({
+          title: 'Your invitation',
+          reference: invite.email ? `Sent to ${invite.email}` : undefined,
+          rows: [['Name', name], ['Role', (invite.role || '').replace(/^./, (c) => c.toUpperCase())], ['Department', departmentLabel(invite.department)], ['Link valid until', prettyDate(invite.expires_at)]],
+          linkLabel: 'Open registration',
+          linkUrl: link,
+        })}${paragraphsFromText('Here is how to get started:')}${steps}${emailButton('Register now', link)}${linkFallback}${emailCallout(`${after} ${expiry}`)}${emailNote("If you weren't expecting this, you can safely ignore it.")}`,
         heroOpts,
       );
     }
@@ -194,7 +212,13 @@ export async function sendApproved(
     person.email,
     `Your ${COMPANY_NAME} account is approved`,
     `Hi ${person.fullName},\n\nYour registration has been approved. ${signIn}\n\n${textWays}\n\n${COMPANY_NAME}`,
-    `${paragraphsFromText(`Hi ${person.fullName},\n\nYour registration has been approved. ${signIn}`)}${ways}${emailButton('Sign in on the web', origin)}`,
+    `${paragraphsFromText(`Hi ${person.fullName},\n\nYour registration has been approved. ${signIn}`)}${emailPanel({
+      title: 'Your account',
+      reference: person.email || undefined,
+      rows: [['Name', person.fullName], ['Status', 'Approved']],
+      linkLabel: 'Sign in',
+      linkUrl: origin,
+    })}${ways}${emailButton('Sign in on the web', origin)}`,
     { title: 'You are approved', subtitle: 'Your account is ready to use', preheader: `Your ${COMPANY_NAME} account is approved` },
   );
   const sms = await sendSms(

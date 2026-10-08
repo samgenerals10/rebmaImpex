@@ -58,7 +58,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const { data: invite, error: inviteError } = await supabaseAdmin
       .from('staff_invites')
-      .select('id, token, email, phone, full_name, status, sent_via')
+      .select('id, token, email, phone, full_name, status, sent_via, department, role, expires_at')
       .eq('id', inviteId)
       .single();
     if (inviteError || !invite) return res.status(404).json({ error: 'Invite not found.' });
