@@ -254,9 +254,9 @@ export default function MeetingsScreen() {
             style={{ flex: 1, backgroundColor: t.colors.accent, borderRadius: t.radius.lg, padding: t.spacing.lg, gap: t.spacing.sm, alignItems: 'flex-start', ...t.shadow('card') }}
           >
             <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.22)', alignItems: 'center', justifyContent: 'center' }}>
-              <Video size={17} color="#fff" />
+              <Video size={17} color={t.colors.onAccent} />
             </View>
-            <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: '#fff' }}>New Meeting</Text>
+            <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.onAccent }}>New Meeting</Text>
           </Pressable>
           <Pressable
             onPress={() => setShowJoinByCode(true)}

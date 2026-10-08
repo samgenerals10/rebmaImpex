@@ -1865,7 +1865,7 @@ export default function FleetMap({ onSelectedChange }: FleetMapProps = {}) {
         style={{ position: 'absolute', top: t.spacing.md, right: t.spacing.md, zIndex: 12, width: 36, height: 36, borderRadius: 18,
           alignItems: 'center', justifyContent: 'center', backgroundColor: toolsOpen ? t.colors.accent : t.colors.bgCard }}
       >
-        {toolsOpen ? <ChevronRight size={18} color="#fff" /> : <ChevronLeft size={18} color={t.colors.textPrimary} />}
+        {toolsOpen ? <ChevronRight size={18} color={t.colors.onAccent} /> : <ChevronLeft size={18} color={t.colors.textPrimary} />}
       </Pressable>
 
       {/* Search, basemap toggle, fit-all, fullscreen, and structures/

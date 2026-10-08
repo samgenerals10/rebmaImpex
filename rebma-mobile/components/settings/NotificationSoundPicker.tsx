@@ -59,7 +59,7 @@ function SoundRow({ id, label, asset, selected, onSelect }: { id: string; label:
       </Text>
       {selected ? (
         <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: t.colors.accent, alignItems: 'center', justifyContent: 'center' }}>
-          <Check size={14} color="#ffffff" strokeWidth={2.5} />
+          <Check size={14} color={t.colors.onAccent} strokeWidth={2.5} />
         </View>
       ) : null}
     </Pressable>

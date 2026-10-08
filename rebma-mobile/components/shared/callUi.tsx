@@ -90,7 +90,7 @@ export function CallAvatar({ name, photo, size = 128, ringing = false }: { name:
         <Image source={{ uri: photo }} style={{ width: size, height: size, borderRadius: size / 2, borderWidth: 4, borderColor: 'rgba(255,255,255,0.2)' }} />
       ) : (
         <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: t.colors.accent, alignItems: 'center', justifyContent: 'center', borderWidth: 4, borderColor: 'rgba(255,255,255,0.2)' }}>
-          <Text style={{ fontFamily: t.font.bold, fontSize: size * 0.34, color: '#fff' }}>{initialsOf(name)}</Text>
+          <Text style={{ fontFamily: t.font.bold, fontSize: size * 0.34, color: t.colors.onAccent }}>{initialsOf(name)}</Text>
         </View>
       )}
     </View>

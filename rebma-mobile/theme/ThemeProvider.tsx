@@ -117,14 +117,10 @@ function applyCustomColors(
     : preset;
   const b = customBgHex ? deriveBackgroundSet(customBgHex) : BACKGROUND_PALETTE[bg] || BACKGROUND_PALETTE.lavender;
 
+  // Dark mode is monochrome (like Resend): the chosen accent colour applies
+  // in light mode only.
   if (isDark) {
-    return {
-      ...darkColors,
-      accent: a.accent,
-      accentPressed: a.accentPressed,
-      accentSoft: a.accentSoft,
-      borderFocus: a.accent,
-    };
+    return { ...darkColors };
   }
 
   return {

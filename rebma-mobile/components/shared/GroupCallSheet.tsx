@@ -723,7 +723,7 @@ export default function GroupCallSheet({ room, title, meetingId, isHost = false,
           <PhoneOff size={40} color="rgba(255,255,255,0.6)" />
           <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: '#fff', textAlign: 'center' }}>{removedMessage}</Text>
           <Pressable onPress={onClose} style={{ paddingHorizontal: t.spacing.xl, paddingVertical: t.spacing.sm, borderRadius: t.radius.pill, backgroundColor: t.colors.accent }}>
-            <Text style={{ fontFamily: t.font.bold, color: '#fff' }}>OK</Text>
+            <Text style={{ fontFamily: t.font.bold, color: t.colors.onAccent }}>OK</Text>
           </Pressable>
         </View>
       </Modal>
@@ -1013,7 +1013,7 @@ export default function GroupCallSheet({ room, title, meetingId, isHost = false,
                     <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: '#fff' }} numberOfLines={1}>{p.fullName}</Text>
                     <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
                       <Pressable onPress={() => admitParticipant(p.userId)} style={{ paddingHorizontal: t.spacing.md, paddingVertical: 6, borderRadius: t.radius.pill, backgroundColor: t.colors.accent }}>
-                        <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta11.size, color: '#fff' }}>Admit</Text>
+                        <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta11.size, color: t.colors.onAccent }}>Admit</Text>
                       </Pressable>
                       <Pressable onPress={() => denyParticipant(p.userId)} style={{ paddingHorizontal: t.spacing.md, paddingVertical: 6, borderRadius: t.radius.pill, backgroundColor: 'rgba(239,68,68,0.85)' }}>
                         <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta11.size, color: '#fff' }}>Deny</Text>
@@ -1053,7 +1053,7 @@ export default function GroupCallSheet({ room, title, meetingId, isHost = false,
                   style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: t.radius.pill, paddingHorizontal: t.spacing.lg, paddingVertical: t.spacing.sm, color: '#fff' }}
                 />
                 <Pressable onPress={sendChat} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: t.colors.accent, alignItems: 'center', justifyContent: 'center' }}>
-                  <Send size={16} color="#fff" />
+                  <Send size={16} color={t.colors.onAccent} />
                 </Pressable>
               </View>
             </SafeAreaView>
@@ -1074,7 +1074,7 @@ export default function GroupCallSheet({ room, title, meetingId, isHost = false,
             </Text>
             <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
               <Pressable onPress={() => respondToRecordConsent(true)} style={{ flex: 1, paddingVertical: t.spacing.sm, borderRadius: t.radius.pill, backgroundColor: t.colors.accent, alignItems: 'center' }}>
-                <Text style={{ fontFamily: t.font.bold, color: '#fff', fontSize: t.type.meta11.size }}>Accept</Text>
+                <Text style={{ fontFamily: t.font.bold, color: t.colors.onAccent, fontSize: t.type.meta11.size }}>Accept</Text>
               </Pressable>
               <Pressable onPress={() => respondToRecordConsent(false)} style={{ flex: 1, paddingVertical: t.spacing.sm, borderRadius: t.radius.pill, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center' }}>
                 <Text style={{ fontFamily: t.font.bold, color: '#fff', fontSize: t.type.meta11.size }}>Decline</Text>
@@ -1125,7 +1125,7 @@ export default function GroupCallSheet({ room, title, meetingId, isHost = false,
                     </Pressable>
                   </View>
                   <Pressable onPress={startAutoBreakout} style={{ paddingVertical: t.spacing.md, borderRadius: t.radius.pill, backgroundColor: t.colors.accent, alignItems: 'center' }}>
-                    <Text style={{ fontFamily: t.font.bold, color: '#fff' }}>Auto-Assign & Start</Text>
+                    <Text style={{ fontFamily: t.font.bold, color: t.colors.onAccent }}>Auto-Assign & Start</Text>
                   </Pressable>
                   {/* People can still be in breakouts after the host comes
                       back, so ending them is offered here too (as on web). */}

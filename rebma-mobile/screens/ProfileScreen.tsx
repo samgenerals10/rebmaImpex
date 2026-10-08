@@ -113,7 +113,7 @@ export default function ProfileScreen({ onOpenDesignSystem, onOpenSettings, onOp
             <Text style={{ flex: 1, fontFamily: t.font.medium, fontSize: t.type.body14.size, color: t.colors.textPrimary }}>{row.label}</Text>
             {row.badge > 0 && (
               <View style={{ minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 6, backgroundColor: t.colors.accent, alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ fontFamily: t.font.bold, fontSize: 10, color: '#fff' }}>{row.badge}</Text>
+                <Text style={{ fontFamily: t.font.bold, fontSize: 10, color: t.colors.onAccent }}>{row.badge}</Text>
               </View>
             )}
             <ChevronRight size={16} color={t.colors.textMuted} />

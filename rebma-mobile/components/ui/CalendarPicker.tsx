@@ -170,10 +170,10 @@ function DayCell({ label, selected, between, isToday, markColor, onPress, access
         borderWidth: isToday && !selected ? 1 : 0, borderColor: t.colors.accent,
         transform: [{ scale }],
       }}>
-        <Text style={{ fontFamily: selected ? t.font.bold : t.font.medium, fontSize: t.type.body12.size, color: selected ? '#fff' : t.colors.textPrimary }}>
+        <Text style={{ fontFamily: selected ? t.font.bold : t.font.medium, fontSize: t.type.body12.size, color: selected ? t.colors.onAccent : t.colors.textPrimary }}>
           {label}
         </Text>
-        {markColor && <View style={{ width: 5, height: 5, borderRadius: 3, marginTop: 2, backgroundColor: selected ? '#fff' : markColor }} />}
+        {markColor && <View style={{ width: 5, height: 5, borderRadius: 3, marginTop: 2, backgroundColor: selected ? t.colors.onAccent : markColor }} />}
       </Animated.View>
     </Pressable>
   );

@@ -81,7 +81,7 @@ export default function MeetingLobbySheet({ mode, title: initialTitle, code, myN
               ) : (
                 <View style={{ alignItems: 'center', gap: 8 }}>
                   <View style={{ width: 76, height: 76, borderRadius: 38, backgroundColor: t.colors.accent, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ fontFamily: t.font.bold, fontSize: 26, color: '#fff' }}>{initials(myName)}</Text>
+                    <Text style={{ fontFamily: t.font.bold, fontSize: 26, color: t.colors.onAccent }}>{initials(myName)}</Text>
                   </View>
                   {camOn && !permission?.granted ? (
                     <Pressable onPress={requestPermission}><Text style={{ fontFamily: t.font.bold, fontSize: 12, color: '#93c5fd' }}>Allow camera to see yourself</Text></Pressable>
@@ -132,7 +132,7 @@ export default function MeetingLobbySheet({ mode, title: initialTitle, code, myN
                 <Text style={{ ...label, marginBottom: 0 }}>Invite people</Text>
                 {invitees.length > 0 && (
                   <View style={{ minWidth: 18, height: 18, paddingHorizontal: 4, borderRadius: 9, backgroundColor: t.colors.accent, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ fontFamily: t.font.bold, fontSize: 10, color: '#fff' }}>{invitees.length}</Text>
+                    <Text style={{ fontFamily: t.font.bold, fontSize: 10, color: t.colors.onAccent }}>{invitees.length}</Text>
                   </View>
                 )}
               </View>
@@ -156,7 +156,7 @@ export default function MeetingLobbySheet({ mode, title: initialTitle, code, myN
                       <Text style={{ fontFamily: t.font.medium, fontSize: 11, color: t.colors.textMuted }} numberOfLines={1}>{p.department}</Text>
                     </View>
                     <View style={{ width: 20, height: 20, borderRadius: 5, borderWidth: 1.5, borderColor: on ? t.colors.accent : t.colors.border, backgroundColor: on ? t.colors.accent : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
-                      {on && <Check size={13} color="#fff" />}
+                      {on && <Check size={13} color={t.colors.onAccent} />}
                     </View>
                   </Pressable>
                 );
@@ -171,7 +171,7 @@ export default function MeetingLobbySheet({ mode, title: initialTitle, code, myN
             <Text style={{ fontFamily: t.font.semibold, fontSize: 14, color: t.colors.textSecondary }}>Cancel</Text>
           </Pressable>
           <Pressable onPress={confirm} disabled={busy} style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 14, borderRadius: 14, backgroundColor: t.colors.accent, opacity: busy ? 0.6 : 1 }}>
-            <Text style={{ fontFamily: t.font.bold, fontSize: 15, color: '#fff' }}>{busy ? 'Starting…' : mode === 'start' ? 'Start meeting' : 'Join now'}</Text>
+            <Text style={{ fontFamily: t.font.bold, fontSize: 15, color: t.colors.onAccent }}>{busy ? 'Starting…' : mode === 'start' ? 'Start meeting' : 'Join now'}</Text>
           </Pressable>
         </View>
       </SafeAreaView>

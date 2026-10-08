@@ -1088,10 +1088,14 @@ html.dark ::-webkit-scrollbar-thumb {
   text-shadow: 0 0 8px rgba(234, 179, 8, 0.5);
 }
 
-/* Force high contrast text on light input backgrounds (login/register forms) */
-input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not(.erp-input),
-select:not(.erp-select),
-textarea {
+/* Force high contrast text on light input backgrounds (login/register forms).
+   Light mode only, plus the login page and keep-light surfaces in any mode:
+   in dark mode fields take the dark --bg-input colour instead. */
+html:not(.dark) input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not(.erp-input),
+html:not(.dark) select:not(.erp-select),
+html:not(.dark) textarea,
+.auth-shell input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not(.erp-input), .auth-shell select:not(.erp-select), .auth-shell textarea,
+.keep-light input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not(.erp-input), .keep-light select:not(.erp-select), .keep-light textarea {
   color: #0f172a;
   background-color: #f8fafc;
   border-color: #cbd5e1;
@@ -2117,6 +2121,53 @@ button:not(.nav-item):not(.lf-nav-item):not(.tab-item):active {
   border: 1px solid rgba(226, 232, 240, 0.9);
   box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.07), 0 0 20px -5px rgba(5, 150, 105, 0.08);
 }
+
+/* ─── CALMER TYPE ───
+   Same font (Inter by default), lighter weights, like Resend: every weight
+   steps down so menus, labels and body text stop shouting and only titles
+   stand out. Inter is loaded as a variable font (100 to 900), so the
+   in-between weights render exactly. */
+:root {
+  --font-weight-medium: 500;
+  --font-weight-semibold: 550;
+  --font-weight-bold: 600;
+  --font-weight-extrabold: 650;
+  --font-weight-black: 750;
+}
+h1, h2, h3 { letter-spacing: -0.01em; }
+
+/* ─── DARK MODE ACCENT: monochrome, like Resend ───
+   In dark mode the accent is off-white. Anything filled with it gets dark
+   text and icons so nothing turns white on white. The active menu item is
+   a subtle grey fill with white text. The accent you pick in Settings,
+   Appearance applies in light mode only. Status colours keep their meaning. */
+html.dark body,
+html.dark body.dark-mode,
+html.dark .app-sheet {
+  --accent: #ededed !important;
+  --accent-2: #d4d4d4 !important;
+  --accent-hover: #ffffff !important;
+  --accent-color: #ededed !important;
+  --accent-soft: rgba(255, 255, 255, 0.07) !important;
+  --accent-light: rgba(255, 255, 255, 0.09) !important;
+  --accent-gradient: linear-gradient(#ededed, #ededed) !important;
+  --text-on-accent: #0a0a0a !important;
+  --border-focus: #525252 !important;
+  --sidebar-active-bg: rgba(255, 255, 255, 0.08) !important;
+  --sidebar-active-text: #ffffff !important;
+}
+html.dark [class~="bg-accent"]:not(.nav-item):not(:where(.auth-shell, .keep-light) *), html.dark .erp-btn-primary:not(.nav-item):not(:where(.auth-shell, .keep-light) *), html.dark [class~="bg-[var(--accent)]"]:not(.nav-item):not(:where(.auth-shell, .keep-light) *), html.dark [class~="bg-[var(--accent-hover)]"]:not(.nav-item):not(:where(.auth-shell, .keep-light) *), html.dark [class~="bg-[var(--accent-2)]"]:not(.nav-item):not(:where(.auth-shell, .keep-light) *), html.dark [class~="bg-[var(--accent-gradient)]"]:not(.nav-item):not(:where(.auth-shell, .keep-light) *), html.dark [style*="background: var(--accent)"]:not(.nav-item):not(:where(.auth-shell, .keep-light) *), html.dark [style*="background-color: var(--accent)"]:not(.nav-item):not(:where(.auth-shell, .keep-light) *), html.dark [style*="background:var(--accent)"]:not(.nav-item):not(:where(.auth-shell, .keep-light) *), html.dark [style*="background-color:var(--accent)"]:not(.nav-item):not(:where(.auth-shell, .keep-light) *), html.dark [style*="var(--accent-gradient)"]:not(.nav-item):not(:where(.auth-shell, .keep-light) *), html.dark [class~="hover:bg-[var(--accent)]"]:hover:not(.nav-item):not(:where(.auth-shell, .keep-light) *), html.dark [class~="hover:bg-accent"]:hover:not(.nav-item):not(:where(.auth-shell, .keep-light) *),
+html.dark [class~="bg-accent"]:not(.nav-item):not(:where(.auth-shell, .keep-light) *) *, html.dark .erp-btn-primary:not(.nav-item):not(:where(.auth-shell, .keep-light) *) *, html.dark [class~="bg-[var(--accent)]"]:not(.nav-item):not(:where(.auth-shell, .keep-light) *) *, html.dark [class~="bg-[var(--accent-hover)]"]:not(.nav-item):not(:where(.auth-shell, .keep-light) *) *, html.dark [class~="bg-[var(--accent-2)]"]:not(.nav-item):not(:where(.auth-shell, .keep-light) *) *, html.dark [class~="bg-[var(--accent-gradient)]"]:not(.nav-item):not(:where(.auth-shell, .keep-light) *) *, html.dark [style*="background: var(--accent)"]:not(.nav-item):not(:where(.auth-shell, .keep-light) *) *, html.dark [style*="background-color: var(--accent)"]:not(.nav-item):not(:where(.auth-shell, .keep-light) *) *, html.dark [style*="background:var(--accent)"]:not(.nav-item):not(:where(.auth-shell, .keep-light) *) *, html.dark [style*="background-color:var(--accent)"]:not(.nav-item):not(:where(.auth-shell, .keep-light) *) *, html.dark [style*="var(--accent-gradient)"]:not(.nav-item):not(:where(.auth-shell, .keep-light) *) *, html.dark [class~="hover:bg-[var(--accent)]"]:hover:not(.nav-item):not(:where(.auth-shell, .keep-light) *) *, html.dark [class~="hover:bg-accent"]:hover:not(.nav-item):not(:where(.auth-shell, .keep-light) *) * {
+  color: #0a0a0a !important;
+}
+html.dark .nav-item--active,
+html.dark .nav-item[data-active="true"],
+html.dark .nav-item.active {
+  background: rgba(255, 255, 255, 0.08) !important;
+  background-image: none !important;
+  color: #ffffff !important;
+}
+html.dark .nav-item--active * { color: #ffffff !important; }
 
 /* ─── SMOOTH MOTION ───
    Short, eased transitions for everyday state changes (hover, press,

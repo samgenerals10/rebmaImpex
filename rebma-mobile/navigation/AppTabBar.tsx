@@ -124,7 +124,7 @@ export default function AppTabBar({ state, navigation }: BottomTabBarProps) {
             borderColor: t.colors.bgCard,
           })}
         >
-          <Plus size={24} color="#ffffff" strokeWidth={3} />
+          <Plus size={24} color={t.colors.onAccent} strokeWidth={3} />
         </Pressable>
       </View>
     );

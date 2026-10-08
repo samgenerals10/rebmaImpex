@@ -165,7 +165,7 @@ export default function AppearanceScreen() {
                   </View>
                   {selected && (
                     <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: t.colors.accent, alignItems: 'center', justifyContent: 'center' }}>
-                      <Check size={14} color="#ffffff" strokeWidth={2.5} />
+                      <Check size={14} color={t.colors.onAccent} strokeWidth={2.5} />
                     </View>
                   )}
                 </Pressable>
@@ -197,7 +197,7 @@ export default function AppearanceScreen() {
               </View>
               {t.customBgHex && (
                 <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: t.colors.accent, alignItems: 'center', justifyContent: 'center' }}>
-                  <Check size={14} color="#ffffff" strokeWidth={2.5} />
+                  <Check size={14} color={t.colors.onAccent} strokeWidth={2.5} />
                 </View>
               )}
             </Pressable>

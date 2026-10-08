@@ -68,10 +68,11 @@ export function applyAccentOverride(data: AppearanceData): void {
 
   let bgOverrideCss = '';
   if (bgColor) {
+    // Light mode only: in dark mode the page keeps the dark background.
     bgOverrideCss = `
-      body.${themeClass},
-      body,
-      .app-sheet {
+      html:not(.dark) body.${themeClass},
+      html:not(.dark) body,
+      html:not(.dark) .app-sheet {
         --bg-page: ${bgColor} !important;
         --bg-app-gradient: ${bgColor} !important;
         background-color: ${bgColor} !important;
@@ -81,8 +82,9 @@ export function applyAccentOverride(data: AppearanceData): void {
 
   let accentCss = '';
   if (accentVal) {
+    // Light mode only: dark mode uses the monochrome accent from index.css.
     accentCss = `
-      body.${themeClass} {
+      html:not(.dark) body.${themeClass} {
         --accent: ${accentVal} !important;
         --accent-2: ${accent2Val} !important;
         --accent-soft: ${accentSoftVal} !important;
@@ -91,38 +93,38 @@ export function applyAccentOverride(data: AppearanceData): void {
         --accent-hover: ${accent2Val} !important;
         --accent-light: ${hexToRgba(accentVal, 0.15)} !important;
       }
-      body.${themeClass} .bg-accent,
-      body.${themeClass} .nav-item--active,
-      body.${themeClass} .lf-nav-item span[style*="var(--accent)"],
-      body.${themeClass} .lf-nav-icon[style*="var(--accent)"],
-      body.${themeClass} .erp-btn-primary,
-      body.${themeClass} [class*="bg-accent"]:not([class*="bg-accent-soft"]):not([class*="bg-accent-light"]),
-      body.${themeClass} [class*="bg-[var(--accent)]"],
-      body.${themeClass} [class*="bg-[var(--accent-hover)]"],
-      body.${themeClass} [class*="bg-[var(--accent-2)]"],
-      body.${themeClass} [style*="background: var(--accent)"],
-      body.${themeClass} [style*="background-color: var(--accent)"],
-      body.${themeClass} [style*="background:var(--accent)"],
-      body.${themeClass} [style*="background-color:var(--accent)"] {
+      html:not(.dark) body.${themeClass} .bg-accent,
+      html:not(.dark) body.${themeClass} .nav-item--active,
+      html:not(.dark) body.${themeClass} .lf-nav-item span[style*="var(--accent)"],
+      html:not(.dark) body.${themeClass} .lf-nav-icon[style*="var(--accent)"],
+      html:not(.dark) body.${themeClass} .erp-btn-primary,
+      html:not(.dark) body.${themeClass} [class*="bg-accent"]:not([class*="bg-accent-soft"]):not([class*="bg-accent-light"]),
+      html:not(.dark) body.${themeClass} [class*="bg-[var(--accent)]"],
+      html:not(.dark) body.${themeClass} [class*="bg-[var(--accent-hover)]"],
+      html:not(.dark) body.${themeClass} [class*="bg-[var(--accent-2)]"],
+      html:not(.dark) body.${themeClass} [style*="background: var(--accent)"],
+      html:not(.dark) body.${themeClass} [style*="background-color: var(--accent)"],
+      html:not(.dark) body.${themeClass} [style*="background:var(--accent)"],
+      html:not(.dark) body.${themeClass} [style*="background-color:var(--accent)"] {
         background: ${bgVal} !important;
         background-image: ${bgVal} !important;
       }
-      body.${themeClass} .text-accent,
-      body.${themeClass} [class*="text-accent"] {
+      html:not(.dark) body.${themeClass} .text-accent,
+      html:not(.dark) body.${themeClass} [class*="text-accent"] {
         color: ${accentVal} !important;
       }
-      body.${themeClass} .border-accent {
+      html:not(.dark) body.${themeClass} .border-accent {
         border-color: ${accentVal} !important;
       }
-      body.${themeClass} .bg-accent-soft {
+      html:not(.dark) body.${themeClass} .bg-accent-soft {
         background-color: ${accentSoftVal} !important;
       }
-      body.${themeClass} .kpi-icon {
+      html:not(.dark) body.${themeClass} .kpi-icon {
         background: ${gradientVal} !important;
         background-image: ${gradientVal} !important;
       }
-      body.${themeClass} .nav-item[data-active="true"],
-      body.${themeClass} .nav-item.active {
+      html:not(.dark) body.${themeClass} .nav-item[data-active="true"],
+      html:not(.dark) body.${themeClass} .nav-item.active {
         background: ${bgVal} !important;
         background-image: ${bgVal} !important;
         color: #ffffff !important;

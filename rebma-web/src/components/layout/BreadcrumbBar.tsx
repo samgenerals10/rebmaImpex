@@ -29,7 +29,7 @@ const SUBTAB_LABELS: Record<string, string> = {
   VideoConf: 'Live Video Minutes', Announcements: 'Announcements',
   DirectMessages: 'Direct Messages', Meetings: 'Meetings',
   Appearance: 'Display & Appearance', Profile: 'Profile & Account',
-  ChangePassword: 'Change Password', TwoFactor: 'Two-Factor Authentication', DeleteAccount: 'Delete Account',
+  ChangePassword: 'Change Password', TwoFactor: 'Two-Factor Authentication', DeleteAccount: 'Delete Account', ControlCenter: 'Control Center',
   Notes: 'Notes', Tasks: 'Tasks', Emails: 'Emails', Notifications: 'Notifications',
   HelpDesk: 'Help & News', Feedback: 'Feedback', HrQueries: 'HR Queries', Scanner: 'Scanner',
 };

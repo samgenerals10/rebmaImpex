@@ -363,10 +363,10 @@ export default function SettingsDashboard({
     }
 
     // Background color override
-    if (draftBgColor) {
-      root.style.setProperty('--bg-page', draftBgColor);
-      body.style.backgroundColor = draftBgColor;
-    }
+    // Applied through the override style (light mode only), not inline,
+    // so it can never paint over dark mode.
+    root.style.removeProperty('--bg-page');
+    body.style.removeProperty('background-color');
 
     // STEP 8: Save to localStorage
     localStorage.setItem('erp-appearance', JSON.stringify(obj));

@@ -80,13 +80,15 @@ export const colors: ColorTokens = {
 
 // Dark mode: neutral near-black in the style of Vercel and Supabase, the
 // same palette as the web app (rebma-web/src/index.css, DARK MODE).
-// Brand accent and the action colours stay the same; status badges get
-// soft tints that suit a dark background.
+// Monochrome like Resend: the accent becomes off-white, with dark text on
+// anything filled with it, and highlights are subtle white tints. The
+// action colours stay; status badges get soft tints that suit a dark
+// background.
 export const darkColors: ColorTokens = {
-  accent: colors.accent,
-  accentPressed: colors.accentPressed,
-  accentSoft: colors.accentSoft,
-  onAccent: colors.onAccent,
+  accent: '#ededed',
+  accentPressed: '#d4d4d4',
+  accentSoft: 'rgba(255, 255, 255, 0.08)',
+  onAccent: '#0a0a0a',
 
   bgPage: '#0a0a0a',
   bgCard: '#111111',
@@ -96,10 +98,10 @@ export const darkColors: ColorTokens = {
   textPrimary: '#ededed',
   textSecondary: '#a1a1a1',
   textMuted: '#737373',
-  textOnAccent: '#ffffff',
+  textOnAccent: '#0a0a0a',
 
   border: '#262626',
-  borderFocus: colors.accent,
+  borderFocus: '#525252',
 
   status: {
     success: { bg: 'rgba(34, 197, 94, 0.15)', text: '#4ade80' },
@@ -146,14 +148,15 @@ export const type = {
   kpi28: { size: 28, lineHeight: 32, letterSpacing: 0 },
 } as const;
 
+// Calmer type, like Resend and the web app: each weight one step lighter,
+// so only titles stand out. Same Inter font.
 export const font = {
   light: 'Inter_300Light',
-  // Body and paragraph text one step heavier than 400, for readability (matches web's body weight).
-  regular: 'Inter_500Medium',
+  regular: 'Inter_400Regular',
   medium: 'Inter_500Medium',
-  semibold: 'Inter_600SemiBold',
-  bold: 'Inter_700Bold',
-  extrabold: 'Inter_800ExtraBold',
+  semibold: 'Inter_500Medium',
+  bold: 'Inter_600SemiBold',
+  extrabold: 'Inter_700Bold',
 } as const;
 
 // Clean, flat look (as on Vercel and Supabase): no shadows anywhere.

@@ -308,6 +308,9 @@ export default function App() {
     // 1. Dark Mode
     if (darkMode) {
       document.documentElement.classList.add('dark');
+      // A saved light background must never sit over dark mode.
+      document.documentElement.style.removeProperty('--bg-page');
+      document.body.style.removeProperty('background-color');
       document.body.classList.add('dark-mode');
     } else {
       document.documentElement.classList.remove('dark');

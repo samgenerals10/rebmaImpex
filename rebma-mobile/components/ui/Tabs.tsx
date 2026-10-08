@@ -50,7 +50,7 @@ export default function Tabs({ options, value, onChange, variant = 'segmented' }
                 // overflows past its own pill into the next tab instead.
                 flex: 1, minWidth: 0, alignItems: 'center', justifyContent: 'center',
                 paddingVertical: t.spacing.sm, paddingHorizontal: 2, borderRadius: t.radius.pill,
-                backgroundColor: active ? (t.darkMode ? t.colors.accent : '#FFFFFF') : 'transparent',
+                backgroundColor: active ? (t.darkMode ? '#262626' : '#FFFFFF') : 'transparent',
                 ...(active && !t.darkMode ? t.shadow('card') : {}),
               }}
             >
