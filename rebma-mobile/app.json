@@ -2,6 +2,7 @@
   "expo": {
     "name": "REBMA IMPEX",
     "slug": "rebma-mobile",
+    "owner": "rebmaimpexmobile",
     "scheme": "rebmaimpex",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -17,7 +18,8 @@
         "NSLocationWhenInUseUsageDescription": "Rebma Mobile uses your location to share live delivery tracking with dispatch while a delivery is active.",
         "NSMicrophoneUsageDescription": "Rebma Mobile uses your microphone for Boardroom video and voice calls, and to record voice notes in Messenger.",
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "bitcode": false
     },
     "android": {
       "package": "com.rebmaimpex.mobile",
@@ -38,7 +40,12 @@
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
         "android.permission.WRITE_EXTERNAL_STORAGE",
-        "android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION"
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.INTERNET",
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.WAKE_LOCK",
+        "android.permission.BLUETOOTH"
       ]
     },
     "web": {
@@ -48,7 +55,7 @@
       "policy": "appVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/0f64cfbb-7d49-42f3-99ce-b399d5091b9a"
+      "url": "https://u.expo.dev/eb143336-0bd6-4aaa-bbcc-01007eb0d340"
     },
     "plugins": [
       [
@@ -104,7 +111,7 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "0f64cfbb-7d49-42f3-99ce-b399d5091b9a"
+        "projectId": "eb143336-0bd6-4aaa-bbcc-01007eb0d340"
       }
     }
   }
