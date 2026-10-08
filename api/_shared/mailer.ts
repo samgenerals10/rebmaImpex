@@ -164,7 +164,7 @@ export async function sendInvite(
         ? `1. Download the Rebma app:\n${downloadUrl}\n\n2. Open the app, tap Register on the sign-in page, and paste this link:\n${link}`
         : `Open the Rebma app, tap Register on the sign-in page, and paste this link:\n${link}`;
       const steps = downloadUrl
-        ? `${emailStep(1, 'Get the Rebma app', `<a href="${esc(downloadUrl)}" style="color:#16a34a;font-weight:600;word-break:break-all">${esc(downloadUrl)}</a>`)}${emailStep(2, 'Open it and tap Register', 'Paste your invite link when it asks, then choose your own password.')}`
+        ? `${emailStep(1, 'Get the Rebma app', `<a href="${esc(downloadUrl)}" style="color:#0c5c34;font-weight:700;word-break:break-all">${esc(downloadUrl)}</a>`)}${emailStep(2, 'Open it and tap Register', 'Paste your invite link when it asks, then choose your own password.')}`
         : `${emailStep(1, 'Open the Rebma app and tap Register', 'Paste your invite link when it asks, then choose your own password.')}`;
       result.email = await sendMail(
         supabaseAdmin, invite.email, subject,
@@ -205,7 +205,7 @@ export async function sendApproved(
     ? `On your phone, get the Rebma app here:\n${downloadUrl}\n\nOn a computer, open:\n${origin}`
     : `Open the Rebma app on your phone, or on a computer go to:\n${origin}`;
   const ways = downloadUrl
-    ? `${emailStep(1, 'On your phone', `Get the Rebma app: <a href="${esc(downloadUrl)}" style="color:#16a34a;font-weight:600;word-break:break-all">${esc(downloadUrl)}</a>`)}${emailStep(2, 'On a computer', `Open <a href="${esc(origin)}" style="color:#16a34a;font-weight:600;word-break:break-all">${esc(origin)}</a>`)}`
+    ? `${emailStep(1, 'On your phone', `Get the Rebma app: <a href="${esc(downloadUrl)}" style="color:#0c5c34;font-weight:700;word-break:break-all">${esc(downloadUrl)}</a>`)}${emailStep(2, 'On a computer', `Open <a href="${esc(origin)}" style="color:#0c5c34;font-weight:700;word-break:break-all">${esc(origin)}</a>`)}`
     : '';
   const email = await sendMail(
     supabaseAdmin,
