@@ -26,7 +26,7 @@ export const API_KEY_DEFS: ApiKeyDef[] = [
     logo: 'rebma',
     label: 'App Web Address',
     description: 'The address people open the web app at. Links in invite emails and texts point here.',
-    placeholder: 'https://rebma-impex.vercel.app',
+    placeholder: 'https://app.rebmaimpex.com',
     plain: true,
   },
   {

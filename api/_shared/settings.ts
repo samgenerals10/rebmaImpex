@@ -41,5 +41,5 @@ export async function getSetting(supabaseAdmin: SupabaseClient, key: string): Pr
 // origin, then the deployed default.
 export async function getAppOrigin(supabaseAdmin: SupabaseClient, reqOrigin?: string): Promise<string> {
   const fromSettings = await getSetting(supabaseAdmin, 'app_web_address');
-  return (fromSettings || reqOrigin || process.env.PUBLIC_APP_URL || 'https://rebma-impex.vercel.app').replace(/\/+$/, '');
+  return (fromSettings || reqOrigin || process.env.PUBLIC_APP_URL || 'https://app.rebmaimpex.com').replace(/\/+$/, '');
 }

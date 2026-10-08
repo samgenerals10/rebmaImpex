@@ -947,7 +947,7 @@ export default function StaffScreen() {
       <Sheet open={!!createdInvite} onClose={() => setCreatedInvite(null)} title="Send Invite" side="bottom" maxHeight={520}
         footer={<Button label="Done" onPress={() => setCreatedInvite(null)} fullWidth />}>
         {createdInvite && (() => {
-          const link = `${process.env.EXPO_PUBLIC_APP_URL || 'https://rebma-impex.vercel.app'}/register?token=${createdInvite.token}`;
+          const link = `${process.env.EXPO_PUBLIC_APP_URL || 'https://app.rebmaimpex.com'}/register?token=${createdInvite.token}`;
           // Same two-step wording as the email (api/send-staff-invite-email.ts).
           const steps = appDownloadUrl
             ? `1. Download the Rebma app: ${appDownloadUrl}\n2. Open the app, tap Register on the sign-in page, and paste this link: ${link}`
