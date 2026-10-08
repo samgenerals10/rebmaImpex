@@ -146,13 +146,27 @@ export default function PersistentIconRow({ topInset }: Props) {
               height: ICON_ROW_H,
             }}
           >
-            <Pressable onPress={openDepartmentSwitcher} hitSlop={8} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              {/* The cropped logo, as on the sign-in pages, on a white backing the logo's own shape so it reads on the teal bar */}
-              <View style={{ paddingHorizontal: 6, paddingVertical: 3, borderRadius: 8, backgroundColor: '#FFFFFF' }}>
-                <Image source={require('../../assets/logo-mark.png')} style={{ height: 24, width: 24 * 398 / 237 }} resizeMode="contain" />
-              </View>
-              <ChevronDown size={16} color="#FFFFFF" />
-            </Pressable>
+            {t.darkMode ? (
+              // Dark mode: the logo in a round white badge with the name beside
+              // it in a subtle pill, as on the web sidebar. (The logo file has
+              // a white background, which looks like a stray square on black.)
+              <Pressable onPress={openDepartmentSwitcher} hitSlop={8}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#171717', borderWidth: 1, borderColor: '#262626', borderRadius: t.radius.pill, paddingVertical: 4, paddingLeft: 4, paddingRight: 10 }}>
+                <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                  <Image source={require('../../assets/logo-mark.png')} style={{ height: 15, width: 15 * 398 / 237 }} resizeMode="contain" />
+                </View>
+                <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body14.size, color: t.colors.textPrimary }} numberOfLines={1}>Rebma Impex</Text>
+                <ChevronDown size={16} color={t.colors.textSecondary} />
+              </Pressable>
+            ) : (
+              <Pressable onPress={openDepartmentSwitcher} hitSlop={8} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                {/* The cropped logo, as on the sign-in pages, on a white backing the logo's own shape so it reads on the teal bar */}
+                <View style={{ paddingHorizontal: 6, paddingVertical: 3, borderRadius: 8, backgroundColor: '#FFFFFF' }}>
+                  <Image source={require('../../assets/logo-mark.png')} style={{ height: 24, width: 24 * 398 / 237 }} resizeMode="contain" />
+                </View>
+                <ChevronDown size={16} color="#FFFFFF" />
+              </Pressable>
+            )}
 
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
               {/* How many people are online, and who */}

@@ -2122,6 +2122,28 @@ button:not(.nav-item):not(.lf-nav-item):not(.tab-item):active {
   box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.07), 0 0 20px -5px rgba(5, 150, 105, 0.08);
 }
 
+/* ─── BRAND IN DARK MODE ───
+   The logo file has a white background, which looks like a stray white
+   square on black. In dark mode it sits in a round white badge and the
+   name sits beside it in a subtle pill, like an account switcher. Light
+   mode is unchanged. */
+html.dark .brand-row {
+  background: #171717;
+  border: 1px solid #262626;
+  border-radius: 9999px;
+  padding: 5px 14px 5px 5px;
+}
+html.dark .brand-row--collapsed { padding: 4px; gap: 0; }
+html.dark .brand-logo {
+  width: 36px;
+  height: 36px;
+  border-radius: 9999px;
+  background: #ffffff;
+  object-fit: contain;
+  padding: 4px;
+}
+html.dark .brand-row--collapsed .brand-logo { width: 30px; height: 30px; padding: 3px; }
+
 /* ─── CALMER TYPE ───
    Same font (Inter by default), lighter weights, like Resend: every weight
    steps down so menus, labels and body text stop shouting and only titles
