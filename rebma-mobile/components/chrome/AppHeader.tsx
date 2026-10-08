@@ -83,10 +83,10 @@ export default function DashboardHeader() {
   return (
     <View style={{ position: 'absolute', top: insets.top, left: 0, right: 0, zIndex: 10 }}>
         <LinearGradient
-          colors={[t.colors.accent, t.colors.accentPressed]}
+          colors={t.darkMode ? [t.colors.bgHeader, t.colors.bgHeader] : [t.colors.accent, t.colors.accentPressed]}
           start={{ x: 0.1, y: 0 }}
           end={{ x: 0.7, y: 1 }}
-          style={{ borderBottomLeftRadius: CONTENT_SHEET_RADIUS, borderBottomRightRadius: CONTENT_SHEET_RADIUS }}
+          style={{ borderBottomLeftRadius: CONTENT_SHEET_RADIUS, borderBottomRightRadius: CONTENT_SHEET_RADIUS, ...(t.darkMode ? { borderBottomWidth: 1, borderColor: t.colors.border } : {}) }}
         >
           <View style={{ paddingHorizontal: t.spacing.lg, height: GREETING_ROW_H, justifyContent: 'center' }}>
             <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: 'rgba(255,255,255,0.85)' }} numberOfLines={1}>
@@ -103,7 +103,7 @@ export default function DashboardHeader() {
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
-                backgroundColor: '#FFFFFF',
+                backgroundColor: t.darkMode ? t.colors.bgInput : '#FFFFFF',
                 borderRadius: t.radius.pill,
                 height: 46,
                 paddingHorizontal: 14,

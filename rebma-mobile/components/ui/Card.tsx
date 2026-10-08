@@ -13,7 +13,7 @@ interface Props {
 export default function Card({ children, padded = true, tone = 'default', style }: Props) {
   const t = useTheme();
   const bg =
-    tone === 'inset' ? (t.darkMode ? '#1E293B' : '#F4F3FA') :
+    tone === 'inset' ? (t.darkMode ? '#171717' : '#F4F3FA') :
     tone === 'hero' ? t.colors.accent :
     tone === 'soft' ? t.colors.accentSoft :
     t.colors.bgCard;

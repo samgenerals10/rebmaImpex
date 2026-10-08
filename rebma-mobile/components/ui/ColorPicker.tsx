@@ -77,11 +77,6 @@ function GradientSlider({ value, onChange, stops, trackWidth }: SliderProps) {
           backgroundColor: '#fff',
           borderWidth: 3,
           borderColor: '#1E1B4B',
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 1 },
-          shadowOpacity: 0.3,
-          shadowRadius: 2,
-          elevation: 3,
         }}
       />
     </View>

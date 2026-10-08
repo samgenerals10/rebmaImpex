@@ -132,7 +132,7 @@ export default function PersistentIconRow({ topInset }: Props) {
     <>
       <View style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 11 }}>
         <LinearGradient
-          colors={[t.colors.accent, t.colors.accentPressed]}
+          colors={t.darkMode ? [t.colors.bgHeader, t.colors.bgHeader] : [t.colors.accent, t.colors.accentPressed]}
           start={{ x: 0.1, y: 0 }}
           end={{ x: 0.7, y: 1 }}
           style={{ paddingTop: topInset }}

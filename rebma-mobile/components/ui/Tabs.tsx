@@ -35,7 +35,7 @@ export default function Tabs({ options, value, onChange, variant = 'segmented' }
 
   if (variant === 'segmented') {
     return (
-      <View style={{ flexDirection: 'row', backgroundColor: t.darkMode ? '#1E293B' : '#F1F0FB', borderRadius: t.radius.pill, padding: 4, gap: 4 }}>
+      <View style={{ flexDirection: 'row', backgroundColor: t.darkMode ? '#171717' : '#F1F0FB', borderRadius: t.radius.pill, padding: 4, gap: 4 }}>
         {options.map((opt) => {
           const active = opt.value === value;
           return (
@@ -82,7 +82,7 @@ export default function Tabs({ options, value, onChange, variant = 'segmented' }
                 flexDirection: 'row', alignItems: 'center', gap: 5,
                 paddingVertical: 8, paddingHorizontal: 16,
                 borderRadius: t.radius.pill,
-                backgroundColor: active ? t.colors.accent : (t.darkMode ? '#1E293B' : '#FFFFFF'),
+                backgroundColor: active ? t.colors.accent : (t.darkMode ? '#171717' : '#FFFFFF'),
                 borderWidth: active ? 0 : 1,
                 borderColor: t.colors.border,
                 ...(active ? t.shadow('fab') : t.shadow('card')),

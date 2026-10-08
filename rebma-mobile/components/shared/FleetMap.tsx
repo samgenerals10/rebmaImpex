@@ -2164,10 +2164,10 @@ export default function FleetMap({ onSelectedChange }: FleetMapProps = {}) {
               </Pressable>
               <Pressable
                 onPress={whatsAppDriver}
-                style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#dcfce7', borderRadius: t.radius.md, paddingVertical: t.spacing.sm }}
+                style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: t.colors.status.success.bg, borderRadius: t.radius.md, paddingVertical: t.spacing.sm }}
               >
-                <MessageCircle size={14} color="#16a34a" />
-                <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta11.size, color: '#16a34a' }}>WhatsApp</Text>
+                <MessageCircle size={14} color={t.darkMode ? t.colors.status.success.text : '#16a34a'} />
+                <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta11.size, color: t.darkMode ? t.colors.status.success.text : '#16a34a' }}>WhatsApp</Text>
               </Pressable>
             </View>
           ) : editingPhone ? (

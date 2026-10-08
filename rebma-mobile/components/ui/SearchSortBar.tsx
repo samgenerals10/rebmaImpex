@@ -63,7 +63,7 @@ export default function SearchSortBar({
         style={{
           flexDirection: 'row',
           alignItems: 'center',
-          backgroundColor: focused ? (t.darkMode ? '#1E293B' : '#FFFFFF') : t.colors.bgInput,
+          backgroundColor: focused ? (t.darkMode ? '#1f1f1f' : '#FFFFFF') : t.colors.bgInput,
           borderWidth: focused ? 1.5 : 1,
           borderColor: focused ? t.colors.accent : t.colors.border,
           borderRadius: 16,

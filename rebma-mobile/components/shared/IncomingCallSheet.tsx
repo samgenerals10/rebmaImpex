@@ -105,7 +105,7 @@ export default function IncomingCallSheet() {
 
   return (
     <Modal visible animationType="fade" onRequestClose={dismiss} statusBarTranslucent>
-      <View style={{ flex: 1, backgroundColor: '#0f172a' }}>
+      <View style={{ flex: 1, backgroundColor: '#0a0a0a' }}>
         <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'space-between', paddingVertical: 48, paddingHorizontal: 24 }}>
           <View style={{ alignItems: 'center', gap: 26, marginTop: 24 }}>
             <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta11.size, letterSpacing: 3, color: 'rgba(255,255,255,0.5)' }}>

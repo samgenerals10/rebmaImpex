@@ -78,35 +78,37 @@ export const colors: ColorTokens = {
   },
 } as const;
 
-// Phase 7.12, D116/D120: dark-mode overrides — transcribed from
-// rebma-web/src/index.css:349-374 (body.dark-mode), not invented.
-// Accent, status badges, and the fixed QuickActions action palette are
-// DELIBERATELY unchanged from light mode: web's own dark-mode CSS block
-// never touches --accent/--accent-2/--accent-soft or any .erp-badge-*
-// color (confirmed by a direct grep of index.css — zero dark-mode
-// overrides exist for either), so in dark mode web's status badges keep
-// rendering the same light pastel backgrounds with saturated text. This
-// is not a bug to "fix" here — it's web's real, confirmed behavior.
+// Dark mode: neutral near-black in the style of Vercel and Supabase, the
+// same palette as the web app (rebma-web/src/index.css, DARK MODE).
+// Brand accent and the action colours stay the same; status badges get
+// soft tints that suit a dark background.
 export const darkColors: ColorTokens = {
   accent: colors.accent,
   accentPressed: colors.accentPressed,
   accentSoft: colors.accentSoft,
   onAccent: colors.onAccent,
 
-  bgPage: '#0f172a',
-  bgCard: '#1e293b',
-  bgHeader: '#1e293b',
-  bgInput: '#0f172a',
+  bgPage: '#0a0a0a',
+  bgCard: '#111111',
+  bgHeader: '#0a0a0a',
+  bgInput: '#171717',
 
-  textPrimary: '#f1f5f9',
-  textSecondary: '#94a3b8',
-  textMuted: '#475569',
+  textPrimary: '#ededed',
+  textSecondary: '#a1a1a1',
+  textMuted: '#737373',
   textOnAccent: '#ffffff',
 
-  border: '#334155',
+  border: '#262626',
   borderFocus: colors.accent,
 
-  status: colors.status,
+  status: {
+    success: { bg: 'rgba(34, 197, 94, 0.15)', text: '#4ade80' },
+    warning: { bg: 'rgba(234, 179, 8, 0.15)', text: '#facc15' },
+    danger: { bg: 'rgba(239, 68, 68, 0.15)', text: '#f87171' },
+    info: { bg: 'rgba(59, 130, 246, 0.15)', text: '#60a5fa' },
+    muted: { bg: '#1f1f1f', text: '#a1a1a1' },
+    purple: { bg: 'rgba(139, 92, 246, 0.15)', text: '#a78bfa' },
+  },
   action: colors.action,
 } as const;
 
@@ -154,68 +156,24 @@ export const font = {
   extrabold: 'Inter_800ExtraBold',
 } as const;
 
-export const shadow = {
-  card: {
-    ios: { shadowColor: '#4338CA', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.05, shadowRadius: 8 },
-    android: { elevation: 2 },
-  },
-  raised: {
-    ios: { shadowColor: '#4338CA', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.08, shadowRadius: 14 },
-    android: { elevation: 4 },
-  },
-  dropdown: {
-    ios: { shadowColor: '#1E1B4B', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.12, shadowRadius: 16 },
-    android: { elevation: 12 },
-  },
-  sheet: {
-    ios: { shadowColor: '#1E1B4B', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.12, shadowRadius: 16 },
-    android: { elevation: 14 },
-  },
-  tabBar: {
-    ios: { shadowColor: '#1E1B4B', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.08, shadowRadius: 10 },
-    android: { elevation: 10 },
-  },
-  // Dialed back one round after "projected too deep" — this token is now
-  // ALSO scoped to only the actual bottom-nav FAB (Button.tsx's own
-  // primary-variant shadow was split off to 'raised' so ordinary buttons
-  // never inherit this).
-  fab: {
-    ios: { shadowColor: '#000000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.22, shadowRadius: 10 },
-    android: { elevation: 8 },
-  },
+// Clean, flat look (as on Vercel and Supabase): no shadows anywhere.
+// Surfaces are separated by thin borders instead. The token names stay so
+// every component keeps working; each one now resolves to "no shadow".
+const FLAT = {
+  ios: { shadowColor: 'transparent', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0, shadowRadius: 0 },
+  android: { elevation: 0 },
 } as const;
 
-// Phase 7.12, D117: dark-mode shadow overrides. Web gives `--shadow-card`
-// (and its sidebar/header siblings) a dark override — same offset/radius,
-// opacity bumped from ~0.06 to ~0.4 (index.css:362-364) — but explicitly
-// leaves `--shadow-dropdown` UNCHANGED even in dark mode (confirmed: no
-// override exists). `dropdown` therefore stays untouched below, matching
-// that specific confirmed absence, not an oversight. `raised`/`sheet`/
-// `tabBar` have no web equivalent (invented in Phase 7.0) — the same
-// ratio-of-increase web applied to `card` (~6.7x) is applied to them here
-// for consistency, a reasoned extension of the one real pattern rather
-// than a guess. `fab`'s shadow is accent-colored, not a neutral surface
-// shadow, and web gives no signal either way — left unchanged.
-export const darkShadow = {
-  card: {
-    ios: { shadowColor: '#000000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.4, shadowRadius: 2 },
-    android: { elevation: 1 },
-  },
-  raised: {
-    ios: { shadowColor: '#000000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.65, shadowRadius: 8 },
-    android: { elevation: 3 },
-  },
-  dropdown: shadow.dropdown,
-  sheet: {
-    ios: { shadowColor: '#000000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.65, shadowRadius: 12 },
-    android: { elevation: 12 },
-  },
-  tabBar: {
-    ios: { shadowColor: '#000000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.75, shadowRadius: 6 },
-    android: { elevation: 12 },
-  },
-  fab: shadow.fab,
+export const shadow = {
+  card: FLAT,
+  raised: FLAT,
+  dropdown: FLAT,
+  sheet: FLAT,
+  tabBar: FLAT,
+  fab: FLAT,
 } as const;
+
+export const darkShadow = shadow;
 
 export type ShadowToken = keyof typeof shadow;
 export type StatusTone = keyof typeof colors.status;

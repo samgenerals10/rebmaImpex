@@ -242,7 +242,7 @@ export default function OverviewScreen() {
                   style={({ pressed }) => ({
                     width: 176,
                     padding: t.spacing.md,
-                    backgroundColor: pressed ? (t.darkMode ? '#25344A' : '#EFEEF9') : (t.darkMode ? '#1E293B' : '#F8F7FD'),
+                    backgroundColor: pressed ? (t.darkMode ? '#1f1f1f' : '#EFEEF9') : (t.darkMode ? '#171717' : '#F8F7FD'),
                     borderRadius: 16,
                     borderWidth: 1,
                     borderColor: t.colors.border,
@@ -300,7 +300,7 @@ export default function OverviewScreen() {
                   style={{
                     width: 176,
                     padding: t.spacing.md,
-                    backgroundColor: t.darkMode ? '#1E293B' : '#F8F7FD',
+                    backgroundColor: t.darkMode ? '#171717' : '#F8F7FD',
                     borderRadius: 16,
                     borderWidth: 1,
                     borderColor: t.colors.border,

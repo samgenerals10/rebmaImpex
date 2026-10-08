@@ -91,7 +91,7 @@ export default function Sheet({ open, onClose, title, subtitle, badge, children,
           <SafeAreaView edges={isBottom ? ['bottom'] : ['top', 'bottom']} style={{ maxHeight: maxHeight ?? SCREEN_H * 0.88, flexShrink: 1, flexDirection: 'column' }}>
             {isBottom && (
               <View style={{ alignItems: 'center', paddingTop: t.spacing.sm, paddingBottom: 4 }}>
-                <View style={{ width: 40, height: 5, borderRadius: t.radius.pill, backgroundColor: t.darkMode ? '#334155' : '#E2E8F0' }} />
+                <View style={{ width: 40, height: 5, borderRadius: t.radius.pill, backgroundColor: t.darkMode ? '#262626' : '#E2E8F0' }} />
               </View>
             )}
             {(title || subtitle) && (
@@ -103,7 +103,7 @@ export default function Sheet({ open, onClose, title, subtitle, badge, children,
                   </View>
                   {subtitle ? <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textMuted, marginTop: 2 }}>{subtitle}</Text> : null}
                 </View>
-                <Pressable onPress={onClose} hitSlop={10} style={{ width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: t.darkMode ? '#334155' : '#F1F5F9' }}>
+                <Pressable onPress={onClose} hitSlop={10} style={{ width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: t.darkMode ? '#1f1f1f' : '#F1F5F9' }}>
                   <X size={16} color={t.colors.textSecondary} />
                 </Pressable>
               </View>

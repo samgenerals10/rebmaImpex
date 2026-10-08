@@ -36,7 +36,7 @@ export default function MetricCard({ label, value, sublabel, icon, emphasis = 'p
 
   const toneStyles = {
     accent: { bg: t.colors.accentSoft, text: t.colors.accent },
-    neutral: { bg: t.darkMode ? '#334155' : '#F1F5F9', text: t.colors.textSecondary },
+    neutral: { bg: t.darkMode ? '#262626' : '#F1F5F9', text: t.colors.textSecondary },
     warning: { bg: t.colors.status.warning.bg, text: t.colors.status.warning.text },
     danger: { bg: t.colors.status.danger.bg, text: t.colors.status.danger.text },
     success: { bg: t.colors.status.success.bg, text: t.colors.status.success.text },
@@ -68,9 +68,7 @@ export default function MetricCard({ label, value, sublabel, icon, emphasis = 'p
   // token, which many other components (Card, DataList, Input, Toggle,
   // ...) also use — so this is a KPI-only value, not a change to the
   // shared token, to avoid touching anything the user didn't ask about.
-  const kpiShadow = t.darkMode
-    ? Platform.OS === 'android' ? { elevation: 1 } : { shadowColor: '#000000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.25, shadowRadius: 1.5 }
-    : Platform.OS === 'android' ? { elevation: 1 } : { shadowColor: '#4338CA', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.03, shadowRadius: 3 };
+  const kpiShadow = {}; // flat look: no shadow
   const outerStyle = [
     { flex: 1, borderRadius: isCompact ? 12 : 20, height: isPrimary ? 128 : isCompact ? 84 : 94 },
     kpiShadow,

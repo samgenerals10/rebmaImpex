@@ -74,8 +74,8 @@ export default function MeetingLobbySheet({ mode, title: initialTitle, code, myN
 
         <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }} keyboardShouldPersistTaps="handled">
           {/* Preview */}
-          <View style={{ backgroundColor: '#0f172a', borderRadius: 20, padding: 14, gap: 14 }}>
-            <View style={{ height: 240, borderRadius: 16, overflow: 'hidden', backgroundColor: '#1e293b', alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{ backgroundColor: '#0a0a0a', borderRadius: 20, padding: 14, gap: 14 }}>
+            <View style={{ height: 240, borderRadius: 16, overflow: 'hidden', backgroundColor: '#171717', alignItems: 'center', justifyContent: 'center' }}>
               {camOn && permission?.granted ? (
                 <CameraView facing="front" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
               ) : (

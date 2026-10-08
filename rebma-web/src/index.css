@@ -2118,6 +2118,42 @@ button:not(.nav-item):not(.lf-nav-item):not(.tab-item):active {
   box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.07), 0 0 20px -5px rgba(5, 150, 105, 0.08);
 }
 
+/* ─── SMOOTH MOTION ───
+   Short, eased transitions for everyday state changes (hover, press,
+   selection, theme switch) and a gentle rise-in for dialogs and full-screen
+   panels. Everything here is off for "reduce motion" and for the Off
+   motion setting. */
+:root {
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+}
+/* :where keeps this at zero priority, so any element with its own
+   transition classes keeps them. */
+:where(button, a, input, select, textarea, [role="tab"], [role="option"], [role="menuitem"], tr, .erp-card, .kpi-card, .app-card, .erp-badge) {
+  transition-property: color, background-color, border-color, opacity, transform;
+  transition-duration: 180ms;
+  transition-timing-function: var(--ease-in-out);
+}
+/* Without shadows, a card answers a hover with a slightly stronger border. */
+.erp-card:hover, .kpi-card:hover, .app-card:hover {
+  border-color: color-mix(in oklab, var(--border), var(--text-muted) 35%);
+}
+/* Dialogs and full-screen panels rise in. Side panels and bottom sheets
+   (absolutely positioned) keep their own slide. "backwards" only applies the
+   start frame before the animation, so nothing is held afterwards. */
+@keyframes modal-rise {
+  from { opacity: 0; transform: translateY(6px) scale(0.985); }
+}
+.fixed.inset-0 > :not(.absolute):not(.fixed) {
+  animation: modal-rise 220ms var(--ease-out) backwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fixed.inset-0 > * { animation: none !important; }
+  :where(button, a, input, select, textarea, [role="tab"], [role="option"], [role="menuitem"], tr, .erp-card, .kpi-card, .app-card, .erp-badge) { transition: none; }
+}
+body.motion-off .fixed.inset-0 > *,
+.reduce-motion .fixed.inset-0 > * { animation: none !important; }
+
 /* ─── CLEAN LOOK: no decorative shadows anywhere ───
    Surfaces are separated by thin borders instead, as on Vercel and
    Supabase. Focus rings, selection outlines (Tailwind ring-* and inset

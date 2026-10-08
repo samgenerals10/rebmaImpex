@@ -67,7 +67,7 @@ function DepartmentStackScreen() {
   const subScreens = Object.entries(dept.screens).filter(([id]) => id !== 'home');
 
   return (
-    <DepartmentStack.Navigator key={dept.code} screenOptions={{ headerShown: false }}>
+    <DepartmentStack.Navigator key={dept.code} screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
       <DepartmentStack.Screen name="DepartmentHome" component={DepartmentHomeScreen} />
       {subScreens.map(([id, Component]) => {
         const subTab = dept.subTabs.find((s) => s.id === id);
@@ -90,7 +90,7 @@ function DepartmentStackScreen() {
 
 function ProfileStackScreen() {
   return (
-    <ProfileStackNav.Navigator screenOptions={{ headerShown: false }}>
+    <ProfileStackNav.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
       <ProfileStackNav.Screen name="ProfileHome">
         {({ navigation }) => (
           <ProfileScreen
@@ -187,7 +187,7 @@ export default function AppShell() {
             <SearchScreen onClose={closeSearch} />
           ) : (
             <>
-              <Tab.Navigator tabBar={(props) => <AppTabBar {...props} />} screenOptions={{ headerShown: false }}>
+              <Tab.Navigator tabBar={(props) => <AppTabBar {...props} />} screenOptions={{ headerShown: false, animation: 'fade' }}>
                 <Tab.Screen name="HomeTab" component={DepartmentStackScreen} />
                 <Tab.Screen name="ViberTab" component={ViberStack} />
                 <Tab.Screen

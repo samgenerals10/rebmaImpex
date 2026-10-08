@@ -7,7 +7,7 @@
 // visible gap next to what the reference actually shows. This replaces
 // that everywhere it's used.
 import { useRef } from 'react';
-import { Pressable, Animated } from 'react-native';
+import { Pressable, Animated, Easing } from 'react-native';
 import { useTheme } from '../../theme/ThemeProvider';
 
 interface Props {
@@ -33,7 +33,8 @@ export default function Toggle({ value, onChange, disabled, color }: Props) {
   const toggle = () => {
     if (disabled) return;
     const next = !value;
-    Animated.spring(anim, { toValue: next ? 1 : 0, useNativeDriver: false, bounciness: 6, speed: 18 }).start();
+    // Smooth ease-in-out, the same feel as the web switch (no bounce).
+    Animated.timing(anim, { toValue: next ? 1 : 0, duration: 200, easing: Easing.bezier(0.4, 0, 0.2, 1), useNativeDriver: false }).start();
     onChange(next);
   };
 
@@ -43,7 +44,7 @@ export default function Toggle({ value, onChange, disabled, color }: Props) {
     anim.setValue(value ? 1 : 0);
   }
 
-  const trackColor = anim.interpolate({ inputRange: [0, 1], outputRange: [t.colors.border, color || t.colors.accent] });
+  const trackColor = anim.interpolate({ inputRange: [0, 1], outputRange: [t.darkMode ? '#333333' : '#cbd5e1', color || '#02afd9'] });
   const knobTranslate = anim.interpolate({ inputRange: [0, 1], outputRange: [2, 2 + KNOB_TRAVEL] });
 
   return (

@@ -157,7 +157,7 @@ export default function OverviewScreen() {
                     alignItems: 'center',
                     gap: t.spacing.md,
                     padding: t.spacing.md,
-                    backgroundColor: t.darkMode ? '#1E293B' : '#F8F7FD',
+                    backgroundColor: t.darkMode ? '#171717' : '#F8F7FD',
                     borderRadius: 16,
                     borderWidth: 1,
                     borderColor: t.colors.border,

@@ -42,7 +42,7 @@ export default function SidePanel({ open, onClose, title, subtitle, badge, child
         onClick={onClose}
       />
       <div
-        className={`absolute top-0 right-0 h-full w-full ${widthClass} bg-[var(--bg-card)] border-l border-[var(--border)] shadow-[var(--shadow-dropdown)] flex flex-col motion-safe:animate-[sidepanel-slide-in_0.25s_ease-out]`}
+        className={`absolute top-0 right-0 h-full w-full ${widthClass} bg-[var(--bg-card)] border-l border-[var(--border)] shadow-[var(--shadow-dropdown)] flex flex-col motion-safe:animate-[sidepanel-slide-in_0.3s_cubic-bezier(0.22,1,0.36,1)]`}
       >
         <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-[var(--border)] shrink-0">
           <div className="min-w-0">

@@ -4197,7 +4197,7 @@ export default function App() {
 const MOTION_TRANSITIONS: Record<string, Transition> = {
   Off:     { type: 'tween', duration: 0 },
   Subtle:  { type: 'tween', duration: 0.1, ease: 'linear' },
-  Classic: { type: 'tween', duration: 0.2, ease: [0.4, 0, 0.2, 1] },
+  Classic: { type: 'tween', duration: 0.24, ease: [0.22, 1, 0.36, 1] },
   Playful: { type: 'spring', stiffness: 260, damping: 20 },
 };
 
@@ -4372,10 +4372,11 @@ function AppInner({
             <AnimatePresence>
               <motion.div
                 key={activeMobileView === 'dashboard' ? `${activeDepartment}-${activeSubTab}` : activeMobileView}
-                initial={{ opacity: 0, y: 15 }}
+                // The new page rises in; the old one is removed at once, so two
+                // pages are never stacked mid-switch. Timing comes from the
+                // Motion setting (Settings, Appearance) via MotionConfig.
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -15 }}
-                transition={{ duration: 0.25 }}
               >
                 {/* On mobile, check activeMobileView */}
                 <div className="lg:hidden h-full">

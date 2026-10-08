@@ -55,6 +55,8 @@ import SearchablePicker from '../../components/ui/SearchablePicker';
 import EmptyState from '../../components/ui/EmptyState';
 import Sheet, { SheetSection } from '../../components/ui/Sheet';
 import Toggle from '../../components/ui/Toggle';
+import Tabs from '../../components/ui/Tabs';
+import FadeInView from '../../components/ui/FadeInView';
 import IconActionButton from '../../components/ui/IconActionButton';
 import DocumentTemplatesEditor from '../../components/shared/DocumentTemplatesEditor';
 import ExportSheet from '../../components/shared/ExportSheet';
@@ -72,6 +74,18 @@ export interface Section { id: string; title: string; fields: SettingField[] }
 // build its Control Center answers directly from this real list — one
 // source of truth, no hand-copied duplicate that could drift out of sync
 // with the actual settings as they change.
+// The seven tabs (the same grouping as the web Control Center). Every
+// section id below already existed; this only decides which tab shows it.
+const CC_GROUPS: { id: string; label: string; sections: string[] }[] = [
+  { id: 'access', label: 'Access', sections: ['ceo', 'access', 'staff', 'invites', 'delegates', 'spreadsheets'] },
+  { id: 'money', label: 'Money & Approvals', sections: ['financial', 'approval', 'risk'] },
+  { id: 'ops', label: 'Operations', sections: ['operations', 'dispatch', 'data'] },
+  { id: 'comm', label: 'Communication', sections: ['communication', 'birthdays', 'messages'] },
+  { id: 'system', label: 'System', sections: ['system', 'departments'] },
+  { id: 'api', label: 'API Keys', sections: ['keys'] },
+  { id: 'templates', label: 'Templates & Data', sections: ['templates', 'reset'] },
+];
+
 export const SECTIONS: Section[] = [
   {
     id: 'access', title: 'Access Control', fields: [
@@ -186,6 +200,13 @@ export const SECTIONS: Section[] = [
     ],
   },
 ];
+
+const SECTION_TITLES: Record<string, string> = {
+  ...Object.fromEntries(SECTIONS.map((x) => [x.id, x.title.replace(/ Controls?$/, '')])),
+  ceo: 'CEO Account', staff: 'Staff', departments: 'Departments', invites: 'Invite Links',
+  delegates: 'Delegated Access', keys: 'API Keys', templates: 'Document Templates',
+  messages: 'Message Export', reset: 'Data Reset Center',
+};
 
 const ALL_KEYS = Array.from(new Set(SECTIONS.flatMap((s) => s.fields.map((f) => f.key))));
 
@@ -1129,28 +1150,23 @@ export default function ControlCenterScreen() {
   const ceoAccounts = staff.filter((s) => s.is_admin);
   const filteredStaff = staff.filter((s) => !s.is_admin).filter((s) => !staffSearch || s.full_name?.toLowerCase().includes(staffSearch.toLowerCase()) || s.email?.toLowerCase().includes(staffSearch.toLowerCase()));
   const activeSectionDef = SECTIONS.find((s) => s.id === activeSection);
+  const activeGroup = CC_GROUPS.find((g) => g.sections.includes(activeSection)) || CC_GROUPS[0];
 
   return (
     <Screen refreshing={false} onRefresh={() => { loadSettings(); loadStaffAndDepts(); }}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: t.spacing.lg }}>
-        <View style={{ flexDirection: 'row', gap: t.spacing.xs }}>
-          {[
-            { id: 'ceo', title: 'CEO Account' },
-            ...SECTIONS.map((s) => ({ id: s.id, title: s.title })),
-            { id: 'staff', title: 'Staff' },
-            { id: 'departments', title: 'Departments' },
-            { id: 'invites', title: 'Invite Links' },
-            { id: 'delegates', title: 'Delegated Access' },
-            { id: 'keys', title: 'API Keys' },
-            { id: 'templates', title: 'Document Templates' },
-            { id: 'messages', title: 'Message Export' },
-            { id: 'reset', title: 'Data Reset Center' },
-          ].map((s) => (
-            <Button key={s.id} label={s.title} size="sm" variant={activeSection === s.id ? 'primary' : 'ghost'} onPress={() => setActiveSection(s.id)} />
-          ))}
+      {/* Seven tabs, the same as the web Control Center. Inside a tab, a
+          small row picks the section when the tab holds more than one. */}
+      <View style={{ marginBottom: t.spacing.md }}>
+        <Tabs variant="underline" options={CC_GROUPS.map((g) => ({ value: g.id, label: g.label }))} value={activeGroup.id}
+          onChange={(id) => { const g = CC_GROUPS.find((x) => x.id === id); if (g) setActiveSection(g.sections[0]); }} />
+      </View>
+      {activeGroup.sections.length > 1 && (
+        <View style={{ marginBottom: t.spacing.lg }}>
+          <Tabs variant="chips" options={activeGroup.sections.map((id) => ({ value: id, label: SECTION_TITLES[id] || id }))} value={activeSection} onChange={setActiveSection} />
         </View>
-      </ScrollView>
+      )}
 
+      <FadeInView key={activeSection}>
       {activeSection === 'ceo' ? (
         <View style={{ gap: t.spacing.md }}>
           <Card>
@@ -1510,6 +1526,7 @@ export default function ControlCenterScreen() {
           )}
         </Card>
       ) : null}
+      </FadeInView>
 
       {resetDept ? (() => {
         const cfg = DEPT_TABLES[resetDept];

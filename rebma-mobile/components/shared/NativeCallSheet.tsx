@@ -238,7 +238,7 @@ export default function NativeCallSheet({ room, title, kind, otherUserId, otherN
 
   return (
     <Modal visible animationType="slide" onRequestClose={hangUp}>
-      <View style={{ flex: 1, backgroundColor: '#0f172a' }}>
+      <View style={{ flex: 1, backgroundColor: '#0a0a0a' }}>
         {showVideo && (
           <RTCView streamURL={(remoteStream as any).toURL()} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} objectFit="cover" />
         )}

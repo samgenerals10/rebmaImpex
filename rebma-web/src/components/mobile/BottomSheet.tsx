@@ -36,7 +36,7 @@ export default function BottomSheet({ open, onClose, title, children, footer, ma
         onClick={onClose}
       />
       <div
-        className="absolute bottom-0 left-0 right-0 bg-[var(--bg-card)] border-t border-[var(--border)] rounded-t-3xl shadow-[var(--shadow-dropdown)] flex flex-col motion-safe:animate-[bottomsheet-slide-in_0.25s_ease-out]"
+        className="absolute bottom-0 left-0 right-0 bg-[var(--bg-card)] border-t border-[var(--border)] rounded-t-3xl shadow-[var(--shadow-dropdown)] flex flex-col motion-safe:animate-[bottomsheet-slide-in_0.3s_cubic-bezier(0.22,1,0.36,1)]"
         style={{ maxHeight, paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
         <div className="flex justify-center pt-2.5 pb-1 shrink-0">
