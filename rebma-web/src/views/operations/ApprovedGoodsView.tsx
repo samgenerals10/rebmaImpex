@@ -265,7 +265,7 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
       </div>
 
       {/* Workflow banner */}
-      <div className="flex items-start gap-3 border rounded-xl px-4 py-3" style={{ background: '#f0fdf4', borderColor: `${BRAND.green}40` }}>
+      <div className="flex items-start gap-3 border rounded-xl px-4 py-3 dark:!bg-emerald-500/10" style={{ background: '#f0fdf4', borderColor: `${BRAND.green}40` }}>
         <Truck size={14} style={{ color: BRAND.green }} className="flex-shrink-0 mt-0.5" />
         <div>
           <p className="text-xs font-bold" style={{ color: BRAND.green }}>Operations Workflow</p>

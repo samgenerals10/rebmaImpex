@@ -679,7 +679,7 @@ export default function ProductionDashboard({
           <div className="space-y-2">
             {localWip.map(w => (
               <div key={w.id} className="mobile-data-row">
-                <div className="mobile-data-row-icon" style={{ background: '#f5f3ff', color: '#7c3aed' }}>
+                <div className="mobile-data-row-icon dark:!bg-violet-500/15" style={{ background: '#f5f3ff', color: '#7c3aed' }}>
                   <Package className="w-5 h-5" style={{ color: '#7c3aed' }} />
                 </div>
                 <div className="flex-1 min-w-0">

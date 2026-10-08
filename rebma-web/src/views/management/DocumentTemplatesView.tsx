@@ -234,7 +234,7 @@ export default function DocumentTemplatesView({ addNotification, currentUser, hi
           <h3 className="text-sm font-bold text-[var(--text-primary)] mb-3">Preview</h3>
           <div className="rounded-xl overflow-hidden border border-[var(--border)]">
             <div style={{ height: 6, background: 'linear-gradient(90deg,#1a5c32,#29a9dc,#7fc241)' }} />
-            <div className="bg-white p-5">
+            <div className="keep-light bg-white p-5">
               <div className="flex items-start justify-between gap-3 mb-3">
                 <div className="flex items-center gap-2.5">
                   {draft.logoUrl ? (

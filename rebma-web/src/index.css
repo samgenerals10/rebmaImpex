@@ -1,5 +1,8 @@
 /* Fonts are loaded once, in index.html (this file used to load them a second time). */
 @import "tailwindcss";
+/* The app's dark mode switch puts "dark" on <html>. Without this line,
+   every dark: style followed the computer's own setting instead. */
+@custom-variant dark (&:where(.dark, .dark *));
 
 /* ─── TAILWIND v4 THEME TOKENS ─── */
 /* These map CSS custom properties to Tailwind utility classes.         */
@@ -346,32 +349,241 @@ body.theme-multicolor .nav-item:nth-child(8) .nav-icon { color: #06b6d4; }
 body.theme-multicolor .nav-item:nth-child(9) .nav-icon { color: #84cc16; }
 body.theme-multicolor .nav-item:nth-child(10) .nav-icon { color: #f59e0b; }
 
-/* ─── DARK MODE (works on top of any theme) ─── */
+/* ─── DARK MODE (works on top of any theme) ───
+   Neutral near-black in the style of Vercel and Supabase: dark surfaces,
+   thin grey borders, white and grey text. Brand colours stay the same. */
 body.dark-mode,
 html.dark {
-  --bg-page:    #0f172a;
-  --bg-sidebar: #1e293b;
-  --bg-header:  #1e293b;
-  --bg-card:    #1e293b;
-  --bg-input:   #0f172a;
-  --bg:         #0f172a;
-  --text-primary:   #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-muted:     #475569;
-  --border:         #334155;
-  --shadow-card:    0 1px 3px rgba(0,0,0,0.4);
-  --shadow-sidebar: 2px 0 12px rgba(0,0,0,0.4);
-  --shadow-header:  0 1px 4px rgba(0,0,0,0.4);
-  --bg-app-gradient:#0f172a;
-  --bg-table-strip: #0f172a;
-  --bg-table-header:#1e293b;
-  --border-table:   #334155;
-  --hover-table-row:#334155;
-  --glass-border:   1px solid #334155;
-  --border-color:   #334155;
-  --text-sidebar:   #f1f5f9;
+  --bg-page:    #0a0a0a;
+  --bg-sidebar: #0a0a0a;
+  --bg-header:  #0a0a0a;
+  --bg-card:    #111111;
+  --bg-input:   #171717;
+  --bg:         #0a0a0a;
+  --text-primary:   #ededed;
+  --text-secondary: #a1a1a1;
+  --text-muted:     #737373;
+  --text-sidebar:   #ededed;
+  --border:         #262626;
+  --border-color:   #262626;
+  --glass-border:   1px solid #262626;
+  --shadow-card:    none;
+  --shadow-sidebar: none;
+  --shadow-header:  none;
+  --box-shadow:     none;
+  --bg-app-gradient:#0a0a0a;
+  --bg-table-strip: #111111;
+  --bg-table-header:#171717;
+  --border-table:   #262626;
+  --hover-table-row:#1a1a1a;
+  --sidebar-active-bg: color-mix(in oklab, var(--accent) 14%, transparent);
+  --accent-light:   color-mix(in oklab, var(--accent) 14%, transparent);
+  --accent-soft:    color-mix(in oklab, var(--accent) 14%, transparent);
   color-scheme: dark;
 }
+
+/* Tailwind's own colours, made dark-friendly in one place so every screen
+   follows dark mode without editing each one. Only backgrounds, borders and
+   deep text chosen for white pages change; text that is already light is
+   left alone so it stays readable. The login page and anything marked
+   keep-light (document previews, QR codes) always stay light. */
+html.dark {
+  /* dark navy greys become the neutral near-black scale */
+  --color-slate-700: #404040;
+  --color-slate-800: #1f1f1f;
+  --color-slate-850: #1a1a1a;
+  --color-slate-900: #141414;
+  --color-slate-950: #0a0a0a;
+  --color-gray-700: #404040;
+  --color-gray-800: #1f1f1f;
+  --color-gray-850: #1a1a1a;
+  --color-gray-900: #141414;
+  --color-gray-950: #0a0a0a;
+  --color-zinc-700: #404040;
+  --color-zinc-800: #1f1f1f;
+  --color-zinc-850: #1a1a1a;
+  --color-zinc-900: #141414;
+  --color-zinc-950: #0a0a0a;
+  --color-neutral-700: #404040;
+  --color-neutral-800: #1f1f1f;
+  --color-neutral-850: #1a1a1a;
+  --color-neutral-900: #141414;
+  --color-neutral-950: #0a0a0a;
+  --color-stone-700: #404040;
+  --color-stone-800: #1f1f1f;
+  --color-stone-850: #1a1a1a;
+  --color-stone-900: #141414;
+  --color-stone-950: #0a0a0a;
+}
+html.dark .bg-red-50:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-red-50:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-red-500) 10%, transparent); }
+html.dark .bg-red-100:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-red-100:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-red-500) 15%, transparent); }
+html.dark .bg-red-200:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-red-200:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-red-500) 24%, transparent); }
+html.dark .border-red-100:not(:where(.auth-shell, .keep-light) *), html.dark .border-red-200:not(:where(.auth-shell, .keep-light) *) { border-color: color-mix(in oklab, var(--color-red-500) 30%, transparent); }
+html.dark .text-red-600:not(:where(.auth-shell, .keep-light) *) { color: var(--color-red-400); }
+html.dark .text-red-700:not(:where(.auth-shell, .keep-light) *), html.dark .text-red-800:not(:where(.auth-shell, .keep-light) *), html.dark .text-red-900:not(:where(.auth-shell, .keep-light) *) { color: var(--color-red-300); }
+html.dark .bg-orange-50:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-orange-50:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-orange-500) 10%, transparent); }
+html.dark .bg-orange-100:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-orange-100:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-orange-500) 15%, transparent); }
+html.dark .bg-orange-200:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-orange-200:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-orange-500) 24%, transparent); }
+html.dark .border-orange-100:not(:where(.auth-shell, .keep-light) *), html.dark .border-orange-200:not(:where(.auth-shell, .keep-light) *) { border-color: color-mix(in oklab, var(--color-orange-500) 30%, transparent); }
+html.dark .text-orange-600:not(:where(.auth-shell, .keep-light) *) { color: var(--color-orange-400); }
+html.dark .text-orange-700:not(:where(.auth-shell, .keep-light) *), html.dark .text-orange-800:not(:where(.auth-shell, .keep-light) *), html.dark .text-orange-900:not(:where(.auth-shell, .keep-light) *) { color: var(--color-orange-300); }
+html.dark .bg-amber-50:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-amber-50:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-amber-500) 10%, transparent); }
+html.dark .bg-amber-100:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-amber-100:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-amber-500) 15%, transparent); }
+html.dark .bg-amber-200:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-amber-200:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-amber-500) 24%, transparent); }
+html.dark .border-amber-100:not(:where(.auth-shell, .keep-light) *), html.dark .border-amber-200:not(:where(.auth-shell, .keep-light) *) { border-color: color-mix(in oklab, var(--color-amber-500) 30%, transparent); }
+html.dark .text-amber-600:not(:where(.auth-shell, .keep-light) *) { color: var(--color-amber-400); }
+html.dark .text-amber-700:not(:where(.auth-shell, .keep-light) *), html.dark .text-amber-800:not(:where(.auth-shell, .keep-light) *), html.dark .text-amber-900:not(:where(.auth-shell, .keep-light) *) { color: var(--color-amber-300); }
+html.dark .bg-yellow-50:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-yellow-50:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-yellow-500) 10%, transparent); }
+html.dark .bg-yellow-100:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-yellow-100:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-yellow-500) 15%, transparent); }
+html.dark .bg-yellow-200:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-yellow-200:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-yellow-500) 24%, transparent); }
+html.dark .border-yellow-100:not(:where(.auth-shell, .keep-light) *), html.dark .border-yellow-200:not(:where(.auth-shell, .keep-light) *) { border-color: color-mix(in oklab, var(--color-yellow-500) 30%, transparent); }
+html.dark .text-yellow-600:not(:where(.auth-shell, .keep-light) *) { color: var(--color-yellow-400); }
+html.dark .text-yellow-700:not(:where(.auth-shell, .keep-light) *), html.dark .text-yellow-800:not(:where(.auth-shell, .keep-light) *), html.dark .text-yellow-900:not(:where(.auth-shell, .keep-light) *) { color: var(--color-yellow-300); }
+html.dark .bg-lime-50:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-lime-50:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-lime-500) 10%, transparent); }
+html.dark .bg-lime-100:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-lime-100:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-lime-500) 15%, transparent); }
+html.dark .bg-lime-200:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-lime-200:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-lime-500) 24%, transparent); }
+html.dark .border-lime-100:not(:where(.auth-shell, .keep-light) *), html.dark .border-lime-200:not(:where(.auth-shell, .keep-light) *) { border-color: color-mix(in oklab, var(--color-lime-500) 30%, transparent); }
+html.dark .text-lime-600:not(:where(.auth-shell, .keep-light) *) { color: var(--color-lime-400); }
+html.dark .text-lime-700:not(:where(.auth-shell, .keep-light) *), html.dark .text-lime-800:not(:where(.auth-shell, .keep-light) *), html.dark .text-lime-900:not(:where(.auth-shell, .keep-light) *) { color: var(--color-lime-300); }
+html.dark .bg-green-50:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-green-50:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-green-500) 10%, transparent); }
+html.dark .bg-green-100:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-green-100:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-green-500) 15%, transparent); }
+html.dark .bg-green-200:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-green-200:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-green-500) 24%, transparent); }
+html.dark .border-green-100:not(:where(.auth-shell, .keep-light) *), html.dark .border-green-200:not(:where(.auth-shell, .keep-light) *) { border-color: color-mix(in oklab, var(--color-green-500) 30%, transparent); }
+html.dark .text-green-600:not(:where(.auth-shell, .keep-light) *) { color: var(--color-green-400); }
+html.dark .text-green-700:not(:where(.auth-shell, .keep-light) *), html.dark .text-green-800:not(:where(.auth-shell, .keep-light) *), html.dark .text-green-900:not(:where(.auth-shell, .keep-light) *) { color: var(--color-green-300); }
+html.dark .bg-emerald-50:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-emerald-50:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-emerald-500) 10%, transparent); }
+html.dark .bg-emerald-100:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-emerald-100:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-emerald-500) 15%, transparent); }
+html.dark .bg-emerald-200:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-emerald-200:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-emerald-500) 24%, transparent); }
+html.dark .border-emerald-100:not(:where(.auth-shell, .keep-light) *), html.dark .border-emerald-200:not(:where(.auth-shell, .keep-light) *) { border-color: color-mix(in oklab, var(--color-emerald-500) 30%, transparent); }
+html.dark .text-emerald-600:not(:where(.auth-shell, .keep-light) *) { color: var(--color-emerald-400); }
+html.dark .text-emerald-700:not(:where(.auth-shell, .keep-light) *), html.dark .text-emerald-800:not(:where(.auth-shell, .keep-light) *), html.dark .text-emerald-900:not(:where(.auth-shell, .keep-light) *) { color: var(--color-emerald-300); }
+html.dark .bg-teal-50:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-teal-50:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-teal-500) 10%, transparent); }
+html.dark .bg-teal-100:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-teal-100:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-teal-500) 15%, transparent); }
+html.dark .bg-teal-200:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-teal-200:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-teal-500) 24%, transparent); }
+html.dark .border-teal-100:not(:where(.auth-shell, .keep-light) *), html.dark .border-teal-200:not(:where(.auth-shell, .keep-light) *) { border-color: color-mix(in oklab, var(--color-teal-500) 30%, transparent); }
+html.dark .text-teal-600:not(:where(.auth-shell, .keep-light) *) { color: var(--color-teal-400); }
+html.dark .text-teal-700:not(:where(.auth-shell, .keep-light) *), html.dark .text-teal-800:not(:where(.auth-shell, .keep-light) *), html.dark .text-teal-900:not(:where(.auth-shell, .keep-light) *) { color: var(--color-teal-300); }
+html.dark .bg-cyan-50:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-cyan-50:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-cyan-500) 10%, transparent); }
+html.dark .bg-cyan-100:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-cyan-100:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-cyan-500) 15%, transparent); }
+html.dark .bg-cyan-200:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-cyan-200:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-cyan-500) 24%, transparent); }
+html.dark .border-cyan-100:not(:where(.auth-shell, .keep-light) *), html.dark .border-cyan-200:not(:where(.auth-shell, .keep-light) *) { border-color: color-mix(in oklab, var(--color-cyan-500) 30%, transparent); }
+html.dark .text-cyan-600:not(:where(.auth-shell, .keep-light) *) { color: var(--color-cyan-400); }
+html.dark .text-cyan-700:not(:where(.auth-shell, .keep-light) *), html.dark .text-cyan-800:not(:where(.auth-shell, .keep-light) *), html.dark .text-cyan-900:not(:where(.auth-shell, .keep-light) *) { color: var(--color-cyan-300); }
+html.dark .bg-sky-50:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-sky-50:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-sky-500) 10%, transparent); }
+html.dark .bg-sky-100:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-sky-100:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-sky-500) 15%, transparent); }
+html.dark .bg-sky-200:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-sky-200:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-sky-500) 24%, transparent); }
+html.dark .border-sky-100:not(:where(.auth-shell, .keep-light) *), html.dark .border-sky-200:not(:where(.auth-shell, .keep-light) *) { border-color: color-mix(in oklab, var(--color-sky-500) 30%, transparent); }
+html.dark .text-sky-600:not(:where(.auth-shell, .keep-light) *) { color: var(--color-sky-400); }
+html.dark .text-sky-700:not(:where(.auth-shell, .keep-light) *), html.dark .text-sky-800:not(:where(.auth-shell, .keep-light) *), html.dark .text-sky-900:not(:where(.auth-shell, .keep-light) *) { color: var(--color-sky-300); }
+html.dark .bg-blue-50:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-blue-50:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-blue-500) 10%, transparent); }
+html.dark .bg-blue-100:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-blue-100:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-blue-500) 15%, transparent); }
+html.dark .bg-blue-200:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-blue-200:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-blue-500) 24%, transparent); }
+html.dark .border-blue-100:not(:where(.auth-shell, .keep-light) *), html.dark .border-blue-200:not(:where(.auth-shell, .keep-light) *) { border-color: color-mix(in oklab, var(--color-blue-500) 30%, transparent); }
+html.dark .text-blue-600:not(:where(.auth-shell, .keep-light) *) { color: var(--color-blue-400); }
+html.dark .text-blue-700:not(:where(.auth-shell, .keep-light) *), html.dark .text-blue-800:not(:where(.auth-shell, .keep-light) *), html.dark .text-blue-900:not(:where(.auth-shell, .keep-light) *) { color: var(--color-blue-300); }
+html.dark .bg-indigo-50:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-indigo-50:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-indigo-500) 10%, transparent); }
+html.dark .bg-indigo-100:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-indigo-100:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-indigo-500) 15%, transparent); }
+html.dark .bg-indigo-200:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-indigo-200:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-indigo-500) 24%, transparent); }
+html.dark .border-indigo-100:not(:where(.auth-shell, .keep-light) *), html.dark .border-indigo-200:not(:where(.auth-shell, .keep-light) *) { border-color: color-mix(in oklab, var(--color-indigo-500) 30%, transparent); }
+html.dark .text-indigo-600:not(:where(.auth-shell, .keep-light) *) { color: var(--color-indigo-400); }
+html.dark .text-indigo-700:not(:where(.auth-shell, .keep-light) *), html.dark .text-indigo-800:not(:where(.auth-shell, .keep-light) *), html.dark .text-indigo-900:not(:where(.auth-shell, .keep-light) *) { color: var(--color-indigo-300); }
+html.dark .bg-violet-50:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-violet-50:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-violet-500) 10%, transparent); }
+html.dark .bg-violet-100:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-violet-100:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-violet-500) 15%, transparent); }
+html.dark .bg-violet-200:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-violet-200:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-violet-500) 24%, transparent); }
+html.dark .border-violet-100:not(:where(.auth-shell, .keep-light) *), html.dark .border-violet-200:not(:where(.auth-shell, .keep-light) *) { border-color: color-mix(in oklab, var(--color-violet-500) 30%, transparent); }
+html.dark .text-violet-600:not(:where(.auth-shell, .keep-light) *) { color: var(--color-violet-400); }
+html.dark .text-violet-700:not(:where(.auth-shell, .keep-light) *), html.dark .text-violet-800:not(:where(.auth-shell, .keep-light) *), html.dark .text-violet-900:not(:where(.auth-shell, .keep-light) *) { color: var(--color-violet-300); }
+html.dark .bg-purple-50:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-purple-50:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-purple-500) 10%, transparent); }
+html.dark .bg-purple-100:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-purple-100:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-purple-500) 15%, transparent); }
+html.dark .bg-purple-200:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-purple-200:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-purple-500) 24%, transparent); }
+html.dark .border-purple-100:not(:where(.auth-shell, .keep-light) *), html.dark .border-purple-200:not(:where(.auth-shell, .keep-light) *) { border-color: color-mix(in oklab, var(--color-purple-500) 30%, transparent); }
+html.dark .text-purple-600:not(:where(.auth-shell, .keep-light) *) { color: var(--color-purple-400); }
+html.dark .text-purple-700:not(:where(.auth-shell, .keep-light) *), html.dark .text-purple-800:not(:where(.auth-shell, .keep-light) *), html.dark .text-purple-900:not(:where(.auth-shell, .keep-light) *) { color: var(--color-purple-300); }
+html.dark .bg-fuchsia-50:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-fuchsia-50:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-fuchsia-500) 10%, transparent); }
+html.dark .bg-fuchsia-100:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-fuchsia-100:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-fuchsia-500) 15%, transparent); }
+html.dark .bg-fuchsia-200:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-fuchsia-200:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-fuchsia-500) 24%, transparent); }
+html.dark .border-fuchsia-100:not(:where(.auth-shell, .keep-light) *), html.dark .border-fuchsia-200:not(:where(.auth-shell, .keep-light) *) { border-color: color-mix(in oklab, var(--color-fuchsia-500) 30%, transparent); }
+html.dark .text-fuchsia-600:not(:where(.auth-shell, .keep-light) *) { color: var(--color-fuchsia-400); }
+html.dark .text-fuchsia-700:not(:where(.auth-shell, .keep-light) *), html.dark .text-fuchsia-800:not(:where(.auth-shell, .keep-light) *), html.dark .text-fuchsia-900:not(:where(.auth-shell, .keep-light) *) { color: var(--color-fuchsia-300); }
+html.dark .bg-pink-50:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-pink-50:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-pink-500) 10%, transparent); }
+html.dark .bg-pink-100:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-pink-100:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-pink-500) 15%, transparent); }
+html.dark .bg-pink-200:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-pink-200:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-pink-500) 24%, transparent); }
+html.dark .border-pink-100:not(:where(.auth-shell, .keep-light) *), html.dark .border-pink-200:not(:where(.auth-shell, .keep-light) *) { border-color: color-mix(in oklab, var(--color-pink-500) 30%, transparent); }
+html.dark .text-pink-600:not(:where(.auth-shell, .keep-light) *) { color: var(--color-pink-400); }
+html.dark .text-pink-700:not(:where(.auth-shell, .keep-light) *), html.dark .text-pink-800:not(:where(.auth-shell, .keep-light) *), html.dark .text-pink-900:not(:where(.auth-shell, .keep-light) *) { color: var(--color-pink-300); }
+html.dark .bg-rose-50:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-rose-50:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-rose-500) 10%, transparent); }
+html.dark .bg-rose-100:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-rose-100:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-rose-500) 15%, transparent); }
+html.dark .bg-rose-200:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-rose-200:hover:not(:where(.auth-shell, .keep-light) *) { background-color: color-mix(in oklab, var(--color-rose-500) 24%, transparent); }
+html.dark .border-rose-100:not(:where(.auth-shell, .keep-light) *), html.dark .border-rose-200:not(:where(.auth-shell, .keep-light) *) { border-color: color-mix(in oklab, var(--color-rose-500) 30%, transparent); }
+html.dark .text-rose-600:not(:where(.auth-shell, .keep-light) *) { color: var(--color-rose-400); }
+html.dark .text-rose-700:not(:where(.auth-shell, .keep-light) *), html.dark .text-rose-800:not(:where(.auth-shell, .keep-light) *), html.dark .text-rose-900:not(:where(.auth-shell, .keep-light) *) { color: var(--color-rose-300); }
+html.dark .bg-slate-50:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-slate-50:hover:not(:where(.auth-shell, .keep-light) *), html.dark .bg-slate-100:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-slate-100:hover:not(:where(.auth-shell, .keep-light) *) { background-color: #171717; }
+html.dark .bg-slate-200:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-slate-200:hover:not(:where(.auth-shell, .keep-light) *) { background-color: #262626; }
+html.dark .bg-slate-300:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-slate-300:hover:not(:where(.auth-shell, .keep-light) *) { background-color: #333333; }
+html.dark .border-slate-50:not(:where(.auth-shell, .keep-light) *), html.dark .border-slate-100:not(:where(.auth-shell, .keep-light) *), html.dark .border-slate-200:not(:where(.auth-shell, .keep-light) *), html.dark .border-slate-300:not(:where(.auth-shell, .keep-light) *) { border-color: #262626; }
+html.dark .text-slate-900:not(:where(.auth-shell, .keep-light) *), html.dark .text-slate-800:not(:where(.auth-shell, .keep-light) *) { color: #ededed; }
+html.dark .text-slate-700:not(:where(.auth-shell, .keep-light) *) { color: #d4d4d4; }
+html.dark .text-slate-600:not(:where(.auth-shell, .keep-light) *), html.dark .text-slate-500:not(:where(.auth-shell, .keep-light) *) { color: #a1a1a1; }
+html.dark .bg-gray-50:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-gray-50:hover:not(:where(.auth-shell, .keep-light) *), html.dark .bg-gray-100:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-gray-100:hover:not(:where(.auth-shell, .keep-light) *) { background-color: #171717; }
+html.dark .bg-gray-200:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-gray-200:hover:not(:where(.auth-shell, .keep-light) *) { background-color: #262626; }
+html.dark .bg-gray-300:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-gray-300:hover:not(:where(.auth-shell, .keep-light) *) { background-color: #333333; }
+html.dark .border-gray-50:not(:where(.auth-shell, .keep-light) *), html.dark .border-gray-100:not(:where(.auth-shell, .keep-light) *), html.dark .border-gray-200:not(:where(.auth-shell, .keep-light) *), html.dark .border-gray-300:not(:where(.auth-shell, .keep-light) *) { border-color: #262626; }
+html.dark .text-gray-900:not(:where(.auth-shell, .keep-light) *), html.dark .text-gray-800:not(:where(.auth-shell, .keep-light) *) { color: #ededed; }
+html.dark .text-gray-700:not(:where(.auth-shell, .keep-light) *) { color: #d4d4d4; }
+html.dark .text-gray-600:not(:where(.auth-shell, .keep-light) *), html.dark .text-gray-500:not(:where(.auth-shell, .keep-light) *) { color: #a1a1a1; }
+html.dark .bg-zinc-50:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-zinc-50:hover:not(:where(.auth-shell, .keep-light) *), html.dark .bg-zinc-100:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-zinc-100:hover:not(:where(.auth-shell, .keep-light) *) { background-color: #171717; }
+html.dark .bg-zinc-200:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-zinc-200:hover:not(:where(.auth-shell, .keep-light) *) { background-color: #262626; }
+html.dark .bg-zinc-300:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-zinc-300:hover:not(:where(.auth-shell, .keep-light) *) { background-color: #333333; }
+html.dark .border-zinc-50:not(:where(.auth-shell, .keep-light) *), html.dark .border-zinc-100:not(:where(.auth-shell, .keep-light) *), html.dark .border-zinc-200:not(:where(.auth-shell, .keep-light) *), html.dark .border-zinc-300:not(:where(.auth-shell, .keep-light) *) { border-color: #262626; }
+html.dark .text-zinc-900:not(:where(.auth-shell, .keep-light) *), html.dark .text-zinc-800:not(:where(.auth-shell, .keep-light) *) { color: #ededed; }
+html.dark .text-zinc-700:not(:where(.auth-shell, .keep-light) *) { color: #d4d4d4; }
+html.dark .text-zinc-600:not(:where(.auth-shell, .keep-light) *), html.dark .text-zinc-500:not(:where(.auth-shell, .keep-light) *) { color: #a1a1a1; }
+html.dark .bg-neutral-50:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-neutral-50:hover:not(:where(.auth-shell, .keep-light) *), html.dark .bg-neutral-100:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-neutral-100:hover:not(:where(.auth-shell, .keep-light) *) { background-color: #171717; }
+html.dark .bg-neutral-200:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-neutral-200:hover:not(:where(.auth-shell, .keep-light) *) { background-color: #262626; }
+html.dark .bg-neutral-300:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-neutral-300:hover:not(:where(.auth-shell, .keep-light) *) { background-color: #333333; }
+html.dark .border-neutral-50:not(:where(.auth-shell, .keep-light) *), html.dark .border-neutral-100:not(:where(.auth-shell, .keep-light) *), html.dark .border-neutral-200:not(:where(.auth-shell, .keep-light) *), html.dark .border-neutral-300:not(:where(.auth-shell, .keep-light) *) { border-color: #262626; }
+html.dark .text-neutral-900:not(:where(.auth-shell, .keep-light) *), html.dark .text-neutral-800:not(:where(.auth-shell, .keep-light) *) { color: #ededed; }
+html.dark .text-neutral-700:not(:where(.auth-shell, .keep-light) *) { color: #d4d4d4; }
+html.dark .text-neutral-600:not(:where(.auth-shell, .keep-light) *), html.dark .text-neutral-500:not(:where(.auth-shell, .keep-light) *) { color: #a1a1a1; }
+html.dark .bg-stone-50:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-stone-50:hover:not(:where(.auth-shell, .keep-light) *), html.dark .bg-stone-100:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-stone-100:hover:not(:where(.auth-shell, .keep-light) *) { background-color: #171717; }
+html.dark .bg-stone-200:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-stone-200:hover:not(:where(.auth-shell, .keep-light) *) { background-color: #262626; }
+html.dark .bg-stone-300:not(:where(.auth-shell, .keep-light) *), html.dark .hover\:bg-stone-300:hover:not(:where(.auth-shell, .keep-light) *) { background-color: #333333; }
+html.dark .border-stone-50:not(:where(.auth-shell, .keep-light) *), html.dark .border-stone-100:not(:where(.auth-shell, .keep-light) *), html.dark .border-stone-200:not(:where(.auth-shell, .keep-light) *), html.dark .border-stone-300:not(:where(.auth-shell, .keep-light) *) { border-color: #262626; }
+html.dark .text-stone-900:not(:where(.auth-shell, .keep-light) *), html.dark .text-stone-800:not(:where(.auth-shell, .keep-light) *) { color: #ededed; }
+html.dark .text-stone-700:not(:where(.auth-shell, .keep-light) *) { color: #d4d4d4; }
+html.dark .text-stone-600:not(:where(.auth-shell, .keep-light) *), html.dark .text-stone-500:not(:where(.auth-shell, .keep-light) *) { color: #a1a1a1; }
+
+/* The login page and keep-light surfaces (document previews, QR codes)
+   are white on purpose, so inside them every colour goes back to its
+   light value, including the heading colour that comes from --text-primary. */
+html.dark .auth-shell,
+html.dark .keep-light {
+  --text-primary:   #0f172a;
+  --text-secondary: #475569;
+  --text-muted:     #94a3b8;
+  --border:         #e2e8f0;
+  --bg-card:        #ffffff;
+  --bg-input:       #f9fafb;
+  --color-slate-700: #314158;
+  --color-slate-800: #1d293d;
+  --color-slate-900: #0f172b;
+  --color-slate-950: #020618;
+  --color-gray-700: #364153;
+  --color-gray-800: #1e2939;
+  --color-gray-900: #101828;
+  --color-gray-950: #030712;
+  color-scheme: light;
+}
+
+/* Status badges on dark backgrounds */
+html.dark .erp-badge-success { background: color-mix(in oklab, #22c55e 15%, transparent); color: #4ade80; }
+html.dark .erp-badge-warning { background: color-mix(in oklab, #eab308 15%, transparent); color: #facc15; }
+html.dark .erp-badge-danger  { background: color-mix(in oklab, #ef4444 15%, transparent); color: #f87171; }
+html.dark .erp-badge-info    { background: color-mix(in oklab, #3b82f6 15%, transparent); color: #60a5fa; }
+html.dark .erp-badge-muted   { background: #1f1f1f; color: #a1a1a1; }
+html.dark .erp-badge-purple  { background: color-mix(in oklab, #8b5cf6 15%, transparent); color: #a78bfa; }
+html.dark .erp-btn-danger    { background: color-mix(in oklab, #ef4444 15%, transparent); color: #f87171; }
+html.dark .erp-btn-danger:hover { background: #dc2626; color: #ffffff; }
 
 /* ─── DENSITY VARIANTS ─── */
 body.density-compact   { --density-padding: 12px; --font-size-base: 13px; font-size: 13px; }

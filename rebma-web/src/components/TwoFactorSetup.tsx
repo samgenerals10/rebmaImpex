@@ -136,7 +136,7 @@ export default function TwoFactorSetup({ onEnrolled }: Props) {
         <form onSubmit={confirmEnroll} className="space-y-4">
           <p className="text-xs text-[var(--text-muted)]">Scan this QR code with your authenticator app, then enter the 6-digit code it shows.</p>
           {qrCode && (
-            <div className="flex justify-center p-4 bg-white rounded-xl border border-[var(--border)]">
+            <div className="keep-light flex justify-center p-4 bg-white rounded-xl border border-[var(--border)]">
               <img src={qrCode} alt="2FA QR code" className="w-40 h-40" />
             </div>
           )}

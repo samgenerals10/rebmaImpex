@@ -528,7 +528,7 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
 
       {/* Read-only notice */}
       {(activeTab === 'APPROVED_CARGO' || activeTab === 'PRODUCTS') && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 10, padding: '8px 14px', marginBottom: 16, fontSize: 12, color: '#92400e', fontWeight: 600 }}>
+        <div className="dark:!bg-amber-500/15 dark:!border-amber-500/40 dark:!text-amber-300" style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 10, padding: '8px 14px', marginBottom: 16, fontSize: 12, color: '#92400e', fontWeight: 600 }}>
           <Lock size={13} />
           {activeTab === 'APPROVED_CARGO'
             ? 'Port-approved goods are read-only. Quantities reflect Management approval. OUT movements are tracked via the stock ledger.'

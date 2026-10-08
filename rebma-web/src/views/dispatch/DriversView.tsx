@@ -538,7 +538,7 @@ export default function DriversView({ addNotification }: Props) {
                   </button>
                 </div>
                 {d.status !== 'OFFLINE' ? (
-                  <button onClick={() => deactivate(d.id)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, background: '#ffe4e6', border: 'none', borderRadius: 8, padding: '6px', fontWeight: 600, fontSize: 11, color: '#9f1239', cursor: 'pointer' }}>
+                  <button onClick={() => deactivate(d.id)} className="dark:!bg-rose-500/15" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, background: '#ffe4e6', border: 'none', borderRadius: 8, padding: '6px', fontWeight: 600, fontSize: 11, color: '#9f1239', cursor: 'pointer' }}>
                     <UserMinus size={11} /> Deactivate
                   </button>
                 ) : (

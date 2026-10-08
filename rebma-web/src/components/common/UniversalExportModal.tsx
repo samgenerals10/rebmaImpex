@@ -129,7 +129,7 @@ export default function UniversalExportModal({ open, onClose, title, data, colum
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
-        className="relative w-full max-w-4xl max-h-[90vh] flex flex-col rounded-2xl overflow-hidden shadow-2xl"
+        className="relative w-full max-w-4xl max-h-[90vh] flex flex-col rounded-2xl overflow-hidden shadow-2xl dark:!bg-[#111111]"
         style={{ background: '#fff' }}
       >
         {/* ── Modal Header ───────────────────────────────── */}
@@ -178,10 +178,10 @@ export default function UniversalExportModal({ open, onClose, title, data, colum
         </div>
 
         {/* ── Live Preview ────────────────────────────────── */}
-        <div className="flex-1 overflow-y-auto bg-[#e8f0f4] p-4" ref={previewRef}>
+        <div className="flex-1 overflow-y-auto bg-[#e8f0f4] dark:bg-[#0a0a0a] p-4" ref={previewRef}>
           {/* Document preview card */}
           <div
-            className="mx-auto rounded-xl overflow-hidden shadow-lg"
+            className="keep-light mx-auto rounded-xl overflow-hidden shadow-lg"
             style={{ background: '#fff', maxWidth: 760, position: 'relative' }}
           >
             {/* Diagonal watermark */}

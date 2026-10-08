@@ -811,7 +811,7 @@ export default function FinanceDashboard({
           <div className="space-y-2">
             {localPayments.slice(0, 5).map(pay => (
               <div key={pay.id} onClick={() => setActiveMobileDetail({ type: 'payment', data: pay })} className="mobile-data-row cursor-pointer">
-                <div className="mobile-data-row-icon" style={{ background: '#f0fdf4', color: '#16a34a' }}>
+                <div className="mobile-data-row-icon dark:!bg-emerald-500/15" style={{ background: '#f0fdf4', color: '#16a34a' }}>
                   <DollarSign className="w-5 h-5" style={{ color: '#16a34a' }} />
                 </div>
                 <div className="flex-1 min-w-0">
