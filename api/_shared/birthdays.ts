@@ -4,7 +4,8 @@
 // and SMS. Used by the scheduled job (api/birthday-wishes.ts) and HR's
 // manual Send (api/birthday-send.ts).
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { sendMail, esc, type SendResult } from './mailer';
+import { sendMail, type SendResult } from './mailer';
+import { paragraphsFromText } from './emailTemplate';
 import { sendSms } from './sms';
 
 export interface BirthdayPerson { type: 'staff' | 'customer'; id: string; name: string; email: string | null; phone: string | null }
@@ -63,7 +64,7 @@ export async function sendBirthdayWish(
 ): Promise<{ email?: SendResult; sms?: SendResult }> {
   const out: { email?: SendResult; sms?: SendResult } = {};
   if (channels.includes('email')) {
-    out.email = await sendMail(supabaseAdmin, person.email, subject, `${message}\n\nRebma Impex`, `<p>${esc(message).replace(/\n/g, '<br>')}</p><p>Rebma Impex</p>`);
+    out.email = await sendMail(supabaseAdmin, person.email, subject, `${message}\n\nRebma Impex`, paragraphsFromText(message), { preheader: subject });
   }
   if (channels.includes('sms')) {
     out.sms = await sendSms(supabaseAdmin, person.phone, message);

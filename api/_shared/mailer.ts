@@ -22,14 +22,16 @@
 // them. They only ever hear "waiting for approval".
 import type { SupabaseClient } from '@supabase/supabase-js';
 import nodemailer from 'nodemailer';
-import { getSettings } from './settings';
+import { getSettings, getAppOrigin } from './settings';
+import { esc as escapeHtml } from './htmlEscape';
+import { brandedEmail, paragraphsFromText, emailButton, emailNote } from './emailTemplate';
 import { sendSms, type SendResult } from './sms';
 
 export type { SendResult };
 
 const DEFAULT_FROM = 'Rebma Impex <onboarding@resend.dev>';
 
-export const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+export const esc = escapeHtml;
 
 const MAIL_KEYS = ['gmail_address', 'gmail_app_password', 'api_key_resend', 'email_from_address'];
 
@@ -85,9 +87,12 @@ async function sendViaResend(s: Record<string, string>, to: string, subject: str
 // over when it is set up, so a Resend problem never stops an invite.
 // Without a company From address, Resend can only reach its own owner, so
 // Gmail goes first when it is set up.
-export async function sendMail(supabaseAdmin: SupabaseClient, to: string | null | undefined, subject: string, text: string, html: string): Promise<SendResult> {
+export async function sendMail(supabaseAdmin: SupabaseClient, to: string | null | undefined, subject: string, text: string, bodyHtml: string, opts: { raw?: boolean; preheader?: string } = {}): Promise<SendResult> {
   if (!to) return { sent: false, reason: 'No email address on file.' };
   const s = await getSettings(supabaseAdmin, MAIL_KEYS);
+  // Every email gets the same branded look (logo, card, footer) unless a
+  // caller already built a full page.
+  const html = opts.raw ? bodyHtml : brandedEmail({ origin: await getAppOrigin(supabaseAdmin), bodyHtml, preheader: opts.preheader });
   const resendReady = !!(s.api_key_resend && s.email_from_address);
 
   if (resendReady) {
@@ -111,44 +116,57 @@ export type Channel = 'email' | 'sms';
 // Download Link) and the registration link they paste into the app's
 // Register page. With no download link set, only the registration step is
 // included rather than a broken link.
+//
+// customMessage is the text HR edited in the Send panel. When given, it is
+// the body of the email and of the text; the registration button is always
+// added so the link can't be lost by editing, and the text gets the link
+// appended if HR's version left it out.
 export async function sendInvite(
   supabaseAdmin: SupabaseClient,
   invite: { email?: string | null; phone?: string | null; full_name?: string | null; token: string },
   origin: string,
   channels: Channel[] = ['email', 'sms'],
+  customMessage?: string | null,
 ): Promise<{ link: string; email?: SendResult; sms?: SendResult }> {
   const link = `${origin}/register?token=${invite.token}`;
   const downloadUrl = await getDownloadUrl(supabaseAdmin);
   const name = invite.full_name || '';
   const after = 'When you register you choose your own password. Your registration then waits for approval, and we will let you know as soon as you can sign in.';
   const expiry = 'This link expires in 7 days. Once you register, it must be approved within 12 hours or you will need a new link.';
+  const custom = (customMessage || '').trim().slice(0, 2000);
   const result: { link: string; email?: SendResult; sms?: SendResult } = { link };
 
   if (channels.includes('email')) {
-    const textSteps = downloadUrl
-      ? `1. Download the Rebma app:\n${downloadUrl}\n\n2. Open the app, tap Register on the sign-in page, and paste this link:\n${link}`
-      : `Open the Rebma app, tap Register on the sign-in page, and paste this link:\n${link}`;
-    const htmlSteps = downloadUrl
-      ? `<p><strong>1. Download the Rebma app:</strong><br><a href="${esc(downloadUrl)}">${esc(downloadUrl)}</a></p><p><strong>2. Open the app, tap Register on the sign-in page, and paste this link:</strong><br><a href="${esc(link)}">${esc(link)}</a></p>`
-      : `<p>Open the Rebma app, tap Register on the sign-in page, and paste this link:<br><a href="${esc(link)}">${esc(link)}</a></p>`;
-    result.email = await sendMail(
-      supabaseAdmin,
-      invite.email,
-      'Your Rebma Impex invite: download the app and register',
-      `Hi ${name},\n\nYou have been invited to join Rebma Impex.\n\n${textSteps}\n\n${after}\n\n${expiry} If you weren't expecting this, you can safely ignore it.\n\nRebma Impex`,
-      `<p>Hi ${esc(name)},</p><p>You have been invited to join Rebma Impex.</p>${htmlSteps}<p>${after}</p><p>${expiry} If you weren't expecting this, you can safely ignore it.</p><p>Rebma Impex</p>`,
-    );
+    const subject = 'Your Rebma Impex invite: download the app and register';
+    if (custom) {
+      result.email = await sendMail(
+        supabaseAdmin, invite.email, subject,
+        `${custom}${custom.includes(link) ? '' : `\n\nRegister here:\n${link}`}\n\nRebma Impex`,
+        `${paragraphsFromText(custom)}${emailButton('Register now', link)}${emailNote('If the button does not work, copy this link into the Rebma app or your browser:')}${emailNote(link)}`,
+        { preheader: 'Your invitation to join Rebma Impex' },
+      );
+    } else {
+      const textSteps = downloadUrl
+        ? `1. Download the Rebma app:\n${downloadUrl}\n\n2. Open the app, tap Register on the sign-in page, and paste this link:\n${link}`
+        : `Open the Rebma app, tap Register on the sign-in page, and paste this link:\n${link}`;
+      const stepsHtml = downloadUrl
+        ? `<p style="margin:0 0 12px;font-size:15px;line-height:1.65"><strong>1. Get the Rebma app</strong><br><a href="${esc(downloadUrl)}" style="color:#068d5c;word-break:break-all">${esc(downloadUrl)}</a></p><p style="margin:0 0 16px;font-size:15px;line-height:1.65"><strong>2. Open it, tap Register, and paste your invite link</strong></p>`
+        : `<p style="margin:0 0 16px;font-size:15px;line-height:1.65">Open the Rebma app, tap <strong>Register</strong> on the sign-in page, and paste your invite link.</p>`;
+      result.email = await sendMail(
+        supabaseAdmin, invite.email, subject,
+        `Hi ${name},\n\nYou have been invited to join Rebma Impex.\n\n${textSteps}\n\n${after}\n\n${expiry} If you weren't expecting this, you can safely ignore it.\n\nRebma Impex`,
+        `${paragraphsFromText(`Hi ${name},\n\nYou have been invited to join Rebma Impex.`)}${stepsHtml}${emailButton('Register now', link)}${emailNote('If the button does not work, copy this link into the Rebma app or your browser:')}${emailNote(link)}${paragraphsFromText(after)}${emailNote(`${expiry} If you weren't expecting this, you can safely ignore it.`)}`,
+        { preheader: 'Your invitation to join Rebma Impex' },
+      );
+    }
   }
 
   if (channels.includes('sms')) {
-    const smsSteps = downloadUrl
-      ? `1. Download the app: ${downloadUrl}\n2. Open it, tap Register and paste: ${link}`
-      : `Open the Rebma app, tap Register and paste: ${link}`;
-    result.sms = await sendSms(
-      supabaseAdmin,
-      invite.phone,
-      `Hi ${name}, you're invited to join Rebma Impex.\n${smsSteps}\nYou'll choose your password when you register. Link expires in 7 days.`,
-    );
+    const defaultSms = downloadUrl
+      ? `Hi ${name}, you're invited to join Rebma Impex.\n1. Download the app: ${downloadUrl}\n2. Open it, tap Register and paste: ${link}\nYou'll choose your password when you register. Link expires in 7 days.`
+      : `Hi ${name}, you're invited to join Rebma Impex.\nOpen the Rebma app, tap Register and paste: ${link}\nYou'll choose your password when you register. Link expires in 7 days.`;
+    const sms = custom ? (custom.includes(link) ? custom : `${custom}\n${link}`) : defaultSms;
+    result.sms = await sendSms(supabaseAdmin, invite.phone, sms);
   }
   return result;
 }
@@ -166,15 +184,16 @@ export async function sendApproved(
   const textWays = downloadUrl
     ? `On your phone, get the Rebma app here:\n${downloadUrl}\n\nOn a computer, open:\n${origin}`
     : `Open the Rebma app on your phone, or on a computer go to:\n${origin}`;
-  const htmlWays = downloadUrl
-    ? `<p><strong>On your phone</strong>, get the Rebma app here:<br><a href="${esc(downloadUrl)}">${esc(downloadUrl)}</a></p><p><strong>On a computer</strong>, open:<br><a href="${esc(origin)}">${esc(origin)}</a></p>`
-    : `<p>Open the Rebma app on your phone, or on a computer go to:<br><a href="${esc(origin)}">${esc(origin)}</a></p>`;
+  const phoneHtml = downloadUrl
+    ? `<p style="margin:0 0 12px;font-size:15px;line-height:1.65"><strong>On your phone</strong><br><a href="${esc(downloadUrl)}" style="color:#068d5c;word-break:break-all">${esc(downloadUrl)}</a></p>`
+    : '';
   const email = await sendMail(
     supabaseAdmin,
     person.email,
     'Your Rebma Impex account is approved',
     `Hi ${person.fullName},\n\nYour registration has been approved. ${signIn}\n\n${textWays}\n\nRebma Impex`,
-    `<p>Hi ${esc(person.fullName)},</p><p>Your registration has been approved. ${signIn}</p>${htmlWays}<p>Rebma Impex</p>`,
+    `${paragraphsFromText(`Hi ${person.fullName},\n\nYour registration has been approved. ${signIn}`)}${phoneHtml}${emailButton('Sign in on the web', origin)}`,
+    { preheader: 'Your Rebma Impex account is approved' },
   );
   const sms = await sendSms(
     supabaseAdmin,

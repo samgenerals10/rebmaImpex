@@ -522,9 +522,13 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
   const [sendResult, setSendResult] = useState<{ email?: { sent: boolean; reason?: string }; sms?: { sent: boolean; reason?: string } } | null>(null);
   // Shown under the Send button; a pop-up would be hidden behind this panel.
   const [sendError, setSendError] = useState('');
+  // The invite message HR has changed in the Send panel. null = nobody has
+  // edited it yet, so the standard message (and designed email) is used.
+  const [editedInviteMessage, setEditedInviteMessage] = useState<string | null>(null);
   useEffect(() => {
     if (!createdInvite) return;
     setSendResult(null);
+    setEditedInviteMessage(null);
     (supabase as any).from('ceo_settings').select('setting_value').eq('setting_key', 'app_download_url').maybeSingle()
       .then(({ data }: any) => {
         let v = data?.setting_value;
@@ -540,14 +544,15 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
     const steps = appDownloadUrl
       ? `1. Download the Rebma app: ${appDownloadUrl}\n2. Open the app, tap Register on the sign-in page, and paste this link: ${link}`
       : `Open the Rebma app, tap Register on the sign-in page, and paste this link: ${link}`;
-    const message = `Hi ${createdInvite.fullName}, you have been invited to join Rebma Impex.\n\n${steps}\n\nWhen you register you choose your own password. Your registration then waits for approval, and you will get an email as soon as you can sign in. The link expires in 7 days, and once you register it must be approved within 12 hours.`;
+    const defaultMessage = `Hi ${createdInvite.fullName}, you have been invited to join Rebma Impex.\n\n${steps}\n\nWhen you register you choose your own password. Your registration then waits for approval, and you will get an email as soon as you can sign in. The link expires in 7 days, and once you register it must be approved within 12 hours.`;
+    const message = editedInviteMessage ?? defaultMessage;
 
     const sendEmailAndSms = async () => {
       setSendingEmail(true);
       setSendError('');
       setSendResult(null);
       try {
-        const res: any = await callPrivilegedApi('/api/send-staff-invite-email', { inviteId: createdInvite.id, channels: ['email', 'sms'] });
+        const res: any = await callPrivilegedApi('/api/send-staff-invite-email', { inviteId: createdInvite.id, channels: ['email', 'sms'], ...(editedInviteMessage !== null ? { message: editedInviteMessage } : {}) });
         setSendResult({ email: res?.email, sms: res?.sms });
         reloadDirectory();
       } catch (err: any) {
@@ -583,7 +588,19 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
           <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '0.75rem' }}>
             <p style={{ margin: 0, fontWeight: 600, fontSize: 13 }}>Email: {createdInvite.email || 'none on file'}</p>
             <p style={{ margin: '0 0 8px', fontWeight: 600, fontSize: 13 }}>SMS: {createdInvite.phone || 'no phone on file'}</p>
-            <pre style={{ whiteSpace: 'pre-wrap', background: 'var(--bg)', borderRadius: 8, padding: '0.5rem 0.75rem', fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 0.5rem' }}>{message}</pre>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Message (you can edit it)</label>
+            <textarea
+              value={message}
+              onChange={e => setEditedInviteMessage(e.target.value)}
+              rows={9}
+              style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', fontSize: 13, lineHeight: 1.55, color: 'var(--text-primary)', margin: '0 0 6px', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' }}
+            />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, margin: '0 0 10px' }}>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Keep the link in the message. The email also gets a Register button.</span>
+              {editedInviteMessage !== null && (
+                <button type="button" onClick={() => setEditedInviteMessage(null)} style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Reset to standard</button>
+              )}
+            </div>
             <button type="button" onClick={sendEmailAndSms} disabled={sendingEmail} className="erp-btn erp-btn-primary" style={{ width: '100%' }}>{sendingEmail ? 'Sending…' : 'Send by Email and SMS'}</button>
             {sendError && (
               <p role="alert" style={{ margin: '8px 0 0', padding: '8px 12px', borderRadius: 8, background: 'rgba(239,68,68,0.1)', color: '#dc2626', fontSize: 12, fontWeight: 600 }}>{sendError}</p>

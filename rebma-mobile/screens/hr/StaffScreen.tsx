@@ -160,6 +160,10 @@ export default function StaffScreen() {
   const [sendResult, setSendResult] = useState<{ email?: { sent: boolean; reason?: string }; sms?: { sent: boolean; reason?: string } } | null>(null);
   const [sendWhatsappNumber, setSendWhatsappNumber] = useState('');
   const [sendingEmail, setSendingEmail] = useState(false);
+  // The invite message HR has changed in the Send panel. null = not edited,
+  // so the standard message (and designed email) is used. Same as web.
+  const [editedInviteMessage, setEditedInviteMessage] = useState<string | null>(null);
+  useEffect(() => { setEditedInviteMessage(null); }, [createdInvite?.id]);
   // CEO's private Google Play link (Control Center → API Keys). Reloaded
   // each time an invite is created so a link saved mid-session shows up.
   const [appDownloadUrl, setAppDownloadUrl] = useState('');
@@ -952,13 +956,14 @@ export default function StaffScreen() {
           const steps = appDownloadUrl
             ? `1. Download the Rebma app: ${appDownloadUrl}\n2. Open the app, tap Register on the sign-in page, and paste this link: ${link}`
             : `Open the Rebma app, tap Register on the sign-in page, and paste this link: ${link}`;
-          const message = `Hi ${createdInvite.fullName}, you have been invited to join Rebma Impex.\n\n${steps}\n\nWhen you register you choose your own password. Your registration then waits for approval, and you will get an email as soon as you can sign in. The link expires in 7 days, and once you register it must be approved within 12 hours.`;
+          const defaultMessage = `Hi ${createdInvite.fullName}, you have been invited to join Rebma Impex.\n\n${steps}\n\nWhen you register you choose your own password. Your registration then waits for approval, and you will get an email as soon as you can sign in. The link expires in 7 days, and once you register it must be approved within 12 hours.`;
+          const message = editedInviteMessage ?? defaultMessage;
           // One tap sends both: email (Gmail or Resend) and SMS (the Android SMS
           // phone). Each line below then says whether it actually went out.
           const sendEmailAndSms = async () => {
             setSendingEmail(true);
             try {
-              const res: any = await callPrivilegedApi('/api/send-staff-invite-email', { inviteId: createdInvite.id, channels: ['email', 'sms'] });
+              const res: any = await callPrivilegedApi('/api/send-staff-invite-email', { inviteId: createdInvite.id, channels: ['email', 'sms'], ...(editedInviteMessage !== null ? { message: editedInviteMessage } : {}) });
               setSendResult({ email: res?.email, sms: res?.sms });
             } catch (e: any) {
               Alert.alert('Send Failed', e instanceof ApiNotConfiguredError ? e.message : (e.message || 'Failed to send the invite.'));
@@ -983,7 +988,14 @@ export default function StaffScreen() {
               <Card tone="inset">
                 <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>Email: {createdInvite.email || 'none on file'}</Text>
                 <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.textPrimary, marginBottom: t.spacing.xs }}>SMS: {createdInvite.phone || 'no phone on file'}</Text>
-                <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textSecondary, marginBottom: t.spacing.sm }}>{message}</Text>
+                <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta10.size, color: t.colors.textMuted, marginBottom: 4, textTransform: 'uppercase' }}>Message (you can edit it)</Text>
+                <Input value={message} onChangeText={setEditedInviteMessage} multiline numberOfLines={9} style={{ minHeight: 170, textAlignVertical: 'top', marginBottom: 4 }} />
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: t.spacing.sm }}>
+                  <Text style={{ flex: 1, fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted }}>Keep the link in the message. The email also gets a Register button.</Text>
+                  {editedInviteMessage !== null && (
+                    <Button label="Reset" size="sm" variant="ghost" onPress={() => setEditedInviteMessage(null)} />
+                  )}
+                </View>
                 <Button label={sendingEmail ? 'Sending…' : 'Send by Email and SMS'} onPress={sendEmailAndSms} loading={sendingEmail} disabled={sendingEmail} fullWidth />
                 {sendResult && (
                   <View style={{ marginTop: t.spacing.sm }}>
