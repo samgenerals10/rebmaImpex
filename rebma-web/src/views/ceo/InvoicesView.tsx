@@ -1,3 +1,4 @@
+import { escapeHtml } from '../../utils/htmlEscape';
 // src/views/ceo/InvoicesView.tsx
 import { useState, useEffect } from 'react';
 import { Download, Eye, Printer, Plus, Trash2 } from 'lucide-react';
@@ -65,25 +66,25 @@ async function printProforma(r: ProformaRow, issuedBy: string, template: Documen
 
   const dateStr = new Date(r.created_at).toISOString().split('T')[0];
 
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Proforma ${r.proforma_no}, REBMA IMPEX Ghana Limited</title><style>
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Proforma ${escapeHtml(r.proforma_no)}, REBMA IMPEX Ghana Limited</title><style>
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Segoe UI',Arial,sans-serif;background:#f1f5f9;color:#1e293b}
     .page{background:#fff;max-width:780px;margin:28px auto;border-radius:14px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.12);position:relative}
     .watermark{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-35deg);font-size:80px;font-weight:900;color:rgba(26,92,50,0.04);white-space:nowrap;pointer-events:none;z-index:0;letter-spacing:6px;user-select:none}
-    .stripe{height:6px;background:linear-gradient(90deg,${GREEN},${BLUE},${LIME})}
+    .stripe{height:6px;background:linear-gradient(90deg,${escapeHtml(GREEN)},${escapeHtml(BLUE)},${escapeHtml(LIME)})}
     .content{position:relative;z-index:1;padding:40px 52px 48px}
     .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px;gap:20px}
     .logo-wrap{display:flex;align-items:center;gap:14px}
     .logo-wrap img{width:56px;height:56px;object-fit:contain;flex-shrink:0}
-    .logo-block .company{font-size:20px;font-weight:900;color:${GREEN};letter-spacing:1px;line-height:1}
-    .logo-block .tagline{font-size:10px;color:${BLUE};margin-top:2px;font-weight:700;letter-spacing:2px;text-transform:uppercase}
+    .logo-block .company{font-size:20px;font-weight:900;color:${escapeHtml(GREEN)};letter-spacing:1px;line-height:1}
+    .logo-block .tagline{font-size:10px;color:${escapeHtml(BLUE)};margin-top:2px;font-weight:700;letter-spacing:2px;text-transform:uppercase}
     .logo-block .address{font-size:9.5px;color:#94a3b8;margin-top:8px;line-height:1.7}
     .inv-meta{text-align:right;flex-shrink:0}
     .inv-meta .inv-label{font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:.12em;margin-bottom:3px}
-    .inv-meta .inv-no{font-size:22px;font-weight:900;color:${GREEN};letter-spacing:1px}
+    .inv-meta .inv-no{font-size:22px;font-weight:900;color:${escapeHtml(GREEN)};letter-spacing:1px}
     .inv-meta .inv-date{font-size:10px;color:#64748b;margin-top:4px}
     .badge{display:inline-block;padding:5px 16px;border-radius:99px;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;margin-top:8px;background:#fef3c7;color:#92400e}
-    .divider{height:2px;background:linear-gradient(90deg,${GREEN},${BLUE},transparent);margin:0 0 28px;border:none;border-radius:99px}
+    .divider{height:2px;background:linear-gradient(90deg,${escapeHtml(GREEN)},${escapeHtml(BLUE)},transparent);margin:0 0 28px;border:none;border-radius:99px}
     .bill-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:16px 18px;margin-bottom:28px}
     .blabel{font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#94a3b8;margin-bottom:8px}
     .bname{font-size:14px;font-weight:700;color:#1e293b;margin-bottom:3px}
@@ -108,60 +109,60 @@ async function printProforma(r: ProformaRow, issuedBy: string, template: Documen
     <div class="content">
       <div class="header">
         <div class="logo-wrap">
-          <img src="${t.logoUrl.startsWith('http') || t.logoUrl.startsWith('data:') ? t.logoUrl : window.location.origin + t.logoUrl}" alt="${t.companyName}"/>
+          <img src="${escapeHtml(t.logoUrl.startsWith('http') || t.logoUrl.startsWith('data:') ? t.logoUrl : window.location.origin + t.logoUrl)}" alt="${escapeHtml(t.companyName)}"/>
           <div class="logo-block">
-            <div class="company">${t.companyName}</div>
+            <div class="company">${escapeHtml(t.companyName)}</div>
             <div class="tagline">Ghana Limited</div>
-            <div class="address">${t.companyAddress}<br/>${t.companyPhone ? `Tel: ${t.companyPhone}` : ''}${t.companyPhone && t.companyEmail ? ' &bull; ' : ''}${t.companyEmail || ''}</div>
+            <div class="address">${escapeHtml(t.companyAddress)}<br/>${t.companyPhone ? `Tel: ${escapeHtml(t.companyPhone)}` : ''}${escapeHtml(t.companyPhone && t.companyEmail ? ' • ' : '')}${escapeHtml(t.companyEmail || '')}</div>
           </div>
         </div>
         <div class="inv-meta">
-          <div class="inv-label">${t.subtitle}</div>
-          <div class="inv-no">${r.proforma_no}</div>
-          <div class="inv-date">Issued: ${dateStr}</div>
+          <div class="inv-label">${escapeHtml(t.subtitle)}</div>
+          <div class="inv-no">${escapeHtml(r.proforma_no)}</div>
+          <div class="inv-date">Issued: ${escapeHtml(dateStr)}</div>
           <span class="badge">Not a Tax Invoice</span>
         </div>
       </div>
       <hr class="divider"/>
       <div class="bill-box">
         <div class="blabel">Prepared For</div>
-        <div class="bname">${r.client_name}</div>
-        ${customerPhone ? `<div style="font-size:12px;color:#64748b;margin-top:3px">Tel: ${customerPhone}</div>` : ''}
+        <div class="bname">${escapeHtml(r.client_name)}</div>
+        ${customerPhone ? `<div style="font-size:12px;color:#64748b;margin-top:3px">Tel: ${escapeHtml(customerPhone)}</div>` : ''}
       </div>
       <table class="items-table">
-        <thead><tr><th>Product / Service</th><th style="text-align:center">Qty</th><th style="text-align:right">Unit Price (${r.currency})</th><th style="text-align:right">Amount (${r.currency})</th></tr></thead>
+        <thead><tr><th>Product / Service</th><th style="text-align:center">Qty</th><th style="text-align:right">Unit Price (${escapeHtml(r.currency)})</th><th style="text-align:right">Amount (${escapeHtml(r.currency)})</th></tr></thead>
         <tbody>
           ${r.line_items.map(item => `
             <tr>
-              <td><strong>${item.productName}</strong></td>
-              <td style="text-align:center;font-weight:700">${item.quantity}</td>
-              <td style="text-align:right">${Number(item.unitPrice).toLocaleString()}</td>
-              <td style="text-align:right;font-weight:700">${(item.quantity * item.unitPrice).toLocaleString()}</td>
+              <td><strong>${escapeHtml(item.productName)}</strong></td>
+              <td style="text-align:center;font-weight:700">${escapeHtml(item.quantity)}</td>
+              <td style="text-align:right">${escapeHtml(Number(item.unitPrice).toLocaleString())}</td>
+              <td style="text-align:right;font-weight:700">${escapeHtml((item.quantity * item.unitPrice).toLocaleString())}</td>
             </tr>
           `).join('')}
-          <tr><td colspan="3" style="text-align:right;color:#64748b">Subtotal</td><td style="text-align:right">${Number(r.subtotal).toLocaleString()}</td></tr>
-          <tr><td colspan="3" style="text-align:right;color:#64748b">Tax</td><td style="text-align:right">${Number(r.tax_amount).toLocaleString()}</td></tr>
+          <tr><td colspan="3" style="text-align:right;color:#64748b">Subtotal</td><td style="text-align:right">${escapeHtml(Number(r.subtotal).toLocaleString())}</td></tr>
+          <tr><td colspan="3" style="text-align:right;color:#64748b">Tax</td><td style="text-align:right">${escapeHtml(Number(r.tax_amount).toLocaleString())}</td></tr>
           <tr class="total">
             <td colspan="3" style="font-size:12px;letter-spacing:.05em;text-transform:uppercase;opacity:0.8">Grand Total</td>
-            <td style="text-align:right;font-size:18px">${r.currency} ${Number(r.grand_total).toLocaleString()}</td>
+            <td style="text-align:right;font-size:18px">${escapeHtml(r.currency)} ${escapeHtml(Number(r.grand_total).toLocaleString())}</td>
           </tr>
         </tbody>
       </table>
-      ${r.notes ? `<div class="notes-box"><strong>Notes</strong>${r.notes}</div>` : ''}
+      ${r.notes ? `<div class="notes-box"><strong>Notes</strong>${escapeHtml(r.notes)}</div>` : ''}
       <div class="footer">
         <div class="legal">
-          ${t.footerNote}<br/>
-          Issued by ${issuedBy}, ${t.companyName} Ghana Limited.
+          ${escapeHtml(t.footerNote)}<br/>
+          Issued by ${escapeHtml(issuedBy)}, ${escapeHtml(t.companyName)} Ghana Limited.
         </div>
         <div class="qr-block">
-          ${qrDataUrl ? `<img src="${qrDataUrl}" alt="Proforma QR"/>` : ''}
+          ${qrDataUrl ? `<img src="${escapeHtml(qrDataUrl)}" alt="Proforma QR"/>` : ''}
           <div class="qlabel">Scan to verify</div>
         </div>
       </div>
     </div>
   </div>
   <div style="text-align:center;margin:16px 0 32px">
-    ${printEnabled ? `<button onclick="window.print()" style="background:${GREEN};color:#fff;border:none;padding:11px 32px;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;margin-right:10px">🖨 Print</button>` : `<button disabled title="Printing is currently disabled by the CEO" style="background:#cbd5e1;color:#64748b;border:none;padding:11px 32px;border-radius:9px;font-size:14px;font-weight:700;cursor:not-allowed;margin-right:10px">🖨 Print (disabled)</button>`}
+    ${printEnabled ? `<button onclick="window.print()" style="background:${escapeHtml(GREEN)};color:#fff;border:none;padding:11px 32px;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;margin-right:10px">🖨 Print</button>` : `<button disabled title="Printing is currently disabled by the CEO" style="background:#cbd5e1;color:#64748b;border:none;padding:11px 32px;border-radius:9px;font-size:14px;font-weight:700;cursor:not-allowed;margin-right:10px">🖨 Print (disabled)</button>`}
     <button onclick="window.close()" style="background:#f1f5f9;color:#334155;border:1px solid #e2e8f0;padding:11px 28px;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer">Close</button>
   </div>
   </body></html>`;

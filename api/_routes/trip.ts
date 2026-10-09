@@ -14,13 +14,21 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
 async function resolveDriver(token: string) {
-  if (!token) return null;
-  const { data } = await supabaseAdmin
-    .from('drivers')
-    .select('id, driver_id, full_name, vehicle_id')
-    .eq('trip_token', token)
-    .limit(1);
-  return data?.[0] || null;
+  if (!token || token.length > 128) return null;
+  const { data: credential, error: credentialError } = await supabaseAdmin
+    .from('driver_trip_tokens').select('driver_id')
+    .eq('token', token).gt('expires_at', new Date().toISOString()).maybeSingle();
+  if (credentialError || !credential) return null;
+  const { data: driver, error } = await supabaseAdmin.from('drivers')
+    .select('id, driver_id, full_name, vehicle_id, user_id, returned_at')
+    .eq('id', credential.driver_id).maybeSingle();
+  if (error || !driver || driver.returned_at) return null;
+  if (driver.user_id) {
+    const { data: profile, error: profileError } = await supabaseAdmin.from('profiles')
+      .select('status').eq('id', driver.user_id).maybeSingle();
+    if (profileError || String(profile?.status || '').toUpperCase() !== 'ACTIVE') return null;
+  }
+  return driver;
 }
 
 async function loadStops(driverId: string) {

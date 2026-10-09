@@ -569,22 +569,10 @@ export default function App() {
   const [loginRole, setLoginRole] = useState<string>('Staff');
   const [loginMethod, setLoginMethod] = useState<'password' | 'magic_link'>('password');
   const [showMagicLinkRequest, setShowMagicLinkRequest] = useState<boolean>(false);
-  const [privName, setPrivName] = useState<string>('');
-  const [privEmail, setPrivEmail] = useState<string>('');
-  const [privPassword, setPrivPassword] = useState<string>('');
-  const [privConfirmPassword, setPrivConfirmPassword] = useState<string>('');
-  const [privRole, setPrivRole] = useState<string>('CEO');
-  const [showPrivPassword, setShowPrivPassword] = useState<boolean>(false);
-  const [isRegisteringPriv, setIsRegisteringPriv] = useState<boolean>(false);
 
   useEffect(() => {
     setLoginError('');
     setShowMagicLinkRequest(window.location.hash === '#admin-access');
-    setPrivName('');
-    setPrivEmail('');
-    setPrivPassword('');
-    setPrivConfirmPassword('');
-    setPrivRole('CEO');
   }, [authScreen]);
 
   useEffect(() => {
@@ -1994,57 +1982,6 @@ export default function App() {
     }
   };
 
-  // Handle privileged user registration via secret URL
-  const handlePrivilegedRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoginError('');
-    if (!privName || !privEmail || !privPassword || !privConfirmPassword) {
-      setLoginError('Please fill out all fields.');
-      return;
-    }
-    if (privPassword !== privConfirmPassword) {
-      setLoginError('Passwords do not match.');
-      return;
-    }
-
-    setIsRegisteringPriv(true);
-    try {
-      const res = await fetch('/api/register-privileged-user', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: privEmail,
-          password: privPassword,
-          fullName: privName,
-          role: privRole
-        })
-      });
-
-      const data = await res.json();
-      if (res.status === 403) {
-        setLoginError('Access denied. Your email is not authorized.');
-      } else if (!res.ok) {
-        setLoginError(data.error || 'Registration failed.');
-      } else {
-        alert(data.message || 'Account created successfully.', 'success');
-        addNotification?.('Privileged account created successfully.');
-        setTimeout(() => {
-          window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
-          setShowMagicLinkRequest(false);
-          setPrivName('');
-          setPrivEmail('');
-          setPrivPassword('');
-          setPrivConfirmPassword('');
-          setPrivRole('CEO');
-        }, 2000);
-      }
-    } catch (err: any) {
-      setLoginError(err.message || 'An error occurred during registration.');
-    } finally {
-      setIsRegisteringPriv(false);
-    }
-  };
-
   // Workflow A action triggers
   const handleLogIntake = async (data: Omit<IncomingGoods, 'id' | 'status'>) => {
     try {
@@ -2289,141 +2226,14 @@ export default function App() {
     const renderLoginForm = () => {
       if (showMagicLinkRequest) {
         return (
-          <motion.form 
-            key="privileged-register"
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 10 }}
-            onSubmit={handlePrivilegedRegister} 
-            className="space-y-4 text-text-primary"
-          >
-            <div className="text-center">
-              <h3 className="text-xl font-bold text-emerald-800">Privileged Registration</h3>
-              <p className="text-[10px] text-text-muted mt-0.5 font-medium">CREATE CEO / HR ACCOUNT</p>
-            </div>
-
-            {loginError && (
-              <div className="p-2.5 bg-rose-50 border border-rose-100 rounded-xl text-center text-xs text-rose-800 font-semibold leading-normal whitespace-pre-wrap">
-                {loginError}
-              </div>
-            )}
-
-            {/* Full Name Input */}
-            <div className="space-y-1">
-              <label className="block text-[10px] font-bold text-text-muted uppercase tracking-wider">Full Name</label>
-              <div className="flex items-center gap-2 border-b border-[var(--border)] focus-within:border-emerald-600 pb-1.5 transition-colors">
-                <User className="w-4 h-4 text-text-muted" />
-                <input 
-                  type="text" 
-                  required 
-                  placeholder="Ama Boateng"
-                  value={privName}
-                  onChange={(e) => setPrivName(e.target.value)}
-                  className="w-full bg-transparent border-0 p-0 text-sm text-text-primary placeholder-slate-400 focus:ring-0 focus:outline-none"
-                />
-              </div>
-            </div>
-
-            {/* Email Input */}
-            <div className="space-y-1">
-              <label className="block text-[10px] font-bold text-text-muted uppercase tracking-wider">Email Address</label>
-              <div className="flex items-center gap-2 border-b border-[var(--border)] focus-within:border-emerald-600 pb-1.5 transition-colors">
-                <Mail className="w-4 h-4 text-text-muted" />
-                <input 
-                  type="email" 
-                  required 
-                  placeholder="example12@gmail.com"
-                  value={privEmail}
-                  onChange={(e) => setPrivEmail(e.target.value)}
-                  className="w-full bg-transparent border-0 p-0 text-sm text-text-primary placeholder-slate-400 focus:ring-0 focus:outline-none"
-                />
-              </div>
-            </div>
-
-            {/* Password Input */}
-            <div className="space-y-1">
-              <label className="block text-[10px] font-bold text-text-muted uppercase tracking-wider">Password</label>
-              <div className="flex items-center gap-2 border-b border-[var(--border)] focus-within:border-emerald-600 pb-1.5 transition-colors">
-                <Lock className="w-4 h-4 text-text-muted" />
-                <input 
-                  type={showPrivPassword ? "text" : "password"} 
-                  required
-                  placeholder="Password"
-                  value={privPassword}
-                  onChange={(e) => setPrivPassword(e.target.value)}
-                  className="w-full bg-transparent border-0 p-0 text-sm text-text-primary placeholder-slate-400 focus:ring-0 focus:outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPrivPassword(!showPrivPassword)}
-                  className="text-text-muted hover:text-text-secondary cursor-pointer"
-                >
-                  {showPrivPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            {/* Confirm Password Input */}
-            <div className="space-y-1">
-              <label className="block text-[10px] font-bold text-text-muted uppercase tracking-wider">Confirm Password</label>
-              <div className="flex items-center gap-2 border-b border-[var(--border)] focus-within:border-emerald-600 pb-1.5 transition-colors">
-                <Lock className="w-4 h-4 text-text-muted" />
-                <input 
-                  type={showPrivPassword ? "text" : "password"} 
-                  required
-                  placeholder="Confirm Password"
-                  value={privConfirmPassword}
-                  onChange={(e) => setPrivConfirmPassword(e.target.value)}
-                  className="w-full bg-transparent border-0 p-0 text-sm text-text-primary placeholder-slate-400 focus:ring-0 focus:outline-none"
-                />
-              </div>
-            </div>
-
-            {/* Access Role Dropdown */}
-            <div className="space-y-1">
-              <label className="block text-[10px] font-bold text-text-muted uppercase tracking-wider">Access Role</label>
-              <select 
-                value={privRole}
-                onChange={(e) => setPrivRole(e.target.value)}
-                className="w-full bg-transparent border-b border-[var(--border)] pb-1.5 text-sm text-text-primary focus:outline-none focus:border-emerald-600 cursor-pointer"
-              >
-                {/* HR is no longer set up here: the CEO brings HR in by invite. */}
-                <option value="CEO">CEO</option>
-              </select>
-            </div>
-
-            <button 
-              type="submit" 
-              disabled={isRegisteringPriv}
-              className="w-full py-3 bg-[#55dfa5] hover:bg-[#40cf93] disabled:bg-[#a7f3d0] disabled:cursor-not-allowed rounded-full text-sm font-bold text-white shadow-card hover:shadow-lg transition-all cursor-pointer text-center flex items-center justify-center gap-2"
-            >
-              {isRegisteringPriv ? (
-                <>
-                  <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
-                  <span>Creating Account...</span>
-                </>
-              ) : (
-                <span>Create Account</span>
-              )}
-            </button>
-
-            <div className="text-center pt-1">
-              <button
-                type="button"
-                onClick={() => {
-                  setLoginError('');
-                  window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
-                  setShowMagicLinkRequest(false);
-                }}
-                className="text-xs text-text-muted hover:text-emerald-600 hover:underline font-semibold transition-colors cursor-pointer"
-              >
-                Back to Sign In
-              </button>
-            </div>
-          </motion.form>
+          <div className="space-y-4 text-center text-text-primary">
+            <h3 className="text-xl font-bold">Registration by invitation</h3>
+            <p className="text-sm">Ask HR for an invitation to register. An existing CEO can invite a co-CEO from Control Center.</p>
+            <button type="button" className="text-sm font-semibold underline" onClick={() => {
+              window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+              setShowMagicLinkRequest(false);
+            }}>Back to Sign In</button>
+          </div>
         );
       }
 

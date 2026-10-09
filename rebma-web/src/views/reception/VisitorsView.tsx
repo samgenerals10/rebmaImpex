@@ -1,3 +1,4 @@
+import { escapeHtml } from '../../utils/htmlEscape';
 import React, { useState } from 'react';
 import {
   Plus, Search, LogOut, Eye, Users, UserCheck, UserMinus, Clock,
@@ -43,18 +44,18 @@ const VISITOR_PASS_HTML = (v: VisitorRecord) => `
   </style></head>
   <body><div class="badge">
     <div class="label">REBMA IMPEX, VISITOR PASS</div>
-    <div class="badge-num">${v.badgeNumber}</div>
+    <div class="badge-num">${escapeHtml(v.badgeNumber)}</div>
     <hr/>
     <div class="label">Name</div>
-    <h2>${v.fullName}</h2>
+    <h2>${escapeHtml(v.fullName)}</h2>
     <div class="label">Company</div>
-    <p>${v.company || 'Not set'}</p>
+    <p>${escapeHtml(v.company || 'Not set')}</p>
     <div class="label">Purpose</div>
-    <p>${v.purpose}</p>
+    <p>${escapeHtml(v.purpose)}</p>
     <div class="label">Host</div>
-    <p>${v.hostName}</p>
+    <p>${escapeHtml(v.hostName)}</p>
     <div class="label">Check-In</div>
-    <p>${fmt(v.checkInTime)}</p>
+    <p>${escapeHtml(fmt(v.checkInTime))}</p>
   </div></body></html>
 `;
 

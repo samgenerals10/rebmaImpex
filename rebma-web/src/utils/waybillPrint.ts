@@ -1,3 +1,4 @@
+import { escapeHtml } from './htmlEscape';
 // rebma-web/src/utils/waybillPrint.ts
 //
 // The Waybill document. Only Risk makes and prints waybills: the first
@@ -101,34 +102,34 @@ export async function printWaybillForDelivery(deliveryLogId: string, printedBy?:
   const [sBg, sColor] = statusColors[order.status] || ['#f8fafc', '#334155'];
 
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
-  <title>Waybill ${waybillNumber || order.ticketNumber}, REBMA IMPEX</title>
+  <title>Waybill ${escapeHtml(waybillNumber || order.ticketNumber)}, REBMA IMPEX</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Segoe UI',Arial,sans-serif;background:#e8f4ea;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:32px}
     .ticket{background:#fff;width:580px;border-radius:16px;overflow:hidden;box-shadow:0 12px 48px rgba(26,92,50,0.18);position:relative}
     .watermark{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-30deg);font-size:62px;font-weight:900;color:rgba(26,92,50,0.04);white-space:nowrap;pointer-events:none;z-index:0;letter-spacing:4px;font-style:italic}
-    .stripe{height:7px;background:linear-gradient(90deg,${BRAND.green},${BRAND.blue},${BRAND.lime})}
+    .stripe{height:7px;background:linear-gradient(90deg,${escapeHtml(BRAND.green)},${escapeHtml(BRAND.blue)},${escapeHtml(BRAND.lime)})}
     .body{position:relative;z-index:1;padding:28px 34px}
     .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px}
     .brand{display:flex;align-items:center;gap:12px}
     .brand img{width:56px;height:56px;object-fit:contain}
-    .brand-text .name{font-size:17px;font-weight:900;color:${BRAND.green};letter-spacing:.5px}
-    .brand-text .sub{font-size:9px;font-weight:700;color:${BRAND.blue};letter-spacing:2px;text-transform:uppercase;margin-top:2px}
+    .brand-text .name{font-size:17px;font-weight:900;color:${escapeHtml(BRAND.green)};letter-spacing:.5px}
+    .brand-text .sub{font-size:9px;font-weight:700;color:${escapeHtml(BRAND.blue)};letter-spacing:2px;text-transform:uppercase;margin-top:2px}
     .brand-text .addr{font-size:9px;color:#64748b;margin-top:4px;line-height:1.6}
     .ticket-meta{text-align:right}
     .ticket-meta .label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#94a3b8;margin-bottom:3px}
-    .ticket-meta .tno{font-size:22px;font-weight:900;color:${BRAND.green};letter-spacing:1px}
+    .ticket-meta .tno{font-size:22px;font-weight:900;color:${escapeHtml(BRAND.green)};letter-spacing:1px}
     .ticket-meta .tdate{font-size:9px;color:#64748b;margin-top:3px}
-    .div{height:1.5px;background:linear-gradient(90deg,${BRAND.green},${BRAND.blue},transparent);margin:16px 0;border:none;border-radius:99px}
-    .status-banner{background:${sBg};border:1.5px solid ${sColor}30;border-radius:10px;padding:11px 16px;margin:14px 0;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .div{height:1.5px;background:linear-gradient(90deg,${escapeHtml(BRAND.green)},${escapeHtml(BRAND.blue)},transparent);margin:16px 0;border:none;border-radius:99px}
+    .status-banner{background:${escapeHtml(sBg)};border:1.5px solid ${escapeHtml(sColor)}30;border-radius:10px;padding:11px 16px;margin:14px 0;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
     .sb-item .sl{font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#64748b;margin-bottom:3px}
-    .sb-item .sv{font-size:13px;font-weight:800;color:${sColor}}
+    .sb-item .sv{font-size:13px;font-weight:800;color:${escapeHtml(sColor)}}
     .grid{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:14px}
     .field{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px}
     .field .fl{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#94a3b8;margin-bottom:4px}
     .field .fv{font-size:13px;font-weight:700;color:#1e293b;line-height:1.3}
     .field.full{grid-column:1/-1}
-    .dispatch-box{background:linear-gradient(135deg,${BRAND.green},#2d7a50);border-radius:11px;padding:14px 18px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center}
+    .dispatch-box{background:linear-gradient(135deg,${escapeHtml(BRAND.green)},#2d7a50);border-radius:11px;padding:14px 18px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center}
     .dispatch-box .dl{font-size:9px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px}
     .dispatch-box .dv{font-size:14px;font-weight:800;color:#fff}
     .dispatch-box .dseal{border:1.5px solid rgba(255,255,255,0.5);border-radius:8px;padding:6px 13px;font-size:9px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:.12em;text-align:center}
@@ -139,14 +140,14 @@ export async function printWaybillForDelivery(deliveryLogId: string, printedBy?:
     .footer{display:flex;justify-content:space-between;align-items:flex-end;padding-top:14px;border-top:1px dashed #e2e8f0}
     .legal{font-size:8px;color:#94a3b8;line-height:1.8;max-width:310px}
     .legal strong{color:#64748b}
-    .legal .email{color:${BRAND.blue};font-weight:600}
+    .legal .email{color:${escapeHtml(BRAND.blue)};font-weight:600}
     .qr-wrap{text-align:center}
     .qr-wrap img{width:92px;height:92px;border:2px solid #e2e8f0;border-radius:8px}
     .ql{font-size:7.5px;color:#94a3b8;margin-top:3px}
-    .ql2{font-size:7px;color:${BRAND.green};font-weight:700;margin-top:1px}
+    .ql2{font-size:7px;color:${escapeHtml(BRAND.green)};font-weight:700;margin-top:1px}
     .foot-bar{background:#f8fafc;border-top:1px solid #e2e8f0;padding:9px 34px;display:flex;justify-content:space-between;align-items:center}
     .foot-bar span{font-size:8.5px;color:#94a3b8}
-    .foot-bar .brand-slug{color:${BRAND.green};font-weight:700}
+    .foot-bar .brand-slug{color:${escapeHtml(BRAND.green)};font-weight:700}
     @media print{body{background:#fff;padding:0}.ticket{margin:0;box-shadow:none;border-radius:0;width:100%}.stripe{-webkit-print-color-adjust:exact;print-color-adjust:exact}.dispatch-box{-webkit-print-color-adjust:exact;print-color-adjust:exact}button{display:none!important}}
   </style></head><body>
   <div>
@@ -157,17 +158,17 @@ export async function printWaybillForDelivery(deliveryLogId: string, printedBy?:
 
         <div class="header">
           <div class="brand">
-            <img src="${t.logoUrl.startsWith('http') || t.logoUrl.startsWith('data:') ? t.logoUrl : window.location.origin + t.logoUrl}" alt="${t.companyName}"/>
+            <img src="${escapeHtml(t.logoUrl.startsWith('http') || t.logoUrl.startsWith('data:') ? t.logoUrl : window.location.origin + t.logoUrl)}" alt="${escapeHtml(t.companyName)}"/>
             <div class="brand-text">
-              <div class="name">${t.companyName}</div>
-              <div class="sub">${t.subtitle}</div>
-              <div class="addr">${t.companyAddress}${t.companyPhone ? ` · Tel: ${t.companyPhone}` : ''}${t.companyEmail ? ` · ${t.companyEmail}` : ''}</div>
+              <div class="name">${escapeHtml(t.companyName)}</div>
+              <div class="sub">${escapeHtml(t.subtitle)}</div>
+              <div class="addr">${escapeHtml(t.companyAddress)}${t.companyPhone ? ` · Tel: ${escapeHtml(t.companyPhone)}` : ''}${t.companyEmail ? ` · ${escapeHtml(t.companyEmail)}` : ''}</div>
             </div>
           </div>
           <div class="ticket-meta">
             <div class="label">Waybill No.</div>
-            <div class="tno">${waybillNumber || 'Not yet dispatched'}</div>
-            <div class="tdate">Ref: ${order.ticketNumber || `TKT-${order.id.slice(0, 6).toUpperCase()}`} · ${new Date(order.createdAt || Date.now()).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
+            <div class="tno">${escapeHtml(waybillNumber || 'Not yet dispatched')}</div>
+            <div class="tdate">Ref: ${escapeHtml(order.ticketNumber || `TKT-${order.id.slice(0, 6).toUpperCase()}`)} · ${escapeHtml(new Date(order.createdAt || Date.now()).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }))}</div>
           </div>
         </div>
 
@@ -176,30 +177,30 @@ export async function printWaybillForDelivery(deliveryLogId: string, printedBy?:
         <div class="status-banner">
           <div class="sb-item">
             <div class="sl">Client / Customer</div>
-            <div class="sv" style="font-size:12px">${order.clientName}</div>
+            <div class="sv" style="font-size:12px">${escapeHtml(order.clientName)}</div>
           </div>
-          ${order.phone ? `<div class="sb-item"><div class="sl">Customer Phone</div><div class="sv" style="font-size:11px">${order.phone}</div></div>` : ''}
+          ${order.phone ? `<div class="sb-item"><div class="sl">Customer Phone</div><div class="sv" style="font-size:11px">${escapeHtml(order.phone)}</div></div>` : ''}
           <div class="sb-item">
             <div class="sl">Status</div>
-            <div class="sv">${order.status.replace(/_/g, ' ')}</div>
+            <div class="sv">${escapeHtml(order.status.replace(/_/g, ' '))}</div>
           </div>
           <div class="sb-item">
             <div class="sl">Container No.</div>
-            <div class="sv">${containerNumber || 'Not set'}</div>
+            <div class="sv">${escapeHtml(containerNumber || 'Not set')}</div>
           </div>
           <div class="sb-item">
             <div class="sl">Vehicle</div>
-            <div class="sv" style="font-size:11px">${vehicleId || 'Not yet dispatched'}</div>
+            <div class="sv" style="font-size:11px">${escapeHtml(vehicleId || 'Not yet dispatched')}</div>
           </div>
           <div class="sb-item">
             <div class="sl">Driver</div>
-            <div class="sv" style="font-size:11px">${driverName || 'Not yet assigned'}</div>
+            <div class="sv" style="font-size:11px">${escapeHtml(driverName || 'Not yet assigned')}</div>
           </div>
           <div class="sb-item">
             <div class="sl">Issued By (Account Department)</div>
-            <div class="sv" style="font-size:11px">${issuedBy}</div>
+            <div class="sv" style="font-size:11px">${escapeHtml(issuedBy)}</div>
           </div>
-          ${printedBy ? `<div class="sb-item"><div class="sl">Printed By (Risk)</div><div class="sv" style="font-size:11px">${printedBy}</div></div>` : ''}
+          ${printedBy ? `<div class="sb-item"><div class="sl">Printed By (Risk)</div><div class="sv" style="font-size:11px">${escapeHtml(printedBy)}</div></div>` : ''}
         </div>
 
         ${(() => {
@@ -209,7 +210,7 @@ export async function printWaybillForDelivery(deliveryLogId: string, printedBy?:
           const totalQty = (items as any[]).reduce((s: number, i: any) => s + (Number(i.quantity) || 0), 0);
           return `
         <div class="field full" style="background: #fafdfb; border: 1px solid #d1fae5; border-radius: 8px; padding: 12px; margin-bottom: 14px;">
-          <div class="fl" style="color: ${BRAND.green}; font-weight: 800; font-size: 8.5px; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 6px;">Itemized Loading Dispatch List</div>
+          <div class="fl" style="color: ${escapeHtml(BRAND.green)}; font-weight: 800; font-size: 8.5px; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 6px;">Itemized Loading Dispatch List</div>
           <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
             <thead>
               <tr style="border-bottom: 1.5px solid #d1fae5; color: #2d7a50; font-weight: 700; text-transform: uppercase; font-size: 8px; letter-spacing: 0.05em;">
@@ -221,13 +222,13 @@ export async function printWaybillForDelivery(deliveryLogId: string, printedBy?:
             <tbody>
               ${items.map(item => `
                 <tr style="border-bottom: 1px solid #e6f7ed;">
-                  <td style="text-align: left; padding: 6px 0; font-weight: 650; color: #1e293b;">${item.productName}</td>
-                  <td style="text-align: right; padding: 6px 0; font-weight: 800; color: ${BRAND.green}; font-family: monospace; font-size: 12px;">${item.quantity != null ? Number(item.quantity).toLocaleString() : 'Not set'}</td>
-                  <td style="text-align: right; padding: 6px 0; font-weight: 650; color: #1e293b;">${order.destination || 'To be confirmed by Operations'}</td>
+                  <td style="text-align: left; padding: 6px 0; font-weight: 650; color: #1e293b;">${escapeHtml(item.productName)}</td>
+                  <td style="text-align: right; padding: 6px 0; font-weight: 800; color: ${escapeHtml(BRAND.green)}; font-family: monospace; font-size: 12px;">${escapeHtml(item.quantity != null ? Number(item.quantity).toLocaleString() : 'Not set')}</td>
+                  <td style="text-align: right; padding: 6px 0; font-weight: 650; color: #1e293b;">${escapeHtml(order.destination || 'To be confirmed by Operations')}</td>
                 </tr>
               `).join('')}
             </tbody>
-            ${items.length > 1 ? `<tfoot><tr><td style="padding-top:6px;font-weight:800;color:#1e293b;">Total</td><td style="text-align:right;padding-top:6px;font-weight:800;color:${BRAND.green};font-family:monospace;">${totalQty.toLocaleString()}</td><td></td></tr></tfoot>` : ''}
+            ${items.length > 1 ? `<tfoot><tr><td style="padding-top:6px;font-weight:800;color:#1e293b;">Total</td><td style="text-align:right;padding-top:6px;font-weight:800;color:${escapeHtml(BRAND.green)};font-family:monospace;">${escapeHtml(totalQty.toLocaleString())}</td><td></td></tr></tfoot>` : ''}
           </table>
         </div>
         `; })()}
@@ -248,12 +249,12 @@ export async function printWaybillForDelivery(deliveryLogId: string, printedBy?:
 
         <div class="footer">
           <div class="legal">
-            ${t.footerNote}<br/>
-            Invoice ref: <strong>${order.ticketNumber}</strong>. Scan the QR code to match it against the customer invoice.
+            ${escapeHtml(t.footerNote)}<br/>
+            Invoice ref: <strong>${escapeHtml(order.ticketNumber)}</strong>. Scan the QR code to match it against the customer invoice.
           </div>
           <div class="qr-wrap">
             ${qrDataUrl
-              ? `<img src="${qrDataUrl}" alt="Waybill QR"/>`
+              ? `<img src="${escapeHtml(qrDataUrl)}" alt="Waybill QR"/>`
               : `<div style="width:92px;height:92px;border:2px dashed #e2e8f0;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:8px;color:#94a3b8">QR</div>`}
             <div class="ql">Scan to verify</div>
             <div class="ql2">Matches customer invoice</div>
@@ -262,12 +263,12 @@ export async function printWaybillForDelivery(deliveryLogId: string, printedBy?:
 
       </div>
       <div class="foot-bar">
-        <span>${t.companyName} Ghana Limited · Waybill ${waybillNumber || order.ticketNumber} · ${new Date().toLocaleDateString('en-GB')}</span>
-        <span class="brand-slug">${t.website}</span>
+        <span>${escapeHtml(t.companyName)} Ghana Limited · Waybill ${escapeHtml(waybillNumber || order.ticketNumber)} · ${escapeHtml(new Date().toLocaleDateString('en-GB'))}</span>
+        <span class="brand-slug">${escapeHtml(t.website)}</span>
       </div>
     </div>
     <div style="text-align:center;margin-top:16px;display:flex;gap:10px;justify-content:center">
-      ${printEnabled ? `<button onclick="window.print()" style="background:${BRAND.green};color:#fff;border:none;padding:11px 30px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer">🖨 Print Waybill</button>` : `<button disabled title="Printing is currently disabled by the CEO" style="background:#cbd5e1;color:#64748b;border:none;padding:11px 30px;border-radius:9px;font-size:13px;font-weight:700;cursor:not-allowed">🖨 Print (disabled)</button>`}
+      ${printEnabled ? `<button onclick="window.print()" style="background:${escapeHtml(BRAND.green)};color:#fff;border:none;padding:11px 30px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer">🖨 Print Waybill</button>` : `<button disabled title="Printing is currently disabled by the CEO" style="background:#cbd5e1;color:#64748b;border:none;padding:11px 30px;border-radius:9px;font-size:13px;font-weight:700;cursor:not-allowed">🖨 Print (disabled)</button>`}
       <button onclick="window.close()" style="background:#f1f5f9;color:#334155;border:1px solid #e2e8f0;padding:11px 26px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer">Close</button>
     </div>
   </div>

@@ -1,3 +1,4 @@
+import { escapeHtml } from '../../utils/htmlEscape';
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, MoreVertical, Layers, Download, Printer, Edit2, TrendingUp } from 'lucide-react';
 import { exportToCSV, exportToPDF } from '../../utils/export';
@@ -179,19 +180,19 @@ export default function WipStockView({ addNotification }: Props) {
       <style>body{font-family:sans-serif;padding:32px;color:#111;} h1{font-size:22px;margin:0 0 4px;} .badge{padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;background:#d1fae5;color:#065f46;} table{width:100%;border-collapse:collapse;margin-top:16px;} th,td{padding:10px 12px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:14px;} th{color:#6b7280;font-size:12px;font-weight:600;} .footer{margin-top:32px;font-size:11px;color:#9ca3af;border-top:1px solid #e5e7eb;padding-top:12px;}</style>
       </head><body>
       <p style="font-size:11px;color:#888;margin:0 0 12px;">REBMA IMPEX, WIP Stock Record</p>
-      <h1>${item.productName}</h1>
-      <p style="margin:4px 0 12px;color:#6b7280;font-size:13px;">${item.batchRef || 'Not set'} · Updated: ${item.updatedAt}</p>
-      <span class="badge">${item.stage}</span>
+      <h1>${escapeHtml(item.productName)}</h1>
+      <p style="margin:4px 0 12px;color:#6b7280;font-size:13px;">${escapeHtml(item.batchRef || 'Not set')} · Updated: ${escapeHtml(item.updatedAt)}</p>
+      <span class="badge">${escapeHtml(item.stage)}</span>
       <table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody>
-      <tr><td>Item ID</td><td>${item.id}</td></tr>
-      <tr><td>Product</td><td>${item.productName}</td></tr>
-      <tr><td>Batch Reference</td><td>${item.batchRef || 'Not set'}</td></tr>
-      <tr><td>Stage</td><td>${item.stage}</td></tr>
-      <tr><td>Quantity</td><td>${item.qty.toLocaleString()} ${item.unit}</td></tr>
-      <tr><td>Last Updated</td><td>${item.updatedAt}</td></tr>
-      <tr><td>Notes</td><td>${item.notes || 'Not set'}</td></tr>
+      <tr><td>Item ID</td><td>${escapeHtml(item.id)}</td></tr>
+      <tr><td>Product</td><td>${escapeHtml(item.productName)}</td></tr>
+      <tr><td>Batch Reference</td><td>${escapeHtml(item.batchRef || 'Not set')}</td></tr>
+      <tr><td>Stage</td><td>${escapeHtml(item.stage)}</td></tr>
+      <tr><td>Quantity</td><td>${escapeHtml(item.qty.toLocaleString())} ${escapeHtml(item.unit)}</td></tr>
+      <tr><td>Last Updated</td><td>${escapeHtml(item.updatedAt)}</td></tr>
+      <tr><td>Notes</td><td>${escapeHtml(item.notes || 'Not set')}</td></tr>
       </tbody></table>
-      <div class="footer">Printed from REBMA IMPEX ERP · ${new Date().toLocaleString()}</div>
+      <div class="footer">Printed from REBMA IMPEX ERP · ${escapeHtml(new Date().toLocaleString())}</div>
       </body></html>`);
     win.document.close(); win.focus(); win.print(); win.close();
   };

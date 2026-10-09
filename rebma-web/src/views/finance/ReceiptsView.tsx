@@ -1,3 +1,4 @@
+import { escapeHtml } from '../../utils/htmlEscape';
 // rebma-web/src/views/finance/ReceiptsView.tsx
 // Every payment approval auto-generates a finance_payments row (the receipt)
 // but there was nowhere in the app to actually see it — this is that page:
@@ -110,54 +111,54 @@ export async function printReceipt(r: ReceiptRow, lineItems: OrderLineItem[] | n
   const itemRows = (lineItems && lineItems.length > 0)
     ? lineItems.map(it => `
         <tr>
-          <td class="it-name">${it.productName}</td>
-          <td class="it-num">${it.quantity}</td>
-          <td class="it-num">GHS ${Number(it.unitPrice).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-          <td class="it-num it-total">GHS ${Number(it.lineTotal).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+          <td class="it-name">${escapeHtml(it.productName)}</td>
+          <td class="it-num">${escapeHtml(it.quantity)}</td>
+          <td class="it-num">GHS ${escapeHtml(Number(it.unitPrice).toLocaleString(undefined, { minimumFractionDigits: 2 }))}</td>
+          <td class="it-num it-total">GHS ${escapeHtml(Number(it.lineTotal).toLocaleString(undefined, { minimumFractionDigits: 2 }))}</td>
         </tr>`).join('')
-    : `<tr><td colspan="4" class="it-empty">Payment for Order ${r.orderId || 'Not set'}. Itemized breakdown not available for this record.</td></tr>`;
+    : `<tr><td colspan="4" class="it-empty">Payment for Order ${escapeHtml(r.orderId || 'Not set')}. Itemized breakdown not available for this record.</td></tr>`;
 
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
-  <title>Receipt ${r.receiptNumber}, REBMA IMPEX</title>
+  <title>Receipt ${escapeHtml(r.receiptNumber)}, REBMA IMPEX</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Segoe UI',Arial,sans-serif;background:#e8f4ea;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:32px}
     .ticket{background:#fff;width:620px;border-radius:16px;overflow:hidden;box-shadow:0 12px 48px rgba(26,92,50,0.18);position:relative}
     .watermark{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-30deg);font-size:62px;font-weight:900;color:rgba(26,92,50,0.04);white-space:nowrap;pointer-events:none;z-index:0;letter-spacing:4px;font-style:italic}
-    .stripe{height:7px;background:linear-gradient(90deg,${BRAND.green},${BRAND.blue},${BRAND.lime})}
+    .stripe{height:7px;background:linear-gradient(90deg,${escapeHtml(BRAND.green)},${escapeHtml(BRAND.blue)},${escapeHtml(BRAND.lime)})}
     .body{position:relative;z-index:1;padding:28px 34px}
     .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px}
     .brand{display:flex;align-items:center;gap:12px}
     .brand img{width:56px;height:56px;object-fit:contain}
-    .brand-text .name{font-size:17px;font-weight:900;color:${BRAND.green};letter-spacing:.5px}
-    .brand-text .sub{font-size:9px;font-weight:700;color:${BRAND.blue};letter-spacing:2px;text-transform:uppercase;margin-top:2px}
+    .brand-text .name{font-size:17px;font-weight:900;color:${escapeHtml(BRAND.green)};letter-spacing:.5px}
+    .brand-text .sub{font-size:9px;font-weight:700;color:${escapeHtml(BRAND.blue)};letter-spacing:2px;text-transform:uppercase;margin-top:2px}
     .brand-text .addr{font-size:9px;color:#64748b;margin-top:4px}
     .ticket-meta{text-align:right}
     .ticket-meta .label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#94a3b8;margin-bottom:3px}
-    .ticket-meta .tno{font-size:22px;font-weight:900;color:${BRAND.green};letter-spacing:1px}
+    .ticket-meta .tno{font-size:22px;font-weight:900;color:${escapeHtml(BRAND.green)};letter-spacing:1px}
     .ticket-meta .tdate{font-size:9px;color:#64748b;margin-top:3px}
-    .div{height:1.5px;background:linear-gradient(90deg,${BRAND.green},${BRAND.blue},transparent);margin:14px 0;border:none;border-radius:99px}
+    .div{height:1.5px;background:linear-gradient(90deg,${escapeHtml(BRAND.green)},${escapeHtml(BRAND.blue)},transparent);margin:14px 0;border:none;border-radius:99px}
     .details-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
     .details-grid .fld{background:#f8fafc;border:1px solid #eef2f6;border-radius:9px;padding:8px 12px}
     .details-grid .fld.full{grid-column:1/-1}
     .details-grid .fl{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:#94a3b8;margin-bottom:2px}
     .details-grid .fv{font-size:12px;font-weight:700;color:#1e293b}
     .items{width:100%;border-collapse:collapse;margin-bottom:10px}
-    .items thead th{background:#f0fdf4;color:${BRAND.green};font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;text-align:left;padding:9px 10px;border-bottom:1.5px solid #16653430}
+    .items thead th{background:#f0fdf4;color:${escapeHtml(BRAND.green)};font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;text-align:left;padding:9px 10px;border-bottom:1.5px solid #16653430}
     .items thead th.it-num{text-align:right}
     .items td{padding:9px 10px;font-size:11.5px;color:#1e293b;border-bottom:1px solid #f1f5f9}
     .items td.it-num{text-align:right;font-variant-numeric:tabular-nums}
     .items td.it-total{font-weight:700}
     .items td.it-empty{color:#94a3b8;font-style:italic;font-size:10.5px;padding:16px 10px;text-align:center}
-    .summary{display:flex;justify-content:space-between;align-items:center;gap:16px;background:linear-gradient(135deg,${BRAND.green},#2d7a50);border-radius:12px;padding:14px 18px;margin-bottom:14px}
+    .summary{display:flex;justify-content:space-between;align-items:center;gap:16px;background:linear-gradient(135deg,${escapeHtml(BRAND.green)},#2d7a50);border-radius:12px;padding:14px 18px;margin-bottom:14px}
     .summary .sw{color:rgba(255,255,255,0.85);font-size:11px;line-height:1.5;max-width:280px}
     .summary .sw b{color:#fff}
     .summary .sr{text-align:right}
     .summary .sl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,0.65);margin-bottom:3px}
     .summary .sv{font-size:22px;font-weight:900;color:#fff;white-space:nowrap}
-    .verified{display:inline-flex;align-items:center;gap:6px;background:#f0fdf4;border:1px solid #16653430;border-radius:99px;padding:5px 14px;font-size:9.5px;font-weight:800;color:${BRAND.green};text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px}
+    .verified{display:inline-flex;align-items:center;gap:6px;background:#f0fdf4;border:1px solid #16653430;border-radius:99px;padding:5px 14px;font-size:9.5px;font-weight:800;color:${escapeHtml(BRAND.green)};text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px}
     .thanks{font-size:11px;color:#475569;margin-bottom:16px}
-    .thanks b{color:${BRAND.green}}
+    .thanks b{color:${escapeHtml(BRAND.green)}}
     .perf{display:flex;align-items:center;margin:0 -34px 14px;overflow:hidden}
     .perf-line{flex:1;border-top:2px dashed #cbd5e1}
     .perf-circle{width:22px;height:22px;border-radius:50%;background:#e8f4ea;flex-shrink:0}
@@ -167,10 +168,10 @@ export async function printReceipt(r: ReceiptRow, lineItems: OrderLineItem[] | n
     .qr-wrap{text-align:center}
     .qr-wrap img{width:92px;height:92px;border:2px solid #e2e8f0;border-radius:8px}
     .ql{font-size:7.5px;color:#94a3b8;margin-top:3px}
-    .ql2{font-size:7px;color:${BRAND.green};font-weight:700;margin-top:1px}
+    .ql2{font-size:7px;color:${escapeHtml(BRAND.green)};font-weight:700;margin-top:1px}
     .foot-bar{background:#f8fafc;border-top:1px solid #e2e8f0;padding:9px 34px;display:flex;justify-content:space-between;align-items:center;margin-top:18px}
     .foot-bar span{font-size:8.5px;color:#94a3b8}
-    .foot-bar .brand-slug{color:${BRAND.green};font-weight:700}
+    .foot-bar .brand-slug{color:${escapeHtml(BRAND.green)};font-weight:700}
     @media print{body{background:#fff;padding:0}.ticket{margin:0;box-shadow:none;border-radius:0;width:100%}.stripe{-webkit-print-color-adjust:exact;print-color-adjust:exact}.items thead th{-webkit-print-color-adjust:exact;print-color-adjust:exact}.summary{-webkit-print-color-adjust:exact;print-color-adjust:exact}button{display:none!important}}
   </style></head><body>
   <div>
@@ -181,28 +182,28 @@ export async function printReceipt(r: ReceiptRow, lineItems: OrderLineItem[] | n
 
         <div class="header">
           <div class="brand">
-            <img src="${t.logoUrl.startsWith('http') || t.logoUrl.startsWith('data:') ? t.logoUrl : window.location.origin + t.logoUrl}" alt="${t.companyName}"/>
+            <img src="${escapeHtml(t.logoUrl.startsWith('http') || t.logoUrl.startsWith('data:') ? t.logoUrl : window.location.origin + t.logoUrl)}" alt="${escapeHtml(t.companyName)}"/>
             <div class="brand-text">
-              <div class="name">${t.companyName}</div>
-              <div class="sub">${t.subtitle}</div>
-              <div class="addr">${t.companyAddress}${t.companyPhone ? ` · Tel: ${t.companyPhone}` : ''}${t.companyEmail ? ` · ${t.companyEmail}` : ''}</div>
+              <div class="name">${escapeHtml(t.companyName)}</div>
+              <div class="sub">${escapeHtml(t.subtitle)}</div>
+              <div class="addr">${escapeHtml(t.companyAddress)}${t.companyPhone ? ` · Tel: ${escapeHtml(t.companyPhone)}` : ''}${t.companyEmail ? ` · ${escapeHtml(t.companyEmail)}` : ''}</div>
             </div>
           </div>
           <div class="ticket-meta">
             <div class="label">Receipt No.</div>
-            <div class="tno">${r.receiptNumber}</div>
-            <div class="tdate">${dateStr} ${timeStr}</div>
+            <div class="tno">${escapeHtml(r.receiptNumber)}</div>
+            <div class="tdate">${escapeHtml(dateStr)} ${escapeHtml(timeStr)}</div>
           </div>
         </div>
 
         <hr class="div"/>
 
         <div class="details-grid">
-          <div class="fld"><div class="fl">Client</div><div class="fv">${r.clientName}</div></div>
-          <div class="fld"><div class="fl">Customer Phone</div><div class="fv">${r.customerPhone || 'Not set'}</div></div>
-          <div class="fld"><div class="fl">Order Ref</div><div class="fv">${r.ticketNumber || r.orderId || 'Not set'}</div></div>
-          <div class="fld"><div class="fl">Payment Method</div><div class="fv">${r.paymentMode} · ${r.paymentType}</div></div>
-          <div class="fld full"><div class="fl">Recorded By</div><div class="fv">${recordedBy}</div></div>
+          <div class="fld"><div class="fl">Client</div><div class="fv">${escapeHtml(r.clientName)}</div></div>
+          <div class="fld"><div class="fl">Customer Phone</div><div class="fv">${escapeHtml(r.customerPhone || 'Not set')}</div></div>
+          <div class="fld"><div class="fl">Order Ref</div><div class="fv">${escapeHtml(r.ticketNumber || r.orderId || 'Not set')}</div></div>
+          <div class="fld"><div class="fl">Payment Method</div><div class="fv">${escapeHtml(r.paymentMode)} · ${escapeHtml(r.paymentType)}</div></div>
+          <div class="fld full"><div class="fl">Recorded By</div><div class="fv">${escapeHtml(recordedBy)}</div></div>
         </div>
 
         <table class="items">
@@ -218,14 +219,14 @@ export async function printReceipt(r: ReceiptRow, lineItems: OrderLineItem[] | n
         </table>
 
         <div class="summary">
-          <div class="sw"><b>Amount in words:</b><br/>${amountToWords(r.amount)}</div>
+          <div class="sw"><b>Amount in words:</b><br/>${escapeHtml(amountToWords(r.amount))}</div>
           <div class="sr">
             <div class="sl">Amount Paid</div>
-            <div class="sv">GHS ${r.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+            <div class="sv">GHS ${escapeHtml(r.amount.toLocaleString(undefined, { minimumFractionDigits: 2 }))}</div>
           </div>
         </div>
 
-        <div class="verified">✓ Payment Verified, ${r.status}</div>
+        <div class="verified">✓ Payment Verified, ${escapeHtml(r.status)}</div>
 
         <div class="perf">
           <div class="perf-circle"></div>
@@ -235,12 +236,12 @@ export async function printReceipt(r: ReceiptRow, lineItems: OrderLineItem[] | n
 
         <div class="footer">
           <div class="legal">
-            ${t.footerNote}<br/>
-            Receipt <strong>${r.receiptNumber}</strong> documents this payment; order ticket <strong>${r.ticketNumber || 'Not set'}</strong> is a separate record. Scan the QR code to verify both match.
+            ${escapeHtml(t.footerNote)}<br/>
+            Receipt <strong>${escapeHtml(r.receiptNumber)}</strong> documents this payment; order ticket <strong>${escapeHtml(r.ticketNumber || 'Not set')}</strong> is a separate record. Scan the QR code to verify both match.
           </div>
           <div class="qr-wrap">
             ${qrDataUrl
-              ? `<img src="${qrDataUrl}" alt="Receipt QR"/>`
+              ? `<img src="${escapeHtml(qrDataUrl)}" alt="Receipt QR"/>`
               : `<div style="width:92px;height:92px;border:2px dashed #e2e8f0;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:8px;color:#94a3b8">QR</div>`}
             <div class="ql">Scan to verify</div>
             <div class="ql2">Matches ticket &amp; invoice</div>
@@ -249,12 +250,12 @@ export async function printReceipt(r: ReceiptRow, lineItems: OrderLineItem[] | n
 
       </div>
       <div class="foot-bar">
-        <span>${t.companyName} Ghana Limited · Receipt ${r.receiptNumber} · ${new Date().toLocaleDateString('en-GB')}</span>
-        <span class="brand-slug">${t.website}</span>
+        <span>${escapeHtml(t.companyName)} Ghana Limited · Receipt ${escapeHtml(r.receiptNumber)} · ${escapeHtml(new Date().toLocaleDateString('en-GB'))}</span>
+        <span class="brand-slug">${escapeHtml(t.website)}</span>
       </div>
     </div>
     <div style="text-align:center;margin-top:16px;display:flex;gap:10px;justify-content:center">
-      ${printEnabled ? `<button onclick="window.print()" style="background:${BRAND.green};color:#fff;border:none;padding:11px 30px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer">🖨 Print Receipt</button>` : `<button disabled title="Printing is currently disabled by the CEO" style="background:#cbd5e1;color:#64748b;border:none;padding:11px 30px;border-radius:9px;font-size:13px;font-weight:700;cursor:not-allowed">🖨 Print (disabled)</button>`}
+      ${printEnabled ? `<button onclick="window.print()" style="background:${escapeHtml(BRAND.green)};color:#fff;border:none;padding:11px 30px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer">🖨 Print Receipt</button>` : `<button disabled title="Printing is currently disabled by the CEO" style="background:#cbd5e1;color:#64748b;border:none;padding:11px 30px;border-radius:9px;font-size:13px;font-weight:700;cursor:not-allowed">🖨 Print (disabled)</button>`}
       <button onclick="window.close()" style="background:#f1f5f9;color:#334155;border:1px solid #e2e8f0;padding:11px 26px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer">Close</button>
     </div>
   </div>
